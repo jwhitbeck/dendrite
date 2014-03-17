@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [dendrite.java.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
-            Int32PlainEncoder Int32PlainDecoder Int64PlainEncoder Int64PlainDecoder
+            Int32PlainEncoder Int32PlainDecoder
+            Int32PackedRunLengthEncoder Int32PackedRunLengthDecoder
+            Int64PlainEncoder Int64PlainDecoder
             FloatPlainEncoder FloatPlainDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
             ByteArrayPlainEncoder ByteArrayPlainDecoder]))
@@ -28,6 +30,11 @@
   (testing "Int32 plain encoder/decoder works"
     (let [rand-ints (repeatedly helpers/rand-int)
           read-ints (write-read #(Int32PlainEncoder.) #(Int32PlainDecoder. %) rand-ints)]
+      (is (every? true? (map = read-ints rand-ints)))))
+  (testing "Int32 packed run-length encoder/decoder works"
+    (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
+          read-ints (write-read #(Int32PackedRunLengthEncoder. 3)
+                                #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
 (deftest int64-encoders
