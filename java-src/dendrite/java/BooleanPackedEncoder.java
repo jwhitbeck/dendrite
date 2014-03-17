@@ -2,15 +2,15 @@ package dendrite.java;
 
 public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEncoder {
 
-  private boolean[] octoplet = new boolean[8];
+  private boolean[] octuplet = new boolean[8];
   private int position = 0;
 
   @Override
   public void append(boolean b) {
-    octoplet[position] = b;
+    octuplet[position] = b;
     position += 1;
     if (position == 8) {
-      byte_array_writer.writePackedBooleans(octoplet);
+      byte_array_writer.writePackedBooleans(octuplet);
       position = 0;
     }
   }
