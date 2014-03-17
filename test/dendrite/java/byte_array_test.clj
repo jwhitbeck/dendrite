@@ -109,6 +109,11 @@
                            (map (comp unchecked-byte #(Integer/parseInt % 2)))))
                (every? true?)))))
 
+  (testing "writePackedInt32/readPackedInt32 works"
+    (let [rand-ints (repeatedly #(rand-int 8))
+          read-ints (write-read #(.writePackedInt32 %1 %2 3) #(.readPackedInt32 % 3) rand-ints)]
+      (is (every? true? (map = read-ints rand-ints)))))
+
   (testing "writePackedInts32/readPackedInts32 works"
     (let [rand-int-arrays (->> (repeatedly #(rand-int 8)) (map int) (partition 8) (map int-array))
           read-int-arrays (write-read #(.writePackedInts32 %1 %2 3 8)

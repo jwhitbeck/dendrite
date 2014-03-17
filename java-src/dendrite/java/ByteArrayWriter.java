@@ -134,6 +134,17 @@ public class ByteArrayWriter implements Resetable {
     position += length;
   }
 
+  public void writePackedInt32(final int i, final int width) {
+    final int mask = ~((-1) << width);
+    int current_byte = i & mask;
+    int remaining_width = width;
+    while (remaining_width > 0) {
+      writeByte((byte)(current_byte & 0xff));
+      current_byte >>>= 8;
+      remaining_width -= 8;
+    }
+  }
+
   public void writePackedInts32(final int[] ints, final int width, final int length) {
     final int mask = ~((-1) << width);
     int shift = 0;

@@ -121,6 +121,17 @@ public class ByteArrayReader {
     readPackedInts32(ints, width, 0, length);
   }
 
+  public int readPackedInt32(final int width) {
+    final int mask = ~((-1) << width);
+    int remaining_width = width;
+    int i = 0;
+    while (remaining_width > 0) {
+      i = (i << 8) | ((int) readByte() & 0xff);
+      remaining_width -= 8;
+    }
+    return i;
+  }
+
   public void readPackedInts32(final int[] ints, final int width, final int offset, final int length) {
     final int mask = ~((-1) << width);
     int current_bytes = 0;
