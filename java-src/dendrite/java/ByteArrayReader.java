@@ -117,10 +117,6 @@ public class ByteArrayReader {
     position += length;
   }
 
-  public void readPackedInts32(final int[] ints, final int width, final int length) {
-    readPackedInts32(ints, width, 0, length);
-  }
-
   public int readPackedInt32(final int width) {
     final int mask = ~((-1) << width);
     int remaining_width = width;
@@ -130,6 +126,10 @@ public class ByteArrayReader {
       remaining_width -= 8;
     }
     return i;
+  }
+
+  public void readPackedInts32(final int[] ints, final int width, final int length) {
+    readPackedInts32(ints, width, 0, length);
   }
 
   public void readPackedInts32(final int[] ints, final int width, final int offset, final int length) {
