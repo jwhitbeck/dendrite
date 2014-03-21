@@ -158,38 +158,42 @@ public class ByteArrayWriter implements Resetable {
   }
 
   public void writePackedInts32(final int[] ints, final int width, final int offset, final int length) {
-    final int mask = ~((-1) << width);
-    int shift = 0;
-    int current_byte = 0;
-    for (int i=offset; i<length; ++i) {
-      current_byte |= (ints[i] & mask) << shift;
-      shift += width;
-      while (shift >= 8) {
-        writeByte((byte)(current_byte & 0xff));
-        current_byte >>>= 8;
-        shift -= 8;
+    if (width > 0) {
+      final int mask = ~((-1) << width);
+      int shift = 0;
+      int current_byte = 0;
+      for (int i=offset; i<length; ++i) {
+        current_byte |= (ints[i] & mask) << shift;
+        shift += width;
+        while (shift >= 8) {
+          writeByte((byte)(current_byte & 0xff));
+          current_byte >>>= 8;
+          shift -= 8;
+        }
       }
-    }
-    if (shift > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      if (shift > 0) {
+        writeByte((byte)(current_byte & 0xff));
+      }
     }
   }
 
   public void writePackedInts64(final long[] longs, final int width, final int length) {
-    final long mask = ~(((long)-1) << width);
-    int shift = 0;
-    long current_byte = 0;
-    for (int i=0; i<length; ++i) {
-      current_byte |= (longs[i] & mask) << shift;
-      shift += width;
-      while (shift >= 8) {
-        writeByte((byte)(current_byte & 0xff));
-        current_byte >>>= 8;
-        shift -= 8;
+    if (width > 0) {
+      final long mask = ~(((long)-1) << width);
+      int shift = 0;
+      long current_byte = 0;
+      for (int i=0; i<length; ++i) {
+        current_byte |= (longs[i] & mask) << shift;
+        shift += width;
+        while (shift >= 8) {
+          writeByte((byte)(current_byte & 0xff));
+          current_byte >>>= 8;
+          shift -= 8;
+        }
       }
-    }
-    if (shift > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      if (shift > 0) {
+        writeByte((byte)(current_byte & 0xff));
+      }
     }
   }
 

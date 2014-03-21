@@ -133,17 +133,23 @@ public class ByteArrayReader {
   }
 
   public void readPackedInts32(final int[] ints, final int width, final int offset, final int length) {
-    final int mask = ~((-1) << width);
-    int current_bytes = 0;
-    int available_bits = 0;
-    for (int i=0; i<length; ++i) {
-      while (available_bits < width) {
-        current_bytes |= ((int) readByte() & 0xff) << available_bits;
-        available_bits += 8;
+    if (width > 0) {
+      final int mask = ~((-1) << width);
+      int current_bytes = 0;
+      int available_bits = 0;
+      for (int i=0; i<length; ++i) {
+        while (available_bits < width) {
+          current_bytes |= ((int) readByte() & 0xff) << available_bits;
+          available_bits += 8;
+        }
+        ints[i] = (current_bytes & mask);
+        current_bytes >>>= width;
+        available_bits -= width;
       }
-      ints[i] = (current_bytes & mask);
-      current_bytes >>>= width;
-      available_bits -= width;
+    } else {
+      for (int i=0; i<length; ++i) {
+        ints[i] = 0;
+      }
     }
   }
 
@@ -152,17 +158,23 @@ public class ByteArrayReader {
   }
 
   public void readPackedInts64(final long[] longs, final int width, final int offset, final int length) {
-    final long mask = ~(((long)(-1)) << width);
-    long current_bytes = 0;
-    int available_bits = 0;
-    for (int i=0; i<length; ++i) {
-      while (available_bits < width) {
-        current_bytes |= ((int) readByte() & 0xff) << available_bits;
-        available_bits += 8;
+    if (width > 0) {
+      final long mask = ~(((long)(-1)) << width);
+      long current_bytes = 0;
+      int available_bits = 0;
+      for (int i=0; i<length; ++i) {
+        while (available_bits < width) {
+          current_bytes |= ((int) readByte() & 0xff) << available_bits;
+          available_bits += 8;
+        }
+        longs[i] = (current_bytes & mask);
+        current_bytes >>>= width;
+        available_bits -= width;
       }
-      longs[i] = (current_bytes & mask);
-      current_bytes >>>= width;
-      available_bits -= width;
+    } else {
+      for (int i=0; i<length; ++i) {
+        longs[i] = 0;
+      }
     }
   }
 
