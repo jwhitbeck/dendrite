@@ -4,6 +4,7 @@
   (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
             Int32PlainEncoder Int32PlainDecoder
             Int32PackedRunLengthEncoder Int32PackedRunLengthDecoder
+            Int32PackedDeltaEncoder Int32PackedDeltaDecoder
             Int64PlainEncoder Int64PlainDecoder
             FloatPlainEncoder FloatPlainDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
@@ -35,6 +36,11 @@
     (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
           read-ints (write-read #(Int32PackedRunLengthEncoder. 3)
                                 #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
+      (is (every? true? (map = read-ints rand-ints)))))
+  (testing "Int32 packed delta encoder/decoder works"
+    (let [rand-ints (repeatedly helpers/rand-int)
+          read-ints (write-read #(Int32PackedDeltaEncoder.)
+                                #(Int32PackedDeltaDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
 (deftest int64-encoders
