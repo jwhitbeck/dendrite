@@ -134,6 +134,14 @@ public class ByteArrayWriter implements Resetable {
     position += length;
   }
 
+  public static int getBitWidth(int i) {
+    return 32 - Integer.numberOfLeadingZeros(i);
+  }
+
+  public static int getBitWidth(long l) {
+    return 64 - Long.numberOfLeadingZeros(l);
+  }
+
   public void writePackedInt32(final int i, final int width) {
     final int mask = ~((-1) << width);
     int current_byte = i & mask;
