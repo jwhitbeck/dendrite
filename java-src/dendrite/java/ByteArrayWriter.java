@@ -162,7 +162,7 @@ public class ByteArrayWriter implements Resetable {
       final int mask = ~((-1) << width);
       int shift = 0;
       int current_byte = 0;
-      for (int i=offset; i<length; ++i) {
+      for (int i=offset; i<offset+length; ++i) {
         current_byte |= (ints[i] & mask) << shift;
         shift += width;
         while (shift >= 8) {
@@ -178,11 +178,15 @@ public class ByteArrayWriter implements Resetable {
   }
 
   public void writePackedInts64(final long[] longs, final int width, final int length) {
+    writePackedInts64(longs, width, 0, length);
+  }
+
+  public void writePackedInts64(final long[] longs, final int width, final int offset, final int length) {
     if (width > 0) {
       final long mask = ~(((long)-1) << width);
       int shift = 0;
       long current_byte = 0;
-      for (int i=0; i<length; ++i) {
+      for (int i=offset; i<offset+length; ++i) {
         current_byte |= (longs[i] & mask) << shift;
         shift += width;
         while (shift >= 8) {
