@@ -159,21 +159,49 @@ public class ByteArrayWriter implements Resetable {
 
   public void writePackedInts32(final int[] ints, final int width, final int offset, final int length) {
     if (width > 0) {
-      final int mask = ~((-1) << width);
-      int shift = 0;
-      int current_byte = 0;
-      for (int i=offset; i<offset+length; ++i) {
-        current_byte |= (ints[i] & mask) << shift;
-        shift += width;
-        while (shift >= 8) {
-          writeByte((byte)(current_byte & 0xff));
-          current_byte >>>= 8;
-          shift -= 8;
-        }
+      if (width < 25) {
+        writePackedInts32Under24Bits(ints, width, offset, length);
+      } else {
+        writePackedInts32Over24Bits(ints, width, offset, length);
       }
-      if (shift > 0) {
+    }
+  }
+
+  private void writePackedInts32Under24Bits(final int[] ints, final int width,
+                                            final int offset, final int length) {
+    final int mask = ~((-1) << width);
+    int shift = 0;
+    int current_byte = 0;
+    for (int i=offset; i<offset+length; ++i) {
+      current_byte |= (ints[i] & mask) << shift;
+      shift += width;
+      while (shift >= 8) {
         writeByte((byte)(current_byte & 0xff));
+        current_byte >>>= 8;
+        shift -= 8;
       }
+    }
+    if (shift > 0) {
+      writeByte((byte)(current_byte & 0xff));
+    }
+  }
+
+  private void writePackedInts32Over24Bits(final int[] ints, final int width,
+                                           final int offset, final int length) {
+    final long mask = ~((long)-1 << width);
+    int shift = 0;
+    long current_byte = 0;
+    for (int i=offset; i<offset+length; ++i) {
+      current_byte |= ((long)ints[i] & mask) << shift;
+      shift += width;
+      while (shift >= 8) {
+        writeByte((byte)(current_byte & 0xff));
+        current_byte >>>= 8;
+        shift -= 8;
+      }
+    }
+    if (shift > 0) {
+      writeByte((byte)(current_byte & 0xff));
     }
   }
 
@@ -183,23 +211,55 @@ public class ByteArrayWriter implements Resetable {
 
   public void writePackedInts64(final long[] longs, final int width, final int offset, final int length) {
     if (width > 0) {
-      final long mask = ~(((long)-1) << width);
-      int shift = 0;
-      long current_byte = 0;
-      for (int i=offset; i<offset+length; ++i) {
-        current_byte |= (longs[i] & mask) << shift;
-        shift += width;
-        while (shift >= 8) {
-          writeByte((byte)(current_byte & 0xff));
-          current_byte >>>= 8;
-          shift -= 8;
-        }
-      }
-      if (shift > 0) {
-        writeByte((byte)(current_byte & 0xff));
+      if (width < 57) {
+        writePackedInts64Under56bits(longs, width, offset, length);
+      } else {
+        writePackedInts64Over56bits(longs, width, offset, length);
       }
     }
   }
+
+  private void writePackedInts64Under56bits(final long[] longs, final int width,
+                                            final int offset, final int length) {
+    final long mask = ~(((long)-1) << width);
+    int shift = 0;
+    long current_byte = 0;
+    for (int i=offset; i<offset+length; ++i) {
+      current_byte |= (longs[i] & mask) << shift;
+      shift += width;
+      while (shift >= 8) {
+        writeByte((byte)(current_byte & 0xff));
+        current_byte >>>= 8;
+        shift -= 8;
+      }
+    }
+    if (shift > 0) {
+      writeByte((byte)(current_byte & 0xff));
+    }
+  }
+
+  private void writePackedInts64Over56bits(final long[] longs, final int width,
+                                           final int offset, final int length) {
+    final long mask = width==64? (long)-1 : ~(((long)-1) << width);
+    int shift = 0;
+    long current_byte_hi = 0;
+    long current_byte_lo = 0;
+    for (int i=offset; i<offset+length; ++i) {
+      current_byte_lo |= (longs[i] & mask) << shift;
+      current_byte_hi = shift == 0? 0 : (longs[i] & mask) >>> (64 - shift);
+      shift += width;
+      while (shift >= 8) {
+        writeByte((byte)(current_byte_lo & 0xff));
+        current_byte_lo = (current_byte_hi << 56) | (current_byte_lo >>> 8);
+        current_byte_hi >>>= 8;
+        shift -= 8;
+      }
+    }
+    if (shift > 0) {
+      writeByte((byte)(current_byte_lo & 0xff));
+    }
+  }
+
 
   public void copy(final ByteArrayWriter baw) {
     baw.writeByteArray(buffer, position);

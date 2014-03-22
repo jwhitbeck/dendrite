@@ -18,3 +18,15 @@
 (defn rand-float [] (-> (rand Float/MAX_VALUE) (* (rand-sign)) unchecked-float))
 
 (defn rand-double [] (-> (rand Double/MAX_VALUE) (* (rand-sign)) unchecked-double))
+
+(defn rand-int-bits [n]
+  (if (= n 32)
+    (rand-int)
+    (let [mask (bit-not (bit-shift-left -1 n))]
+      (bit-and (rand-int) mask))))
+
+(defn rand-long-bits [n]
+  (if (= n 64)
+      (rand-long)
+      (let [mask (bit-not (bit-shift-left -1 n))]
+        (bit-and (rand-long) mask))))

@@ -134,24 +134,46 @@ public class ByteArrayReader {
 
   public void readPackedInts32(final int[] ints, final int width, final int offset, final int length) {
     if (width > 0) {
-      final int mask = ~((-1) << width);
-      int current_bytes = 0;
-      int available_bits = 0;
-      for (int i=0; i<length; ++i) {
-        while (available_bits < width) {
-          current_bytes |= ((int) readByte() & 0xff) << available_bits;
-          available_bits += 8;
-        }
-        ints[i] = (current_bytes & mask);
-        current_bytes >>>= width;
-        available_bits -= width;
-      }
-    } else {
-      for (int i=0; i<length; ++i) {
-        ints[i] = 0;
+      if (width < 25) {
+        readPackedInts32Under24bits(ints, width, offset, length);
+      } else {
+        readPackedInts32Over24bits(ints, width, offset, length);
       }
     }
   }
+
+  private void readPackedInts32Under24bits(final int[] ints, final int width,
+                                           final int offset, final int length) {
+    final int mask = ~((-1) << width);
+    int current_bytes = 0;
+    int available_bits = 0;
+    for (int i=0; i<length; ++i) {
+      while (available_bits < width) {
+        current_bytes |= ((int) readByte() & 0xff) << available_bits;
+        available_bits += 8;
+      }
+      ints[i] = (current_bytes & mask);
+      current_bytes >>>= width;
+      available_bits -= width;
+    }
+  }
+
+  private void readPackedInts32Over24bits(final int[] ints, final int width,
+                                         final int offset, final int length) {
+    final long mask = ~((long)-1 << width);
+    long current_bytes = 0;
+    int available_bits = 0;
+    for (int i=0; i<length; ++i) {
+      while (available_bits < width) {
+        current_bytes |= ((long) readByte() & 0xff) << available_bits;
+        available_bits += 8;
+      }
+      ints[i] = (int)(current_bytes & mask);
+      current_bytes >>>= width;
+      available_bits -= width;
+    }
+  }
+
 
   public void readPackedInts64(final long[] longs, final int width, final int length) {
     readPackedInts64(longs, width, 0, length);
@@ -159,17 +181,10 @@ public class ByteArrayReader {
 
   public void readPackedInts64(final long[] longs, final int width, final int offset, final int length) {
     if (width > 0) {
-      final long mask = ~(((long)(-1)) << width);
-      long current_bytes = 0;
-      int available_bits = 0;
-      for (int i=0; i<length; ++i) {
-        while (available_bits < width) {
-          current_bytes |= ((int) readByte() & 0xff) << available_bits;
-          available_bits += 8;
-        }
-        longs[i] = (current_bytes & mask);
-        current_bytes >>>= width;
-        available_bits -= width;
+      if (width < 57) {
+        readPackedInts64Under56bits(longs, width, offset, length);
+      } else {
+        readPackedInts64Over56bits(longs, width, offset, length);
       }
     } else {
       for (int i=0; i<length; ++i) {
@@ -178,4 +193,38 @@ public class ByteArrayReader {
     }
   }
 
+  private void readPackedInts64Under56bits(final long[] longs, final int width,
+                                           final int offset, final int length) {
+    final long mask = ~(((long)(-1)) << width);
+    long current_bytes = 0;
+    int available_bits = 0;
+    for (int i=0; i<length; ++i) {
+      while (available_bits < width) {
+        current_bytes |= ((long) readByte() & 0xff) << available_bits;
+        available_bits += 8;
+      }
+      longs[i] = (current_bytes & mask);
+      current_bytes >>>= width;
+      available_bits -= width;
+    }
+  }
+
+  private void readPackedInts64Over56bits(final long[] longs, final int width,
+                                          final int offset, final int length) {
+    final long mask = width==64? (long)-1 : ~(((long)(-1)) << width);
+    long current_bytes_lo = 0;
+    long current_bytes_hi = 0;
+    int available_bits = 0;
+    for (int i=0; i<length; ++i) {
+      while (available_bits < width) {
+        long b = (long) readByte() & 0xff;
+        current_bytes_lo |= b << available_bits;
+        current_bytes_hi = b >>> (64 - available_bits);
+        available_bits += 8;
+      }
+      longs[i] = (current_bytes_lo & mask);
+      current_bytes_lo = width==64? 0 : (current_bytes_hi << (64 - width)) | (current_bytes_lo >>> width);
+      available_bits -= width;
+    }
+  }
 }
