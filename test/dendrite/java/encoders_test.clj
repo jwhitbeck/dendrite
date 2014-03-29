@@ -33,10 +33,16 @@
           read-ints (write-read #(Int32PlainEncoder.) #(Int32PlainDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
   (testing "Int32 packed run-length encoder/decoder works"
-    (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-          read-ints (write-read #(Int32PackedRunLengthEncoder. 3)
-                                #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
-      (is (every? true? (map = read-ints rand-ints)))))
+    (testing "sparse input"
+      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
+            read-ints (write-read #(Int32PackedRunLengthEncoder. 3)
+                                  #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
+        (is (every? true? (map = read-ints rand-ints)))))
+    (testing "random input"
+      (let [rand-ints (repeatedly helpers/rand-int)
+            read-ints (write-read #(Int32PackedRunLengthEncoder. 32)
+                                  #(Int32PackedRunLengthDecoder. % 32) rand-ints)]
+        (is (every? true? (map = read-ints rand-ints))))))
   (testing "Int32 packed delta encoder/decoder works"
     (let [rand-ints (repeatedly helpers/rand-int)
           read-ints (write-read #(Int32PackedDeltaEncoder.)
