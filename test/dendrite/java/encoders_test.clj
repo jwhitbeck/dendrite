@@ -16,7 +16,7 @@
         baw (ByteArrayWriter.)]
     (doseq [x (->> input-seq (take n))]
       (.append encoder x))
-    (.flush encoder baw)
+    (.writeTo encoder baw)
     (let [decoder (->> (.buffer baw) ByteArrayReader. decoder-constructor)]
       (->> (repeatedly #(.next decoder))
            (take n)))))

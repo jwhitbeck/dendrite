@@ -22,11 +22,11 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void flush() {
     while (position > 0) {
       append(false);
     }
-    super.flush(baw);
+    super.flush();
   }
 
 }

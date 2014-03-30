@@ -45,7 +45,7 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
       }
       miniblock_size <<= 1;
     }
-    best_encoding.copy(byte_array_writer);
+    best_encoding.writeTo(byte_array_writer);
     block_position = 0;
   }
 
@@ -120,10 +120,9 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void flush() {
     flushBlock();
-    super.flush(baw);
+    super.flush();
   }
-
 
 }

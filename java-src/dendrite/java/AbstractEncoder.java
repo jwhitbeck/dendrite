@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class AbstractEncoder implements Encoder {
+public abstract class AbstractEncoder implements Encoder {
 
   protected ByteArrayWriter byte_array_writer;
 
@@ -14,8 +14,17 @@ public class AbstractEncoder implements Encoder {
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
-    byte_array_writer.copy(baw);
+  public void flush() {}
+
+  @Override
+  public int size() {
+    return byte_array_writer.size();
+  }
+
+  @Override
+  public void writeTo(final ByteArrayWriter baw) {
+    flush();
+    byte_array_writer.writeTo(baw);
   }
 
 }

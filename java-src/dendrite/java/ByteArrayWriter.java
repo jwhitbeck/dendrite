@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class ByteArrayWriter implements Resetable {
+public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
 
   private static int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -260,8 +260,7 @@ public class ByteArrayWriter implements Resetable {
     }
   }
 
-
-  public void copy(final ByteArrayWriter baw) {
+  public void writeTo(final ByteArrayWriter baw) {
     baw.writeByteArray(buffer, position);
   }
 

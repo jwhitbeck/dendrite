@@ -53,7 +53,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void flush() {
     if (current_octuplet_position > 0) {
       for (int j=current_octuplet_position; j<8; j++) {
         current_octuplet[j] = 0; // pad with zeros
@@ -66,7 +66,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
     } else {
       flushBitPacked();
     }
-    super.flush(baw);
+    super.flush();
   }
 
   private void packRLERun() {
@@ -102,7 +102,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
   }
 
   private void flushBitPackedBuffer() {
-    octuplet_buffer.copy(byte_array_writer);
+    octuplet_buffer.writeTo(byte_array_writer);
     octuplet_buffer.reset();
   }
 
