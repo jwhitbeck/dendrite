@@ -66,7 +66,6 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
     } else {
       flushBitPacked();
     }
-    baw.writeFixedInt32(byte_array_writer.size());
     super.flush(baw);
   }
 

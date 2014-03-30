@@ -13,7 +13,6 @@ public class Int32PackedRunLengthDecoder implements Int32Decoder {
   public Int32PackedRunLengthDecoder(final ByteArrayReader baw, final int width) {
     byte_array_reader = baw;
     this.width = width;
-    baw.readFixedInt32();
   }
 
   @Override
