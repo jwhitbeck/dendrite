@@ -43,20 +43,20 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   }
 
   public void writeFixedInt32(final int i){
-    writeByte((byte)  (i        & 0xff));
-    writeByte((byte) ((i >>  8) & 0xff));
-    writeByte((byte) ((i >> 16) & 0xff));
-    writeByte((byte) ((i >> 24) & 0xff));
+    writeByte((byte)  i       );
+    writeByte((byte) (i >>  8));
+    writeByte((byte) (i >> 16));
+    writeByte((byte) (i >> 24));
   }
 
   public void writeUInt32(final int i) {
     int value = i;
     while (true) {
-      if ((value & ~0x7F) == 0) {
+      if ((value & ~0x7f) == 0) {
         writeByte((byte)value);
         return;
       } else {
-        writeByte((byte) ((value & 0x7F) | 0x80));
+        writeByte((byte) ((value & 0x7f) | 0x80));
         value >>>= 7;
       }
     }
@@ -71,24 +71,24 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   }
 
   public void writeFixedInt64(final long l) {
-    writeByte((byte)  (l        & 0xffL));
-    writeByte((byte) ((l >>  8) & 0xffL));
-    writeByte((byte) ((l >> 16) & 0xffL));
-    writeByte((byte) ((l >> 24) & 0xffL));
-    writeByte((byte) ((l >> 32) & 0xffL));
-    writeByte((byte) ((l >> 40) & 0xffL));
-    writeByte((byte) ((l >> 48) & 0xffL));
-    writeByte((byte) ((l >> 56) & 0xffL));
+    writeByte((byte)  l        );
+    writeByte((byte) (l >>  8));
+    writeByte((byte) (l >> 16));
+    writeByte((byte) (l >> 24));
+    writeByte((byte) (l >> 32));
+    writeByte((byte) (l >> 40));
+    writeByte((byte) (l >> 48));
+    writeByte((byte) (l >> 56));
   }
 
   public void writeUInt64(final long l) {
     long value = l;
     while (true) {
-      if ((value & ~0x7FL) == 0) {
+      if ((value & ~0x7fL) == 0) {
         writeByte((byte)value);
         return;
       } else {
-        writeByte((byte)((value & 0x7F) | 0x80));
+        writeByte((byte)((value & 0x7f) | 0x80));
         value >>>= 7;
       }
     }
@@ -113,7 +113,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     for (int i=0; i<8; ++i){
       b = (b << 1) | (booleanOctuplet[i]? 1 : 0);
     }
-    writeByte((byte)(b & 0xff));
+    writeByte((byte) b);
   }
 
   public void writeFloat(final float f) {
@@ -155,7 +155,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     int current_byte = i & mask;
     int remaining_width = width;
     while (remaining_width > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      writeByte((byte) current_byte);
       current_byte >>>= 8;
       remaining_width -= 8;
     }
@@ -184,13 +184,13 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
       current_byte |= (ints[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte)(current_byte & 0xff));
+        writeByte((byte) current_byte);
         current_byte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      writeByte((byte) current_byte);
     }
   }
 
@@ -203,13 +203,13 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
       current_byte |= ((long)ints[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte)(current_byte & 0xff));
+        writeByte((byte) current_byte);
         current_byte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      writeByte((byte) current_byte);
     }
   }
 
@@ -236,13 +236,13 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
       current_byte |= (longs[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte)(current_byte & 0xff));
+        writeByte((byte) current_byte);
         current_byte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte)(current_byte & 0xff));
+      writeByte((byte) current_byte);
     }
   }
 
@@ -257,14 +257,14 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
       current_byte_hi = shift == 0? 0 : (longs[i] & mask) >>> (64 - shift);
       shift += width;
       while (shift >= 8) {
-        writeByte((byte)(current_byte_lo & 0xff));
+        writeByte((byte) current_byte_lo);
         current_byte_lo = (current_byte_hi << 56) | (current_byte_lo >>> 8);
         current_byte_hi >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte)(current_byte_lo & 0xff));
+      writeByte((byte) current_byte_lo);
     }
   }
 

@@ -35,7 +35,7 @@ public class ByteArrayReader {
     int result = 0;
     while (shift < 32) {
       final byte b = readByte();
-      result |= (int)(b & 0x7F) << shift;
+      result |= (int)(b & 0x7f) << shift;
       if ((b & 0x80) == 0) {
         return result;
       }
@@ -69,7 +69,7 @@ public class ByteArrayReader {
     long result = 0;
     while (shift < 64) {
       final byte b = readByte();
-      result |= (long)(b & 0x7F) << shift;
+      result |= (long)(b & 0x7f) << shift;
       if ((b & 0x80) == 0) {
         return result;
       }
