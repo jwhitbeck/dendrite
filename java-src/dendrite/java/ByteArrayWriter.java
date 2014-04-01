@@ -1,5 +1,7 @@
 package dendrite.java;
 
+import java.math.BigInteger;
+
 public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
 
   private static int DEFAULT_BUFFER_SIZE = 1024;
@@ -98,6 +100,12 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
 
   public void writeSInt64(final long l) {
     writeUInt64(encodeZigZag64(l));
+  }
+
+  public void writeBigInt(final BigInteger bi) {
+    byte[] int_as_bytes = bi.toByteArray();
+    writeUInt32(int_as_bytes.length);
+    writeByteArray(int_as_bytes);
   }
 
   public void writePackedBooleans(final boolean[] booleanOctuplet) {

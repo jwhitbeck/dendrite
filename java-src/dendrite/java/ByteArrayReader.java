@@ -1,5 +1,7 @@
 package dendrite.java;
 
+import java.math.BigInteger;
+
 public class ByteArrayReader {
 
   public final byte[] buffer;
@@ -82,6 +84,13 @@ public class ByteArrayReader {
 
   public long readSInt64() {
     return decodeZigZag64(readUInt64());
+  }
+
+  public BigInteger readBigInt() {
+    int length = readUInt32();
+    byte[] int_as_bytes = new byte[length];
+    readByteArray(int_as_bytes, 0, length);
+    return new BigInteger(int_as_bytes);
   }
 
   public void readPackedBooleans(final boolean[] booleanOctuplet) {
