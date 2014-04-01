@@ -1,5 +1,8 @@
 (ns dendrite.java.test-helpers
-  (:require [clojure.core :except [rand-int]]))
+  (:require [clojure.core :except [rand-int]])
+  (:import [java.util Random]))
+
+(def ^:private rng (Random.))
 
 (defn array= [aa ab]
   (and (= (alength aa) (alength ab))
@@ -11,22 +14,16 @@
 
 (defn rand-byte [] (unchecked-byte (rand-int 256)))
 
-(defn rand-int [] (-> (rand Integer/MAX_VALUE) (* (rand-sign)) unchecked-int))
+(defn rand-int-bits [n] (-> (BigInteger. n rng) unchecked-int))
 
-(defn rand-long [] (-> (rand Long/MAX_VALUE) (* (rand-sign)) unchecked-long))
+(defn rand-long-bits [n] (-> (BigInteger. n rng) unchecked-long))
+
+(defn rand-int [] (rand-int-bits 32))
+
+(defn rand-long [] (rand-long-bits 64))
 
 (defn rand-float [] (-> (rand Float/MAX_VALUE) (* (rand-sign)) unchecked-float))
 
 (defn rand-double [] (-> (rand Double/MAX_VALUE) (* (rand-sign)) unchecked-double))
 
-(defn rand-int-bits [n]
-  (if (= n 32)
-    (rand-int)
-    (let [mask (bit-not (bit-shift-left -1 n))]
-      (bit-and (rand-int) mask))))
-
-(defn rand-long-bits [n]
-  (if (= n 64)
-      (rand-long)
-      (let [mask (bit-not (bit-shift-left -1 n))]
-        (bit-and (rand-long) mask))))
+(defn rand-big-int [n] (BigInteger. n rng))
