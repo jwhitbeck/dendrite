@@ -14,7 +14,7 @@
   (let [n 1000
         encoder (encoder-constructor)
         baw (ByteArrayWriter.)]
-    (doseq [x (->> input-seq (take n))]
+    (doseq [x (take n input-seq)]
       (.append encoder x))
     (.writeTo encoder baw)
     (let [decoder (->> (.buffer baw) ByteArrayReader. decoder-constructor)]

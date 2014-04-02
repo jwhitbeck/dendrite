@@ -15,7 +15,8 @@
 (defn write-read [write-fn read-fn input-seq]
   (let [n 1000
         baw (ByteArrayWriter.)]
-    (doseq [x (->> input-seq (take n))] (write-fn baw x))
+    (doseq [x (take n input-seq)]
+      (write-fn baw x))
     (let [bar (ByteArrayReader. (.buffer baw))]
       (repeatedly n #(read-fn bar)))))
 
