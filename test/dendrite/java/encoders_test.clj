@@ -126,4 +126,8 @@
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayIncrementalEncoder.)
                                        #(ByteArrayIncrementalDecoder. %) rand-byte-arrays)]
-      (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays))))))
+      (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
+  (testing "Byte array incremental encoder's flush method is idempotent"
+    (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
+          flush-fn (fn [n] (flush-repeatedly n #(ByteArrayIncrementalEncoder.) rand-byte-arrays))]
+      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
