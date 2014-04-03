@@ -42,7 +42,7 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
     }
   }
 
-  public static BigInteger valueOfUnsignedLong(long l) {
+  private static BigInteger valueOfUnsignedLong(long l) {
     if (l >= 0) {
       return BigInteger.valueOf(l);
     } else {
