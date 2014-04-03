@@ -58,14 +58,16 @@ public class Int32PackedDeltaDecoder implements Int32Decoder {
   private void initNextBlock() {
     block_size = byte_array_reader.readUInt32();
     num_miniblocks = byte_array_reader.readUInt32();
-    miniblock_size = block_size / num_miniblocks;
+    miniblock_size = num_miniblocks > 0? block_size / num_miniblocks : 0;
     remaining_values_in_block = byte_array_reader.readUInt32();
     miniblock_position = -1;
     current_miniblock_index = -1;
     block_current_value = byte_array_reader.readSInt32();
     block_min_delta = byte_array_reader.readSInt64();
-    for (int i=0; i<num_miniblocks; ++i) {
-      miniblock_bit_widths[i] = (int)byte_array_reader.readByte() & 0xff;
+    if (num_miniblocks > 0){
+      for (int i=0; i<num_miniblocks; ++i) {
+        miniblock_bit_widths[i] = (int)byte_array_reader.readByte() & 0xff;
+      }
     }
   }
 

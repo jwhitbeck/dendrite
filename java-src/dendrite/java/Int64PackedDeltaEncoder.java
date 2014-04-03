@@ -61,14 +61,18 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
     baw.writeUInt32(num_miniblocks);
     baw.writeUInt32(block_position);
     baw.writeSInt64(block_buffer[0].longValue());
-    baw.writeSIntVLQ(min_delta);
-    for (int j=0; j<num_miniblocks; ++j) {
-      baw.writeByte((byte) (miniblock_bit_widths[j] & 0xff));
-    }
-    for (int j=0; j<num_miniblocks; ++j) {
-      int num_remaining_values = block_position - 1 - j * miniBlockSize;
-      int length = num_remaining_values < miniBlockSize ? num_remaining_values : miniBlockSize;
-      baw.writePackedInts64(reference_frame, miniblock_bit_widths[j], j * miniBlockSize, length);
+    if (num_miniblocks > 0) {
+      baw.writeSIntVLQ(min_delta);
+      for (int j=0; j<num_miniblocks; ++j) {
+        baw.writeByte((byte) (miniblock_bit_widths[j] & 0xff));
+      }
+      for (int j=0; j<num_miniblocks; ++j) {
+        int num_remaining_values = block_position - 1 - j * miniBlockSize;
+        int length = num_remaining_values < miniBlockSize ? num_remaining_values : miniBlockSize;
+        baw.writePackedInts64(reference_frame, miniblock_bit_widths[j], j * miniBlockSize, length);
+      }
+    } else {
+      baw.writeSInt64(0);
     }
   }
 
@@ -125,8 +129,10 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
 
   @Override
   public void flush() {
-    flushBlock();
-    super.flush();
+    if (block_position > 0){
+      flushBlock();
+      super.flush();
+    }
   }
 
 }
