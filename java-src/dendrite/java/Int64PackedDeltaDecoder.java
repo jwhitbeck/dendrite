@@ -5,16 +5,16 @@ import java.math.BigInteger;
 public class Int64PackedDeltaDecoder implements Int64Decoder {
 
   private final ByteArrayReader byte_array_reader;
-  private final long[] miniblock_buffer = new long[128];
+  private long[] miniblock_buffer = new long[128];
   private int miniblock_position = 0;
   private int miniblock_size = 0;
   private int current_miniblock_index = 0;
   private int num_miniblocks = 0;
-  private final int[] miniblock_bit_widths = new int[32];
+  private int[] miniblock_bit_widths = new int[32];
   private int remaining_values_in_block = 0;
   private int block_size = 0;
-  private BigInteger block_min_delta = BigInteger.ZERO;
-  private BigInteger block_current_value = BigInteger.ZERO;
+  private BigInteger block_min_delta;
+  private BigInteger block_current_value;
 
   public Int64PackedDeltaDecoder(final ByteArrayReader baw) {
     byte_array_reader = baw;
@@ -65,16 +65,30 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
     miniblock_position = 0;
   }
 
+  private void ensureMiniBlocksSizeInSufficient(final int miniblock_size) {
+    if (miniblock_buffer.length < miniblock_size) {
+      miniblock_buffer = new long[miniblock_size];
+    }
+  }
+
+  private void ensureMiniBlocksBitWidthsSizeIsSufficient(final int num_miniblocks) {
+    if (miniblock_bit_widths.length < num_miniblocks) {
+      miniblock_bit_widths = new int[num_miniblocks];
+    }
+  }
+
   private void initNextBlock() {
     block_size = byte_array_reader.readUInt32();
     num_miniblocks = byte_array_reader.readUInt32();
     miniblock_size = num_miniblocks > 0? block_size / num_miniblocks : 0;
+    ensureMiniBlocksSizeInSufficient(miniblock_size);
+    ensureMiniBlocksBitWidthsSizeIsSufficient(num_miniblocks);
     remaining_values_in_block = byte_array_reader.readUInt32();
     miniblock_position = -1;
     current_miniblock_index = -1;
     block_current_value = BigInteger.valueOf(byte_array_reader.readSInt64());
-    block_min_delta = byte_array_reader.readSIntVLQ();
     if (num_miniblocks > 0) {
+      block_min_delta = byte_array_reader.readSIntVLQ();
       for (int i=0; i<num_miniblocks; ++i) {
         miniblock_bit_widths[i] = (int)byte_array_reader.readByte() & 0xff;
       }
