@@ -162,6 +162,11 @@ public class ByteArrayReader {
     position += length;
   }
 
+  public void readBytes(ByteArrayWriter baw, int n) {
+    baw.writeByteArray(buffer, position, n);
+    position += n;
+  }
+
   public int readPackedInt32(final int width) {
     final int mask = ~((-1) << width);
     int remaining_width = width;

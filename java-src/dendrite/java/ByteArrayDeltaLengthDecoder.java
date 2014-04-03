@@ -19,4 +19,9 @@ public class ByteArrayDeltaLengthDecoder implements ByteArrayDecoder {
     return byte_array;
   }
 
+  public void readNextInto(ByteArrayWriter baw) {
+    int length = lengths_decoder.next();
+    byte_array_reader.readBytes(baw, length);
+  }
+
 }
