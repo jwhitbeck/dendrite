@@ -2,7 +2,7 @@ package dendrite.java;
 
 public abstract class AbstractEncoder implements Encoder {
 
-  protected ByteArrayWriter byte_array_writer;
+  protected final ByteArrayWriter byte_array_writer;
 
   public AbstractEncoder() {
     byte_array_writer = new ByteArrayWriter();
