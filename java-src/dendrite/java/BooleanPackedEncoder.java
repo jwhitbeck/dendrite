@@ -26,7 +26,6 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
     while (position > 0) {
       append(false);
     }
-    super.flush();
   }
 
 }

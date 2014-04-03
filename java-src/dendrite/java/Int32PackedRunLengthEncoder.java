@@ -58,15 +58,15 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
       for (int j=current_octuplet_position; j<8; j++) {
         current_octuplet[j] = 0; // pad with zeros
       }
+      current_octuplet_position = 0;
       octuplet_buffer.writePackedInts32(current_octuplet, width, 8);
       num_buffered_octuplets += 1;
       flushBitPacked();
     } else if (num_occurences_rle_value > 0) {
       flushRLE();
-    } else {
+    } else if (num_buffered_octuplets > 0) {
       flushBitPacked();
     }
-    super.flush();
   }
 
   private void packRLERun() {
