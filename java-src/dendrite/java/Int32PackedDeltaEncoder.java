@@ -2,9 +2,9 @@ package dendrite.java;
 
 public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Encoder {
 
-  public final long[] block_buffer = new long[129];
-  public final long[] deltas = new long[128];
-  public final int [] reference_frame = new int[128];
+  private final long[] block_buffer = new long[129];
+  private final long[] deltas = new long[128];
+  private final int [] reference_frame = new int[128];
   private int block_position = 0;
   private long min_delta;
   private int block_size;

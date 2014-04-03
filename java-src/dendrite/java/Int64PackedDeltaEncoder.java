@@ -4,9 +4,9 @@ import java.math.BigInteger;
 
 public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Encoder {
 
-  public final BigInteger[] block_buffer = new BigInteger[129];
-  public final BigInteger[] deltas = new BigInteger[128];
-  public final long [] reference_frame = new long[128];
+  private final BigInteger[] block_buffer = new BigInteger[129];
+  private final BigInteger[] deltas = new BigInteger[128];
+  private final long [] reference_frame = new long[128];
   private int block_position = 0;
   private BigInteger min_delta;
   private int block_size;
