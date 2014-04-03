@@ -31,3 +31,7 @@
 (defn rand-big-int-signed [n]
   (cond-> (rand-big-int n)
           (= (rand-sign) 1) .negate))
+
+(defn rand-byte-array
+  ([] (rand-byte-array (clojure.core/rand-int 24)))
+  ([n] (byte-array (repeatedly n rand-byte))))

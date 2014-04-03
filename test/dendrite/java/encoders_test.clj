@@ -102,7 +102,7 @@
 (deftest fixed-length-byte-array-encoders
   (testing "Fixed length byte array plain encoder/decoder works"
     (let [length 10
-          rand-byte-arrays (->> (repeatedly helpers/rand-byte) (partition length) (map byte-array))
+          rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(FixedLengthByteArrayPlainEncoder. length)
                                        #(FixedLengthByteArrayPlainDecoder. % length)
                                        rand-byte-arrays)]
@@ -110,24 +110,20 @@
 
 (deftest byte-array-encoders
   (testing "Byte array plain encoder/decoder works"
-    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
-                                (map byte-array))
+    (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayPlainEncoder.) #(ByteArrayPlainDecoder. %) rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
   (testing "Byte array delta-length encoder/decoder works"
-    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
-                                (map byte-array))
+    (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayDeltaLengthEncoder.)
                                        #(ByteArrayDeltaLengthDecoder. %) rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
   (testing "Byte array delta-length encoder's flush method is idempotent"
-    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
-                                (map byte-array))
+    (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           flush-fn (fn [n] (flush-repeatedly n #(ByteArrayDeltaLengthEncoder.) rand-byte-arrays))]
       (is (every? true? (map = (flush-fn 0) (flush-fn 3))))))
   (testing "Byte array incremental encoder/decoder works"
-    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
-                                (map byte-array))
+    (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayIncrementalEncoder.)
                                        #(ByteArrayIncrementalDecoder. %) rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays))))))
