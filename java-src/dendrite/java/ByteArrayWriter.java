@@ -287,6 +287,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     }
   }
 
+  @Override
   public void writeTo(final ByteArrayWriter baw) {
     baw.writeByteArray(buffer, position);
   }
