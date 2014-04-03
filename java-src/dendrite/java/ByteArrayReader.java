@@ -184,6 +184,10 @@ public class ByteArrayReader {
       } else {
         readPackedInts32Over24bits(ints, width, offset, length);
       }
+    } else {
+      for (int i=0; i<length; ++i) {
+        ints[i] = 0;
+      }
     }
   }
 
