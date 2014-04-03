@@ -102,7 +102,7 @@
 (deftest fixed-length-byte-array-encoders
   (testing "Fixed length byte array plain encoder/decoder works"
     (let [length 10
-          rand-byte-arrays (repeatedly helpers/rand-byte-array)
+          rand-byte-arrays (repeatedly #(helpers/rand-byte-array length))
           read-byte-arrays (write-read #(FixedLengthByteArrayPlainEncoder. length)
                                        #(FixedLengthByteArrayPlainDecoder. % length)
                                        rand-byte-arrays)]
