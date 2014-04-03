@@ -108,6 +108,25 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     writeByteArray(int_as_bytes);
   }
 
+  public void writeUIntVLQ(final BigInteger bi) {
+    byte[] int_as_bytes = bi.toByteArray();
+    int num_bytes = int_as_bytes.length;
+    int byte_buffer = 0;
+    int shift = 0;
+    for (int i=num_bytes-1; i>=0; --i) {
+      int value = int_as_bytes[i] & 0xff;
+      int bit_width = i==0? getBitWidth(value) : 8;
+      byte_buffer |= value << shift;
+      shift += bit_width;
+      while (shift >= 7) {
+        writeByte((byte)((byte_buffer & 0x7f) | 0x80));
+        byte_buffer >>>= 7;
+        shift -= 7;
+      }
+    }
+    writeByte((byte)byte_buffer);
+  }
+
   public void writePackedBooleans(final boolean[] booleanOctuplet) {
     int b = 0;
     for (int i=0; i<8; ++i){

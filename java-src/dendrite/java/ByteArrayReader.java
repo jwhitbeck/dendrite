@@ -93,6 +93,32 @@ public class ByteArrayReader {
     return new BigInteger(int_as_bytes);
   }
 
+  public BigInteger readUIntVLQ() {
+    ByteArrayWriter baw = new ByteArrayWriter(10);
+    int byte_buffer = 0;
+    int shift = 0;
+    while (true) {
+      int current_byte = (int)readByte();
+      byte_buffer |= (current_byte & 0x7f) << shift;
+      shift += 7;
+      while (shift >= 8) {
+        baw.writeByte((byte)byte_buffer);
+        byte_buffer >>>= 8;
+        shift -= 8;
+      }
+      if ((current_byte & 0x80) == 0) {
+        baw.writeByte((byte)byte_buffer);
+        byte[] bytes_little_endian = baw.buffer;
+        int length = baw.size();
+        byte[] bytes_big_endian = new byte[length];
+        for(int i=0; i<length; ++i) {
+          bytes_big_endian[i] = bytes_little_endian[length-i-1];
+        }
+        return new BigInteger(bytes_big_endian);
+      }
+    }
+  }
+
   public void readPackedBooleans(final boolean[] booleanOctuplet) {
     byte b = readByte();
     booleanOctuplet[0] = ((b & 128) > 0);
