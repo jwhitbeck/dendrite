@@ -49,6 +49,16 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     writeByte((byte) (i >> 24));
   }
 
+  public static int getNumUInt32Bytes(final int i) {
+    int num_bytes = 0;
+    int v = i;
+    while (v != 0) {
+      num_bytes += 1;
+      v >>>= 7;
+    }
+    return num_bytes;
+  }
+
   public void writeUInt32(final int i) {
     int value = i;
     while (true) {

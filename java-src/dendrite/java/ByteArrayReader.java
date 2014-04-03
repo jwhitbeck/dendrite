@@ -272,4 +272,12 @@ public class ByteArrayReader {
       available_bits -= width;
     }
   }
+
+  public ByteArrayReader slice() {
+    return new ByteArrayReader(buffer, position);
+  }
+
+  public ByteArrayReader sliceAhead(int offset) {
+    return new ByteArrayReader(buffer, position + offset);
+  }
 }

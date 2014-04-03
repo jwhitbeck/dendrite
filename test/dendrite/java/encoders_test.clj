@@ -9,7 +9,8 @@
             Int64PackedDeltaEncoder Int64PackedDeltaDecoder
             FloatPlainEncoder FloatPlainDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
-            ByteArrayPlainEncoder ByteArrayPlainDecoder]))
+            ByteArrayPlainEncoder ByteArrayPlainDecoder
+            ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder]))
 
 (defn write-read [encoder-constructor decoder-constructor input-seq]
   (let [n 1000
@@ -111,4 +112,15 @@
     (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
                                 (map byte-array))
           read-byte-arrays (write-read #(ByteArrayPlainEncoder.) #(ByteArrayPlainDecoder. %) rand-byte-arrays)]
-      (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays))))))
+      (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
+  (testing "Byte array delta-length encoder/decoder works"
+    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
+                                (map byte-array))
+          read-byte-arrays (write-read #(ByteArrayDeltaLengthEncoder.)
+                                       #(ByteArrayDeltaLengthDecoder. %) rand-byte-arrays)]
+      (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
+  (testing "Byte array delta-length encoder's flush method is idempotent"
+    (let [rand-byte-arrays (->> (repeatedly #(take (rand-int 24) (repeatedly helpers/rand-byte)))
+                                (map byte-array))
+          flush-fn (fn [n] (flush-repeatedly n #(ByteArrayDeltaLengthEncoder.) rand-byte-arrays))]
+      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
