@@ -15,7 +15,7 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
   private ByteArrayWriter current_encoding = new ByteArrayWriter(128);
 
   @Override
-  public void append(int i) {
+  public void append(final int i) {
     if (position % MIN_BLOCK_SIZE == 1 && position > 2 * MIN_BLOCK_SIZE) {
       tryFlushFirstBlocks();
     }

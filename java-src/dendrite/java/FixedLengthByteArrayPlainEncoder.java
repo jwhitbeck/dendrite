@@ -9,7 +9,7 @@ public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder implements
   }
 
   @Override
-  public void append(byte[] bs) {
+  public void append(final byte[] bs) {
     byte_array_writer.writeByteArray(bs, 0, length);
   }
 

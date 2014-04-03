@@ -12,7 +12,7 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void append(byte[] bs) {
+  public void append(final byte[] bs) {
     int first_different_byte_idx = 0;
     if (previous_byte_array != null) {
       int i = 0;

@@ -23,7 +23,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
   }
 
   @Override
-  public void append(int i) {
+  public void append(final int i) {
     if (current_octuplet_position == 0) {
       if (num_occurences_rle_value == 0) {
         startRLERun(i);
