@@ -80,6 +80,12 @@
           read-big-ints (write-read #(.writeUIntVLQ %1 %2) #(.readUIntVLQ %) rand-big-ints)]
       (is (every? true? (map = read-big-ints rand-big-ints))))))
 
+(deftest read-write-sint-vlq
+  (testing "writeSIntVLQ/readSIntVLQ work"
+    (let [rand-big-ints (repeatedly #(helpers/rand-big-int-signed 72))
+          read-big-ints (write-read #(.writeSIntVLQ %1 %2) #(.readSIntVLQ %) rand-big-ints)]
+      (is (every? true? (map = read-big-ints rand-big-ints))))))
+
 (deftest read-write-packed-boolean
   (testing "writePackedBooleans/readPackedBooleans work"
     (let [rand-bool-octoplets (->> (repeatedly helpers/rand-bool) (partition 8) (map boolean-array))

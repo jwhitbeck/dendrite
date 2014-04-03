@@ -6,6 +6,7 @@
             Int32PackedRunLengthEncoder Int32PackedRunLengthDecoder
             Int32PackedDeltaEncoder Int32PackedDeltaDecoder
             Int64PlainEncoder Int64PlainDecoder
+            Int64PackedDeltaEncoder Int64PackedDeltaDecoder
             FloatPlainEncoder FloatPlainDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
             ByteArrayPlainEncoder ByteArrayPlainDecoder]))
@@ -53,6 +54,10 @@
   (testing "Int64 plain encoder/decoder works"
     (let [rand-longs (repeatedly helpers/rand-int)
           read-longs (write-read #(Int64PlainEncoder.) #(Int64PlainDecoder. %) rand-longs)]
+      (is (every? true? (map = read-longs rand-longs)))))
+  (testing "Int64 packed delta encoder/decoder works"
+    (let [rand-longs (repeatedly helpers/rand-long)
+          read-longs (write-read #(Int64PackedDeltaEncoder.) #(Int64PackedDeltaDecoder. %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
 (deftest float-encoders

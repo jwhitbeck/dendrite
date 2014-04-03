@@ -127,6 +127,18 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     writeByte((byte)byte_buffer);
   }
 
+  public static BigInteger encodeZigZag(final BigInteger bi) {
+    if ( bi.signum() < 0 ){
+      return bi.negate().shiftLeft(1).add(BigInteger.ONE);
+    } else {
+      return bi.shiftLeft(1);
+    }
+  }
+
+  public void writeSIntVLQ(final BigInteger bi) {
+    writeUIntVLQ(encodeZigZag(bi));
+  }
+
   public void writePackedBooleans(final boolean[] booleanOctuplet) {
     int b = 0;
     for (int i=0; i<8; ++i){

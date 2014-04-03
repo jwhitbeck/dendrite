@@ -119,6 +119,16 @@ public class ByteArrayReader {
     }
   }
 
+  public static BigInteger decodeZigZag(final BigInteger bi) {
+    boolean is_positive = !bi.testBit(0);
+    BigInteger positive_bi = bi.shiftRight(1);
+    return is_positive? positive_bi : positive_bi.negate();
+  }
+
+  public BigInteger readSIntVLQ() {
+    return decodeZigZag(readUIntVLQ());
+  }
+
   public void readPackedBooleans(final boolean[] booleanOctuplet) {
     byte b = readByte();
     booleanOctuplet[0] = ((b & 128) > 0);
