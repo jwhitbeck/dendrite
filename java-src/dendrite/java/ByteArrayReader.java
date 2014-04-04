@@ -16,6 +16,10 @@ public class ByteArrayReader {
     position = offset;
   }
 
+  public int position() {
+    return position;
+  }
+
   public byte readByte() {
     byte b = buffer[position];
     position += 1;
