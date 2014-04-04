@@ -14,7 +14,7 @@ public abstract class AbstractEncoder implements Encoder {
   }
 
   @Override
-  public void flush() {}
+  public void finish() {}
 
   @Override
   public int size() {
@@ -23,7 +23,7 @@ public abstract class AbstractEncoder implements Encoder {
 
   @Override
   public void writeTo(final ByteArrayWriter baw) {
-    flush();
+    finish();
     byte_array_writer.writeTo(baw);
   }
 

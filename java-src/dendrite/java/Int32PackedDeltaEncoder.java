@@ -220,7 +220,7 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
   }
 
   @Override
-  public void flush() {
+  public void finish() {
     if (position > 0){
       flushAllBlocks();
     }

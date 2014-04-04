@@ -24,12 +24,12 @@
       (->> (repeatedly #(.next decoder))
            (take n)))))
 
-(defn flush-repeatedly [n encoder-constructor input-seq]
+(defn finish-repeatedly [n encoder-constructor input-seq]
   (let [encoder (encoder-constructor)
         baw (ByteArrayWriter.)]
     (doseq [x (take 10 input-seq)]
       (.append encoder x))
-    (dotimes [_ n] (.flush encoder))
+    (dotimes [_ n] (.finish encoder))
     (.writeTo encoder baw)
     (seq (.buffer baw))))
 
@@ -38,10 +38,10 @@
     (let [rand-bools (repeatedly helpers/rand-bool)
           read-bools (write-read #(BooleanPackedEncoder.) #(BooleanPackedDecoder. %) rand-bools)]
       (is (every? true? (map = read-bools rand-bools)))))
-  (testing "Boolean encoder's flush method is idempotent"
+  (testing "Boolean encoder's finish method is idempotent"
     (let [rand-bools (repeatedly helpers/rand-bool)
-          flush-fn (fn [n] (flush-repeatedly n #(BooleanPackedEncoder.) rand-bools))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
+          finish-fn (fn [n] (finish-repeatedly n #(BooleanPackedEncoder.) rand-bools))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))
 
 (deftest int32-encoders
   (testing "Int32 plain encoder/decoder works"
@@ -59,19 +59,19 @@
             read-ints (write-read #(Int32PackedRunLengthEncoder. 32)
                                   #(Int32PackedRunLengthDecoder. % 32) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
-  (testing "Int32 packed run-length encoder's flush method is idempotent"
+  (testing "Int32 packed run-length encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int)
-          flush-fn (fn [n] (flush-repeatedly n #(Int32PackedRunLengthEncoder. 32) rand-ints))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3))))))
+          finish-fn (fn [n] (finish-repeatedly n #(Int32PackedRunLengthEncoder. 32) rand-ints))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "Int32 packed delta encoder/decoder works"
     (let [rand-ints (repeatedly helpers/rand-int)
           read-ints (write-read #(Int32PackedDeltaEncoder.)
                                 #(Int32PackedDeltaDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
-  (testing "Int32 packed delta encoder's flush method is idempotent"
+  (testing "Int32 packed delta encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int)
-          flush-fn (fn [n] (flush-repeatedly n #(Int32PackedDeltaEncoder.) rand-ints))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
+          finish-fn (fn [n] (finish-repeatedly n #(Int32PackedDeltaEncoder.) rand-ints))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))
 
 (deftest int64-encoders
   (testing "Int64 plain encoder/decoder works"
@@ -82,10 +82,10 @@
     (let [rand-longs (repeatedly helpers/rand-long)
           read-longs (write-read #(Int64PackedDeltaEncoder.) #(Int64PackedDeltaDecoder. %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs)))))
-  (testing "Int64 packed delta encoder's flush method is idempotent"
+  (testing "Int64 packed delta encoder's finish method is idempotent"
     (let [rand-longs (repeatedly helpers/rand-long)
-          flush-fn (fn [n] (flush-repeatedly n #(Int64PackedDeltaEncoder.) rand-longs))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
+          finish-fn (fn [n] (finish-repeatedly n #(Int64PackedDeltaEncoder.) rand-longs))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))
 
 (deftest float-encoders
   (testing "Float plain encoder/decoder works"
@@ -118,16 +118,16 @@
           read-byte-arrays (write-read #(ByteArrayDeltaLengthEncoder.)
                                        #(ByteArrayDeltaLengthDecoder. %) rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
-  (testing "Byte array delta-length encoder's flush method is idempotent"
+  (testing "Byte array delta-length encoder's finish method is idempotent"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
-          flush-fn (fn [n] (flush-repeatedly n #(ByteArrayDeltaLengthEncoder.) rand-byte-arrays))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3))))))
+          finish-fn (fn [n] (finish-repeatedly n #(ByteArrayDeltaLengthEncoder.) rand-byte-arrays))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "Byte array incremental encoder/decoder works"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayIncrementalEncoder.)
                                        #(ByteArrayIncrementalDecoder. %) rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays)))))
-  (testing "Byte array incremental encoder's flush method is idempotent"
+  (testing "Byte array incremental encoder's finish method is idempotent"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
-          flush-fn (fn [n] (flush-repeatedly n #(ByteArrayIncrementalEncoder.) rand-byte-arrays))]
-      (is (every? true? (map = (flush-fn 0) (flush-fn 3)))))))
+          finish-fn (fn [n] (finish-repeatedly n #(ByteArrayIncrementalEncoder.) rand-byte-arrays))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))

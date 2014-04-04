@@ -28,8 +28,8 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void flush() {
-    lengths_encoder.flush();
+  public void finish() {
+    lengths_encoder.finish();
   }
 
   @Override
@@ -40,7 +40,7 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
 
   @Override
   public void writeTo(final ByteArrayWriter baw) {
-    flush();
+    finish();
     baw.writeUInt32(lengths_encoder.size());
     lengths_encoder.writeTo(baw);
     byte_array_writer.writeTo(baw);

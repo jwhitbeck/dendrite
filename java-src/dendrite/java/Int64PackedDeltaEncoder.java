@@ -224,7 +224,7 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
   }
 
   @Override
-  public void flush() {
+  public void finish() {
     if (position > 0){
       flushAllBlocks();
     }

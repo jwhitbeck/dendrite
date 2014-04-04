@@ -22,7 +22,7 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
   }
 
   @Override
-  public void flush() {
+  public void finish() {
     while (position > 0) {
       append(false);
     }

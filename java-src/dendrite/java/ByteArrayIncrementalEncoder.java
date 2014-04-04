@@ -37,9 +37,9 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void flush() {
-    prefix_lengths_encoder.flush();
-    byte_array_encoder.flush();
+  public void finish() {
+    prefix_lengths_encoder.finish();
+    byte_array_encoder.finish();
   }
 
   @Override
@@ -50,7 +50,7 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
 
   @Override
   public void writeTo(final ByteArrayWriter baw) {
-    flush();
+    finish();
     baw.writeUInt32(prefix_lengths_encoder.size());
     prefix_lengths_encoder.writeTo(baw);
     byte_array_encoder.writeTo(baw);

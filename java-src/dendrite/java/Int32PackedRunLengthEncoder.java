@@ -53,7 +53,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
   }
 
   @Override
-  public void flush() {
+  public void finish() {
     if (current_octuplet_position > 0) {
       for (int j=current_octuplet_position; j<8; j++) {
         current_octuplet[j] = 0; // pad with zeros
