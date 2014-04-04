@@ -22,7 +22,7 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public void compressBytes(final ByteArrayWriter baw) {
+  public void compress(final ByteArrayWriter baw) {
     input_length = baw.size();
     input_buffer = baw.buffer;
     deflater.setInput(input_buffer, 0, input_length);
