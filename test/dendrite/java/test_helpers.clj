@@ -1,5 +1,4 @@
 (ns dendrite.java.test-helpers
-  (:require [clojure.core :except [rand-int]])
   (:import [java.util Random]))
 
 (def ^:private rng (Random.))
@@ -8,7 +7,7 @@
   (and (= (alength aa) (alength ab))
        (every? true? (map = aa ab))))
 
-(defn rand-bool [] (zero? (clojure.core/rand-int 2)))
+(defn rand-bool [] (zero? (rand-int 2)))
 
 (defn rand-sign [] (if (rand-bool) 1 -1))
 
@@ -18,9 +17,9 @@
 
 (defn rand-long-bits [n] (-> (BigInteger. n rng) unchecked-long))
 
-(defn rand-int [] (rand-int-bits 32))
+(defn rand-int32 [] (rand-int-bits 32))
 
-(defn rand-long [] (rand-long-bits 64))
+(defn rand-int64 [] (rand-long-bits 64))
 
 (defn rand-float [] (-> (rand Float/MAX_VALUE) (* (rand-sign)) unchecked-float))
 
@@ -33,7 +32,7 @@
           (= (rand-sign) 1) .negate))
 
 (defn rand-byte-array
-  ([] (rand-byte-array (clojure.core/rand-int 24)))
+  ([] (rand-byte-array (rand-int 24)))
   ([n] (byte-array (repeatedly n rand-byte))))
 
 

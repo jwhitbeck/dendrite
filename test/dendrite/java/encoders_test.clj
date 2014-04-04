@@ -45,7 +45,7 @@
 
 (deftest int32-encoders
   (testing "Int32 plain encoder/decoder works"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(Int32PlainEncoder.) #(Int32PlainDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
   (testing "Int32 packed run-length encoder/decoder works"
@@ -55,35 +55,35 @@
                                   #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
         (is (every? true? (map = read-ints rand-ints)))))
     (testing "random input"
-      (let [rand-ints (repeatedly helpers/rand-int)
+      (let [rand-ints (repeatedly helpers/rand-int32)
             read-ints (write-read #(Int32PackedRunLengthEncoder. 32)
                                   #(Int32PackedRunLengthDecoder. % 32) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
   (testing "Int32 packed run-length encoder's finish method is idempotent"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           finish-fn (fn [n] (finish-repeatedly n #(Int32PackedRunLengthEncoder. 32) rand-ints))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "Int32 packed delta encoder/decoder works"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(Int32PackedDeltaEncoder.)
                                 #(Int32PackedDeltaDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
   (testing "Int32 packed delta encoder's finish method is idempotent"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           finish-fn (fn [n] (finish-repeatedly n #(Int32PackedDeltaEncoder.) rand-ints))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))
 
 (deftest int64-encoders
   (testing "Int64 plain encoder/decoder works"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           read-longs (write-read #(Int64PlainEncoder.) #(Int64PlainDecoder. %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs)))))
   (testing "Int64 packed delta encoder/decoder works"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           read-longs (write-read #(Int64PackedDeltaEncoder.) #(Int64PackedDeltaDecoder. %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs)))))
   (testing "Int64 packed delta encoder's finish method is idempotent"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           finish-fn (fn [n] (finish-repeatedly n #(Int64PackedDeltaEncoder.) rand-longs))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3)))))))
 

@@ -28,13 +28,13 @@
 
 (deftest read-write-fixed-int32
   (testing "writeFixedInt32/readFixedInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(.writeFixedInt32 %1 %2) #(.readFixedInt32 %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
 (deftest read-write-uint32
   (testing "writeUInt32/readUInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(.writeUInt32 %1 %2) #(.readUInt32 %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
   (testing "read invalid uint32 throws exception"
@@ -43,19 +43,19 @@
 
 (deftest read-write-sint32
   (testing "writeSInt32/readSInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int)
+    (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(.writeSInt32 %1 %2) #(.readSInt32 %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
 (deftest read-write-fixed-int64
   (testing "writeFixedInt64/readFixedInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           read-longs (write-read #(.writeFixedInt64 %1 %2) #(.readFixedInt64 %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
 (deftest read-write-uint64
   (testing "writeUInt64/readUInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           read-longs (write-read #(.writeUInt64 %1 %2) #(.readUInt64 %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs)))))
   (testing "read invalid uint64 throws exception"
@@ -64,7 +64,7 @@
 
 (deftest read-write-sint64
   (testing "writeSInt64/readSInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-long)
+    (let [rand-longs (repeatedly helpers/rand-int64)
           read-longs (write-read #(.writeSInt64 %1 %2) #(.readSInt64 %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
@@ -187,7 +187,7 @@
                                          rand-long-arrays)]
         (is (every? true? (map helpers/array= read-long-arrays rand-long-arrays)))))
     (testing "width equals 64 bits"
-      (let [rand-long-arrays (->> (repeatedly helpers/rand-long) (partition 8) (map long-array))
+      (let [rand-long-arrays (->> (repeatedly helpers/rand-int64) (partition 8) (map long-array))
             read-long-arrays (write-read #(.writePackedInts64 %1 %2 64 8)
                                          #(let [longs (long-array 8)]
                                             (.readPackedInts64 % longs 64 8)
