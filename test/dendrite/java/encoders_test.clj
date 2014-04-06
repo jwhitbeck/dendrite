@@ -18,17 +18,17 @@
         encoder (encoder-constructor)
         baw (ByteArrayWriter.)]
     (doseq [x (take n input-seq)]
-      (.append encoder x))
+      (.encode encoder x))
     (.writeTo encoder baw)
     (let [decoder (->> (.buffer baw) ByteArrayReader. decoder-constructor)]
-      (->> (repeatedly #(.next decoder))
+      (->> (repeatedly #(.decode decoder))
            (take n)))))
 
 (defn finish-repeatedly [n encoder-constructor input-seq]
   (let [encoder (encoder-constructor)
         baw (ByteArrayWriter.)]
     (doseq [x (take 10 input-seq)]
-      (.append encoder x))
+      (.encode encoder x))
     (dotimes [_ n] (.finish encoder))
     (.writeTo encoder baw)
     (seq (.buffer baw))))

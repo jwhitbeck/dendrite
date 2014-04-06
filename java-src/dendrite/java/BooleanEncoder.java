@@ -2,6 +2,6 @@ package dendrite.java;
 
 public interface BooleanEncoder extends Encoder {
 
-  public void append(boolean b);
+  public void encode(boolean b);
 
 }

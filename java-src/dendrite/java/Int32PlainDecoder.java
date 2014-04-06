@@ -9,7 +9,7 @@ public class Int32PlainDecoder implements Int32Decoder {
   }
 
   @Override
-  public int next() {
+  public int decode() {
     return byte_array_reader.readFixedInt32();
   }
 

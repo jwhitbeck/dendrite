@@ -9,7 +9,7 @@ public class DoublePlainDecoder implements DoubleDecoder {
   }
 
   @Override
-  public double next() {
+  public double decode() {
     return byte_array_reader.readDouble();
   }
 

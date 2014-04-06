@@ -9,7 +9,7 @@ public class FloatPlainDecoder implements FloatDecoder {
   }
 
   @Override
-  public float next() {
+  public float decode() {
     return byte_array_reader.readFloat();
   }
 

@@ -2,6 +2,6 @@ package dendrite.java;
 
 public interface DoubleDecoder {
 
-  public double next();
+  public double decode();
 
 }

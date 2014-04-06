@@ -12,7 +12,7 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void append(final byte[] bs) {
+  public void encode(final byte[] bs) {
     int first_different_byte_idx = 0;
     if (previous_byte_array != null) {
       int i = 0;
@@ -24,8 +24,8 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
       }
       first_different_byte_idx = i;
     }
-    prefix_lengths_encoder.append(first_different_byte_idx);
-    byte_array_encoder.append(bs, first_different_byte_idx, bs.length-first_different_byte_idx);
+    prefix_lengths_encoder.encode(first_different_byte_idx);
+    byte_array_encoder.encode(bs, first_different_byte_idx, bs.length-first_different_byte_idx);
     previous_byte_array = bs;
   }
 

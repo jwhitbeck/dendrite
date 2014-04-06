@@ -11,7 +11,7 @@ public class FixedLengthByteArrayPlainDecoder implements FixedLengthByteArrayDec
   }
 
   @Override
-  public byte[] next() {
+  public byte[] decode() {
     byte[] fixed_length_byte_array = new byte[length];
     byte_array_reader.readByteArray(fixed_length_byte_array, 0, length);
     return fixed_length_byte_array;

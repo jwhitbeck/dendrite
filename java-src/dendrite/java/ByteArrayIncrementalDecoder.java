@@ -14,10 +14,10 @@ public class ByteArrayIncrementalDecoder implements ByteArrayDecoder {
   }
 
   @Override
-  public byte[] next() {
-    int prefix_length = prefix_lengths_decoder.next();
+  public byte[] decode() {
+    int prefix_length = prefix_lengths_decoder.decode();
     buffer.position = prefix_length;
-    byte_array_decoder.readNextInto(buffer);
+    byte_array_decoder.decodeInto(buffer);
     byte[] byte_array = new byte[buffer.size()];
     System.arraycopy(buffer.buffer, 0, byte_array, 0, buffer.size());
     return byte_array;

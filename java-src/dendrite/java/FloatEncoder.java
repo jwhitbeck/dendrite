@@ -2,6 +2,6 @@ package dendrite.java;
 
 public interface FloatEncoder extends Encoder {
 
-  public void append(float f);
+  public void encode(float f);
 
 }

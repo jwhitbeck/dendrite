@@ -2,6 +2,6 @@ package dendrite.java;
 
 public interface FixedLengthByteArrayDecoder {
 
-  public byte[] next();
+  public byte[] decode();
 
 }

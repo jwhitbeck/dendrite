@@ -11,13 +11,13 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void append(final byte[] bs) {
-    lengths_encoder.append(bs.length);
+  public void encode(final byte[] bs) {
+    lengths_encoder.encode(bs.length);
     byte_array_writer.writeByteArray(bs, 0, bs.length);
   }
 
-  public void append(final byte[] bs, final int offset, final int length) {
-    lengths_encoder.append(length);
+  public void encode(final byte[] bs, final int offset, final int length) {
+    lengths_encoder.encode(length);
     byte_array_writer.writeByteArray(bs, offset, length);
   }
 

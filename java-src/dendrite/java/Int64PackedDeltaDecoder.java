@@ -21,7 +21,7 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
   }
 
   @Override
-  public long next() {
+  public long decode() {
     if (remaining_values_in_block > 0) {
       if (miniblock_position == -1) { // read from first value
         miniblock_position = 0;
@@ -38,7 +38,7 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
       return block_current_value.longValue();
     } else { // no more values in block, load next block
       initNextBlock();
-      return next();
+      return decode();
     }
   }
 

@@ -9,7 +9,7 @@ public class Int64PlainDecoder implements Int64Decoder {
   }
 
   @Override
-  public long next() {
+  public long decode() {
     return byte_array_reader.readFixedInt64();
   }
 

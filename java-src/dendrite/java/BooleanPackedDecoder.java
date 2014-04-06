@@ -12,7 +12,7 @@ public class BooleanPackedDecoder implements BooleanDecoder {
   }
 
   @Override
-  public boolean next() {
+  public boolean decode() {
     if (position == 8) {
       byte_array_reader.readPackedBooleans(octuplet);
       position = 0;

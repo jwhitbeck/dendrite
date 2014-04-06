@@ -6,7 +6,7 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
   private int position = 0;
 
   @Override
-  public void append(final boolean b) {
+  public void encode(final boolean b) {
     octuplet[position] = b;
     position += 1;
     if (position == 8) {
@@ -24,7 +24,7 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
   @Override
   public void finish() {
     while (position > 0) {
-      append(false);
+      encode(false);
     }
   }
 

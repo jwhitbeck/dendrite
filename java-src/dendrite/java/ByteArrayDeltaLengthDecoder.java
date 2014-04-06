@@ -12,15 +12,15 @@ public class ByteArrayDeltaLengthDecoder implements ByteArrayDecoder {
   }
 
   @Override
-  public byte[] next() {
-    int length = lengths_decoder.next();
+  public byte[] decode() {
+    int length = lengths_decoder.decode();
     byte[] byte_array = new byte[length];
     byte_array_reader.readByteArray(byte_array, 0, length);
     return byte_array;
   }
 
-  public void readNextInto(ByteArrayWriter baw) {
-    int length = lengths_decoder.next();
+  public void decodeInto(ByteArrayWriter baw) {
+    int length = lengths_decoder.decode();
     byte_array_reader.readBytes(baw, length);
   }
 

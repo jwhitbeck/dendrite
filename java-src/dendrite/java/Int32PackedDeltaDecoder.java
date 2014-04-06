@@ -19,7 +19,7 @@ public class Int32PackedDeltaDecoder implements Int32Decoder {
   }
 
   @Override
-  public int next() {
+  public int decode() {
     if (remaining_values_in_block > 0) {
       if (miniblock_position == -1) { // read from first value
         miniblock_position = 0;
@@ -36,7 +36,7 @@ public class Int32PackedDeltaDecoder implements Int32Decoder {
       return (int)block_current_value;
     } else { // no more values in block, load next block
       initNextBlock();
-      return next();
+      return decode();
     }
   }
 

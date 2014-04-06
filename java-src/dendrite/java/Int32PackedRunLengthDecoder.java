@@ -16,18 +16,18 @@ public class Int32PackedRunLengthDecoder implements Int32Decoder {
   }
 
   @Override
-  public int next() {
+  public int decode() {
     if (num_rle_values_to_read > 0) {
-      return nextFromRLEValue();
+      return decodeFromRLEValue();
     } else if (octuplet_position < 8) {
-      return nextFromOctuplet();
+      return decodeFromOctuplet();
     } else {
       bufferNextRun();
-      return next();
+      return decode();
     }
   }
 
-  private int nextFromOctuplet() {
+  private int decodeFromOctuplet() {
     int v = octuplet[octuplet_position];
     octuplet_position += 1;
     if (octuplet_position == 8 && num_octoplets_to_read > 0) {
@@ -36,7 +36,7 @@ public class Int32PackedRunLengthDecoder implements Int32Decoder {
     return v;
   }
 
-  private int nextFromRLEValue() {
+  private int decodeFromRLEValue() {
     num_rle_values_to_read -= 1;
     return rle_value;
   }

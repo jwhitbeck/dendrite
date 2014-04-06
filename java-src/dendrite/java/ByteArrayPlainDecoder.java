@@ -9,7 +9,7 @@ public class ByteArrayPlainDecoder implements ByteArrayDecoder {
   }
 
   @Override
-  public byte[] next() {
+  public byte[] decode() {
     int length = byte_array_reader.readFixedInt32();
     byte[] byte_array = new byte[length];
     byte_array_reader.readByteArray(byte_array, 0, length);

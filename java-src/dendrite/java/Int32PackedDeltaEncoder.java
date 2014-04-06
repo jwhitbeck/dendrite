@@ -15,11 +15,11 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
   private ByteArrayWriter current_encoding = new ByteArrayWriter(128);
 
   @Override
-  public void append(final int i) {
+  public void encode(final int i) {
     if (position % MIN_BLOCK_SIZE == 1 && position > 2 * MIN_BLOCK_SIZE) {
       tryFlushFirstBlocks();
     }
-    appendAndGrowIfNecessary(i);
+    encodeAndGrowIfNecessary(i);
   }
 
   private void growValueBuffer() {
@@ -28,10 +28,10 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
     value_buffer = new_buffer;
   }
 
-  private void appendAndGrowIfNecessary(final int i) {
+  private void encodeAndGrowIfNecessary(final int i) {
     if (position == value_buffer.length) {
       growValueBuffer();
-      appendAndGrowIfNecessary(i);
+      encodeAndGrowIfNecessary(i);
     } else {
       value_buffer[position] = i;
       position += 1;
