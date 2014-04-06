@@ -7,7 +7,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   private static int DEFAULT_BUFFER_SIZE = 1024;
 
   public byte[] buffer;
-  private int position = 0;
+  public int position = 0;
 
   public ByteArrayWriter() {
     buffer = new byte[DEFAULT_BUFFER_SIZE];
@@ -20,14 +20,6 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   @Override
   public void reset() {
     position = 0;
-  }
-
-  public void resetTo(final int p) {
-    position = p;
-  }
-
-  public void skipAhead(final int length) {
-    position += length;
   }
 
   private void grow() {

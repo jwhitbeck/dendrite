@@ -13,7 +13,7 @@ public class LZ4Compressor implements Compressor {
     net.jpountz.lz4.LZ4Compressor lz4_compressor = LZ4.compressor();
     baw.ensureRemainingCapacity(lz4_compressor.maxCompressedLength(input_length));
     compressed_length = lz4_compressor.compress(bs, offset, input_length, baw.buffer, baw.size());
-    baw.skipAhead(compressed_length);
+    baw.position += compressed_length;
   }
 
   @Override

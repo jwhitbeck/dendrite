@@ -5,7 +5,7 @@ import java.math.BigInteger;
 public class ByteArrayReader {
 
   public final byte[] buffer;
-  private int position = 0;
+  public int position = 0;
 
   public ByteArrayReader(final byte[] buf) {
     buffer = buf;
@@ -14,10 +14,6 @@ public class ByteArrayReader {
   public ByteArrayReader(final byte[] buf, final int offset) {
     buffer = buf;
     position = offset;
-  }
-
-  public int position() {
-    return position;
   }
 
   public byte readByte() {

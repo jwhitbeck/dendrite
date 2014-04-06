@@ -18,14 +18,14 @@ public class DeflateCompressor implements Compressor {
     deflater.setInput(bs, offset, input_length);
     deflater.finish();
     baw.ensureRemainingCapacity(input_length);
-    deflater.deflate(baw.buffer, baw.size(), baw.buffer.length - baw.size());
+    deflater.deflate(baw.buffer, baw.position, baw.buffer.length - baw.position);
     while (!deflater.finished()) {
       int prev_buffer_length = baw.buffer.length;
       baw.ensureRemainingCapacity(input_length);
       deflater.deflate(baw.buffer, prev_buffer_length, baw.buffer.length - prev_buffer_length);
     }
     compressed_length = (int)deflater.getBytesWritten();
-    baw.skipAhead(compressedSize());
+    baw.position += compressedSize();
   }
 
   @Override

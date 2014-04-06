@@ -9,7 +9,7 @@ public class DeflateDecompressor implements Decompressor {
   public ByteArrayReader decompress(final ByteArrayReader bar, final int compressedSize,
                                     final int decompressedSize) {
     Inflater inflater = new Inflater(true);
-    inflater.setInput(bar.buffer, bar.position(), compressedSize);
+    inflater.setInput(bar.buffer, bar.position, compressedSize);
     byte[] decompressed_bytes = new byte[decompressedSize];
     try {
       inflater.inflate(decompressed_bytes);
