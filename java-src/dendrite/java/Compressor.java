@@ -6,10 +6,6 @@ public interface Compressor extends Resetable {
 
   public int compressedSize();
 
-  public void compress(final ByteArrayWriter baw);
-
-  public void writeCompressedTo(final ByteArrayWriter baw);
-
-  public void writeUncompressedTo(final ByteArrayWriter baw);
+  public void compress(final byte[] bs, final int offset, final int length, final ByteArrayWriter baw);
 
 }

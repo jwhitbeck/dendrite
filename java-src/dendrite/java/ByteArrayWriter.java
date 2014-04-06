@@ -22,14 +22,25 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     position = 0;
   }
 
-  public void resetTo(int p) {
+  public void resetTo(final int p) {
     position = p;
+  }
+
+  public void skipAhead(final int length) {
+    position += length;
   }
 
   private void grow() {
     byte[] new_buffer = new byte[buffer.length << 1];
     System.arraycopy(buffer, 0, new_buffer, 0, buffer.length);
     buffer = new_buffer;
+  }
+
+  public void ensureRemainingCapacity(final int capacity) {
+    if (buffer.length - position < capacity) {
+      grow();
+      ensureRemainingCapacity(capacity);
+    }
   }
 
   public int size() {

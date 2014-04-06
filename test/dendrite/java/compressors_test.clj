@@ -10,8 +10,7 @@
   (let [baw (ByteArrayWriter. 10)
         compressed-baw (ByteArrayWriter. 10)]
     (.writeByteArray baw (.getBytes lorem-ipsum "UTF-8"))
-    (.compress compressor baw)
-    (.writeCompressedTo compressor compressed-baw)
+    (.compress compressor (.buffer baw) 0 (.size baw) compressed-baw)
     (let [bar (ByteArrayReader. (.buffer compressed-baw))]
       (-> decompressor
           (.decompress bar (.compressedSize compressor) (.uncompressedSize compressor))
