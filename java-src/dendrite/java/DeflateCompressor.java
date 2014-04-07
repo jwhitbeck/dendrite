@@ -4,45 +4,53 @@ import java.util.zip.Deflater;
 
 public class DeflateCompressor implements Compressor {
 
-  private int input_length = 0;
-  private int compressed_length = 0;
+  private final ByteArrayWriter input_buffer;
+  private final ByteArrayWriter output_buffer;
   private final Deflater deflater;
 
   public DeflateCompressor() {
     deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+    input_buffer = new ByteArrayWriter();
+    output_buffer = new ByteArrayWriter();
   }
 
   @Override
-  public void compress(final byte[] bs, final int offset, final int length, final ByteArrayWriter baw) {
-    input_length = length;
-    deflater.setInput(bs, offset, input_length);
+  public void compress(final ByteArrayWritable byte_array_writable) {
+    byte_array_writable.writeTo(input_buffer);
+    deflater.setInput(input_buffer.buffer, 0, input_buffer.size());
     deflater.finish();
-    baw.ensureRemainingCapacity(input_length);
-    deflater.deflate(baw.buffer, baw.position, baw.buffer.length - baw.position);
+    output_buffer.ensureRemainingCapacity(input_buffer.size());
+    deflater.deflate(output_buffer.buffer, 0, output_buffer.buffer.length - output_buffer.position);
     while (!deflater.finished()) {
-      int prev_buffer_length = baw.buffer.length;
-      baw.ensureRemainingCapacity(input_length);
-      deflater.deflate(baw.buffer, prev_buffer_length, baw.buffer.length - prev_buffer_length);
+      int prev_buffer_length = output_buffer.buffer.length;
+      output_buffer.ensureRemainingCapacity(input_buffer.size());
+      deflater.deflate(output_buffer.buffer, prev_buffer_length,
+                       output_buffer.buffer.length - prev_buffer_length);
     }
-    compressed_length = (int)deflater.getBytesWritten();
-    baw.position += compressedSize();
+    output_buffer.position += (int)deflater.getBytesWritten();
   }
 
   @Override
   public void reset() {
     deflater.reset();
-    compressed_length = 0;
-    input_length = 0;
+    input_buffer.reset();
+    output_buffer.reset();
   }
 
   @Override
   public int uncompressedSize() {
-    return input_length;
+    return input_buffer.size();
   }
 
   @Override
   public int compressedSize() {
-    return compressed_length;
+    return output_buffer.size();
   }
+
+  @Override
+  public void writeTo(final ByteArrayWriter baw) {
+    output_buffer.writeTo(baw);
+  }
+
 
 }
