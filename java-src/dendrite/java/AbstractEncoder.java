@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public abstract class AbstractEncoder implements Encoder {
+public abstract class AbstractEncoder implements Finishable, ByteArrayWritable, Sizeable, Resetable {
 
   protected final ByteArrayWriter byte_array_writer;
 
