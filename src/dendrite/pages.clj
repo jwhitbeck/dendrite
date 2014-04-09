@@ -1,6 +1,6 @@
 (ns dendrite.pages
-  (:require [dendrite.encodings :refer [encode decode-values]]
-            [dendrite.common :refer [wrap-value]])
+  (:require [dendrite.core :refer [wrap-value]]
+            [dendrite.encodings :refer [encode decode-values]])
   (:import [dendrite.java Resetable Finishable Sizeable ByteArrayWritable
             ByteArrayReader ByteArrayWriter Compressor Decompressor Int32PackedRunLengthDecoder
             Int32PackedRunLengthEncoder]

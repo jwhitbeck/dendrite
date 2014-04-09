@@ -1,7 +1,7 @@
 (ns dendrite.pages-test
   (:require [clojure.test :refer :all]
-            [dendrite.pages :refer :all]
-            [dendrite.common :refer [wrap-value]])
+            [dendrite.core :refer [wrap-value]]
+            [dendrite.pages :refer :all])
   (:import [dendrite.java Int32PlainEncoder Int32PlainDecoder ByteArrayWriter ByteArrayReader
             DeflateCompressor DeflateDecompressor]))
 

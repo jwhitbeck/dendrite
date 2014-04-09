@@ -1,6 +1,6 @@
 (ns dendrite.core)
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(defrecord WrappedValue [repetition-level definition-level value])
+
+(defn wrap-value [repetition-level definition-level value]
+  (WrappedValue. repetition-level definition-level value))
