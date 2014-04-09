@@ -124,28 +124,28 @@
       (.write byte-array-writer definition-level-encoder))
     (.write byte-array-writer (if data-compressor data-compressor data-encoder))))
 
-(defn data-page-writer [schema-depth data-encoder data-compressor]
+(defn data-page-writer [max-definition-level data-encoder data-compressor]
   (DataPageWriter. 0
                    data-encoder
-                   (Int32PackedRunLengthEncoder. (get-packed-bit-width schema-depth))
-                   (Int32PackedRunLengthEncoder. (get-packed-bit-width schema-depth))
+                   (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
+                   (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
                    data-compressor))
 
-(defn required-data-page-writer [schema-depth data-encoder data-compressor]
+(defn required-data-page-writer [max-definition-level data-encoder data-compressor]
   (DataPageWriter. 0
                    data-encoder
-                   (Int32PackedRunLengthEncoder. (get-packed-bit-width schema-depth))
+                   (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
                    nil
                    data-compressor))
 
-(defn top-level-data-page-writer [schema-depth data-encoder data-compressor]
+(defn top-level-data-page-writer [max-definition-level data-encoder data-compressor]
   (DataPageWriter. 0
                    data-encoder
                    nil
-                   (Int32PackedRunLengthEncoder. (get-packed-bit-width schema-depth))
+                   (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
                    data-compressor))
 
-(defn required-top-level-data-page-writer [schema-depth data-encoder data-compressor]
+(defn required-top-level-data-page-writer [max-definition-level data-encoder data-compressor]
   (DataPageWriter. 0
                    data-encoder
                    nil
@@ -153,14 +153,14 @@
                    data-compressor))
 
 (defmulti get-page-reader
-  (fn [^ByteArrayReader bar schema-depth data-decoder-ctor decompressor-ctor]
+  (fn [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
     (-> bar .readUInt32 decode-page-type)))
 
 (defprotocol IPageReader
   (next-page [_]))
 
 (defrecord DataPageReader [byte-array-reader
-                           schema-depth
+                           max-definition-level
                            data-decoder-ctor
                            decompressor-ctor
                            header]
@@ -169,15 +169,15 @@
     (get-page-reader (.sliceAhead ^ByteArrayReader byte-array-reader (page-body-length header)))))
 
 (defmethod get-page-reader :data
-  [^ByteArrayReader bar schema-depth data-decoder-ctor decompressor-ctor]
-  (DataPageReader. bar schema-depth data-decoder-ctor decompressor-ctor (read-data-page-header bar)))
+  [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
+  (DataPageReader. bar max-definition-level data-decoder-ctor decompressor-ctor (read-data-page-header bar)))
 
 (defn- read-repetition-levels [^DataPageReader page-reader]
   (let [header (:header page-reader)]
     (if (has-repetition-levels? header)
       (-> ^ByteArrayReader (:byte-array-reader page-reader)
           .slice
-          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:schema-depth page-reader)))
+          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:max-definition-level page-reader)))
           decode-values)
       (repeat 0))))
 
@@ -186,9 +186,9 @@
     (if (has-definition-levels? header)
       (-> ^ByteArrayReader (:byte-array-reader page-reader)
           (.sliceAhead (definition-levels-byte-offset header))
-          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:schema-depth page-reader)))
+          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:max-definition-level page-reader)))
           decode-values)
-      (repeat (:schema-depth page-reader)))))
+      (repeat (:max-definition-level page-reader)))))
 
 (defn- read-data [^DataPageReader page-reader]
   (let [header (:header page-reader)
@@ -205,7 +205,7 @@
 (defn read-values [^DataPageReader page-reader]
   (letfn [(lazy-read-values [repetition-levels-seq definition-levels-seq values-seq]
             (lazy-seq
-             (let [nil-value? (< (first definition-levels-seq) (:schema-depth page-reader))]
+             (let [nil-value? (< (first definition-levels-seq) (:max-definition-level page-reader))]
                (cons (wrap-value (first repetition-levels-seq)
                                  (first definition-levels-seq)
                                  (if nil-value? nil (first values-seq)))
