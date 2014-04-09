@@ -9,7 +9,7 @@ public class Int32PackedRunLengthEncoder extends AbstractEncoder implements Int3
   private ByteArrayWriter octuplet_buffer = new ByteArrayWriter();
   private int num_buffered_octuplets;
   private final int rle_threshold;
-  private final int width;
+  protected final int width;
 
   public Int32PackedRunLengthEncoder(final int width) {
     this.width = width;
