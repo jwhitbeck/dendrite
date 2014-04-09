@@ -50,3 +50,6 @@
   (encode [fixed-length-byte-array-encoder value] (doto fixed-length-byte-array-encoder (.encode value)))
   ByteArrayEncoder
   (encode [byte-array-encoder value] (doto byte-array-encoder (.encode value))))
+
+(defn encode-values [encoder values]
+  (reduce encode encoder values))
