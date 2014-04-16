@@ -5,9 +5,9 @@ public class FixedLengthByteArrayPlainDecoder implements FixedLengthByteArrayDec
   private final ByteArrayReader byte_array_reader;
   private final int length;
 
-  public FixedLengthByteArrayPlainDecoder(final ByteArrayReader baw, final int length) {
+  public FixedLengthByteArrayPlainDecoder(final ByteArrayReader baw) {
     byte_array_reader = baw;
-    this.length = length;
+    this.length = baw.readUInt32();
   }
 
   @Override

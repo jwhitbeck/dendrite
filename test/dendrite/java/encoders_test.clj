@@ -110,8 +110,8 @@
   (testing "length byte array plain encoder/decoder works"
     (let [length 10
           rand-byte-arrays (repeatedly #(helpers/rand-byte-array length))
-          read-byte-arrays (write-read #(FixedLengthByteArrayPlainEncoder. length)
-                                       #(FixedLengthByteArrayPlainDecoder. % length)
+          read-byte-arrays (write-read #(FixedLengthByteArrayPlainEncoder.)
+                                       #(FixedLengthByteArrayPlainDecoder. %)
                                        rand-byte-arrays)]
       (is (every? true? (map helpers/array= read-byte-arrays rand-byte-arrays))))))
 
