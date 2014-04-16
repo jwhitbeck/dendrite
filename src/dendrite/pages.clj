@@ -1,10 +1,7 @@
 (ns dendrite.pages
   (:require [dendrite.core :refer [wrap-value]]
-            [dendrite.encodings :refer [encode decode-values]])
-  (:import [dendrite.java Resetable Finishable Sizeable ByteArrayWritable
-            ByteArrayReader ByteArrayWriter Compressor Decompressor Int32PackedRunLengthDecoder
-            Int32PackedRunLengthEncoder]
-           [dendrite.encodings Encoder]))
+            [dendrite.encodings :refer [encode decode-values levels-encoder levels-decoder]])
+  (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Compressor Decompressor]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,9 +48,6 @@
 (defn- encoded-data-byte-offset [^DataPageHeader data-page-header]
   (+ (:repetition-levels-size data-page-header) (:definition-levels-size data-page-header)))
 
-(defn- get-packed-bit-width [num-values]
-  (- 32 (Integer/numberOfLeadingZeros num-values)))
-
 (def page-types [:data])
 
 (def ^:private page-type-encodings
@@ -78,10 +72,10 @@
 (deftype DataPageWriter
     [^{:unsynchronized-mutable :int} num-values
      ^{:unsynchronized-mutable :int} num-rows
-     repetition-level-encoder
-     definition-level-encoder
-     data-encoder
-     data-compressor]
+     ^BufferedByteArrayWriter repetition-level-encoder
+     ^BufferedByteArrayWriter definition-level-encoder
+     ^BufferedByteArrayWriter data-encoder
+     ^Compressor data-compressor]
   IDataPageWriter
   (write [this wrapped-value]
     (if-let [v (:value wrapped-value)]
@@ -95,44 +89,37 @@
   (incr-num-rows [this]
     (set! num-rows (inc num-rows))
     this)
-  Resetable
+  BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
     (set! num-rows 0)
     (when repetition-level-encoder
-      (.reset ^Resetable repetition-level-encoder))
+      (.reset repetition-level-encoder))
     (when definition-level-encoder
-      (.reset ^Resetable definition-level-encoder))
-    (.reset ^Resetable data-encoder)
+      (.reset definition-level-encoder))
+    (.reset data-encoder)
     (when data-compressor
-      (.reset ^Resetable data-compressor)))
-  Finishable
+      (.reset data-compressor)))
   (finish [_]
     (when repetition-level-encoder
-      (.finish ^Finishable repetition-level-encoder))
+      (.finish repetition-level-encoder))
     (when definition-level-encoder
-      (.finish ^Finishable definition-level-encoder))
-    (.finish ^Finishable data-encoder)
+      (.finish definition-level-encoder))
+    (.finish data-encoder)
     (when data-compressor
-      (.compress ^Compressor data-compressor ^ByteArrayWritable data-encoder)))
-  Sizeable
+      (.compress data-compressor data-encoder)))
   (size [_] 0)                          ; TODO Fixme
-  ByteArrayWritable
+  (estimatedSize [_] 0)                 ; TODO Fixme
   (writeTo [_ byte-array-writer]
     (doto byte-array-writer
       (.writeUInt32 (encode-page-type :data))
-      (write-data-page-header (DataPageHeader. num-values
-                                               num-rows
-                                               (if repetition-level-encoder
-                                                 (.size ^Sizeable repetition-level-encoder)
-                                                 0)
-                                               (if definition-level-encoder
-                                                 (.size ^Sizeable definition-level-encoder)
-                                                 0)
-                                               (if data-compressor
-                                                 (.compressedSize ^Compressor data-compressor)
-                                                   0)
-                                               (.size ^Sizeable data-encoder))))
+      (write-data-page-header
+       (DataPageHeader. num-values
+                        num-rows
+                        (if repetition-level-encoder (.size repetition-level-encoder) 0)
+                        (if definition-level-encoder (.size definition-level-encoder) 0)
+                        (if data-compressor (.compressedSize data-compressor) 0)
+                        (.size data-encoder))))
     (when repetition-level-encoder
       (.write byte-array-writer repetition-level-encoder))
     (when definition-level-encoder
@@ -140,36 +127,20 @@
     (.write byte-array-writer (if data-compressor data-compressor data-encoder))))
 
 (defn- new-data-page-writer [repetition-level-encoder definition-level-encoder data-encoder data-compressor]
-  (DataPageWriter. 0
-                   0
-                   repetition-level-encoder
-                   definition-level-encoder
-                   data-encoder
-                   data-compressor))
+  (DataPageWriter. 0 0 repetition-level-encoder definition-level-encoder data-encoder data-compressor))
 
 (defn data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
-                        (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
-                        data-encoder
-                        data-compressor))
+  (new-data-page-writer (levels-encoder max-definition-level) (levels-encoder max-definition-level)
+                        data-encoder data-compressor))
 
 (defn required-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
-                        nil
-                        data-encoder
-                        data-compressor))
+  (new-data-page-writer (levels-encoder max-definition-level) nil data-encoder data-compressor))
 
 (defn top-level-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer nil
-                        (Int32PackedRunLengthEncoder. (get-packed-bit-width max-definition-level))
-                        data-encoder
-                        data-compressor))
+  (new-data-page-writer nil (levels-encoder max-definition-level) data-encoder data-compressor))
 
 (defn required-top-level-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer nil
-                        nil
-                        data-encoder
-                        data-compressor))
+  (new-data-page-writer nil nil data-encoder data-compressor))
 
 (defmulti get-page-reader
   (fn [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
@@ -178,14 +149,14 @@
 (defprotocol IPageReader
   (next-page [_]))
 
-(defrecord DataPageReader [byte-array-reader
+(defrecord DataPageReader [^ByteArrayReader byte-array-reader
                            max-definition-level
                            data-decoder-ctor
                            decompressor-ctor
                            header]
   IPageReader
   (next-page [_]
-    (get-page-reader (.sliceAhead ^ByteArrayReader byte-array-reader (page-body-length header)))))
+    (get-page-reader (.sliceAhead byte-array-reader (page-body-length header)))))
 
 (defmethod get-page-reader :data
   [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
@@ -196,7 +167,7 @@
     (if (has-repetition-levels? header)
       (-> ^ByteArrayReader (:byte-array-reader page-reader)
           .slice
-          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:max-definition-level page-reader)))
+          (levels-decoder (:max-definition-level page-reader))
           decode-values)
       (repeat 0))))
 
@@ -205,7 +176,7 @@
     (if (has-definition-levels? header)
       (-> ^ByteArrayReader (:byte-array-reader page-reader)
           (.sliceAhead (definition-levels-byte-offset header))
-          (Int32PackedRunLengthDecoder. (get-packed-bit-width (:max-definition-level page-reader)))
+          (levels-decoder (:max-definition-level page-reader))
           decode-values)
       (repeat (:max-definition-level page-reader)))))
 
