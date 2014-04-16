@@ -12,6 +12,7 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
   private BigInteger[] deltas = new BigInteger[2 * MIN_BLOCK_SIZE];
   private BigInteger min_delta;
   private long [] reference_frame = new long[2 * MIN_BLOCK_SIZE];
+  private int num_encoded_values = 0;
 
   private ByteArrayWriter best_encoding = new ByteArrayWriter(128);
   private ByteArrayWriter current_encoding = new ByteArrayWriter(128);
@@ -202,6 +203,7 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
   private void flushFirstBlocks() {
     best_encoding.writeTo(byte_array_writer);
     int num_flushed_values = getEndPositionOfLastFullBlock();
+    num_encoded_values += num_flushed_values;
     position -= num_flushed_values;
     for (int i=0; i<position; ++i) {
       value_buffer[i] = value_buffer[i+num_flushed_values];
@@ -213,6 +215,7 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
     if (position > 0) {
       ByteArrayWriter full_block_encoding = getBestMiniblockEncodingForBlock(0, position);
       full_block_encoding.writeTo(byte_array_writer);
+      num_encoded_values += position;
     }
     position = 0;
   }
@@ -220,6 +223,7 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
   @Override
   public void reset() {
     position = 0;
+    num_encoded_values = 0;
     super.reset();
   }
 
@@ -228,6 +232,11 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
     if (position > 0){
       flushAllBlocks();
     }
+  }
+
+  @Override
+  public int estimatedSize() {
+    return byte_array_writer.size() * (int)(1 + (double)position / (double)num_encoded_values);
   }
 
 }

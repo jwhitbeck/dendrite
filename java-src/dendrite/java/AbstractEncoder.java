@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public abstract class AbstractEncoder implements Finishable, ByteArrayWritable, Sizeable, Resetable {
+public abstract class AbstractEncoder implements BufferedByteArrayWriter {
 
   protected final ByteArrayWriter byte_array_writer;
 
@@ -19,6 +19,11 @@ public abstract class AbstractEncoder implements Finishable, ByteArrayWritable, 
   @Override
   public int size() {
     return byte_array_writer.size();
+  }
+
+  @Override
+  public int estimatedSize() {
+    return size();
   }
 
   @Override

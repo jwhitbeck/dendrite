@@ -38,6 +38,12 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
       + lengths_encoder.size() + byte_array_writer.size();
   }
 
+  public int estimatedSize() {
+    int estimated_lengths_encoder_size = lengths_encoder.estimatedSize();
+    return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(estimated_lengths_encoder_size)
+      + estimated_lengths_encoder_size;
+  }
+
   @Override
   public void writeTo(final ByteArrayWriter baw) {
     finish();

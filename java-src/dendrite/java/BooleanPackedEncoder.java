@@ -28,4 +28,8 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
     }
   }
 
+  @Override
+  public int estimatedSize() {
+    return byte_array_writer.size() + (position == 0? 0 : 1);
+  }
 }

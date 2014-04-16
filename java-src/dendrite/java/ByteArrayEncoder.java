@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public interface ByteArrayEncoder extends Finishable, ByteArrayWritable, Sizeable, Resetable {
+public interface ByteArrayEncoder extends BufferedByteArrayWriter {
 
   public void encode(byte[] bs);
 

@@ -49,6 +49,15 @@ public class Int32PackedRunLengthEncoder implements Int32Encoder {
   }
 
   @Override
+  public int estimatedSize() {
+    int estimated_width = ByteArrayWriter.getBitWidth(max_buffered_value);
+    int estimated_num_octoplets = (num_buffered_values / 8) + 1;
+    return ByteArrayWriter.getNumUInt32Bytes(estimated_width)
+      + ByteArrayWriter.getNumUInt32Bytes(estimated_num_octoplets << 1)
+      + (8 * estimated_num_octoplets * estimated_width);
+  }
+
+  @Override
   public void writeTo(final ByteArrayWriter baw) {
     finish();
     baw.writeUInt32(width);

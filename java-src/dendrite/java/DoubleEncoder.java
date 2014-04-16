@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public interface DoubleEncoder extends Finishable, ByteArrayWritable, Sizeable, Resetable {
+public interface DoubleEncoder extends BufferedByteArrayWriter {
 
   public void encode(double d);
 

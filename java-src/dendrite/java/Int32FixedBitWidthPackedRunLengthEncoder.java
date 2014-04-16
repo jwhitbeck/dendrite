@@ -73,6 +73,17 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
     }
   }
 
+  @Override
+  public int estimatedSize() {
+    if (num_occurences_rle_value > 0) {
+      return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(rle_value)
+        + ByteArrayWriter.getBitWidth(num_occurences_rle_value << 1);
+    } else {
+      return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(num_buffered_octuplets << 1)
+        + (8 * width * num_buffered_octuplets) + current_octuplet_position > 0? (8 * width) : 0;
+    }
+  }
+
   private void packRLERun() {
     for (int j=0; j<num_occurences_rle_value; ++j) {
       bufferPackedInt(rle_value);

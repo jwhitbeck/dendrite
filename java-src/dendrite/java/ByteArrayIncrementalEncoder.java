@@ -49,6 +49,13 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
   }
 
   @Override
+  public int estimatedSize() {
+    int estimated_prefix_lengths_encoder_size = prefix_lengths_encoder.estimatedSize();
+    return ByteArrayWriter.getNumUInt32Bytes(estimated_prefix_lengths_encoder_size)
+      + estimated_prefix_lengths_encoder_size + byte_array_encoder.size();
+  }
+
+  @Override
   public void writeTo(final ByteArrayWriter baw) {
     finish();
     baw.writeUInt32(prefix_lengths_encoder.size());

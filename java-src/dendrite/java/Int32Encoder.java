@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public interface Int32Encoder extends Finishable, ByteArrayWritable, Sizeable, Resetable {
+public interface Int32Encoder extends BufferedByteArrayWriter {
 
   public void encode(int i);
 
