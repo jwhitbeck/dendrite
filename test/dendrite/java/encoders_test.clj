@@ -67,7 +67,7 @@
   (testing "packed run-length encoder with bit-with works"
     (testing "sparse input"
       (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-            read-ints (write-read #(Int32PackedRunLengthWithBitWidthEncoder. 3)
+            read-ints (write-read #(Int32PackedRunLengthWithBitWidthEncoder.)
                                   #(Int32PackedRunLengthWithBitWidthDecoder. %) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
   (testing "packed delta encoder/decoder works"
