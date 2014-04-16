@@ -3,8 +3,8 @@
             [dendrite.java.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
             Int32PlainEncoder Int32PlainDecoder
+            Int32FixedBitWidthPackedRunLengthEncoder Int32FixedBitWidthPackedRunLengthDecoder
             Int32PackedRunLengthEncoder Int32PackedRunLengthDecoder
-            Int32PackedRunLengthWithBitWidthEncoder Int32PackedRunLengthWithBitWidthDecoder
             Int32PackedDeltaEncoder Int32PackedDeltaDecoder
             Int64PlainEncoder Int64PlainDecoder
             Int64PackedDeltaEncoder Int64PackedDeltaDecoder
@@ -49,26 +49,26 @@
     (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(Int32PlainEncoder.) #(Int32PlainDecoder. %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
-  (testing "packed run-length encoder/decoder works"
+  (testing "fixed-bit-width packed run-length encoder/decoder works"
     (testing "sparse input"
       (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-            read-ints (write-read #(Int32PackedRunLengthEncoder. 3)
-                                  #(Int32PackedRunLengthDecoder. % 3) rand-ints)]
+            read-ints (write-read #(Int32FixedBitWidthPackedRunLengthEncoder. 3)
+                                  #(Int32FixedBitWidthPackedRunLengthDecoder. % 3) rand-ints)]
         (is (every? true? (map = read-ints rand-ints)))))
     (testing "random input"
       (let [rand-ints (repeatedly helpers/rand-int32)
-            read-ints (write-read #(Int32PackedRunLengthEncoder. 32)
-                                  #(Int32PackedRunLengthDecoder. % 32) rand-ints)]
+            read-ints (write-read #(Int32FixedBitWidthPackedRunLengthEncoder. 32)
+                                  #(Int32FixedBitWidthPackedRunLengthDecoder. % 32) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
-  (testing "packed run-length encoder's finish method is idempotent"
+  (testing "fixed-bit-width packed run-length encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int32)
-          finish-fn (fn [n] (finish-repeatedly n #(Int32PackedRunLengthEncoder. 32) rand-ints))]
+          finish-fn (fn [n] (finish-repeatedly n #(Int32FixedBitWidthPackedRunLengthEncoder. 32) rand-ints))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
-  (testing "packed run-length encoder with bit-with works"
+  (testing "packed run-length encoder works"
     (testing "sparse input"
       (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-            read-ints (write-read #(Int32PackedRunLengthWithBitWidthEncoder.)
-                                  #(Int32PackedRunLengthWithBitWidthDecoder. %) rand-ints)]
+            read-ints (write-read #(Int32PackedRunLengthEncoder.)
+                                  #(Int32PackedRunLengthDecoder. %) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
   (testing "packed delta encoder/decoder works"
     (let [rand-ints (repeatedly helpers/rand-int32)
