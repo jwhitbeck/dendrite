@@ -1,4 +1,4 @@
-(ns dendrite.encodings
+(ns dendrite.encoding
   (:import [dendrite.java
             BooleanEncoder BooleanDecoder BooleanPackedEncoder BooleanPackedDecoder
             Int32Encoder Int32Decoder Int32PlainEncoder Int32PlainDecoder

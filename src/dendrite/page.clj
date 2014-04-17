@@ -1,6 +1,6 @@
-(ns dendrite.pages
+(ns dendrite.page
   (:require [dendrite.core :refer [wrap-value]]
-            [dendrite.encodings :refer [encode decode-values levels-encoder levels-decoder]])
+            [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder]])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Compressor Decompressor]))
 
 (set! *warn-on-reflection* true)
