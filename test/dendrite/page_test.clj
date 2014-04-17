@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.core :refer [wrap-value]]
             [dendrite.page :refer :all])
-  (:import [dendrite.java Int32PlainEncoder Int32PlainDecoder ByteArrayWriter ByteArrayReader
-            DeflateCompressor DeflateDecompressor]))
+  (:import [dendrite.java ByteArrayWriter ByteArrayReader]))
 
 (defn- rand-wrapped-value [schema-depth]
   (let [definition-level (rand-int (inc schema-depth))
@@ -33,46 +32,42 @@
     (.writeTo byte-array-writer)))
 
 (defn- write-read-single-page
-  [page-writer page-reader-ctor input-values]
-  (let [baw (ByteArrayWriter.)]
+  [data-page-writer-fn max-definition-level value-type encoding compression-type input-values]
+  (let [baw (ByteArrayWriter.)
+        page-writer (data-page-writer-fn max-definition-level value-type encoding compression-type)
+        page-reader-ctor #(page-reader % max-definition-level value-type encoding compression-type)]
     (write-page-to-buffer page-writer baw input-values)
     (-> baw .buffer ByteArrayReader. page-reader-ctor read-values)))
 
 (deftest write-read-page
   (testing "Write/read a data page works"
     (testing "uncompressed"
-      (let [schema-depth 3
-            input-values (repeatedly 1000 #(rand-wrapped-value schema-depth))
-            page-writer (data-page-writer schema-depth (Int32PlainEncoder.) nil)
-            page-reader-ctor (fn [byte-array-reader]
-                               (get-page-reader byte-array-reader schema-depth #(Int32PlainDecoder. %) nil))]
-        (is (= (write-read-single-page page-writer page-reader-ctor input-values) input-values))))
+      (let [max-definition-level 3
+            input-values (repeatedly 1000 #(rand-wrapped-value max-definition-level))
+            output-values (write-read-single-page data-page-writer max-definition-level
+                                                  :int32 :plain :none input-values)]
+        (is (= output-values input-values))))
     (testing "compressed"
-      (let [schema-depth 3
-            input-values (repeatedly 1000 #(rand-wrapped-value schema-depth))
-            page-writer (data-page-writer schema-depth (Int32PlainEncoder.) (DeflateCompressor.))
-            page-reader-ctor (fn [byte-array-reader]
-                               (get-page-reader byte-array-reader schema-depth #(Int32PlainDecoder. %)
-                                                #(DeflateDecompressor.)))]
-        (is (= (write-read-single-page page-writer page-reader-ctor input-values) input-values))))
+      (let [max-definition-level 3
+            input-values (repeatedly 1000 #(rand-wrapped-value max-definition-level))
+            output-values (write-read-single-page data-page-writer max-definition-level
+                                                  :int32 :plain :deflate input-values)]
+        (is (= output-values input-values))))
     (testing "required"
-      (let [schema-depth 3
-            input-values (repeatedly 1000 #(rand-required-wrapped-value schema-depth))
-            page-writer (required-data-page-writer schema-depth (Int32PlainEncoder.) nil)
-            page-reader-ctor (fn [byte-array-reader]
-                               (get-page-reader byte-array-reader schema-depth #(Int32PlainDecoder. %) nil))]
-        (is (= (write-read-single-page page-writer page-reader-ctor input-values) input-values))))
+      (let [max-definition-level 3
+            input-values (repeatedly 1000 #(rand-required-wrapped-value max-definition-level))
+            output-values (write-read-single-page required-data-page-writer max-definition-level
+                                                  :int32 :plain :none input-values)]
+        (is (= output-values input-values))))
     (testing "top-level"
-      (let [schema-depth 1
+      (let [max-definition-level 1
             input-values (repeatedly 1000 #(rand-top-level-wrapped-value))
-            page-writer (top-level-data-page-writer schema-depth (Int32PlainEncoder.) nil)
-            page-reader-ctor (fn [byte-array-reader]
-                               (get-page-reader byte-array-reader schema-depth #(Int32PlainDecoder. %) nil))]
-        (is (= (write-read-single-page page-writer page-reader-ctor input-values) input-values))))
+            output-values (write-read-single-page top-level-data-page-writer max-definition-level
+                                                  :int32 :plain :none input-values)]
+        (is (= output-values input-values))))
     (testing "required top-level"
-      (let [schema-depth 1
+      (let [max-definition-level 1
             input-values (repeatedly 1000 #(rand-required-top-level-wrapped-value))
-            page-writer (required-top-level-data-page-writer schema-depth (Int32PlainEncoder.) nil)
-            page-reader-ctor (fn [byte-array-reader]
-                               (get-page-reader byte-array-reader schema-depth #(Int32PlainDecoder. %) nil))]
-        (is (= (write-read-single-page page-writer page-reader-ctor input-values) input-values))))))
+            output-values (write-read-single-page required-top-level-data-page-writer max-definition-level
+                                                  :int32 :plain :none input-values)]
+        (is (= output-values input-values))))))

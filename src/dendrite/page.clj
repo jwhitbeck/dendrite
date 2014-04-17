@@ -1,6 +1,8 @@
 (ns dendrite.page
   (:require [dendrite.core :refer [wrap-value]]
-            [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder]])
+            [dendrite.compression :refer [compressor decompressor-ctor]]
+            [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder encoder
+                                       decoder-ctor]])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Compressor Decompressor]))
 
 (set! *warn-on-reflection* true)
@@ -129,25 +131,38 @@
 (defn- new-data-page-writer [repetition-level-encoder definition-level-encoder data-encoder data-compressor]
   (DataPageWriter. 0 0 repetition-level-encoder definition-level-encoder data-encoder data-compressor))
 
-(defn data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer (levels-encoder max-definition-level) (levels-encoder max-definition-level)
-                        data-encoder data-compressor))
+(defn data-page-writer [max-definition-level value-type encoding compression-type]
+  (new-data-page-writer (levels-encoder max-definition-level)
+                        (levels-encoder max-definition-level)
+                        (encoder value-type encoding)
+                        (compressor compression-type)))
 
-(defn required-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer (levels-encoder max-definition-level) nil data-encoder data-compressor))
+(defn required-data-page-writer [max-definition-level value-type encoding compression-type]
+  (new-data-page-writer (levels-encoder max-definition-level)
+                        nil
+                        (encoder value-type encoding)
+                        (compressor compression-type)))
 
-(defn top-level-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer nil (levels-encoder max-definition-level) data-encoder data-compressor))
+(defn top-level-data-page-writer [max-definition-level value-type encoding compression-type]
+  (new-data-page-writer nil
+                        (levels-encoder max-definition-level)
+                        (encoder value-type encoding)
+                        (compressor compression-type)))
 
-(defn required-top-level-data-page-writer [max-definition-level data-encoder data-compressor]
-  (new-data-page-writer nil nil data-encoder data-compressor))
+(defn required-top-level-data-page-writer [max-definition-level value-type encoding compression-type]
+  (new-data-page-writer nil nil (encoder value-type encoding) (compressor compression-type)))
 
-(defmulti get-page-reader
-  (fn [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
+(defmulti page-reader
+  (fn [^ByteArrayReader bar max-definition-level value-type encoding compression-type]
     (-> bar .readUInt32 decode-page-type)))
 
 (defprotocol IPageReader
   (next-page [_]))
+
+(defprotocol IDataPageReader
+  (read-repetition-levels [_])
+  (read-definition-levels [_])
+  (read-data [_]))
 
 (defrecord DataPageReader [^ByteArrayReader byte-array-reader
                            max-definition-level
@@ -156,41 +171,37 @@
                            header]
   IPageReader
   (next-page [_]
-    (get-page-reader (.sliceAhead byte-array-reader (page-body-length header)))))
-
-(defmethod get-page-reader :data
-  [^ByteArrayReader bar max-definition-level data-decoder-ctor decompressor-ctor]
-  (DataPageReader. bar max-definition-level data-decoder-ctor decompressor-ctor (read-data-page-header bar)))
-
-(defn- read-repetition-levels [^DataPageReader page-reader]
-  (let [header (:header page-reader)]
+    (page-reader (.sliceAhead byte-array-reader (page-body-length header))))
+  IDataPageReader
+  (read-repetition-levels [_]
     (if (has-repetition-levels? header)
-      (-> ^ByteArrayReader (:byte-array-reader page-reader)
+      (-> byte-array-reader
           .slice
-          (levels-decoder (:max-definition-level page-reader))
+          (levels-decoder max-definition-level)
           decode-values)
-      (repeat 0))))
-
-(defn- read-definition-levels [^DataPageReader page-reader]
-  (let [header (:header page-reader)]
+      (repeat 0)))
+  (read-definition-levels [_]
     (if (has-definition-levels? header)
-      (-> ^ByteArrayReader (:byte-array-reader page-reader)
+      (-> byte-array-reader
           (.sliceAhead (definition-levels-byte-offset header))
-          (levels-decoder (:max-definition-level page-reader))
+          (levels-decoder max-definition-level)
           decode-values)
-      (repeat (:max-definition-level page-reader)))))
+      (repeat max-definition-level)))
+  (read-data [_]
+    (let [data-bytes-reader (-> byte-array-reader
+                                (.sliceAhead (encoded-data-byte-offset header)))
+          data-bytes-reader (if-let [decompressor ^Decompressor (decompressor-ctor)]
+                              (.decompress decompressor
+                                           data-bytes-reader
+                                           (:compressed-data-size header)
+                                           (:uncompressed-data-size header))
+                              data-bytes-reader)]
+      (decode-values (data-decoder-ctor data-bytes-reader)))))
 
-(defn- read-data [^DataPageReader page-reader]
-  (let [header (:header page-reader)
-        data-bytes-reader (-> ^ByteArrayReader (:byte-array-reader page-reader)
-                             (.sliceAhead (encoded-data-byte-offset header)))
-        data-bytes-reader (if (:decompressor-ctor page-reader)
-                            (.decompress ^Decompressor ((:decompressor-ctor page-reader))
-                                         data-bytes-reader
-                                         (:compressed-data-size header)
-                                         (:uncompressed-data-size header))
-                            data-bytes-reader)]
-    (decode-values ((:data-decoder-ctor page-reader) data-bytes-reader))))
+(defmethod page-reader :data
+  [^ByteArrayReader bar max-definition-level value-type encoding compression-type]
+  (DataPageReader. bar max-definition-level (decoder-ctor value-type encoding)
+                   (decompressor-ctor compression-type) (read-data-page-header bar)))
 
 (defn read-values [^DataPageReader page-reader]
   (letfn [(lazy-read-values [repetition-levels-seq definition-levels-seq values-seq]
