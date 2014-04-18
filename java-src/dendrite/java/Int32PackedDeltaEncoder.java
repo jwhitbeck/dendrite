@@ -232,6 +232,9 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
 
   @Override
   public int estimatedSize() {
+    if (num_encoded_values == 0) {
+      return position; // very rough estimate when we haven't flushed anything yet
+    }
     return byte_array_writer.size() * (int)(1 + (double)position / (double)num_encoded_values);
   }
 
