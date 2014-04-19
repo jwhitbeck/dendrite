@@ -27,7 +27,7 @@
 
 (defn- write-page-to-buffer [data-page-writer byte-array-writer values]
   (doto data-page-writer
-    (write-wrapped-values values)
+    (write-values values)
     .finish
     (.writeTo byte-array-writer)))
 
@@ -37,7 +37,7 @@
         page-writer (data-page-writer-fn max-definition-level value-type encoding compression-type)
         page-reader-ctor #(page-reader % max-definition-level value-type encoding compression-type)]
     (write-page-to-buffer page-writer baw input-values)
-    (-> baw .buffer ByteArrayReader. page-reader-ctor read-values)))
+    (-> baw .buffer ByteArrayReader. page-reader-ctor read-page)))
 
 (deftest write-read-page
   (testing "Write/read a data page works"
@@ -70,4 +70,13 @@
             input-values (repeatedly 1000 #(rand-required-top-level-wrapped-value))
             output-values (write-read-single-page required-top-level-data-page-writer max-definition-level
                                                   :int32 :plain :none input-values)]
+        (is (= output-values input-values)))))
+  (testing "Write/read a dictionnary page works"
+    (testing "uncompressed"
+      (let [input-values (repeatedly 1000 #(rand-int 10000))
+            output-values (write-read-single-page dictionnary-page-writer 0 :int32 :plain :none input-values)]
+        (is (= output-values input-values))))
+    (testing "compressed"
+      (let [input-values (repeatedly 1000 #(rand-int 10000))
+            output-values (write-read-single-page dictionnary-page-writer 0 :int32 :plain :lz4 input-values)]
         (is (= output-values input-values))))))
