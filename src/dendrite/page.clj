@@ -172,6 +172,7 @@
   (estimatedSize [this]
     (estimation/correct size-estimator (uncompressed-size-estimate this)))
   (writeTo [this byte-array-writer]
+    (.finish this)
     (doto byte-array-writer
       (.writeUInt32 (encode-page-type :data))
       (.write (header this)))
@@ -246,6 +247,7 @@
   (estimatedSize [this]
     (estimation/correct size-estimator (uncompressed-size-estimate this)))
   (writeTo [this byte-array-writer]
+    (.finish this)
     (doto byte-array-writer
       (.writeUInt32 (encode-page-type :dictionnary))
       (.write (header this))
