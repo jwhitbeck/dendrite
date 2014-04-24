@@ -52,7 +52,6 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
     octuplet_buffer.reset();
     current_octuplet_position = 0;
     num_occurences_rle_value = 0;
-    rle_value = 0;
     num_buffered_octuplets = 0;
   }
 
