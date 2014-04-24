@@ -92,12 +92,14 @@
 (defn decode-page-type [encoded-page-type] (get page-types encoded-page-type))
 
 (defprotocol IPageWriter
-  ^IPageWriter (write [this value]))
+  (write [this value]))
+
+(defprotocol IPageWriterImpl
+  (uncompressed-size-estimate [this])
+  (header [this]))
 
 (defprotocol IDataPageWriter
-  ^IDataPageWriter (incr-num-rows [this])
-  ^int (uncompressed-size-estimate [this])
-  ^IDataPageHeader (header [this]))
+  (incr-num-rows [this]))
 
 (defn write-values [data-page-writer values]
   (reduce #(write %1 %2) data-page-writer values))
@@ -129,6 +131,7 @@
   (incr-num-rows [this]
     (set! num-rows (inc num-rows))
     this)
+  IPageWriterImpl
   (uncompressed-size-estimate [_]
     (let [provisional-header
             (DataPageHeader. num-values
@@ -167,7 +170,7 @@
         (.compress data-compressor data-encoder))
       (estimation/update! size-estimator (.size this) estimated-size)))
   (size [this]
-    (let [h ^IDataPageHeader (header this)]
+    (let [h (header this)]
       (+ (length h) (body-length h))))
   (estimatedSize [this]
     (estimation/correct size-estimator (uncompressed-size-estimate this)))
@@ -189,10 +192,6 @@
                    (encoder value-type encoding)
                    (compressor compression-type)))
 
-(defprotocol IDictionnaryPageWriter
-  ^int (uncompressed-size-estimate [this])
-  ^IDictionnaryPageHeader (header [this]))
-
 (deftype DictionnaryPageWriter [^{:unsynchronized-mutable :int} num-values
                                 size-estimator
                                 ^BufferedByteArrayWriter data-encoder
@@ -202,7 +201,7 @@
     (encode data-encoder value)
     (set! num-values (inc num-values))
     this)
-  IDictionnaryPageWriter
+  IPageWriterImpl
   (uncompressed-size-estimate [_]
     (let [provisional-header
             (DictionnaryPageHeader. num-values (.estimatedSize data-encoder) (.estimatedSize data-encoder))]
@@ -224,7 +223,7 @@
         (.compress data-compressor data-encoder))
       (estimation/update! size-estimator (.size this) estimated-size)))
   (size [this]
-    (let [h ^IDictionnaryPageHeader (header this)]
+    (let [h (header this)]
       (+ (length h) (body-length h))))
   (estimatedSize [this]
     (estimation/correct size-estimator (uncompressed-size-estimate this)))
@@ -295,8 +294,8 @@
   (read-data [_]
     (let [data-bytes-reader (-> byte-array-reader
                                 (.sliceAhead (byte-offset-body header)))
-          data-bytes-reader (if-let [decompressor ^Decompressor (decompressor-ctor)]
-                              (.decompress decompressor
+          data-bytes-reader (if-let [decompressor (decompressor-ctor)]
+                              (.decompress ^Decompressor decompressor
                                            data-bytes-reader
                                            (:compressed-data-size header)
                                            (:uncompressed-data-size header))
@@ -320,8 +319,8 @@
   (read-page [this]
     (let [data-bytes-reader (-> byte-array-reader
                                 (.sliceAhead (byte-offset-body header)))
-          data-bytes-reader (if-let [decompressor ^Decompressor (decompressor-ctor)]
-                              (.decompress decompressor
+          data-bytes-reader (if-let [decompressor (decompressor-ctor)]
+                              (.decompress ^Decompressor decompressor
                                            data-bytes-reader
                                            (:compressed-data-size header)
                                            (:uncompressed-data-size header))

@@ -2,11 +2,11 @@
   (:require [dendrite.page :as page]
             [dendrite.estimation :as estimation])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
-           [dendrite.page IPageWriter]))
+           [dendrite.page DataPageWriter]))
 
 (defprotocol IColumnWriter
-  ^IColumnWriter (write-row [this row-values])
-  ^int (num-pages [_]))
+  (write-row [this row-values])
+  (num-pages [_]))
 
 (defprotocol IDataColumnWriter
   (flush-data-page-writer [_]))
@@ -17,7 +17,7 @@
                        ^int target-data-page-size
                        size-estimator
                        ^ByteArrayWriter byte-array-writer
-                       ^IPageWriter page-writer]
+                       ^DataPageWriter page-writer]
   IColumnWriter
   (write-row [this row-values]
     (set! num-rows (+ num-rows (count row-values)))
