@@ -49,7 +49,7 @@ public class Int32FixedBitWidthPackedRunLengthDecoder implements Int32Decoder {
 
   private void bufferNextRLERun(final int num_occurences_rle_value) {
     num_rle_values_to_read = num_occurences_rle_value;
-    rle_value = byte_array_reader.readUInt32();
+    rle_value = byte_array_reader.readPackedInt32(width);
   }
 
   private void bufferNextPackedIntRun(final int num_octuplets) {

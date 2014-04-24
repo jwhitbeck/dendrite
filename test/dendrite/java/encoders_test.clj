@@ -69,7 +69,16 @@
       (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
             read-ints (write-read #(Int32PackedRunLengthEncoder.)
                                   #(Int32PackedRunLengthDecoder. %) rand-ints)]
+        (is (every? true? (map = read-ints rand-ints)))))
+    (testing "random input"
+      (let [rand-ints (repeatedly helpers/rand-int32)
+            read-ints (write-read #(Int32PackedRunLengthEncoder.)
+                                  #(Int32PackedRunLengthDecoder. %) rand-ints)]
         (is (every? true? (map = read-ints rand-ints))))))
+  (testing "packed run-length encoder's finish method is idempotent"
+    (let [rand-ints (repeatedly helpers/rand-int32)
+          finish-fn (fn [n] (finish-repeatedly n #(Int32PackedRunLengthEncoder.) rand-ints))]
+      (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "packed delta encoder/decoder works"
     (let [rand-ints (repeatedly helpers/rand-int32)
           read-ints (write-read #(Int32PackedDeltaEncoder.)
