@@ -169,13 +169,13 @@ public class ByteArrayReader {
 
   public int readPackedInt32(final int width) {
     final int mask = ~((-1) << width);
-    int remaining_width = width;
     int i = 0;
-    while (remaining_width > 0) {
-      i = (i << 8) | ((int) readByte() & 0xff);
-      remaining_width -= 8;
+    int read_bits = 0;
+    while (read_bits < width) {
+      i |= ((int) readByte() & 0xff) << read_bits;
+      read_bits += 8;
     }
-    return i;
+    return i & mask;
   }
 
   public void readPackedInts32(final int[] ints, final int width, final int length) {

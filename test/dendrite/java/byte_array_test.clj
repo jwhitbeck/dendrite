@@ -41,6 +41,13 @@
     (let [bar (->> [-1 -1 -1 -1 -1] (map unchecked-byte) byte-array ByteArrayReader.)]
       (is (thrown? IllegalStateException (.readUInt32 bar))))))
 
+(deftest read-write-packed-int32
+  (testing "writePackedInt32/readPackedInt32 work"
+    (let [width 12
+          rand-ints (repeatedly #(helpers/rand-int-bits width))
+          read-ints (write-read #(.writePackedInt32 %1 %2 width) #(.readPackedInt32 % width) rand-ints)]
+      (is (every? true? (map = read-ints rand-ints))))))
+
 (deftest read-write-sint32
   (testing "writeSInt32/readSInt32 work"
     (let [rand-ints (repeatedly helpers/rand-int32)
