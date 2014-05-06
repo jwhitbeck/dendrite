@@ -11,8 +11,8 @@
 (defprotocol IDataColumnWriter
   (flush-data-page-writer [_]))
 
-(deftype ColumnWriter [^{:unsynchronized-mutable :int} next-row-for-page-size-check
-                       ^{:unsynchronized-mutable :int} num-rows
+(deftype ColumnWriter [^{:unsynchronized-mutable :int} next-num-values-for-page-size-check
+                       ^{:unsynchronized-mutable :int} num-values
                        ^{:unsynchronized-mutable :int} num-pages
                        ^int target-data-page-size
                        size-estimator
@@ -20,14 +20,14 @@
                        ^DataPageWriter page-writer]
   IColumnWriter
   (write-row [this row-values]
-    (set! num-rows (+ num-rows (count row-values)))
-    (when (>= num-rows next-row-for-page-size-check)
+    (set! num-values (+ num-values (count row-values)))
+    (when (>= num-values next-num-values-for-page-size-check)
       (let [estimated-page-size (.estimatedSize page-writer)]
         (if (>= estimated-page-size target-data-page-size)
           (flush-data-page-writer this)
-          (set! next-row-for-page-size-check
-                (estimation/next-threshold-check num-rows estimated-page-size target-data-page-size)))))
-    (page/write-wrapped-values-for-row page-writer row-values)
+          (set! next-num-values-for-page-size-check
+                (estimation/next-threshold-check num-values estimated-page-size target-data-page-size)))))
+    (page/write-all page-writer row-values)
     this)
   (num-pages [_]
     num-pages)
@@ -35,11 +35,11 @@
   (flush-data-page-writer [_]
     (.write byte-array-writer page-writer)
     (set! num-pages (inc num-pages))
-    (set! next-row-for-page-size-check (/ (.size page-writer) 2))
+    (set! next-num-values-for-page-size-check (/ (.size page-writer) 2))
     (.reset page-writer))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-rows 0)
+    (set! num-values 0)
     (set! num-pages 0)
     (.reset byte-array-writer)
     (.reset page-writer))

@@ -27,7 +27,6 @@
   (reduce #(doto ^ByteArrayWriter %1 (.writeUInt32 %2)) byte-array-writer coll))
 
 (defrecord DataPageHeader [^int num-values
-                           ^int num-rows
                            ^int repetition-levels-size
                            ^int definition-levels-size
                            ^int compressed-data-size
@@ -54,12 +53,11 @@
 
 (defn read-data-page-header [^ByteArrayReader bar]
   (let [num-values (.readUInt32 bar)
-        num-rows (.readUInt32 bar)
         repetition-levels-size (.readUInt32 bar)
         definition-levels-size (.readUInt32 bar)
         compressed-data-size (.readUInt32 bar)
         uncompressed-data-size (.readUInt32 bar)]
-    (DataPageHeader. num-values num-rows repetition-levels-size definition-levels-size compressed-data-size
+    (DataPageHeader. num-values repetition-levels-size definition-levels-size compressed-data-size
                      uncompressed-data-size)))
 
 (defrecord DictionnaryPageHeader [^int num-values
@@ -98,20 +96,11 @@
   (uncompressed-size-estimate [this])
   (header [this]))
 
-(defprotocol IDataPageWriter
-  (incr-num-rows [this]))
-
-(defn write-values [data-page-writer values]
+(defn write-all [data-page-writer values]
   (reduce #(write %1 %2) data-page-writer values))
-
-(defn write-wrapped-values-for-row [data-page-writer wrapped-values]
-  (doto data-page-writer
-    (write-values wrapped-values)
-    incr-num-rows))
 
 (deftype DataPageWriter
     [^{:unsynchronized-mutable :int} num-values
-     ^{:unsynchronized-mutable :int} num-rows
      size-estimator
      ^BufferedByteArrayWriter repetition-level-encoder
      ^BufferedByteArrayWriter definition-level-encoder
@@ -127,15 +116,10 @@
       (encode definition-level-encoder (:definition-level wrapped-value)))
     (set! num-values (inc num-values))
     this)
-  IDataPageWriter
-  (incr-num-rows [this]
-    (set! num-rows (inc num-rows))
-    this)
   IPageWriterImpl
   (uncompressed-size-estimate [_]
     (let [provisional-header
             (DataPageHeader. num-values
-                             num-rows
                              (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
                              (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
                              (.estimatedSize data-encoder)
@@ -143,7 +127,6 @@
       (+ (.size provisional-header) (body-length provisional-header))))
   (header [_]
     (DataPageHeader. num-values
-                     num-rows
                      (if repetition-level-encoder (.size repetition-level-encoder) 0)
                      (if definition-level-encoder (.size definition-level-encoder) 0)
                      (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
@@ -151,7 +134,6 @@
   BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
-    (set! num-rows 0)
     (when repetition-level-encoder
       (.reset repetition-level-encoder))
     (when definition-level-encoder
@@ -186,7 +168,7 @@
     (.write byte-array-writer (if data-compressor data-compressor data-encoder))))
 
 (defn data-page-writer [max-definition-level required? value-type encoding compression-type]
-  (DataPageWriter. 0 0 (estimation/ratio-estimator)
+  (DataPageWriter. 0 (estimation/ratio-estimator)
                    (when-not (= 1 max-definition-level) (levels-encoder max-definition-level))
                    (when-not required? (levels-encoder max-definition-level))
                    (encoder value-type encoding)

@@ -27,7 +27,7 @@
 
 (defn- write-page-to-buffer [data-page-writer byte-array-writer values]
   (doto data-page-writer
-    (write-values values)
+    (write-all values)
     (.writeTo byte-array-writer)))
 
 (defn- write-read-single-data-page
