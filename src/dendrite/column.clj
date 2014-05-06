@@ -44,7 +44,7 @@
     (.reset byte-array-writer)
     (.reset page-writer))
   (finish [this]
-    (let [estimated-size (.estimatedSize this)]
+    (let [estimated-size (+ (.size byte-array-writer) (.estimatedSize page-writer))]
       (flush-data-page-writer this)
       (estimation/update! size-estimator (.size this) estimated-size)))
   (size [this]
