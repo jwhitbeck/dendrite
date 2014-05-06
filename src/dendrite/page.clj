@@ -93,7 +93,7 @@
   (write [this value]))
 
 (defprotocol IPageWriterImpl
-  (uncompressed-size-estimate [this])
+  (provisional-header [this])
   (header [this]))
 
 (defn write-all [data-page-writer values]
@@ -101,7 +101,7 @@
 
 (deftype DataPageWriter
     [^{:unsynchronized-mutable :int} num-values
-     size-estimator
+     body-length-estimator
      ^BufferedByteArrayWriter repetition-level-encoder
      ^BufferedByteArrayWriter definition-level-encoder
      ^BufferedByteArrayWriter data-encoder
@@ -117,14 +117,14 @@
     (set! num-values (inc num-values))
     this)
   IPageWriterImpl
-  (uncompressed-size-estimate [_]
-    (let [provisional-header
-            (DataPageHeader. num-values
-                             (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
-                             (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
-                             (.estimatedSize data-encoder)
-                             (.estimatedSize data-encoder))]
-      (+ (.size provisional-header) (body-length provisional-header))))
+  (provisional-header [_]
+    (DataPageHeader. num-values
+                     (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
+                     (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
+                     (.estimatedSize data-encoder)
+                     (.estimatedSize data-encoder))
+    ;(+ (.size provisional-header) (body-length provisional-header))
+    )
   (header [_]
     (DataPageHeader. num-values
                      (if repetition-level-encoder (.size repetition-level-encoder) 0)
@@ -142,7 +142,7 @@
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (let [estimated-size (.estimatedSize this)]
+    (let [estimated-body-length (-> this provisional-header body-length)]
       (when repetition-level-encoder
         (.finish repetition-level-encoder))
       (when definition-level-encoder
@@ -150,12 +150,14 @@
       (.finish data-encoder)
       (when data-compressor
         (.compress data-compressor data-encoder))
-      (estimation/update! size-estimator (.size this) estimated-size)))
+      (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length)))
   (size [this]
     (let [h (header this)]
       (+ (length h) (body-length h))))
   (estimatedSize [this]
-    (estimation/correct size-estimator (uncompressed-size-estimate this)))
+    (let [provisional-header (provisional-header this)]
+      (+ (.size ^DataPageHeader provisional-header)
+         (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
     (doto byte-array-writer
@@ -175,7 +177,7 @@
                    (compressor compression-type)))
 
 (deftype DictionnaryPageWriter [^{:unsynchronized-mutable :int} num-values
-                                size-estimator
+                                body-length-estimator
                                 ^BufferedByteArrayWriter data-encoder
                                 ^Compressor data-compressor]
   IPageWriter
@@ -184,10 +186,8 @@
     (set! num-values (inc num-values))
     this)
   IPageWriterImpl
-  (uncompressed-size-estimate [_]
-    (let [provisional-header
-            (DictionnaryPageHeader. num-values (.estimatedSize data-encoder) (.estimatedSize data-encoder))]
-      (+ (.size provisional-header) (body-length provisional-header))))
+  (provisional-header [_]
+    (DictionnaryPageHeader. num-values (.estimatedSize data-encoder) (.estimatedSize data-encoder)))
   (header [_]
     (DictionnaryPageHeader. num-values
                              (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
@@ -199,16 +199,18 @@
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (let [estimated-size (.estimatedSize this)]
+    (let [estimated-body-length (-> this provisional-header body-length)]
       (.finish data-encoder)
       (when data-compressor
         (.compress data-compressor data-encoder))
-      (estimation/update! size-estimator (.size this) estimated-size)))
+      (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length)))
   (size [this]
     (let [h (header this)]
       (+ (length h) (body-length h))))
   (estimatedSize [this]
-    (estimation/correct size-estimator (uncompressed-size-estimate this)))
+    (let [provisional-header (provisional-header this)]
+      (+ (.size ^DataPageHeader provisional-header)
+         (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
     (doto byte-array-writer
