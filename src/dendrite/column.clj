@@ -70,7 +70,8 @@
                                           encoding compression-type))))
 
 (defprotocol IColumnReader
-  (read-column [_ map-fn]))
+  (read-column [_ map-fn])
+  (stats [_]))
 
 (defn read-column [column-reader] (read-column column-reader identity))
 
@@ -79,17 +80,36 @@
     (assoc wrapped-value :value (f value))
     wrapped-value))
 
+(defrecord ColumnStats [num-values num-pages header-bytes repetition-level-bytes
+                        definition-level-bytes data-bytes])
+
+(defn- data-page-header->partial-column-stats [data-page-header]
+  (ColumnStats. (:num-values data-page-header)
+                1
+                (page/header-length data-page-header)
+                (:repetition-levels-size data-page-header)
+                (:definition-levels-size data-page-header)
+                (:compressed-data-size data-page-header)))
+
+(defn add-column-stats [column-stats-a column-stats-b]
+  (->> (map + (vals column-stats-a) (vals column-stats-b))
+       (apply ->ColumnStats)))
+
 (defrecord ColumnReader [^ByteArrayReader byte-array-reader
-                         ^int num-data-pages
+                         num-data-pages
                          schema-path
                          column-type]
   IColumnReader
   (read-column [_ map-fn]
     (let [{:keys [value-type encoding compression-type]} column-type]
-      (->> (page/data-page-readers byte-array-reader num-data-pages (count schema-path) value-type encoding
-                                   compression-type)
-           (mapcat page/read-page)
-           (map (partial apply-to-wrapped-value map-fn))))))
+      (->> (page/read-data-pages byte-array-reader num-data-pages (count schema-path) value-type encoding
+                                 compression-type)
+           (map (partial apply-to-wrapped-value map-fn)))))
+  (stats [_]
+    (let [{:keys [value-type encoding compression-type]} column-type]
+      (->> (page/read-data-page-headers byte-array-reader num-data-pages)
+           (map data-page-header->partial-column-stats)
+           (reduce add-column-stats)))))
 
 (defn column-reader
   [byte-array-reader column-type schema-path num-data-pages]
