@@ -4,7 +4,8 @@
             [dendrite.column :refer :all]
             [dendrite.page :as page]
             [dendrite.schema :refer [column-type]]
-            [dendrite.test-helpers :refer [get-byte-array-reader] :as helpers]))
+            [dendrite.test-helpers :refer [get-byte-array-reader] :as helpers])
+  (:import [dendrite.java ByteArrayWriter]))
 
 (def test-schema-path [:foo :bar])
 
@@ -45,7 +46,7 @@
         get-byte-array-reader
         (column-reader column-chunk-metadata test-schema-path column-type))))
 
-(deftest write-read-data-column
+(deftest data-column
   (let [ct (column-type :int32 :plain :deflate false)
         input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
         reader (write-column-and-get-reader ct input-rows)
@@ -54,6 +55,14 @@
     (testing "Write/read a colum works"
       (is (roughly= num-pages 13))
       (is (= (flatten input-rows) output-values)))
+    (testing "repeatable writes"
+      (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
+                     (write-rows input-rows))
+            baw1 (doto (ByteArrayWriter. 10) (.write writer))
+            baw2 (doto (ByteArrayWriter. 10) (.write writer))]
+        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+    (testing "repeatble reads"
+      (is (= (read-column reader) (read-column reader))))
     (testing "Page size estimation converges"
       (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
            rest                         ; the first page is always inaccurate
@@ -64,11 +73,18 @@
            avg
            (roughly= target-data-page-size)))))
 
-(deftest write-read-dictionary-column
+(deftest dictionary-column
   (let [ct (column-type :int32 :dictionary :deflate false)
         input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
         reader (write-column-and-get-reader ct input-rows)
-        num-pages (-> reader :column-chunk-metadata :num-data-pages)
         output-values (read-column reader)]
     (testing "Write/read a dictionary colum works"
-      (is (= (flatten input-rows) output-values)))))
+      (is (= (flatten input-rows) output-values)))
+    (testing "repeatable writes"
+      (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
+                     (write-rows input-rows))
+            baw1 (doto (ByteArrayWriter. 10) (.write writer))
+            baw2 (doto (ByteArrayWriter. 10) (.write writer))]
+        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+    (testing "repeatble reads"
+      (is (= (read-column reader) (read-column reader))))))
