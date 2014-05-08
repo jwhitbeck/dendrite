@@ -1,6 +1,6 @@
 (ns dendrite.java.compressors-test
   (:require [clojure.test :refer :all]
-            [dendrite.java.test-helpers :refer [lorem-ipsum]])
+            [dendrite.test-helpers :refer [lorem-ipsum]])
   (:import [dendrite.java ByteArrayWriter ByteArrayReader
             Compressor Decompressor
             DeflateCompressor DeflateDecompressor

@@ -1,6 +1,6 @@
 (ns dendrite.java.byte-array-test
   (:require [clojure.test :refer :all]
-            [dendrite.java.test-helpers :as helpers])
+            [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter]))
 
 (deftest writer-growth

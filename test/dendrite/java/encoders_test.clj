@@ -1,6 +1,6 @@
 (ns dendrite.java.encoders-test
   (:require [clojure.test :refer :all]
-            [dendrite.java.test-helpers :as helpers])
+            [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
             Int32PlainEncoder Int32PlainDecoder
             Int32FixedBitWidthPackedRunLengthEncoder Int32FixedBitWidthPackedRunLengthDecoder

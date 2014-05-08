@@ -1,4 +1,4 @@
-(ns dendrite.java.test-helpers
+(ns dendrite.test-helpers
   (:import [java.util Random]))
 
 (def ^:private rng (Random.))
