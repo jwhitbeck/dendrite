@@ -4,6 +4,8 @@
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [dendrite.page DataPageWriter]))
 
+(set! *warn-on-reflection* true)
+
 (defprotocol IColumnWriter
   (write-row [this row-values])
   (num-pages [_]))
