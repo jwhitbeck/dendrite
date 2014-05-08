@@ -30,8 +30,8 @@
 (defn rand-required-top-level-wrapped-value []
   (wrap-value 0 1 (rand-int 1024)))
 
-(defn- write-page-to-buffer [data-page-writer byte-array-writer values]
-  (doto data-page-writer
+(defn- write-page-to-buffer [page-writer byte-array-writer values]
+  (doto page-writer
     (write-all values)
     (.writeTo byte-array-writer)))
 
@@ -41,7 +41,7 @@
         page-writer (data-page-writer max-definition-level required? value-type encoding compression-type)
         page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression-type)]
     (write-page-to-buffer page-writer baw input-values)
-    (-> baw .buffer ByteArrayReader. (.sliceAhead 1) page-reader-ctor read-page)))
+    (-> baw .buffer ByteArrayReader. page-reader-ctor read-page)))
 
 (defn- write-read-single-dictionnary-page
   [value-type encoding compression-type input-values]
@@ -49,7 +49,7 @@
         page-writer (dictionnary-page-writer value-type encoding compression-type)
         page-reader-ctor #(dictionnary-page-reader % value-type encoding compression-type)]
     (write-page-to-buffer page-writer baw input-values)
-    (-> baw .buffer ByteArrayReader. (.sliceAhead 1) page-reader-ctor read-page)))
+    (-> baw .buffer ByteArrayReader. page-reader-ctor read-page)))
 
 (deftest write-read-page
   (testing "Write/read a data page works"
@@ -97,4 +97,17 @@
     (testing "compressed"
       (let [input-values (repeatedly 1000 #(rand-int 10000))
             output-values (write-read-single-dictionnary-page :int32 :plain :lz4 input-values)]
-        (is (= output-values input-values))))))
+        (is (= output-values input-values)))))
+  (testing "Read incompatible page types throws an exception"
+    (let [data-pw (data-page-writer 1 false :int32 :plain :none)
+          dict-pw (dictionnary-page-writer :int32 :plain :none)
+          data-baw (ByteArrayWriter.)
+          dict-baw (ByteArrayWriter.)]
+      (write-page-to-buffer data-pw data-baw (repeatedly 100 #(rand-wrapped-value 1)))
+      (write-page-to-buffer dict-pw dict-baw (range 100))
+      (let [data-bar (ByteArrayReader. (.buffer data-baw))
+            dict-bar (ByteArrayReader. (.buffer dict-baw))]
+        (is (data-page-reader data-bar 1 :int32 :plain :none))
+        (is (thrown? IllegalArgumentException (data-page-reader dict-bar 1 :int32 :plain :none)))
+        (is (dictionnary-page-reader dict-bar :int32 :plain :none))
+        (is (thrown? IllegalArgumentException (dictionnary-page-reader data-bar :int32 :plain :none)))))))

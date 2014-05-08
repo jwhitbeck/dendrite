@@ -72,31 +72,26 @@
 
 (defn read-column [column-reader] (read-column column-reader identity))
 
-(defn- data-page-readers [^ByteArrayReader byte-array-reader num-pages page-reader-ctor]
-  (lazy-seq (when (pos? num-pages)
-              (let [next-page-type (page/next-page-type byte-array-reader)
-                    next-page-reader (page-reader-ctor byte-array-reader)]
-                (cons next-page-reader
-                      (data-page-readers (page/next-page-byte-array-reader next-page-reader)
-                                         (dec num-pages) page-reader-ctor))))))
-
 (defn- apply-to-wrapped-value [f wrapped-value]
   (if-let [value (:value wrapped-value)]
     (assoc wrapped-value :value (f value))
     wrapped-value))
 
 (defrecord ColumnReader [^ByteArrayReader byte-array-reader
-                         ^int num-pages
-                         page-reader-ctor]
+                         ^int num-data-pages
+                         schema-path
+                         column-type]
   IColumnReader
   (read-column [_ map-fn]
-    (->> (data-page-readers (.slice byte-array-reader) num-pages page-reader-ctor)
-         (mapcat page/read-page)
-         (map (partial apply-to-wrapped-value map-fn)))))
+    (let [{:keys [value-type encoding compression-type]} column-type]
+      (->> (page/data-page-readers byte-array-reader num-data-pages (count schema-path) value-type encoding
+                                   compression-type)
+           (mapcat page/read-page)
+           (map (partial apply-to-wrapped-value map-fn))))))
 
 (defn column-reader
-  [byte-array-reader column-type schema-path num-pages]
-  (let [{:keys [value-type encoding compression-type]} column-type]
-    (ColumnReader. byte-array-reader
-                   num-pages
-                   #(page/data-page-reader % (count schema-path) value-type encoding compression-type))))
+  [byte-array-reader column-type schema-path num-data-pages]
+  (ColumnReader. byte-array-reader
+                 num-data-pages
+                 schema-path
+                 column-type))
