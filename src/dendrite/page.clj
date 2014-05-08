@@ -22,6 +22,7 @@
   (-> bar .readUInt32 decode-page-type))
 
 (defprotocol IPageHeader
+  (page-type [this])
   (length [this])
   (body-length [this])
   (byte-offset-body [this]))
@@ -38,12 +39,15 @@
 (defn- encode-uints32 [^ByteArrayWriter byte-array-writer coll]
   (reduce #(doto ^ByteArrayWriter %1 (.writeUInt32 %2)) byte-array-writer coll))
 
-(defrecord DataPageHeader [^int num-values
+(defrecord DataPageHeader [^int encoded-page-type
+                           ^int num-values
                            ^int repetition-levels-size
                            ^int definition-levels-size
                            ^int compressed-data-size
                            ^int uncompressed-data-size]
   IPageHeader
+  (page-type [this]
+    (decode-page-type encoded-page-type))
   (length [this]
     (uints32-encoded-size (vals this)))
   (body-length [_]
@@ -63,19 +67,22 @@
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
-(defn- read-data-page-header [^ByteArrayReader bar]
+(defn- read-data-page-header [^ByteArrayReader bar data-page-type]
   (let [num-values (.readUInt32 bar)
         repetition-levels-size (.readUInt32 bar)
         definition-levels-size (.readUInt32 bar)
         compressed-data-size (.readUInt32 bar)
         uncompressed-data-size (.readUInt32 bar)]
-    (DataPageHeader. num-values repetition-levels-size definition-levels-size compressed-data-size
-                     uncompressed-data-size)))
+    (DataPageHeader. (encode-page-type data-page-type) num-values repetition-levels-size
+                     definition-levels-size compressed-data-size uncompressed-data-size)))
 
-(defrecord DictionnaryPageHeader [^int num-values
+(defrecord DictionnaryPageHeader [^int encoded-page-type
+                                  ^int num-values
                                   ^int compressed-data-size
                                   ^int uncompressed-data-size]
   IPageHeader
+  (page-type [this]
+    (decode-page-type encoded-page-type))
   (length [this]
     (uints32-encoded-size (vals this)))
   (body-length [_]
@@ -86,11 +93,12 @@
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
-(defn- read-dictionnary-page-header [^ByteArrayReader bar]
+(defn- read-dictionnary-page-header [^ByteArrayReader bar dictionnary-page-type]
   (let [num-values (.readUInt32 bar)
         compressed-data-size (.readUInt32 bar)
         uncompressed-data-size (.readUInt32 bar)]
-    (DictionnaryPageHeader. num-values compressed-data-size uncompressed-data-size)))
+    (DictionnaryPageHeader. (encode-page-type dictionnary-page-type) num-values compressed-data-size
+                            uncompressed-data-size)))
 
 (defprotocol IPageWriter
   (write [this value]))
@@ -121,13 +129,15 @@
     this)
   IPageWriterImpl
   (provisional-header [_]
-    (DataPageHeader. num-values
-                     (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
+    (DataPageHeader. (encode-page-type :data)
+                     num-values
+                      (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
                      (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
                      (.estimatedSize data-encoder)
                      (.estimatedSize data-encoder)))
   (header [_]
-    (DataPageHeader. num-values
+    (DataPageHeader. (encode-page-type :data)
+                     num-values
                      (if repetition-level-encoder (.size repetition-level-encoder) 0)
                      (if definition-level-encoder (.size definition-level-encoder) 0)
                      (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
@@ -162,7 +172,6 @@
   (writeTo [this byte-array-writer]
     (.finish this)
     (doto byte-array-writer
-      (.writeUInt32 (encode-page-type :data))
       (.write (header this)))
     (when repetition-level-encoder
       (.write byte-array-writer repetition-level-encoder))
@@ -188,11 +197,13 @@
     this)
   IPageWriterImpl
   (provisional-header [_]
-    (DictionnaryPageHeader. num-values (.estimatedSize data-encoder) (.estimatedSize data-encoder)))
+    (DictionnaryPageHeader. (encode-page-type :dictionnary) num-values (.estimatedSize data-encoder)
+                            (.estimatedSize data-encoder)))
   (header [_]
-    (DictionnaryPageHeader. num-values
-                             (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
-                             (.size data-encoder)))
+    (DictionnaryPageHeader. (encode-page-type :dictionnary)
+                            num-values
+                            (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
+                            (.size data-encoder)))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
@@ -215,7 +226,6 @@
   (writeTo [this byte-array-writer]
     (.finish this)
     (doto byte-array-writer
-      (.writeUInt32 (encode-page-type :dictionnary))
       (.write (header this))
       (.write (if data-compressor data-compressor data-encoder)))))
 
@@ -288,7 +298,7 @@
     (when-not (= page-type :data)
       (throw (IllegalArgumentException. (format "Page type %s is not a supported data page type" page-type))))
     (DataPageReader. bar max-definition-level (decoder-ctor value-type encoding)
-                     (decompressor-ctor compression-type) (read-data-page-header bar))))
+                     (decompressor-ctor compression-type) (read-data-page-header bar page-type))))
 
 (defn data-page-readers
   [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
@@ -326,4 +336,5 @@
       (throw (IllegalArgumentException.
               (format "Page type %s is not a supported dictionnary page type" page-type))))
     (DictionnaryPageReader. bar (decoder-ctor value-type encoding)
-                            (decompressor-ctor compression-type) (read-dictionnary-page-header bar))))
+                            (decompressor-ctor compression-type)
+                            (read-dictionnary-page-header bar page-type))))
