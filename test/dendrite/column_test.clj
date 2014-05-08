@@ -55,6 +55,9 @@
     (testing "Write/read a colum works"
       (is (roughly= num-pages 13))
       (is (= (flatten input-rows) output-values)))
+    (testing "value mapping works"
+      (is (= (->> input-rows flatten (map #(some-> % :value (* 2))))
+             (map :value (read-column reader (partial * 2))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
                      (write-rows input-rows))
@@ -80,6 +83,9 @@
         output-values (read-column reader)]
     (testing "Write/read a dictionary colum works"
       (is (= (flatten input-rows) output-values)))
+    (testing "value mapping works"
+      (is (= (->> input-rows flatten (map #(some-> % :value (* 2))))
+             (map :value (read-column reader (partial * 2))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
                      (write-rows input-rows))

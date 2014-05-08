@@ -135,10 +135,8 @@
     (data-column-writer target-data-page-size schema-path column-type)))
 
 (defprotocol IColumnReader
-  (read-column [_ map-fn])
+  (read-column [_] [_ map-fn])
   (stats [_]))
-
-(defn read-column [column-reader] (read-column column-reader identity))
 
 (defn- apply-to-wrapped-value [f wrapped-value]
   (if-let [value (:value wrapped-value)]
@@ -167,6 +165,8 @@
                              schema-path
                              column-type]
   IColumnReader
+  (read-column [this]
+    (read-column this identity))
   (read-column [_ map-fn]
     (let [{:keys [value-type encoding compression-type]} column-type]
       (->> (page/read-data-pages (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
@@ -196,6 +196,8 @@
                                     schema-path
                                     column-type]
   IColumnReader
+  (read-column [this]
+    (read-column this identity))
   (read-column [this map-fn]
     (let [dictionary-array (into-array (->> (read-dictionary this) (map map-fn)))]
       (->> (read-indices this)
