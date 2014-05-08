@@ -1,6 +1,7 @@
 (ns dendrite.column
-  (:require [dendrite.page :as page]
-            [dendrite.estimation :as estimation])
+  (:require [dendrite.estimation :as estimation]
+            [dendrite.metadata :as metadata]
+            [dendrite.page :as page])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [dendrite.page DataPageWriter]))
 
@@ -8,7 +9,7 @@
 
 (defprotocol IColumnWriter
   (write-row [this row-values])
-  (num-pages [_]))
+  (metadata [_]))
 
 (defn write-rows [column-writer rows]
   (reduce write-row column-writer rows))
@@ -17,7 +18,7 @@
   (flush-data-page-writer [_]))
 
 (deftype ColumnWriter [^{:unsynchronized-mutable :int} next-num-values-for-page-size-check
-                       ^{:unsynchronized-mutable :int} num-values
+                       ^{:unsynchronized-mutable :int} num-values-in-page
                        ^{:unsynchronized-mutable :int} num-pages
                        ^int target-data-page-size
                        size-estimator
@@ -25,26 +26,28 @@
                        ^DataPageWriter page-writer]
   IColumnWriter
   (write-row [this row-values]
-    (set! num-values (+ num-values (count row-values)))
-    (when (>= num-values next-num-values-for-page-size-check)
+    (when (>= num-values-in-page next-num-values-for-page-size-check)
       (let [estimated-page-size (.estimatedSize page-writer)]
         (if (>= estimated-page-size target-data-page-size)
           (flush-data-page-writer this)
           (set! next-num-values-for-page-size-check
-                (estimation/next-threshold-check num-values estimated-page-size target-data-page-size)))))
+                (estimation/next-threshold-check num-values-in-page estimated-page-size
+                                                 target-data-page-size)))))
     (page/write-all page-writer row-values)
+    (set! num-values-in-page (+ num-values-in-page (count row-values)))
     this)
-  (num-pages [_]
-    num-pages)
+  (metadata [this]
+    (metadata/column-chunk-metadata (.size this) num-pages 0 0))
   IDataColumnWriter
   (flush-data-page-writer [_]
     (.write byte-array-writer page-writer)
     (set! num-pages (inc num-pages))
+    (set! num-values-in-page 0)
     (set! next-num-values-for-page-size-check (/ (.size page-writer) 2))
     (.reset page-writer))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-values 0)
+    (set! num-values-in-page 0)
     (set! num-pages 0)
     (.reset byte-array-writer)
     (.reset page-writer))
@@ -86,7 +89,7 @@
 (defrecord ColumnStats [num-values num-pages header-bytes repetition-level-bytes
                         definition-level-bytes data-bytes])
 
-(defn- data-page-header->partial-column-stats [data-page-header]
+(defn data-page-header->partial-column-stats [data-page-header]
   (ColumnStats. (:num-values data-page-header)
                 1
                 (page/header-length data-page-header)
@@ -99,14 +102,14 @@
        (apply ->ColumnStats)))
 
 (defrecord ColumnReader [^ByteArrayReader byte-array-reader
-                         num-data-pages
+                         column-chunk-metadata
                          schema-path
                          column-type]
   IColumnReader
   (read-column [_ map-fn]
     (let [{:keys [value-type encoding compression-type]} column-type]
-      (->> (page/read-data-pages byte-array-reader num-data-pages (count schema-path) value-type encoding
-                                 compression-type)
+      (->> (page/read-data-pages byte-array-reader (:num-data-pages column-chunk-metadata) (count schema-path)
+                                 value-type encoding compression-type)
            (map (partial apply-to-wrapped-value map-fn)))))
   (stats [_]
     (->> (page/read-data-page-headers byte-array-reader (:num-data-pages column-chunk-metadata))
@@ -114,8 +117,8 @@
          (reduce add-column-stats))))
 
 (defn column-reader
-  [byte-array-reader column-type schema-path num-data-pages]
+  [byte-array-reader column-chunk-metadata schema-path column-type]
   (ColumnReader. byte-array-reader
-                 num-data-pages
+                 column-chunk-metadata
                  schema-path
                  column-type))
