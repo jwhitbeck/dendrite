@@ -106,10 +106,9 @@
                                  compression-type)
            (map (partial apply-to-wrapped-value map-fn)))))
   (stats [_]
-    (let [{:keys [value-type encoding compression-type]} column-type]
-      (->> (page/read-data-page-headers byte-array-reader num-data-pages)
-           (map data-page-header->partial-column-stats)
-           (reduce add-column-stats)))))
+    (->> (page/read-data-page-headers byte-array-reader (:num-data-pages column-chunk-metadata))
+         (map data-page-header->partial-column-stats)
+         (reduce add-column-stats))))
 
 (defn column-reader
   [byte-array-reader column-type schema-path num-data-pages]
