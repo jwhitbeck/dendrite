@@ -50,7 +50,7 @@
       (flush-data-page-writer this)
       (estimation/update! size-estimator (.size this) estimated-size)))
   (size [this]
-    (+ (.size byte-array-writer) (.size page-writer)))
+    (.size byte-array-writer))
   (estimatedSize [this]
     (estimation/correct size-estimator (+ (.size byte-array-writer) (.estimatedSize page-writer))))
   (writeTo [this baw]
