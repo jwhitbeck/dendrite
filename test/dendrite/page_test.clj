@@ -10,6 +10,11 @@
         v (if (= definition-level schema-depth) (rand-int 1024) nil)]
     (wrap-value repetition-level definition-level v)))
 
+(defn- rand-wrapped-nil-value [schema-depth]
+  (let [definition-level (rand-int schema-depth)
+        repetition-level (rand-int (inc schema-depth))]
+    (wrap-value repetition-level definition-level nil)))
+
 (defn- rand-required-wrapped-value [schema-depth]
   (let [definition-level schema-depth
         repetition-level (rand-int (inc schema-depth))
@@ -51,6 +56,12 @@
     (testing "uncompressed"
       (let [max-definition-level 3
             input-values (repeatedly 1000 #(rand-wrapped-value max-definition-level))
+            output-values (write-read-single-data-page max-definition-level false
+                                                       :int32 :plain :none input-values)]
+        (is (= output-values input-values))))
+    (testing "all nils"
+      (let [max-definition-level 3
+            input-values (repeatedly 1000 #(rand-wrapped-nil-value max-definition-level))
             output-values (write-read-single-data-page max-definition-level false
                                                        :int32 :plain :none input-values)]
         (is (= output-values input-values))))
