@@ -21,9 +21,24 @@
 (defn- read-next-page-type [^ByteArrayReader bar]
   (-> bar .readUInt32 decode-page-type))
 
+(defn- read-next-data-page-type [^ByteArrayReader bar]
+  (let [data-page-type (read-next-page-type bar)]
+    (when-not (= data-page-type :data)
+      (throw
+       (IllegalArgumentException. (format "Page type %s is not a supported data page type" data-page-type))))
+    data-page-type))
+
+(defn- read-next-dictionnary-page-type [^ByteArrayReader bar]
+  (let [dictionnary-page-type (read-next-page-type bar)]
+    (when-not (= dictionnary-page-type :dictionnary)
+      (throw
+       (IllegalArgumentException.
+        (format "Page type %s is not a supported dictionnary page type" dictionnary-page-type))))
+    dictionnary-page-type))
+
 (defprotocol IPageHeader
   (page-type [this])
-  (length [this])
+  (header-length [this])
   (body-length [this])
   (byte-offset-body [this]))
 
@@ -48,7 +63,7 @@
   IPageHeader
   (page-type [this]
     (decode-page-type encoded-page-type))
-  (length [this]
+  (header-length [this]
     (uints32-encoded-size (vals this)))
   (body-length [_]
     (+ repetition-levels-size definition-levels-size compressed-data-size))
@@ -83,7 +98,7 @@
   IPageHeader
   (page-type [this]
     (decode-page-type encoded-page-type))
-  (length [this]
+  (header-length [this]
     (uints32-encoded-size (vals this)))
   (body-length [_]
     compressed-data-size)
@@ -164,7 +179,7 @@
       (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length)))
   (size [this]
     (let [h (header this)]
-      (+ (length h) (body-length h))))
+      (+ (header-length h) (body-length h))))
   (estimatedSize [this]
     (let [provisional-header (provisional-header this)]
       (+ (.size ^DataPageHeader provisional-header)
@@ -218,7 +233,7 @@
       (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length)))
   (size [this]
     (let [h (header this)]
-      (+ (length h) (body-length h))))
+      (+ (header-length h) (body-length h))))
   (estimatedSize [this]
     (let [provisional-header (provisional-header this)]
       (+ (.size ^DataPageHeader provisional-header)
@@ -294,9 +309,7 @@
 (defn data-page-reader
   [^ByteArrayReader byte-array-reader max-definition-level value-type encoding compression-type]
   (let [bar (.slice byte-array-reader)
-        page-type (read-next-page-type bar)]
-    (when-not (= page-type :data)
-      (throw (IllegalArgumentException. (format "Page type %s is not a supported data page type" page-type))))
+        page-type (read-next-data-page-type bar)]
     (DataPageReader. bar max-definition-level (decoder-ctor value-type encoding)
                      (decompressor-ctor compression-type) (read-data-page-header bar page-type))))
 
@@ -310,6 +323,23 @@
          (cons next-data-page-reader
                (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-definition-level
                                   value-type encoding compression-type)))))))
+
+(defn read-data-pages
+  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
+  (->> (data-page-readers byte-array-reader num-data-pages max-definition-level value-type
+                          encoding compression-type)
+       (mapcat read-page)))
+
+(defn read-data-page-headers
+  [^ByteArrayReader byte-array-reader num-data-pages]
+  (let [num-data-pages (int num-data-pages)
+        bar (.slice byte-array-reader)]
+    (lazy-seq
+     (when (pos? num-data-pages)
+       (let [page-type (read-next-data-page-type bar)
+             next-header (read-data-page-header bar page-type)
+             next-byte-array-reader (.sliceAhead bar (body-length next-header))]
+         (cons next-header (read-data-page-headers next-byte-array-reader (dec num-data-pages))))))))
 
 (defrecord DictionnaryPageReader [^ByteArrayReader byte-array-reader
                                   data-decoder-ctor
@@ -332,10 +362,16 @@
 (defn dictionnary-page-reader
   [^ByteArrayReader byte-array-reader value-type encoding compression-type]
   (let [bar (.slice byte-array-reader)
-        page-type (read-next-page-type bar)]
-    (when-not (= page-type :dictionnary)
-      (throw (IllegalArgumentException.
-              (format "Page type %s is not a supported dictionnary page type" page-type))))
+        page-type (read-next-dictionnary-page-type bar)]
     (DictionnaryPageReader. bar (decoder-ctor value-type encoding)
                             (decompressor-ctor compression-type)
                             (read-dictionnary-page-header bar page-type))))
+
+(defn read-dictionnary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
+  (-> (dictionnary-page-reader byte-array-reader value-type encoding compression-type)
+      read-page))
+
+(defn read-dictionnary-header [^ByteArrayReader byte-array-reader]
+  (let [bar (.slice byte-array-reader)
+        page-type (read-next-dictionnary-page-type bar)]
+    (read-dictionnary-page-header bar page-type)))
