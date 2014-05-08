@@ -122,9 +122,7 @@
                      (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
                      (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
                      (.estimatedSize data-encoder)
-                     (.estimatedSize data-encoder))
-    ;(+ (.size provisional-header) (body-length provisional-header))
-    )
+                     (.estimatedSize data-encoder)))
   (header [_]
     (DataPageHeader. num-values
                      (if repetition-level-encoder (.size repetition-level-encoder) 0)
