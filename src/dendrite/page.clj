@@ -302,13 +302,14 @@
 
 (defn data-page-readers
   [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
-  (lazy-seq
-   (when (pos? num-data-pages)
-     (let [next-data-page-reader (data-page-reader byte-array-reader max-definition-level value-type
-                                                   encoding compression-type)]
-       (cons next-data-page-reader
-             (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-definition-level
-                                value-type encoding compression-type))))))
+  (let [num-data-pages (int num-data-pages)]
+    (lazy-seq
+     (when (pos? num-data-pages)
+       (let [next-data-page-reader (data-page-reader byte-array-reader max-definition-level value-type
+                                                     encoding compression-type)]
+         (cons next-data-page-reader
+               (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-definition-level
+                                  value-type encoding compression-type)))))))
 
 (defrecord DictionnaryPageReader [^ByteArrayReader byte-array-reader
                                   data-decoder-ctor
