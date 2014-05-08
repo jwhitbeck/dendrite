@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private page-types [:data :dictionnary])
+(def ^:private page-types [:data :dictionary])
 
 (def ^:private page-type-encodings
   (reduce-kv (fn [m data-page-idx data-page-kw] (assoc m data-page-kw data-page-idx)) {} page-types))
@@ -28,13 +28,13 @@
        (IllegalArgumentException. (format "Page type %s is not a supported data page type" data-page-type))))
     data-page-type))
 
-(defn- read-next-dictionnary-page-type [^ByteArrayReader bar]
-  (let [dictionnary-page-type (read-next-page-type bar)]
-    (when-not (= dictionnary-page-type :dictionnary)
+(defn- read-next-dictionary-page-type [^ByteArrayReader bar]
+  (let [dictionary-page-type (read-next-page-type bar)]
+    (when-not (= dictionary-page-type :dictionary)
       (throw
        (IllegalArgumentException.
-        (format "Page type %s is not a supported dictionnary page type" dictionnary-page-type))))
-    dictionnary-page-type))
+        (format "Page type %s is not a supported dictionary page type" dictionary-page-type))))
+    dictionary-page-type))
 
 (defprotocol IPageHeader
   (page-type [this])
@@ -91,7 +91,7 @@
     (DataPageHeader. (encode-page-type data-page-type) num-values repetition-levels-size
                      definition-levels-size compressed-data-size uncompressed-data-size)))
 
-(defrecord DictionnaryPageHeader [^int encoded-page-type
+(defrecord DictionaryPageHeader [^int encoded-page-type
                                   ^int num-values
                                   ^int compressed-data-size
                                   ^int uncompressed-data-size]
@@ -108,15 +108,16 @@
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
-(defn- read-dictionnary-page-header [^ByteArrayReader bar dictionnary-page-type]
+(defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
   (let [num-values (.readUInt32 bar)
         compressed-data-size (.readUInt32 bar)
         uncompressed-data-size (.readUInt32 bar)]
-    (DictionnaryPageHeader. (encode-page-type dictionnary-page-type) num-values compressed-data-size
+    (DictionaryPageHeader. (encode-page-type dictionary-page-type) num-values compressed-data-size
                             uncompressed-data-size)))
 
 (defprotocol IPageWriter
-  (write [this value]))
+  (write [this value])
+  (num-values [this]))
 
 (defprotocol IPageWriterImpl
   (provisional-header [this])
@@ -143,6 +144,7 @@
       (encode definition-level-encoder (:definition-level wrapped-value)))
     (set! num-values (inc num-values))
     this)
+  (num-values [_] num-values)
   IPageWriterImpl
   (provisional-header [_]
     (DataPageHeader. (encode-page-type :data)
@@ -206,7 +208,7 @@
                    (compressor compression-type)
                    false))
 
-(deftype DictionnaryPageWriter [^{:unsynchronized-mutable :int} num-values
+(deftype DictionaryPageWriter [^{:unsynchronized-mutable :int} num-values
                                 body-length-estimator
                                 ^BufferedByteArrayWriter data-encoder
                                 ^Compressor data-compressor
@@ -216,12 +218,13 @@
     (encode data-encoder value)
     (set! num-values (inc num-values))
     this)
+  (num-values [_] num-values)
   IPageWriterImpl
   (provisional-header [_]
-    (DictionnaryPageHeader. (encode-page-type :dictionnary) num-values (.estimatedSize data-encoder)
+    (DictionaryPageHeader. (encode-page-type :dictionary) num-values (.estimatedSize data-encoder)
                             (.estimatedSize data-encoder)))
   (header [_]
-    (DictionnaryPageHeader. (encode-page-type :dictionnary)
+    (DictionaryPageHeader. (encode-page-type :dictionary)
                             num-values
                             (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
                             (.size data-encoder)))
@@ -253,8 +256,8 @@
       (.write (header this))
       (.write (if data-compressor data-compressor data-encoder)))))
 
-(defn dictionnary-page-writer [value-type encoding compression-type]
-  (DictionnaryPageWriter. 0 (estimation/ratio-estimator)
+(defn dictionary-page-writer [value-type encoding compression-type]
+  (DictionaryPageWriter. 0 (estimation/ratio-estimator)
                           (encoder value-type encoding)
                           (compressor compression-type)
                           false))
@@ -351,7 +354,7 @@
              next-byte-array-reader (.sliceAhead bar (body-length next-header))]
          (cons next-header (read-data-page-headers next-byte-array-reader (dec num-data-pages))))))))
 
-(defrecord DictionnaryPageReader [^ByteArrayReader byte-array-reader
+(defrecord DictionaryPageReader [^ByteArrayReader byte-array-reader
                                   data-decoder-ctor
                                   decompressor-ctor
                                   header]
@@ -369,19 +372,19 @@
            decode-values
            (take (:num-values header))))))
 
-(defn dictionnary-page-reader
+(defn dictionary-page-reader
   [^ByteArrayReader byte-array-reader value-type encoding compression-type]
   (let [bar (.slice byte-array-reader)
-        page-type (read-next-dictionnary-page-type bar)]
-    (DictionnaryPageReader. bar (decoder-ctor value-type encoding)
+        page-type (read-next-dictionary-page-type bar)]
+    (DictionaryPageReader. bar (decoder-ctor value-type encoding)
                             (decompressor-ctor compression-type)
-                            (read-dictionnary-page-header bar page-type))))
+                            (read-dictionary-page-header bar page-type))))
 
-(defn read-dictionnary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
-  (-> (dictionnary-page-reader byte-array-reader value-type encoding compression-type)
+(defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
+  (-> (dictionary-page-reader byte-array-reader value-type encoding compression-type)
       read-page))
 
-(defn read-dictionnary-header [^ByteArrayReader byte-array-reader]
+(defn read-dictionary-header [^ByteArrayReader byte-array-reader]
   (let [bar (.slice byte-array-reader)
-        page-type (read-next-dictionnary-page-type bar)]
-    (read-dictionnary-page-header bar page-type)))
+        page-type (read-next-dictionary-page-type bar)]
+    (read-dictionary-page-header bar page-type)))

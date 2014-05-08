@@ -36,23 +36,26 @@
   ([a b] (roughly= a b 0.1))
   ([a b r] (< (abs (- a b)) (* a r))))
 
-(deftest write-read-column
-  (let [ct (column-type :int32 :plain :deflate false)
-        input-rows (->> (rand-rows #(helpers/rand-int-bits 10)) (take 5000))
-        writer (doto (column-writer target-data-page-size test-schema-path ct)
+(defn write-column-and-get-reader [column-type input-rows]
+  (let [writer (doto (column-writer target-data-page-size test-schema-path column-type)
                  (write-rows input-rows)
                  .finish)
-        column-chunk-metadata (metadata writer)
-        input-values (flatten input-rows)
-        output-values (-> writer
-                          get-byte-array-reader
-                          (column-reader column-chunk-metadata test-schema-path ct)
-                          read-column)]
+        column-chunk-metadata (metadata writer)]
+    (-> writer
+        get-byte-array-reader
+        (column-reader column-chunk-metadata test-schema-path column-type))))
+
+(deftest write-read-data-column
+  (let [ct (column-type :int32 :plain :deflate false)
+        input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
+        reader (write-column-and-get-reader ct input-rows)
+        num-pages (-> reader :column-chunk-metadata :num-data-pages)
+        output-values (read-column reader)]
     (testing "Write/read a colum works"
-      (is (roughly= (:num-data-pages column-chunk-metadata) 13))
-      (is (= input-values output-values)))
+      (is (roughly= num-pages 13))
+      (is (= (flatten input-rows) output-values)))
     (testing "Page size estimation converges"
-      (->> (page/read-data-page-headers (get-byte-array-reader writer) (:num-data-pages column-chunk-metadata))
+      (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
            rest                         ; the first page is always inaccurate
            butlast                      ; the last page can have any size
            (map data-page-header->partial-column-stats)
@@ -60,3 +63,12 @@
                     (:data-bytes %)))
            avg
            (roughly= target-data-page-size)))))
+
+(deftest write-read-dictionary-column
+  (let [ct (column-type :int32 :dictionary :deflate false)
+        input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
+        reader (write-column-and-get-reader ct input-rows)
+        num-pages (-> reader :column-chunk-metadata :num-data-pages)
+        output-values (read-column reader)]
+    (testing "Write/read a dictionary colum works"
+      (is (= (flatten input-rows) output-values)))))

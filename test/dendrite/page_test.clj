@@ -36,10 +36,10 @@
         page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression-type)]
     (-> page-writer (write-all input-values) get-byte-array-reader page-reader-ctor read-page)))
 
-(defn- write-read-single-dictionnary-page
+(defn- write-read-single-dictionary-page
   [value-type encoding compression-type input-values]
-  (let [page-writer (dictionnary-page-writer value-type encoding compression-type)
-        page-reader-ctor #(dictionnary-page-reader % value-type encoding compression-type)]
+  (let [page-writer (dictionary-page-writer value-type encoding compression-type)
+        page-reader-ctor #(dictionary-page-reader % value-type encoding compression-type)]
     (-> page-writer (write-all input-values) get-byte-array-reader page-reader-ctor read-page)))
 
 (deftest write-read-page
@@ -80,23 +80,23 @@
             output-values (write-read-single-data-page max-definition-level true
                                                        :int32 :plain :none input-values)]
         (is (= output-values input-values)))))
-  (testing "Write/read a dictionnary page works"
+  (testing "Write/read a dictionary page works"
     (testing "uncompressed"
       (let [input-values (repeatedly 1000 #(rand-int 10000))
-            output-values (write-read-single-dictionnary-page :int32 :plain :none input-values)]
+            output-values (write-read-single-dictionary-page :int32 :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "compressed"
       (let [input-values (repeatedly 1000 #(rand-int 10000))
-            output-values (write-read-single-dictionnary-page :int32 :plain :lz4 input-values)]
+            output-values (write-read-single-dictionary-page :int32 :plain :lz4 input-values)]
         (is (= output-values input-values)))))
   (testing "Read incompatible page types throws an exception"
     (let [data-bar (-> (data-page-writer 1 false :int32 :plain :none)
                        (write-all (repeatedly 100 #(rand-wrapped-value 1)))
                        get-byte-array-reader)
-          dict-bar (-> (dictionnary-page-writer :int32 :plain :none)
+          dict-bar (-> (dictionary-page-writer :int32 :plain :none)
                        (write-all (range 100))
                        get-byte-array-reader)]
       (is (data-page-reader data-bar 1 :int32 :plain :none))
       (is (thrown? IllegalArgumentException (data-page-reader dict-bar 1 :int32 :plain :none)))
-      (is (dictionnary-page-reader dict-bar :int32 :plain :none))
-      (is (thrown? IllegalArgumentException (dictionnary-page-reader data-bar :int32 :plain :none))))))
+      (is (dictionary-page-reader dict-bar :int32 :plain :none))
+      (is (thrown? IllegalArgumentException (dictionary-page-reader data-bar :int32 :plain :none))))))
