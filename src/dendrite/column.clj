@@ -10,6 +10,9 @@
   (write-row [this row-values])
   (num-pages [_]))
 
+(defn write-rows [column-writer rows]
+  (reduce write-row column-writer rows))
+
 (defprotocol IDataColumnWriter
   (flush-data-page-writer [_]))
 
