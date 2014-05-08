@@ -1,5 +1,6 @@
 (ns dendrite.test-helpers
-  (:import [java.util Random]))
+  (:import [dendrite.java ByteArrayReader ByteArrayWriter ByteArrayWritable]
+           [java.util Random]))
 
 (def ^:private rng (Random.))
 
@@ -42,3 +43,8 @@
   ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
+
+(defn get-byte-array-reader [^ByteArrayWritable byte-array-writable]
+  (let [baw (ByteArrayWriter.)]
+    (.write baw byte-array-writable)
+    (-> baw .buffer ByteArrayReader.)))

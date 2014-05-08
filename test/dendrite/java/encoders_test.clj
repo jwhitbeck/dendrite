@@ -16,12 +16,10 @@
 
 (defn write-read [encoder-constructor decoder-constructor input-seq]
   (let [n 1000
-        encoder (encoder-constructor)
-        baw (ByteArrayWriter.)]
+        encoder (encoder-constructor)]
     (doseq [x (take n input-seq)]
       (.encode encoder x))
-    (.writeTo encoder baw)
-    (let [decoder (->> (.buffer baw) ByteArrayReader. decoder-constructor)]
+    (let [decoder (-> encoder helpers/get-byte-array-reader decoder-constructor)]
       (->> (repeatedly #(.decode decoder))
            (take n)))))
 

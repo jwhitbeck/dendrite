@@ -1,8 +1,8 @@
 (ns dendrite.page-test
   (:require [clojure.test :refer :all]
             [dendrite.core :refer [wrap-value]]
-            [dendrite.page :refer :all])
-  (:import [dendrite.java ByteArrayWriter ByteArrayReader]))
+            [dendrite.page :refer :all]
+            [dendrite.test-helpers :refer [get-byte-array-reader]]))
 
 (defn- rand-wrapped-value [schema-depth]
   (let [definition-level (rand-int (inc schema-depth))
@@ -30,26 +30,17 @@
 (defn rand-required-top-level-wrapped-value []
   (wrap-value 0 1 (rand-int 1024)))
 
-(defn- write-page-to-buffer [page-writer byte-array-writer values]
-  (doto page-writer
-    (write-all values)
-    (.writeTo byte-array-writer)))
-
 (defn- write-read-single-data-page
   [max-definition-level required? value-type encoding compression-type input-values]
-  (let [baw (ByteArrayWriter.)
-        page-writer (data-page-writer max-definition-level required? value-type encoding compression-type)
+  (let [page-writer (data-page-writer max-definition-level required? value-type encoding compression-type)
         page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression-type)]
-    (write-page-to-buffer page-writer baw input-values)
-    (-> baw .buffer ByteArrayReader. page-reader-ctor read-page)))
+    (-> page-writer (write-all input-values) get-byte-array-reader page-reader-ctor read-page)))
 
 (defn- write-read-single-dictionnary-page
   [value-type encoding compression-type input-values]
-  (let [baw (ByteArrayWriter.)
-        page-writer (dictionnary-page-writer value-type encoding compression-type)
+  (let [page-writer (dictionnary-page-writer value-type encoding compression-type)
         page-reader-ctor #(dictionnary-page-reader % value-type encoding compression-type)]
-    (write-page-to-buffer page-writer baw input-values)
-    (-> baw .buffer ByteArrayReader. page-reader-ctor read-page)))
+    (-> page-writer (write-all input-values) get-byte-array-reader page-reader-ctor read-page)))
 
 (deftest write-read-page
   (testing "Write/read a data page works"
@@ -99,15 +90,13 @@
             output-values (write-read-single-dictionnary-page :int32 :plain :lz4 input-values)]
         (is (= output-values input-values)))))
   (testing "Read incompatible page types throws an exception"
-    (let [data-pw (data-page-writer 1 false :int32 :plain :none)
-          dict-pw (dictionnary-page-writer :int32 :plain :none)
-          data-baw (ByteArrayWriter.)
-          dict-baw (ByteArrayWriter.)]
-      (write-page-to-buffer data-pw data-baw (repeatedly 100 #(rand-wrapped-value 1)))
-      (write-page-to-buffer dict-pw dict-baw (range 100))
-      (let [data-bar (ByteArrayReader. (.buffer data-baw))
-            dict-bar (ByteArrayReader. (.buffer dict-baw))]
-        (is (data-page-reader data-bar 1 :int32 :plain :none))
-        (is (thrown? IllegalArgumentException (data-page-reader dict-bar 1 :int32 :plain :none)))
-        (is (dictionnary-page-reader dict-bar :int32 :plain :none))
-        (is (thrown? IllegalArgumentException (dictionnary-page-reader data-bar :int32 :plain :none)))))))
+    (let [data-bar (-> (data-page-writer 1 false :int32 :plain :none)
+                       (write-all (repeatedly 100 #(rand-wrapped-value 1)))
+                       get-byte-array-reader)
+          dict-bar (-> (dictionnary-page-writer :int32 :plain :none)
+                       (write-all (range 100))
+                       get-byte-array-reader)]
+      (is (data-page-reader data-bar 1 :int32 :plain :none))
+      (is (thrown? IllegalArgumentException (data-page-reader dict-bar 1 :int32 :plain :none)))
+      (is (dictionnary-page-reader dict-bar :int32 :plain :none))
+      (is (thrown? IllegalArgumentException (dictionnary-page-reader data-bar :int32 :plain :none))))))
