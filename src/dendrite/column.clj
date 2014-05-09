@@ -296,3 +296,12 @@
                (sort-by val)
                ffirst)]
     (or best-compression-type :none)))
+
+(defn find-best-column-type [column-reader target-data-page-size compression-candidates-treshold-map]
+  (let [best-encoding (find-best-encoding column-reader target-data-page-size)
+        best-compression-type (find-best-compression-type column-reader target-data-page-size
+                                                          compression-candidates-treshold-map
+                                                          :encoding best-encoding)]
+    (assoc (:column-type column-reader)
+      :encoding best-encoding
+      :compression-type best-compression-type)))

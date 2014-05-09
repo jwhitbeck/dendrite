@@ -1,5 +1,6 @@
 (ns dendrite.column-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as string]
+            [clojure.test :refer :all]
             [dendrite.core :refer [wrap-value]]
             [dendrite.column :refer :all]
             [dendrite.encoding :refer [str->utf8-bytes]]
@@ -289,3 +290,18 @@
       (is (= :deflate (find-best-compression-type reader target-data-page-size {:lz4 0.9 :deflate 0.5})))
       (is (= :lz4 (find-best-compression-type reader target-data-page-size {:lz4 0.9 :deflate 0.2})))
       (is (= :none (find-best-compression-type reader target-data-page-size {:lz4 0.5 :deflate 0.2}))))))
+
+(deftest find-best-column-types
+  (testing "lorem ispum permutations"
+    (let [ct (column-type :byte-array :plain :none true)
+          rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
+          lorem-ipsum-words (-> helpers/lorem-ipsum (string/split #" ") set)
+          lorem-ipsum-shuffles (repeatedly 100 #(->> lorem-ipsum-words shuffle (apply str)))
+          input-rows (->>  (repeatedly #(-> lorem-ipsum-shuffles helpers/rand-member str->utf8-bytes))
+                           rand-top-level-required-rows
+                           (take 5000))
+          reader (write-column-and-get-reader ct [:foo] input-rows)]
+      (is (= (assoc ct
+               :encoding :dictionary
+               :compression-type :deflate)
+             (find-best-column-type reader target-data-page-size {:lz4 0.8 :deflate 0.5}))))))
