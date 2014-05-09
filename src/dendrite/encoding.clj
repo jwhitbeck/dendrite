@@ -14,7 +14,8 @@
             ByteArrayEncoder ByteArrayDecoder ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
-            ByteArrayReader]))
+            ByteArrayReader]
+           [java.nio.charset Charset]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,3 +122,18 @@
 
 (defn levels-decoder [^ByteArrayReader byte-array-reader max-definition-level]
   (Int32FixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-definition-level)))
+
+(defn- flip-byte-array ^bytes [^bytes bs]
+  (let [n (alength bs)]
+    (areduce bs i flipped-bs (byte-array n)
+             (doto flipped-bs
+               (aset (dec (- n i)) (aget bs i))))))
+
+(def ^:private utf8-charset (Charset/forName "UTF-8"))
+
+(defn str->utf8-bytes [^String s]
+  (flip-byte-array (.getBytes s ^Charset utf8-charset)))
+
+(defn utf8-bytes->str [^bytes bs]
+  (-> (flip-byte-array bs)
+      (String. ^Charset utf8-charset)))
