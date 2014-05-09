@@ -127,13 +127,13 @@
   (reduce #(write %1 %2) page-writer values))
 
 (deftype DataPageWriter
-    [^{:unsynchronized-mutable :int} num-values
+    [^:unsynchronized-mutable num-values
      body-length-estimator
      ^BufferedByteArrayWriter repetition-level-encoder
      ^BufferedByteArrayWriter definition-level-encoder
      ^BufferedByteArrayWriter data-encoder
      ^Compressor data-compressor
-     ^{:unsynchronized-mutable :boolean} finished?]
+     ^:unsynchronized-mutable finished?]
   IPageWriter
   (write [this wrapped-value]
     (let [v (:value wrapped-value)]
@@ -209,11 +209,11 @@
                    (compressor compression-type)
                    false))
 
-(deftype DictionaryPageWriter [^{:unsynchronized-mutable :int} num-values
+(deftype DictionaryPageWriter [^:unsynchronized-mutable num-values
                                body-length-estimator
                                ^BufferedByteArrayWriter data-encoder
                                ^Compressor data-compressor
-                               ^{:unsynchronized-mutable :boolean} finished?]
+                               ^:unsynchronized-mutable finished?]
   IPageWriter
   (write [this value]
     (encode data-encoder value)

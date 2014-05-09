@@ -20,8 +20,8 @@
 (defprotocol IDataColumnWriter
   (flush-data-page-writer [_]))
 
-(deftype DataColumnWriter [^{:unsynchronized-mutable :int} next-num-values-for-page-size-check
-                           ^{:unsynchronized-mutable :int} num-pages
+(deftype DataColumnWriter [^:unsynchronized-mutable next-num-values-for-page-size-check
+                           ^:unsynchronized-mutable num-pages
                            ^int target-data-page-size
                            size-estimator
                            ^ByteArrayWriter byte-array-writer
@@ -44,7 +44,7 @@
     (when (pos? (page/num-values page-writer))
       (.write byte-array-writer page-writer)
       (set! num-pages (inc num-pages))
-      (set! next-num-values-for-page-size-check (/ (.size page-writer) 2))
+      (set! next-num-values-for-page-size-check (int (/ (.size page-writer) 2)))
       (.reset page-writer)))
   BufferedByteArrayWriter
   (reset [_]

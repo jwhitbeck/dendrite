@@ -129,11 +129,11 @@
              (doto flipped-bs
                (aset (dec (- n i)) (aget bs i))))))
 
-(def ^:private utf8-charset (Charset/forName "UTF-8"))
+(def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 
 (defn str->utf8-bytes [^String s]
-  (flip-byte-array (.getBytes s ^Charset utf8-charset)))
+  (flip-byte-array (.getBytes s utf8-charset)))
 
 (defn utf8-bytes->str [^bytes bs]
   (-> (flip-byte-array bs)
-      (String. ^Charset utf8-charset)))
+      (String. utf8-charset)))

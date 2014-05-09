@@ -1,12 +1,14 @@
 (ns dendrite.estimation)
 
+(set! *warn-on-reflection* true)
+
 (defprotocol IEstimateCorrector
   (correct [_ estimate])
   (update! [_ observed estimated]))
 
 (deftype RatioEstimateCorrector
-    [^{:unsynchronized-mutable :int} total-estimated
-     ^{:unsynchronized-mutable :int} total-observed]
+    [^:unsynchronized-mutable total-estimated
+     ^:unsynchronized-mutable total-observed]
   IEstimateCorrector
   (correct [_ estimate]
     (if (zero? total-estimated)
