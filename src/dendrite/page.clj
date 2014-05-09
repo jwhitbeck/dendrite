@@ -136,8 +136,9 @@
      ^{:unsynchronized-mutable :boolean} finished?]
   IPageWriter
   (write [this wrapped-value]
-    (when-let [v (:value wrapped-value)]
-      (encode data-encoder v))
+    (let [v (:value wrapped-value)]
+      (when-not (nil? v)
+        (encode data-encoder v)))
     (when repetition-level-encoder
       (encode repetition-level-encoder (:repetition-level wrapped-value)))
     (when definition-level-encoder

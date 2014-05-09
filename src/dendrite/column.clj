@@ -83,9 +83,10 @@
   (write-row [this wrapped-values]
     (->> wrapped-values
          (map (fn [wrapped-value]
-                (if-let [v (:value wrapped-value)]
-                  (assoc wrapped-value :value (value-index this v))
-                  wrapped-value)))
+                (let [v (:value wrapped-value)]
+                  (if (nil? v)
+                    wrapped-value
+                    (assoc wrapped-value :value (value-index this v))))))
          (write-row data-column-writer))
     this)
   (metadata [this]
@@ -139,9 +140,10 @@
   (stats [_]))
 
 (defn- apply-to-wrapped-value [f wrapped-value]
-  (if-let [value (:value wrapped-value)]
-    (assoc wrapped-value :value (f value))
-    wrapped-value))
+  (let [v (:value wrapped-value)]
+    (if (nil? v)
+      wrapped-value
+      (assoc wrapped-value :value (f v)))))
 
 (defrecord ColumnStats [num-values num-pages header-bytes repetition-level-bytes
                         definition-level-bytes data-bytes dictionary-header-bytes dictionary-bytes])
@@ -202,9 +204,10 @@
     (let [dictionary-array (into-array (->> (read-dictionary this) (map map-fn)))]
       (->> (read-indices this)
            (map (fn [wrapped-value]
-                  (if-let [i (:value wrapped-value)]
-                    (assoc wrapped-value :value (aget ^objects dictionary-array (int i)))
-                    wrapped-value))))))
+                  (let [i (:value wrapped-value)]
+                    (if (nil? i)
+                      wrapped-value
+                      (assoc wrapped-value :value (aget ^objects dictionary-array (int i))))))))))
   (stats [this]
     (let [dictionary-header (->> column-chunk-metadata
                                   :dictionary-page-offset
