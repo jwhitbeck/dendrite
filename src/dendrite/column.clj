@@ -1,7 +1,9 @@
 (ns dendrite.column
   (:require [dendrite.estimation :as estimation]
+            [dendrite.encoding :refer [list-encodings-for-type]]
             [dendrite.metadata :as metadata]
-            [dendrite.page :as page])
+            [dendrite.page :as page]
+            [dendrite.schema :refer [column-type]])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [dendrite.page DataPageWriter DictionaryPageWriter]
            [java.util HashMap]))
@@ -253,3 +255,24 @@
   (if (= :dictionary (:encoding column-type))
     (dictionary-column-reader byte-array-reader column-chunk-metadata schema-path column-type)
     (data-column-reader byte-array-reader column-chunk-metadata schema-path column-type)))
+
+(defn- compute-size-for-column-type [column-reader new-colum-type target-data-page-size]
+  (let [writer (-> (column-writer target-data-page-size (:schema-path column-reader) new-colum-type)
+                   (write-row (read-column column-reader)))]
+    (-> (doto ^BufferedByteArrayWriter writer .finish)
+        .size)))
+
+(defn find-best-encoding [column-reader target-data-page-size]
+  (let [value-type (-> column-reader :column-type :value-type)
+        required? (-> column-reader :column-type :required?)
+        eligible-encodings (cons :dictionary (list-encodings-for-type value-type))]
+    (->> eligible-encodings
+         (reduce (fn [results encoding]
+                   (assoc results encoding
+                          (compute-size-for-column-type column-reader
+                                                        (column-type value-type encoding :none required?)
+                                                        target-data-page-size)))
+                 {})
+         (sort-by val)
+         first
+         key)))

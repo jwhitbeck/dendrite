@@ -10,6 +10,8 @@
 
 (defn rand-bool [] (zero? (rand-int 2)))
 
+(defn rand-biased-bool [r] (< (rand) r))
+
 (defn rand-sign [] (if (rand-bool) 1 -1))
 
 (defn rand-byte [] (unchecked-byte (rand-int 256)))
@@ -36,6 +38,8 @@
   ([] (rand-byte-array (rand-int 24)))
   ([n] (byte-array (repeatedly n rand-byte))))
 
+(defn rand-member [coll]
+  (nth (seq coll) (-> coll count rand-int)))
 
 (def lorem-ipsum
   "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
