@@ -274,3 +274,25 @@
          (sort-by val)
          first
          key)))
+
+(defn find-best-compression-type
+  [column-reader target-data-page-size candidates-treshold-map & {:keys [encoding]}]
+  (let [ct  (cond-> (:column-type column-reader)
+                    encoding (assoc :encoding encoding))
+        compressed-sizes-map
+          (->> (assoc candidates-treshold-map :none 1)
+               keys
+               (reduce (fn [results compression-type]
+                         (assoc results compression-type
+                                (compute-size-for-column-type column-reader
+                                                              (assoc ct :compression-type compression-type)
+                                                              target-data-page-size)))
+                       {}))
+        no-compression-size (:none compressed-sizes-map)
+        best-compression-type
+          (->> (dissoc compressed-sizes-map :none)
+               (filter (fn [[compression-type size]]
+                         (<= (/ size no-compression-size) (get candidates-treshold-map compression-type))))
+               (sort-by val)
+               ffirst)]
+    (or best-compression-type :none)))

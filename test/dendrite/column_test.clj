@@ -279,3 +279,13 @@
                              (->> reader read-column (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
+
+(deftest find-best-compression-types
+  (testing "plain encoded random int32s"
+    (let [ct (column-type :int32 :plain :none true)
+          input-rows (->> (repeatedly #(helpers/rand-int-bits 10)) rand-top-level-required-rows (take 5000))
+          reader (write-column-and-get-reader ct [:foo] input-rows)]
+      (is (= :none (find-best-compression-type reader target-data-page-size {})))
+      (is (= :deflate (find-best-compression-type reader target-data-page-size {:lz4 0.9 :deflate 0.5})))
+      (is (= :lz4 (find-best-compression-type reader target-data-page-size {:lz4 0.9 :deflate 0.2})))
+      (is (= :none (find-best-compression-type reader target-data-page-size {:lz4 0.5 :deflate 0.2}))))))
