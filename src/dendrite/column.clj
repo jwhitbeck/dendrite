@@ -73,6 +73,13 @@
                        (page/data-page-writer max-definition-level required? value-type
                                               encoding compression-type))))
 
+(defn- bytes? [x] (= (type x) (Class/forName "[B")))
+
+(defn- keyable [x]
+  (if (bytes? x)
+    (vec x)
+    x))
+
 (defprotocol IDictionaryColumWriter
   (value-index [this v]))
 
@@ -94,11 +101,12 @@
                                     (.size dictionary-writer) 0))
   IDictionaryColumWriter
   (value-index [_ v]
-    (or (.get reverse-dictionary v)
-        (do (let [idx (.size reverse-dictionary)]
-              (.put reverse-dictionary v idx)
-              (page/write dictionary-writer v)
-              idx))))
+    (let [k (keyable v)]
+      (or (.get reverse-dictionary k)
+          (do (let [idx (.size reverse-dictionary)]
+                (.put reverse-dictionary k idx)
+                (page/write dictionary-writer v)
+                idx)))))
   BufferedByteArrayWriter
   (reset [_]
     (.clear reverse-dictionary)
