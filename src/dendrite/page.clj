@@ -92,9 +92,9 @@
                      definition-levels-size compressed-data-size uncompressed-data-size)))
 
 (defrecord DictionaryPageHeader [^int encoded-page-type
-                                  ^int num-values
-                                  ^int compressed-data-size
-                                  ^int uncompressed-data-size]
+                                 ^int num-values
+                                 ^int compressed-data-size
+                                 ^int uncompressed-data-size]
   IPageHeader
   (page-type [this]
     (decode-page-type encoded-page-type))
@@ -113,7 +113,7 @@
         compressed-data-size (.readUInt32 bar)
         uncompressed-data-size (.readUInt32 bar)]
     (DictionaryPageHeader. (encode-page-type dictionary-page-type) num-values compressed-data-size
-                            uncompressed-data-size)))
+                           uncompressed-data-size)))
 
 (defprotocol IPageWriter
   (write [this value])
@@ -210,10 +210,10 @@
                    false))
 
 (deftype DictionaryPageWriter [^{:unsynchronized-mutable :int} num-values
-                                body-length-estimator
-                                ^BufferedByteArrayWriter data-encoder
-                                ^Compressor data-compressor
-                                ^{:unsynchronized-mutable :boolean} finished?]
+                               body-length-estimator
+                               ^BufferedByteArrayWriter data-encoder
+                               ^Compressor data-compressor
+                               ^{:unsynchronized-mutable :boolean} finished?]
   IPageWriter
   (write [this value]
     (encode data-encoder value)
@@ -223,12 +223,12 @@
   IPageWriterImpl
   (provisional-header [_]
     (DictionaryPageHeader. (encode-page-type :dictionary) num-values (.estimatedSize data-encoder)
-                            (.estimatedSize data-encoder)))
+                           (.estimatedSize data-encoder)))
   (header [_]
     (DictionaryPageHeader. (encode-page-type :dictionary)
-                            num-values
-                            (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
-                            (.size data-encoder)))
+                           num-values
+                           (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
+                           (.size data-encoder)))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
@@ -259,9 +259,9 @@
 
 (defn dictionary-page-writer [value-type encoding compression-type]
   (DictionaryPageWriter. 0 (estimation/ratio-estimator)
-                          (encoder value-type encoding)
-                          (compressor compression-type)
-                          false))
+                         (encoder value-type encoding)
+                         (compressor compression-type)
+                         false))
 
 (defprotocol IPageReader
   (read-page [_]))
@@ -356,9 +356,9 @@
          (cons next-header (read-data-page-headers next-byte-array-reader (dec num-data-pages))))))))
 
 (defrecord DictionaryPageReader [^ByteArrayReader byte-array-reader
-                                  data-decoder-ctor
-                                  decompressor-ctor
-                                  header]
+                                 data-decoder-ctor
+                                 decompressor-ctor
+                                 header]
   IPageReader
   (read-page [this]
     (let [data-bytes-reader (-> byte-array-reader
@@ -378,8 +378,8 @@
   (let [bar (.slice byte-array-reader)
         page-type (read-next-dictionary-page-type bar)]
     (DictionaryPageReader. bar (decoder-ctor value-type encoding)
-                            (decompressor-ctor compression-type)
-                            (read-dictionary-page-header bar page-type))))
+                           (decompressor-ctor compression-type)
+                           (read-dictionary-page-header bar page-type))))
 
 (defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
   (-> (dictionary-page-reader byte-array-reader value-type encoding compression-type)

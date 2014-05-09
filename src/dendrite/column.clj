@@ -86,8 +86,8 @@
   (value-index [this v]))
 
 (deftype DictionaryColumnWriter [^HashMap reverse-dictionary
-                                  ^DictionaryPageWriter dictionary-writer
-                                  ^DataColumnWriter data-column-writer]
+                                 ^DictionaryPageWriter dictionary-writer
+                                 ^DataColumnWriter data-column-writer]
   IColumnWriter
   (write-row [this wrapped-values]
     (->> wrapped-values
@@ -204,9 +204,9 @@
   (indices-stats [_]))
 
 (defrecord DictionaryColumnReader [^ByteArrayReader byte-array-reader
-                                    column-chunk-metadata
-                                    schema-path
-                                    column-type]
+                                   column-chunk-metadata
+                                   schema-path
+                                   column-type]
   IColumnReader
   (read-column [this]
     (read-column this identity))
@@ -220,9 +220,9 @@
                       (assoc wrapped-value :value (aget ^objects dictionary-array (int i))))))))))
   (stats [this]
     (let [dictionary-header (->> column-chunk-metadata
-                                  :dictionary-page-offset
-                                  (.sliceAhead byte-array-reader)
-                                  page/read-dictionary-header)
+                                 :dictionary-page-offset
+                                 (.sliceAhead byte-array-reader)
+                                 page/read-dictionary-header)
           data-column-stats (indices-stats this)]
       (assoc data-column-stats
         :dictionary-header-bytes (page/header-length dictionary-header)
@@ -230,9 +230,9 @@
   IDictionaryColumnReader
   (read-dictionary [_]
     (page/read-dictionary (.sliceAhead byte-array-reader (:dictionary-page-offset column-chunk-metadata))
-                           (:value-type column-type)
-                           :plain
-                           (:compression-type column-type)))
+                          (:value-type column-type)
+                          :plain
+                          (:compression-type column-type)))
   (read-indices [_]
     (-> (data-column-reader byte-array-reader
                             column-chunk-metadata
