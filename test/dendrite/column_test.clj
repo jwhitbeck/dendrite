@@ -107,13 +107,13 @@
 
 (deftest find-best-boolean-encodings
   (testing "random booleans"
-    (let [ct (column-type :boolean :plain :none false)
+    (let [ct (column-type :boolean :plain :none true)
           input-rows (->> (repeatedly helpers/rand-bool) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "mostly true booleans"
-    (let [ct (column-type :boolean :plain :none false)
+    (let [ct (column-type :boolean :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-biased-bool 0.99))
                           rand-top-level-required-rows
                           (take 5000))
@@ -123,25 +123,25 @@
 
 (deftest find-best-int32-encodings
   (testing "random int32s"
-    (let [ct (column-type :int32 :plain :none false)
+    (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (repeatedly helpers/rand-int32) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small int32s"
-    (let [ct (column-type :int32 :plain :none false)
+    (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-int-bits 10)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :packed-run-length (find-best-encoding reader target-data-page-size)))))
   (testing "increasing int32s"
-    (let [ct (column-type :int32 :plain :none false)
+    (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (range) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random int32s"
-    (let [ct (column-type :int32 :plain :none false)
+    (let [ct (column-type :int32 :plain :none true)
           random-ints (repeatedly 100 helpers/rand-int32)
           input-rows (->> (repeatedly #(helpers/rand-member random-ints))
                           rand-top-level-required-rows
@@ -152,31 +152,31 @@
 
 (deftest find-best-int64-encodings
   (testing "random int64s"
-    (let [ct (column-type :int64 :plain :none false)
+    (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly helpers/rand-int64) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small int64s"
-    (let [ct (column-type :int64 :plain :none false)
+    (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-int-bits 10)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "increasing int64s"
-    (let [ct (column-type :int64 :plain :none false)
+    (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (range) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "increasing timestamps"
-    (let [ct (column-type :int64 :plain :none false)
+    (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly #(System/nanoTime)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random int64s"
-    (let [ct (column-type :int64 :plain :none false)
+    (let [ct (column-type :int64 :plain :none true)
           random-ints (repeatedly 100 helpers/rand-int64)
           input-rows (->> (repeatedly #(helpers/rand-member random-ints))
                           rand-top-level-required-rows
@@ -187,13 +187,13 @@
 
 (deftest find-best-float-encodings
   (testing "random floats"
-    (let [ct (column-type :float :plain :none false)
+    (let [ct (column-type :float :plain :none true)
           input-rows (->> (repeatedly helpers/rand-float) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random floats"
-    (let [ct (column-type :float :plain :none false)
+    (let [ct (column-type :float :plain :none true)
           random-floats (repeatedly 100 helpers/rand-float)
           input-rows (->> (repeatedly #(helpers/rand-member random-floats))
                           rand-top-level-required-rows
@@ -204,13 +204,13 @@
 
 (deftest find-best-double-encodings
   (testing "random doubles"
-    (let [ct (column-type :double :plain :none false)
+    (let [ct (column-type :double :plain :none true)
           input-rows (->> (repeatedly helpers/rand-double) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (= (read-column reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random doubles"
-    (let [ct (column-type :double :plain :none false)
+    (let [ct (column-type :double :plain :none true)
           random-doubles (repeatedly 100 helpers/rand-double)
           input-rows (->> (repeatedly #(helpers/rand-member random-doubles))
                           rand-top-level-required-rows
@@ -227,7 +227,7 @@
 
 (deftest find-best-byte-array-encodings
   (testing "random byte arrays"
-    (let [ct (column-type :byte-array :plain :none false)
+    (let [ct (column-type :byte-array :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-byte-array)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
@@ -235,7 +235,7 @@
                              (->> input-rows flatten (map :value)))))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
-    (let [ct (column-type :byte-array :plain :none false)
+    (let [ct (column-type :byte-array :plain :none true)
           calendar (doto (Calendar/getInstance)
                      (.setTime (.parse simple-date-format "01/01/2014")))
           input-rows (->> (iterate-calendar-by-day calendar)
@@ -248,7 +248,7 @@
                              (->> input-rows flatten (map :value)))))
       (is (= :incremental (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random byte arrays"
-    (let [ct (column-type :byte-array :plain :none false)
+    (let [ct (column-type :byte-array :plain :none true)
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array))
           input-rows (->> (repeatedly #(helpers/rand-member rand-byte-arrays))
                           rand-top-level-required-rows
@@ -261,7 +261,7 @@
 
 (deftest find-best-fixed-length-byte-array-encodings
   (testing "random byte arrays"
-    (let [ct (column-type :fixed-length-byte-array :plain :none false)
+    (let [ct (column-type :fixed-length-byte-array :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-byte-array 16)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
@@ -269,7 +269,7 @@
                              (->> input-rows flatten (map :value)))))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random byte arrays"
-    (let [ct (column-type :fixed-length-byte-array :plain :none false)
+    (let [ct (column-type :fixed-length-byte-array :plain :none true)
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
           input-rows (->> (repeatedly #(helpers/rand-member rand-byte-arrays))
                           rand-top-level-required-rows
