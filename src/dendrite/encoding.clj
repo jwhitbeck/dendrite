@@ -14,8 +14,9 @@
             ByteArrayEncoder ByteArrayDecoder ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
-            ByteArrayReader]
-           [java.nio.charset Charset]))
+            ByteArrayReader BufferedByteArrayWriter]
+           [java.nio.charset Charset]
+           [java.math BigInteger]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,16 +72,16 @@
    :byte-array #{:plain :incremental :delta-length}
    :fixed-length-byte-array #{:plain}})
 
-(defn valid-value-type? [value-type]
-  (-> valid-encodings-for-types keys set (contains? value-type)))
+(defn- valid-base-value-type? [base-type]
+  (-> valid-encodings-for-types keys set (contains? base-type)))
 
-(defn valid-encoding-for-type? [value-type encoding]
-  (contains? (get valid-encodings-for-types value-type) encoding))
+(defn- valid-encoding-for-base-type? [base-type encoding]
+  (contains? (get valid-encodings-for-types base-type) encoding))
 
-(defn list-encodings-for-type [value-type] (get valid-encodings-for-types value-type))
+(defn- list-encodings-for-base-type [base-type] (get valid-encodings-for-types base-type))
 
-(defn decoder-ctor [value-type encoding]
-  (case value-type
+(defn- base-decoder-ctor [base-type encoding]
+  (case base-type
     :boolean #(BooleanPackedDecoder. %)
     :int32 (case encoding
              :plain #(Int32PlainDecoder. %)
@@ -97,8 +98,8 @@
                   :delta-length #(ByteArrayDeltaLengthDecoder. %))
     :fixed-length-byte-array #(FixedLengthByteArrayPlainDecoder. %)))
 
-(defn encoder [value-type encoding]
-  (case value-type
+(defn- base-encoder [base-type encoding]
+  (case base-type
     :boolean (BooleanPackedEncoder.)
     :int32 (case encoding
              :plain (Int32PlainEncoder.)
@@ -123,17 +124,64 @@
 (defn levels-decoder [^ByteArrayReader byte-array-reader max-definition-level]
   (Int32FixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-definition-level)))
 
-(defn- flip-byte-array ^bytes [^bytes bs]
-  (let [n (alength bs)]
-    (areduce bs i flipped-bs (byte-array n)
-             (doto flipped-bs
-               (aset (dec (- n i)) (aget bs i))))))
-
 (def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 
-(defn str->utf8-bytes [^String s]
-  (flip-byte-array (.getBytes s utf8-charset)))
+(defn str->utf8-bytes [^String s] (.getBytes s utf8-charset))
 
-(defn utf8-bytes->str [^bytes bs]
-  (-> (flip-byte-array bs)
-      (String. utf8-charset)))
+(defn utf8-bytes->str [^bytes bs] (String. bs utf8-charset))
+
+(def ^:private derived-types
+  {:string {:base-type :byte-array
+            :to-base-type-fn str->utf8-bytes
+            :from-base-type-fn utf8-bytes->str}
+   :bigint {:base-type :byte-array
+            :to-base-type-fn #(.toByteArray ^BigInteger %)
+            :from-base-type-fn #(BigInteger. ^bytes %)}
+   :keyword {:base-type :byte-array
+             :to-base-type-fn (comp str->utf8-bytes name)
+             :from-base-type-fn (comp keyword utf8-bytes->str)}})
+
+(defn derived-type? [t] (contains? derived-types t))
+
+(defn- base-type [t]
+  (get-in derived-types [t :base-type]))
+
+(defn valid-value-type? [t]
+  (valid-base-value-type? (if (derived-type? t) (base-type t) t)))
+
+(defn valid-encoding-for-type? [t encoding]
+  (valid-encoding-for-base-type? (if (derived-type? t) (base-type t) t)))
+
+(defn list-encodings-for-type [t]
+  (list-encodings-for-base-type (if (derived-type? t) (base-type t) t)))
+
+(defn- derived->base-type-fn [t]
+  (get-in derived-types [t :to-base-type-fn]))
+
+(defn- base->derived-type-fn [t]
+  (get-in derived-types [t :from-base-type-fn]))
+
+(defn encoder [t encoding]
+  (if-not (derived-type? t)
+    (base-encoder t encoding)
+    (let [be ^BufferedByteArrayWriter (base-encoder (base-type t) encoding)
+          derived->base-type (derived->base-type-fn t)]
+      (reify
+        Encoder
+        (encode [this v] (encode be (derived->base-type v)) this)
+        BufferedByteArrayWriter
+        (reset [_] (.reset be))
+        (finish [_] (.finish be))
+        (size [_] (.size be))
+        (estimatedSize [_] (.estimatedSize be))
+        (writeTo [_ byte-array-writer] (.writeTo be byte-array-writer))))))
+
+(defn decoder-ctor [t encoding]
+  (if-not (derived-type? t)
+    (base-decoder-ctor t encoding)
+    (let [bdc (base-decoder-ctor (base-type t) encoding)
+          base->derived-type (base->derived-type-fn t)]
+      #(let [bd (bdc %)]
+         (reify
+           Decoder
+           (decode [_] (-> (decode bd) base->derived-type)))))))

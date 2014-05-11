@@ -230,7 +230,7 @@
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
-(def simple-date-format (SimpleDateFormat. "dd/MM/yyyy"))
+(def simple-date-format (SimpleDateFormat. "YYYY-MM-dd"))
 
 (defn- iterate-calendar-by-day [calendar]
   (lazy-seq (cons (.getTime calendar)
@@ -247,29 +247,32 @@
                              (->> reader read (map :value))
                              (->> input-blocks flatten (map :value)))))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
+  (testing "random big ints"
+    (let [ct (column-type :bigint :plain :none true)
+          input-blocks (->> (repeatedly #(helpers/rand-big-int 100))
+                            rand-top-level-required-blocks
+                            (take 5000))
+          reader (write-column-and-get-reader ct [:foo] input-blocks)]
+      (is (= (read reader) (flatten input-blocks)))
+      (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
-    (let [ct (column-type :byte-array :plain :none true)
+    (let [ct (column-type :string :plain :none true)
           calendar (doto (Calendar/getInstance)
-                     (.setTime (.parse simple-date-format "01/01/2014")))
+                     (.setTime (.parse simple-date-format "2014-01-01")))
           input-blocks (->> (iterate-calendar-by-day calendar)
-                          (map (comp str->utf8-bytes #(.format simple-date-format %)))
-                          rand-top-level-required-blocks
-                          (take 5000))
+                            (map #(.format simple-date-format %))
+                            rand-top-level-required-blocks
+                            (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-blocks)]
-      (is (every? true? (map helpers/array=
-                             (->> reader read (map :value))
-                             (->> input-blocks flatten (map :value)))))
+      (is (= (read reader) (flatten input-blocks)))
       (is (= :incremental (find-best-encoding reader target-data-page-size)))))
-  (testing "small selection of random byte arrays"
-    (let [ct (column-type :byte-array :plain :none true)
-          rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array))
-          input-blocks (->> (repeatedly #(helpers/rand-member rand-byte-arrays))
-                          rand-top-level-required-blocks
-                          (take 5000))
+  (testing "small set of keywords"
+    (let [ct (column-type :keyword :plain :none true)
+          input-blocks (->> (repeatedly #(helpers/rand-member [:foo :bar :baz]))
+                            rand-top-level-required-blocks
+                            (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-blocks)]
-      (is (every? true? (map helpers/array=
-                             (->> reader read (map :value))
-                             (->> input-blocks flatten (map :value)))))
+      (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-fixed-length-byte-array-encodings
