@@ -2,6 +2,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defrecord WrappedValue [repetition-level definition-level value])
+(defrecord LeveledValue [repetition-level definition-level value])
 
-(def wrap-value ->WrappedValue)
+(def leveled-value ->LeveledValue)

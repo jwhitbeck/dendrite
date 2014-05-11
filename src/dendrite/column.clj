@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol IColumnWriter
-  (write [this wrapped-values])
+  (write [this leveled-values])
   (metadata [_]))
 
 (defprotocol IDataColumnWriter
@@ -24,7 +24,7 @@
                            ^ByteArrayWriter byte-array-writer
                            ^DataPageWriter page-writer]
   IColumnWriter
-  (write [this wrapped-values]
+  (write [this leveled-values]
     (when (>= (page/num-values page-writer) next-num-values-for-page-size-check)
       (let [estimated-page-size (.estimatedSize page-writer)]
         (if (>= estimated-page-size target-data-page-size)
@@ -32,7 +32,7 @@
           (set! next-num-values-for-page-size-check
                 (estimation/next-threshold-check (page/num-values page-writer) estimated-page-size
                                                  target-data-page-size)))))
-    (page/write page-writer wrapped-values)
+    (page/write page-writer leveled-values)
     this)
   (metadata [this]
     (metadata/column-chunk-metadata (.size this) num-pages 0 0))
@@ -86,13 +86,13 @@
                                  ^DictionaryPageWriter dictionary-writer
                                  ^DataColumnWriter data-column-writer]
   IColumnWriter
-  (write [this wrapped-values]
-    (->> wrapped-values
-         (map (fn [wrapped-value]
-                (let [v (:value wrapped-value)]
+  (write [this leveled-values]
+    (->> leveled-values
+         (map (fn [leveled-value]
+                (let [v (:value leveled-value)]
                   (if (nil? v)
-                    wrapped-value
-                    (assoc wrapped-value :value (value-index this v))))))
+                    leveled-value
+                    (assoc leveled-value :value (value-index this v))))))
          (write data-column-writer))
     this)
   (metadata [this]
@@ -146,11 +146,11 @@
   (read [_] [_ map-fn])
   (stats [_]))
 
-(defn- apply-to-wrapped-value [f wrapped-value]
-  (let [v (:value wrapped-value)]
+(defn- apply-to-leveled-value [f leveled-value]
+  (let [v (:value leveled-value)]
     (if (nil? v)
-      wrapped-value
-      (assoc wrapped-value :value (f v)))))
+      leveled-value
+      (assoc leveled-value :value (f v)))))
 
 (defrecord ColumnStats [num-values num-pages header-bytes repetition-level-bytes
                         definition-level-bytes data-bytes dictionary-header-bytes dictionary-bytes])
@@ -184,7 +184,7 @@
                                  value-type
                                  encoding
                                  compression-type)
-           (map (partial apply-to-wrapped-value map-fn)))))
+           (map (partial apply-to-leveled-value map-fn)))))
   (stats [_]
     (->> (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                                       (:num-data-pages column-chunk-metadata))
@@ -210,11 +210,11 @@
   (read [this map-fn]
     (let [dictionary-array (into-array (->> (read-dictionary this) (map map-fn)))]
       (->> (read-indices this)
-           (map (fn [wrapped-value]
-                  (let [i (:value wrapped-value)]
+           (map (fn [leveled-value]
+                  (let [i (:value leveled-value)]
                     (if (nil? i)
-                      wrapped-value
-                      (assoc wrapped-value :value (aget ^objects dictionary-array (int i))))))))))
+                      leveled-value
+                      (assoc leveled-value :value (aget ^objects dictionary-array (int i))))))))))
   (stats [this]
     (let [dictionary-header (->> column-chunk-metadata
                                  :dictionary-page-offset

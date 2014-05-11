@@ -1,5 +1,5 @@
 (ns dendrite.page
-  (:require [dendrite.core :refer [wrap-value]]
+  (:require [dendrite.core :refer [leveled-value]]
             [dendrite.compression :refer [compressor decompressor-ctor]]
             [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder encoder
                                        decoder-ctor]]
@@ -136,14 +136,14 @@
      ^Compressor data-compressor
      ^:unsynchronized-mutable finished?]
   IPageWriter
-  (write-value [this wrapped-value]
-    (let [v (:value wrapped-value)]
+  (write-value [this leveled-value]
+    (let [v (:value leveled-value)]
       (when-not (nil? v)
         (encode data-encoder v)))
     (when repetition-level-encoder
-      (encode repetition-level-encoder (:repetition-level wrapped-value)))
+      (encode repetition-level-encoder (:repetition-level leveled-value)))
     (when definition-level-encoder
-      (encode definition-level-encoder (:definition-level wrapped-value)))
+      (encode definition-level-encoder (:definition-level leveled-value)))
     (set! num-values (inc num-values))
     this)
   (num-values [_] num-values)
@@ -283,9 +283,9 @@
     (letfn [(lazy-read-values [repetition-levels-seq definition-levels-seq values-seq]
               (lazy-seq
                (let [nil-value? (< (first definition-levels-seq) max-definition-level)]
-                 (cons (wrap-value (first repetition-levels-seq)
-                                   (first definition-levels-seq)
-                                   (if nil-value? nil (first values-seq)))
+                 (cons (leveled-value (first repetition-levels-seq)
+                                      (first definition-levels-seq)
+                                      (if nil-value? nil (first values-seq)))
                        (lazy-read-values (rest repetition-levels-seq)
                                          (rest definition-levels-seq)
                                          (if nil-value? values-seq (rest values-seq)))))))]
