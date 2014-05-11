@@ -5,7 +5,8 @@
                                        decoder-ctor]]
             [dendrite.estimation :as estimation])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
-            Compressor Decompressor]))
+            Compressor Decompressor])
+  (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +38,7 @@
     dictionary-page-type))
 
 (defprotocol IPageHeader
-  (page-type [this])
+  (type [this])
   (header-length [this])
   (body-length [this])
   (byte-offset-body [this]))
@@ -61,7 +62,7 @@
                            ^int compressed-data-size
                            ^int uncompressed-data-size]
   IPageHeader
-  (page-type [this]
+  (type [this]
     (decode-page-type encoded-page-type))
   (header-length [this]
     (uints32-encoded-size (vals this)))
@@ -96,7 +97,7 @@
                                  ^int compressed-data-size
                                  ^int uncompressed-data-size]
   IPageHeader
-  (page-type [this]
+  (type [this]
     (decode-page-type encoded-page-type))
   (header-length [this]
     (uints32-encoded-size (vals this)))
@@ -116,15 +117,15 @@
                            uncompressed-data-size)))
 
 (defprotocol IPageWriter
-  (write [this value])
+  (write-value [this value])
   (num-values [this]))
 
 (defprotocol IPageWriterImpl
   (provisional-header [this])
   (header [this]))
 
-(defn write-all [page-writer values]
-  (reduce #(write %1 %2) page-writer values))
+(defn write [page-writer values]
+  (reduce write-value page-writer values))
 
 (deftype DataPageWriter
     [^:unsynchronized-mutable num-values
@@ -135,7 +136,7 @@
      ^Compressor data-compressor
      ^:unsynchronized-mutable finished?]
   IPageWriter
-  (write [this wrapped-value]
+  (write-value [this wrapped-value]
     (let [v (:value wrapped-value)]
       (when-not (nil? v)
         (encode data-encoder v)))
@@ -215,7 +216,7 @@
                                ^Compressor data-compressor
                                ^:unsynchronized-mutable finished?]
   IPageWriter
-  (write [this value]
+  (write-value [this value]
     (encode data-encoder value)
     (set! num-values (inc num-values))
     this)
@@ -264,7 +265,7 @@
                          false))
 
 (defprotocol IPageReader
-  (read-page [_]))
+  (read [_]))
 
 (defprotocol IDataPageReader
   (read-repetition-levels [_])
@@ -278,7 +279,7 @@
                            decompressor-ctor
                            header]
   IPageReader
-  (read-page [this]
+  (read [this]
     (letfn [(lazy-read-values [repetition-levels-seq definition-levels-seq values-seq]
               (lazy-seq
                (let [nil-value? (< (first definition-levels-seq) max-definition-level)]
@@ -342,7 +343,7 @@
   [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
   (->> (data-page-readers byte-array-reader num-data-pages max-definition-level value-type
                           encoding compression-type)
-       (mapcat read-page)))
+       (mapcat read)))
 
 (defn read-data-page-headers
   [^ByteArrayReader byte-array-reader num-data-pages]
@@ -360,7 +361,7 @@
                                  decompressor-ctor
                                  header]
   IPageReader
-  (read-page [this]
+  (read [this]
     (let [data-bytes-reader (-> byte-array-reader
                                 (.sliceAhead (byte-offset-body header)))
           data-bytes-reader (if-let [decompressor (decompressor-ctor)]
@@ -382,8 +383,7 @@
                            (read-dictionary-page-header bar page-type))))
 
 (defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
-  (-> (dictionary-page-reader byte-array-reader value-type encoding compression-type)
-      read-page))
+  (read (dictionary-page-reader byte-array-reader value-type encoding compression-type)))
 
 (defn read-dictionary-header [^ByteArrayReader byte-array-reader]
   (let [bar (.slice byte-array-reader)

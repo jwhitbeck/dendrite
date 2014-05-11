@@ -9,7 +9,8 @@
             [dendrite.test-helpers :refer [get-byte-array-reader] :as helpers])
   (:import [dendrite.java ByteArrayWriter]
            [java.util Date Calendar]
-           [java.text SimpleDateFormat]))
+           [java.text SimpleDateFormat])
+  (:refer-clojure :exclude [read]))
 
 (def test-schema-path [:foo :bar])
 
@@ -41,11 +42,14 @@
   ([a b] (roughly= a b 0.1))
   ([a b r] (< (abs (- a b)) (* a r))))
 
+(defn write-all [column-writer blocks]
+  (reduce write column-writer blocks))
+
 (defn write-column-and-get-reader
   ([column-type input-rows] (write-column-and-get-reader column-type test-schema-path input-rows))
   ([column-type schema-path input-rows]
      (let [writer (doto (column-writer target-data-page-size schema-path column-type)
-                    (write-rows input-rows)
+                    (write-all input-rows)
                     .finish)
            column-chunk-metadata (metadata writer)]
        (-> writer
@@ -57,21 +61,21 @@
         input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
         reader (write-column-and-get-reader ct input-rows)
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
-        output-values (read-column reader)]
+        output-values (read reader)]
     (testing "Write/read a colum works"
       (is (roughly= num-pages 13))
       (is (= (flatten input-rows) output-values)))
     (testing "value mapping works"
       (is (= (->> input-rows flatten (map #(some-> % :value (* 2))))
-             (map :value (read-column reader (partial * 2))))))
+             (map :value (read reader (partial * 2))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
-                     (write-rows input-rows))
+                     (write-all input-rows))
             baw1 (doto (ByteArrayWriter. 10) (.write writer))
             baw2 (doto (ByteArrayWriter. 10) (.write writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatble reads"
-      (is (= (read-column reader) (read-column reader))))
+      (is (= (read reader) (read reader))))
     (testing "Page size estimation converges"
       (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
            rest                         ; the first page is always inaccurate
@@ -86,20 +90,20 @@
   (let [ct (column-type :int32 :dictionary :deflate false)
         input-rows (->> #(helpers/rand-int-bits 10) rand-rows (take 5000))
         reader (write-column-and-get-reader ct input-rows)
-        output-values (read-column reader)]
+        output-values (read reader)]
     (testing "Write/read a dictionary colum works"
       (is (= (flatten input-rows) output-values)))
     (testing "value mapping works"
       (is (= (->> input-rows flatten (map #(some-> % :value (* 2))))
-             (map :value (read-column reader (partial * 2))))))
+             (map :value (read reader (partial * 2))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size test-schema-path ct)
-                     (write-rows input-rows))
+                     (write-all input-rows))
             baw1 (doto (ByteArrayWriter. 10) (.write writer))
             baw2 (doto (ByteArrayWriter. 10) (.write writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatble reads"
-      (is (= (read-column reader) (read-column reader))))))
+      (is (= (read reader) (read reader))))))
 
 (defn- wrap-top-level-required [v] (wrap-value 0 1 v))
 
@@ -111,7 +115,7 @@
     (let [ct (column-type :boolean :plain :none true)
           input-rows (->> (repeatedly helpers/rand-bool) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "mostly true booleans"
     (let [ct (column-type :boolean :plain :none true)
@@ -119,7 +123,7 @@
                           rand-top-level-required-rows
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-int32-encodings
@@ -127,19 +131,19 @@
     (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (repeatedly helpers/rand-int32) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small int32s"
     (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-int-bits 10)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :packed-run-length (find-best-encoding reader target-data-page-size)))))
   (testing "increasing int32s"
     (let [ct (column-type :int32 :plain :none true)
           input-rows (->> (range) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random int32s"
     (let [ct (column-type :int32 :plain :none true)
@@ -148,7 +152,7 @@
                           rand-top-level-required-rows
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-int64-encodings
@@ -156,25 +160,25 @@
     (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly helpers/rand-int64) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small int64s"
     (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly #(helpers/rand-int-bits 10)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "increasing int64s"
     (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (range) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "increasing timestamps"
     (let [ct (column-type :int64 :plain :none true)
           input-rows (->> (repeatedly #(System/nanoTime)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random int64s"
     (let [ct (column-type :int64 :plain :none true)
@@ -183,7 +187,7 @@
                           rand-top-level-required-rows
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-float-encodings
@@ -191,7 +195,7 @@
     (let [ct (column-type :float :plain :none true)
           input-rows (->> (repeatedly helpers/rand-float) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random floats"
     (let [ct (column-type :float :plain :none true)
@@ -200,7 +204,7 @@
                           rand-top-level-required-rows
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-double-encodings
@@ -208,7 +212,7 @@
     (let [ct (column-type :double :plain :none true)
           input-rows (->> (repeatedly helpers/rand-double) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random doubles"
     (let [ct (column-type :double :plain :none true)
@@ -217,7 +221,7 @@
                           rand-top-level-required-rows
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
-      (is (= (read-column reader) (flatten input-rows)))
+      (is (= (read reader) (flatten input-rows)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (def simple-date-format (SimpleDateFormat. "dd/MM/yyyy"))
@@ -232,7 +236,7 @@
           input-rows (->> (repeatedly #(helpers/rand-byte-array)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
-                             (->> reader read-column (map :value))
+                             (->> reader read (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
@@ -245,7 +249,7 @@
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
-                             (->> reader read-column (map :value))
+                             (->> reader read (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :incremental (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random byte arrays"
@@ -256,7 +260,7 @@
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
-                             (->> reader read-column (map :value))
+                             (->> reader read (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
@@ -266,7 +270,7 @@
           input-rows (->> (repeatedly #(helpers/rand-byte-array 16)) rand-top-level-required-rows (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
-                             (->> reader read-column (map :value))
+                             (->> reader read (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of random byte arrays"
@@ -277,7 +281,7 @@
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-rows)]
       (is (every? true? (map helpers/array=
-                             (->> reader read-column (map :value))
+                             (->> reader read (map :value))
                              (->> input-rows flatten (map :value)))))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 

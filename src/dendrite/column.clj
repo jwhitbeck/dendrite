@@ -5,16 +5,14 @@
             [dendrite.page :as page])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [dendrite.page DataPageWriter DictionaryPageWriter]
-           [java.util HashMap]))
+           [java.util HashMap])
+  (:refer-clojure :exclude [read]))
 
 (set! *warn-on-reflection* true)
 
 (defprotocol IColumnWriter
-  (write-row [this row-values])
+  (write [this wrapped-values])
   (metadata [_]))
-
-(defn write-rows [column-writer rows]
-  (reduce write-row column-writer rows))
 
 (defprotocol IDataColumnWriter
   (flush-data-page-writer [_]))
@@ -26,7 +24,7 @@
                            ^ByteArrayWriter byte-array-writer
                            ^DataPageWriter page-writer]
   IColumnWriter
-  (write-row [this wrapped-values]
+  (write [this wrapped-values]
     (when (>= (page/num-values page-writer) next-num-values-for-page-size-check)
       (let [estimated-page-size (.estimatedSize page-writer)]
         (if (>= estimated-page-size target-data-page-size)
@@ -34,7 +32,7 @@
           (set! next-num-values-for-page-size-check
                 (estimation/next-threshold-check (page/num-values page-writer) estimated-page-size
                                                  target-data-page-size)))))
-    (page/write-all page-writer wrapped-values)
+    (page/write page-writer wrapped-values)
     this)
   (metadata [this]
     (metadata/column-chunk-metadata (.size this) num-pages 0 0))
@@ -88,14 +86,14 @@
                                  ^DictionaryPageWriter dictionary-writer
                                  ^DataColumnWriter data-column-writer]
   IColumnWriter
-  (write-row [this wrapped-values]
+  (write [this wrapped-values]
     (->> wrapped-values
          (map (fn [wrapped-value]
                 (let [v (:value wrapped-value)]
                   (if (nil? v)
                     wrapped-value
                     (assoc wrapped-value :value (value-index this v))))))
-         (write-row data-column-writer))
+         (write data-column-writer))
     this)
   (metadata [this]
     (metadata/column-chunk-metadata (.size this) (-> data-column-writer metadata :num-data-pages)
@@ -106,7 +104,7 @@
       (or (.get reverse-dictionary k)
           (do (let [idx (.size reverse-dictionary)]
                 (.put reverse-dictionary k idx)
-                (page/write dictionary-writer v)
+                (page/write-value dictionary-writer v)
                 idx)))))
   BufferedByteArrayWriter
   (reset [_]
@@ -145,7 +143,7 @@
     (data-column-writer target-data-page-size schema-path column-type)))
 
 (defprotocol IColumnReader
-  (read-column [_] [_ map-fn])
+  (read [_] [_ map-fn])
   (stats [_]))
 
 (defn- apply-to-wrapped-value [f wrapped-value]
@@ -176,9 +174,9 @@
                              schema-path
                              column-type]
   IColumnReader
-  (read-column [this]
-    (read-column this identity))
-  (read-column [_ map-fn]
+  (read [this]
+    (read this identity))
+  (read [_ map-fn]
     (let [{:keys [value-type encoding compression-type]} column-type]
       (->> (page/read-data-pages (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                                  (:num-data-pages column-chunk-metadata)
@@ -207,9 +205,9 @@
                                    schema-path
                                    column-type]
   IColumnReader
-  (read-column [this]
-    (read-column this identity))
-  (read-column [this map-fn]
+  (read [this]
+    (read this identity))
+  (read [this map-fn]
     (let [dictionary-array (into-array (->> (read-dictionary this) (map map-fn)))]
       (->> (read-indices this)
            (map (fn [wrapped-value]
@@ -233,17 +231,15 @@
                           :plain
                           (:compression-type column-type)))
   (read-indices [_]
-    (-> (data-column-reader byte-array-reader
-                            column-chunk-metadata
-                            schema-path
-                            (dictionary-indices-column-type column-type))
-        read-column))
+    (read (data-column-reader byte-array-reader
+                              column-chunk-metadata
+                              schema-path
+                              (dictionary-indices-column-type column-type))))
   (indices-stats [_]
-    (-> (data-column-reader byte-array-reader
-                            column-chunk-metadata
-                            schema-path
-                            (dictionary-indices-column-type column-type))
-        stats)))
+    (stats (data-column-reader byte-array-reader
+                               column-chunk-metadata
+                               schema-path
+                               (dictionary-indices-column-type column-type)))))
 
 (defn- dictionary-column-reader
   [byte-array-reader column-chunk-metadata schema-path column-type]
@@ -257,7 +253,7 @@
 
 (defn- compute-size-for-column-type [column-reader new-colum-type target-data-page-size]
   (let [writer (-> (column-writer target-data-page-size (:schema-path column-reader) new-colum-type)
-                   (write-row (read-column column-reader)))]
+                   (write (read column-reader)))]
     (-> (doto ^BufferedByteArrayWriter writer .finish)
         .size)))
 
