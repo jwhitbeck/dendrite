@@ -40,7 +40,8 @@
 
 (def ^:private write-handlers
   (-> (merge {ValueType {value-type-tag value-type-writer}
-              Field {field-tag field-writer}})
+              Field {field-tag field-writer}}
+             fressian/clojure-write-handlers)
       fressian/associative-lookup
       fressian/inheritance-lookup))
 

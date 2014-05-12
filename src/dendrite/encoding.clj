@@ -150,7 +150,7 @@
   (valid-base-value-type? (if (derived-type? t) (base-type t) t)))
 
 (defn valid-encoding-for-type? [t encoding]
-  (valid-encoding-for-base-type? (if (derived-type? t) (base-type t) t)))
+  (valid-encoding-for-base-type? (if (derived-type? t) (base-type t) t) encoding))
 
 (defn list-encodings-for-type [t]
   (list-encodings-for-base-type (if (derived-type? t) (base-type t) t)))
@@ -164,17 +164,17 @@
 (defn encoder [t encoding]
   (if-not (derived-type? t)
     (base-encoder t encoding)
-    (let [be ^BufferedByteArrayWriter (base-encoder (base-type t) encoding)
+    (let [be (base-encoder (base-type t) encoding)
           derived->base-type (derived->base-type-fn t)]
       (reify
         Encoder
         (encode [this v] (encode be (derived->base-type v)) this)
         BufferedByteArrayWriter
-        (reset [_] (.reset be))
-        (finish [_] (.finish be))
-        (size [_] (.size be))
-        (estimatedSize [_] (.estimatedSize be))
-        (writeTo [_ byte-array-writer] (.writeTo be byte-array-writer))))))
+        (reset [_] (.reset ^BufferedByteArrayWriter be))
+        (finish [_] (.finish ^BufferedByteArrayWriter be))
+        (size [_] (.size ^BufferedByteArrayWriter be))
+        (estimatedSize [_] (.estimatedSize ^BufferedByteArrayWriter be))
+        (writeTo [_ byte-array-writer] (.writeTo ^BufferedByteArrayWriter be byte-array-writer))))))
 
 (defn decoder-ctor [t encoding]
   (if-not (derived-type? t)
