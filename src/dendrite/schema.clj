@@ -16,6 +16,8 @@
 
 (defrecord Field [name repetition value])
 
+(defn record? [field] (-> field :value type (not= ValueType)))
+
 (def ^:private value-type-tag "dendrite/value-type")
 
 (def ^:private value-type-writer
@@ -136,7 +138,7 @@
 
 (defmethod human-readable Field
   [field]
-  (let [sub-edn (if-not (-> field :value map?) ; this is a record
+  (let [sub-edn (if (record? field)
                   (->> (:value field)
                        (map (fn [sub-field]
                               [(:name sub-field) (human-readable sub-field)]))
