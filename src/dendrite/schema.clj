@@ -3,7 +3,8 @@
             [clojure.edn :as edn]
             [clojure.string :as string])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
-           [java.io Writer]))
+           [java.io Writer])
+  (:refer-clojure :exclude [read-string]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +38,7 @@
         (.writeString (-> field :repetition name))
         (.writeObject (:value field))))))
 
-(def ^:private schema-write-handlers
+(def ^:private write-handlers
   (-> (merge {ValueType {value-type-tag value-type-writer}
               Field {field-tag field-writer}})
       fressian/associative-lookup
@@ -57,7 +58,7 @@
               (-> reader .readObject keyword)
               (-> reader .readObject)))))
 
-(def ^:private schema-read-handlers
+(def ^:private read-handlers
   (-> (merge {value-type-tag value-type-reader
               field-tag field-reader}
              fressian/clojure-read-handlers)
@@ -69,12 +70,12 @@
   [v ^Writer w]
   (.write w (str "#req " (:value v))))
 
-(defn read-schema-str [s]
+(defn read-string [s]
   (edn/read-string {:readers {'req ->Required}} s))
 
 (defn- required? [elem] (= (type elem) Required))
 
-(defmulti parse-schema
+(defmulti parse
   (fn [elem]
     (cond
      (and (map? elem) (list? (-> elem first key))) :map
@@ -84,42 +85,42 @@
      (list? elem) :value-type
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
-(defmethod parse-schema :value-type
+(defmethod parse :value-type
   [value-type]
   (let [[type-sym encoding compression] value-type]
     (ValueType. (keyword type-sym) (or encoding :plain) (or compression :none))))
 
-(defmethod parse-schema :list
+(defmethod parse :list
   [coll]
-  (let [sub-schema (parse-schema (first coll))]
+  (let [sub-schema (parse (first coll))]
     (if (= (type sub-schema) ValueType)
       (Field. nil :list sub-schema)
       (assoc sub-schema :repetition :list))))
 
-(defmethod parse-schema :set
+(defmethod parse :set
   [coll]
-  (let [sub-schema (parse-schema (first coll))]
+  (let [sub-schema (parse (first coll))]
     (if (= (type sub-schema) ValueType)
       (Field. nil :set sub-schema)
       (assoc sub-schema :repetition :set))))
 
-(defmethod parse-schema :record
+(defmethod parse :record
   [coll]
   (Field. nil :optional
           (for [[k v] coll :let [mark-required? (required? v)
                                  v (if mark-required? (:value v) v)]]
-            (let [parsed-v (parse-schema v)
+            (let [parsed-v (parse v)
                   field (if (= (type parsed-v) ValueType)
                           (Field. k :optional parsed-v)
                           (assoc parsed-v :name k))]
               (cond-> field
                       mark-required? (assoc :repetition :required))))))
 
-(defmethod parse-schema :map
+(defmethod parse :map
   [coll]
   (let [[key-elem val-elem] (first coll)]
-    (Field. nil :map [(Field. :key :required (parse-schema key-elem))
-                      (Field. :value :required (parse-schema key-elem))])))
+    (Field. nil :map [(Field. :key :required (parse key-elem))
+                      (Field. :value :required (parse key-elem))])))
 
 (defmulti human-readable type)
 
