@@ -81,17 +81,20 @@
 (defmulti parse
   (fn [elem]
     (cond
-     (and (map? elem) (list? (-> elem first key))) :map
+     (and (map? elem) ((some-fn list? symbol?) (-> elem first key))) :map
      (and (map? elem) (keyword? (-> elem first key))) :record
      (set? elem) :set
      (vector? elem) :list
      (list? elem) :value-type
+     (symbol? elem) :value-type
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
 (defmethod parse :value-type
   [value-type]
-  (let [[type-sym encoding compression] value-type]
-    (ValueType. (keyword type-sym) (or encoding :plain) (or compression :none))))
+  (if (symbol? value-type)
+    (ValueType. value-type :plain :none)
+    (let [[type-sym encoding compression] value-type]
+      (ValueType. (keyword type-sym) (or encoding :plain) (or compression :none)))))
 
 (defmethod parse :list
   [coll]
@@ -132,7 +135,7 @@
   (let [type-symb (-> vt :type name symbol)]
     (if (= :none (:compression vt))
       (if (= :plain (:encoding vt))
-        (list type-symb)
+        type-symb
         (list type-symb (:encoding vt)))
       (list type-symb (:encoding vt) (:compression vt)))))
 
