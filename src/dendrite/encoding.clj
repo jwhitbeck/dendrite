@@ -139,7 +139,10 @@
             :from-base-type-fn #(BigInteger. ^bytes %)}
    :keyword {:base-type :byte-array
              :to-base-type-fn (comp str->utf8-bytes name)
-             :from-base-type-fn (comp keyword utf8-bytes->str)}})
+             :from-base-type-fn (comp keyword utf8-bytes->str)}
+   :symbol {:base-type :byte-array
+            :to-base-type-fn (comp str->utf8-bytes name)
+            :from-base-type-fn (comp symbol utf8-bytes->str)}})
 
 (defn derived-type? [t] (contains? derived-types t))
 
@@ -197,7 +200,8 @@
                  :fixed-length-byte-array bytes
                  :string str
                  :bigint bigint
-                 :keyword keyword)]
+                 :keyword keyword
+                 :symbol symbol)]
     (fn [v]
       (try
         (coerce v)
