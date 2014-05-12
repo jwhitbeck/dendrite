@@ -52,3 +52,13 @@
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteArrayReader.)))
+
+(def test-schema-str
+  "{:docid #req (int64 :delta :lz4)
+    :links {:backward [(int64)]
+            :forward [(int64)]}
+    :name [{:language [{:code #req (string)
+                        :country (string)}]
+           :url (string)}]
+    :meta {(string) (string)}
+    :keywords #{(string)}}")
