@@ -185,3 +185,21 @@
          (reify
            Decoder
            (decode [_] (-> (decode bd) base->derived-type)))))))
+
+(defn coercion-fn [t]
+  (let [coerce (case t
+                 :boolean boolean
+                 :int32 int
+                 :int64 long
+                 :float float
+                 :double double
+                 :byte-array bytes
+                 :fixed-length-byte-array bytes
+                 :string str
+                 :bigint bigint
+                 :keyword keyword)]
+    (fn [v]
+      (try
+        (coerce v)
+        (catch Exception e
+          (throw (IllegalArgumentException. (format "Could not coerce '%s' into a %s" v (name t)) e)))))))
