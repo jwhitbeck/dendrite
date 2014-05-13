@@ -54,9 +54,9 @@
     (-> baw .buffer ByteArrayReader.)))
 
 (def test-schema-str
-  "{:docid #req (int64 :delta :lz4)
-    :links {:backward [int64]
-            :forward [int64]}
+  "{:docid #req #val {:type :int64 :encoding :delta :compression :lz4}
+    :links {:backward (int64)
+            :forward [#val {:type :int64 :encoding :delta}]}
     :name [{:language [{:code #req string
                         :country string}]
            :url string}]

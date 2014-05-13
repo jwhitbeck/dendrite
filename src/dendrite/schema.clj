@@ -14,6 +14,15 @@
 
 (defrecord ValueType [type encoding compression])
 
+(defn- map->value-type-with-defaults [m]
+  (map->ValueType (merge {:encoding :plain :compression :none} m)))
+
+(defmethod print-method ValueType
+  [v ^Writer w]
+  (.write w (str "#val " (into {} (cond-> v
+                                          (= (:compression v) :none) (dissoc :compression)
+                                          (= (:encoding v) :plain) (dissoc :encoding))))))
+
 (defrecord Field [name repetition value])
 
 (defn record? [field] (-> field :value type (not= ValueType)))
@@ -71,30 +80,34 @@
 
 (defmethod print-method Required
   [v ^Writer w]
-  (.write w (str "#req " (:value v))))
+  (.write w "#req ")
+  (print-method (:value v) w))
 
 (defn read-string [s]
-  (edn/read-string {:readers {'req ->Required}} s))
+  (edn/read-string {:readers {'req ->Required
+                              'val map->value-type-with-defaults}}
+                   s))
 
 (defn- required? [elem] (= (type elem) Required))
+
+(defn- value-type? [elem] (= (type elem) ValueType))
 
 (defmulti parse
   (fn [elem]
     (cond
-     (and (map? elem) ((some-fn list? symbol?) (-> elem first key))) :map
+     (or (symbol? elem) (value-type? elem)) :value-type
+     (and (map? elem) ((some-fn value-type? symbol?) (-> elem first key))) :map
      (and (map? elem) (keyword? (-> elem first key))) :record
      (set? elem) :set
-     (vector? elem) :list
-     (list? elem) :value-type
-     (symbol? elem) :value-type
+     (vector? elem) :vector
+     (list? elem) :list
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
 (defmethod parse :value-type
   [value-type]
   (if (symbol? value-type)
-    (ValueType. value-type :plain :none)
-    (let [[type-sym encoding compression] value-type]
-      (ValueType. (keyword type-sym) (or encoding :plain) (or compression :none)))))
+    (ValueType. (keyword value-type) :plain :none)
+    value-type))
 
 (defmethod parse :list
   [coll]
@@ -102,6 +115,13 @@
     (if (= (type sub-schema) ValueType)
       (Field. nil :list sub-schema)
       (assoc sub-schema :repetition :list))))
+
+(defmethod parse :vector
+  [coll]
+  (let [sub-schema (parse (first coll))]
+    (if (= (type sub-schema) ValueType)
+      (Field. nil :vector sub-schema)
+      (assoc sub-schema :repetition :vector))))
 
 (defmethod parse :set
   [coll]
@@ -116,7 +136,7 @@
           (for [[k v] coll :let [mark-required? (required? v)
                                  v (if mark-required? (:value v) v)]]
             (let [parsed-v (parse v)
-                  field (if (= (type parsed-v) ValueType)
+                  field (if (value-type? parsed-v)
                           (Field. k :optional parsed-v)
                           (assoc parsed-v :name k))]
               (cond-> field
@@ -132,12 +152,9 @@
 
 (defmethod human-readable ValueType
   [vt]
-  (let [type-symb (-> vt :type name symbol)]
-    (if (= :none (:compression vt))
-      (if (= :plain (:encoding vt))
-        type-symb
-        (list type-symb (:encoding vt)))
-      (list type-symb (:encoding vt) (:compression vt)))))
+  (if (and (= (:compression vt) :none) (= (:encoding vt) :plain))
+    (-> vt :type name symbol)
+    (map->ValueType vt)))
 
 (defmethod human-readable Field
   [field]
@@ -149,7 +166,8 @@
                   (cond-> (human-readable (:value field))
                           (= :required (:repetition field)) ->Required))]
     (case (:repetition field)
-      :list [sub-edn]
+      :list (list sub-edn)
+      :vector [sub-edn]
       :set #{sub-edn}
       :map {(-> sub-edn :key :value) (-> sub-edn :value :value)}
       sub-edn)))
