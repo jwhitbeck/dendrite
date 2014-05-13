@@ -141,6 +141,10 @@
             :coercion-fn str
             :to-base-type-fn str->utf8-bytes
             :from-base-type-fn utf8-bytes->str}
+   :char {:base-type :int32
+          :coercion-fn char
+          :to-base-type-fn int
+          :from-base-type-fn char}
    :bigint {:base-type :byte-array
             :coercion-fn bigint
             :to-base-type-fn bigint->bytes

@@ -168,6 +168,14 @@
                           (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
+      (is (= :dictionary (find-best-encoding reader target-data-page-size)))))
+  (testing "small selection of chars"
+    (let [ct (column-type :char :plain :none true)
+          input-blocks (->> (repeatedly #(helpers/rand-member [\c \return \u1111]))
+                            rand-top-level-required-blocks
+                            (take 5000))
+          reader (write-column-and-get-reader ct [:foo] input-blocks)]
+      (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
 (deftest find-best-int64-encodings
