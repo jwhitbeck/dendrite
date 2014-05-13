@@ -72,6 +72,8 @@
    :byte-array #{:plain :incremental :delta-length}
    :fixed-length-byte-array #{:plain}})
 
+(defn- base-type? [t] (contains? valid-encodings-for-types t))
+
 (defn- valid-base-value-type? [base-type]
   (-> valid-encodings-for-types keys set (contains? base-type)))
 
@@ -130,42 +132,54 @@
 
 (defn utf8-bytes->str [^bytes bs] (String. bs utf8-charset))
 
+(defn bigint->bytes [^BigInteger bi] (.toByteArray bi))
+
+(defn bytes->bigint [^bytes bs] (BigInteger. bs))
+
 (def ^:private derived-types
   {:string {:base-type :byte-array
+            :coercion-fn str
             :to-base-type-fn str->utf8-bytes
             :from-base-type-fn utf8-bytes->str}
    :bigint {:base-type :byte-array
-            :to-base-type-fn #(.toByteArray ^BigInteger %)
-            :from-base-type-fn #(BigInteger. ^bytes %)}
+            :coercion-fn bigint
+            :to-base-type-fn bigint->bytes
+            :from-base-type-fn bytes->bigint}
    :keyword {:base-type :byte-array
+             :coercion-fn keyword
              :to-base-type-fn (comp str->utf8-bytes name)
              :from-base-type-fn (comp keyword utf8-bytes->str)}
    :symbol {:base-type :byte-array
+            :coercion-fn symbol
             :to-base-type-fn (comp str->utf8-bytes name)
             :from-base-type-fn (comp symbol utf8-bytes->str)}})
 
-(defn derived-type? [t] (contains? derived-types t))
+(def ^:dynamic *custom-types* {})
+
+(defn- all-derived-types [] (merge *custom-types* derived-types))
 
 (defn- base-type [t]
-  (get-in derived-types [t :base-type]))
+  (if (base-type? t)
+    t
+    (get-in (all-derived-types) [t :base-type])))
 
 (defn valid-value-type? [t]
-  (valid-base-value-type? (if (derived-type? t) (base-type t) t)))
+  (valid-base-value-type? (base-type t)))
 
 (defn valid-encoding-for-type? [t encoding]
-  (valid-encoding-for-base-type? (if (derived-type? t) (base-type t) t) encoding))
+  (valid-encoding-for-base-type? (base-type t) encoding))
 
 (defn list-encodings-for-type [t]
-  (list-encodings-for-base-type (if (derived-type? t) (base-type t) t)))
+  (list-encodings-for-base-type (base-type t)))
 
 (defn- derived->base-type-fn [t]
-  (get-in derived-types [t :to-base-type-fn]))
+  (get-in (all-derived-types) [t :to-base-type-fn]))
 
 (defn- base->derived-type-fn [t]
-  (get-in derived-types [t :from-base-type-fn]))
+  (get-in (all-derived-types) [t :from-base-type-fn]))
 
 (defn encoder [t encoding]
-  (if-not (derived-type? t)
+  (if (base-type? t)
     (base-encoder t encoding)
     (let [be (base-encoder (base-type t) encoding)
           derived->base-type (derived->base-type-fn t)]
@@ -180,7 +194,7 @@
         (writeTo [_ byte-array-writer] (.writeTo ^BufferedByteArrayWriter be byte-array-writer))))))
 
 (defn decoder-ctor [t encoding]
-  (if-not (derived-type? t)
+  (if (base-type? t)
     (base-decoder-ctor t encoding)
     (let [bdc (base-decoder-ctor (base-type t) encoding)
           base->derived-type (base->derived-type-fn t)]
@@ -190,18 +204,16 @@
            (decode [_] (-> (decode bd) base->derived-type)))))))
 
 (defn coercion-fn [t]
-  (let [coerce (case t
-                 :boolean boolean
-                 :int32 int
-                 :int64 long
-                 :float float
-                 :double double
-                 :byte-array bytes
-                 :fixed-length-byte-array bytes
-                 :string str
-                 :bigint bigint
-                 :keyword keyword
-                 :symbol symbol)]
+  (let [coerce (if-not (base-type? t)
+                 (get-in (all-derived-types) [t :coercion-fn] identity)
+                 (case t
+                   :boolean boolean
+                   :int32 int
+                   :int64 long
+                   :float float
+                   :double double
+                   :byte-array bytes
+                   :fixed-length-byte-array bytes))]
     (fn [v]
       (try
         (coerce v)

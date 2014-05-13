@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [dendrite.core :refer [leveled-value]]
             [dendrite.column :refer :all]
-            [dendrite.encoding :refer [str->utf8-bytes]]
+            [dendrite.encoding :as encoding]
             [dendrite.page :as page]
             [dendrite.schema :refer [column-type]]
             [dendrite.test-helpers :refer [get-byte-array-reader] :as helpers])
@@ -57,6 +57,17 @@
        (-> writer
            get-byte-array-reader
            (column-reader column-chunk-metadata schema-path column-type)))))
+
+(def simple-date-format (SimpleDateFormat. "YYYY-MM-dd"))
+
+(defn- iterate-calendar-by-day [calendar]
+  (lazy-seq (cons (.getTime calendar)
+                  (iterate-calendar-by-day (doto calendar (.add Calendar/DATE 1))))))
+
+(defn- days-seq [start-date-str]
+  (-> (doto (Calendar/getInstance)
+        (.setTime (.parse simple-date-format start-date-str)))
+      iterate-calendar-by-day))
 
 (deftest data-column
   (let [ct (column-type :int32 :plain :deflate false)
@@ -186,6 +197,17 @@
           reader (write-column-and-get-reader ct [:foo] input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :delta (find-best-encoding reader target-data-page-size)))))
+  (testing "incrementing dates as a custom-type"
+    (let [ct (column-type :date :plain :none true)
+          input-blocks (->> (days-seq "2014-01-01")
+                            rand-top-level-required-blocks
+                            (take 5000))]
+      (binding [encoding/*custom-types* {:date {:base-type :int64
+                                                :to-base-type-fn #(.getTime %)
+                                                :from-base-type-fn #(Date. %)}}]
+        (let [reader (write-column-and-get-reader ct [:foo] input-blocks)]
+          (is (= (read reader) (flatten input-blocks)))
+          (is (= :delta (find-best-encoding reader target-data-page-size)))))))
   (testing "small selection of random int64s"
     (let [ct (column-type :int64 :plain :none true)
           random-ints (repeatedly 100 helpers/rand-int64)
@@ -230,12 +252,6 @@
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
 
-(def simple-date-format (SimpleDateFormat. "YYYY-MM-dd"))
-
-(defn- iterate-calendar-by-day [calendar]
-  (lazy-seq (cons (.getTime calendar)
-                  (iterate-calendar-by-day (doto calendar (.add Calendar/DATE 1))))))
-
 (deftest find-best-byte-array-encodings
   (testing "random byte arrays"
     (let [ct (column-type :byte-array :plain :none true)
@@ -257,9 +273,7 @@
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
     (let [ct (column-type :string :plain :none true)
-          calendar (doto (Calendar/getInstance)
-                     (.setTime (.parse simple-date-format "2014-01-01")))
-          input-blocks (->> (iterate-calendar-by-day calendar)
+          input-blocks (->> (days-seq "2014-01-01")
                             (map #(.format simple-date-format %))
                             rand-top-level-required-blocks
                             (take 5000))
@@ -320,11 +334,11 @@
 
 (deftest find-best-column-types
   (testing "lorem ispum permutations"
-    (let [ct (column-type :byte-array :plain :none true)
+    (let [ct (column-type :string :plain :none true)
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
           lorem-ipsum-words (-> helpers/lorem-ipsum (string/split #" ") set)
           lorem-ipsum-shuffles (repeatedly 100 #(->> lorem-ipsum-words shuffle (apply str)))
-          input-blocks (->>  (repeatedly #(-> lorem-ipsum-shuffles helpers/rand-member str->utf8-bytes))
+          input-blocks (->>  (repeatedly #(-> lorem-ipsum-shuffles helpers/rand-member))
                            rand-top-level-required-blocks
                            (take 5000))
           reader (write-column-and-get-reader ct [:foo] input-blocks)]
