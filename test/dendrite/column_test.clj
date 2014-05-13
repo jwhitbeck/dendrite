@@ -58,7 +58,7 @@
            get-byte-array-reader
            (column-reader column-chunk-metadata schema-path column-type)))))
 
-(def simple-date-format (SimpleDateFormat. "YYYY-MM-dd"))
+(def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn- iterate-calendar-by-day [calendar]
   (lazy-seq (cons (.getTime calendar)
@@ -280,14 +280,16 @@
       (is (= (read reader) (flatten input-blocks)))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
-    (let [ct (column-type :string :plain :none true)
+    (let [ct (column-type :date :plain :none true)
           input-blocks (->> (days-seq "2014-01-01")
-                            (map #(.format simple-date-format %))
                             rand-top-level-required-blocks
-                            (take 5000))
-          reader (write-column-and-get-reader ct [:foo] input-blocks)]
-      (is (= (read reader) (flatten input-blocks)))
-      (is (= :incremental (find-best-encoding reader target-data-page-size)))))
+                            (take 5000))]
+      (binding [encoding/*custom-types* {:date {:base-type :string
+                                                :to-base-type-fn #(.format simple-date-format %)
+                                                :from-base-type-fn #(.parse simple-date-format %)}}]
+        (let [reader (write-column-and-get-reader ct [:foo] input-blocks)]
+          (is (= (read reader) (flatten input-blocks)))
+          (is (= :incremental (find-best-encoding reader target-data-page-size)))))))
   (testing "small set of keywords"
     (let [ct (column-type :keyword :plain :none true)
           input-blocks (->> (repeatedly #(helpers/rand-member [:foo :bar :baz]))

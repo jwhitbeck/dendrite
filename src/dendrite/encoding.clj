@@ -162,10 +162,13 @@
 
 (defn- all-derived-types [] (merge *custom-types* derived-types))
 
-(defn- base-type [t]
-  (if (base-type? t)
-    t
-    (get-in (all-derived-types) [t :base-type])))
+(defn- type-hierarchy [t]
+  (lazy-seq
+   (if (base-type? t)
+     [t]
+     (cons t (type-hierarchy (get-in (all-derived-types) [t :base-type]))))))
+
+(defn- base-type [t] (last (type-hierarchy t)))
 
 (defn valid-value-type? [t]
   (valid-base-value-type? (base-type t)))
@@ -177,10 +180,15 @@
   (list-encodings-for-base-type (base-type t)))
 
 (defn- derived->base-type-fn [t]
-  (get-in (all-derived-types) [t :to-base-type-fn]))
+  (->> (map #(get-in (all-derived-types) [% :to-base-type-fn]) (type-hierarchy t))
+       butlast
+       reverse
+       (apply comp)))
 
 (defn- base->derived-type-fn [t]
-  (get-in (all-derived-types) [t :from-base-type-fn]))
+  (->> (map #(get-in (all-derived-types) [% :from-base-type-fn]) (type-hierarchy t))
+       butlast
+       (apply comp)))
 
 (defn encoder [t encoding]
   (if (base-type? t)
