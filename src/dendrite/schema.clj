@@ -12,20 +12,29 @@
 
 (def column-type ->ColumnType)
 
-(defrecord ValueType [type encoding compression])
+(defrecord ValueType [type encoding compression column-index repetition-level definition-level nested?])
 
 (defn- map->value-type-with-defaults [m]
-  (map->ValueType (merge {:encoding :plain :compression :none} m)))
+  (map->ValueType (merge {:encoding :plain :compression :none :nested? true} m)))
 
 (defmethod print-method ValueType
   [v ^Writer w]
-  (.write w (str "#val " (into {} (cond-> v
-                                          (= (:compression v) :none) (dissoc :compression)
-                                          (= (:encoding v) :plain) (dissoc :encoding))))))
+  (.write w (str "#val " (cond-> (dissoc v :column-index :repetition-level :definition-level :nested?)
+                                 (= (:compression v) :none) (dissoc :compression)
+                                 (= (:encoding v) :plain) (dissoc :encoding)))))
 
 (defrecord Field [name repetition value])
 
 (defn record? [field] (-> field :value type (not= ValueType)))
+
+(defn sub-field [field k] (->> field :value (filter #(= (:name %) k)) first))
+
+(defn sub-fields [field] (when (record? field) (:value field)))
+
+(defn sub-field-in [field [k & ks]]
+  (if (empty? ks)
+    (sub-field field k)
+    (sub-field-in (sub-field field k) ks)))
 
 (def ^:private value-type-tag "dendrite/value-type")
 
@@ -36,7 +45,11 @@
         (.writeTag value-type-tag 3)
         (.writeString (-> value-type :type name))
         (.writeString (-> value-type :encoding name))
-        (.writeString (-> value-type :compression name))))))
+        (.writeString (-> value-type :compression name))
+        (.writeInt (:column-index value-type))
+        (.writeInt (:repetition-level value-type))
+        (.writeInt (:definition-level value-type))
+        (.writeBoolean (:nested? value-type))))))
 
 (def ^:private field-tag "dendrite/field")
 
@@ -61,7 +74,11 @@
     (read [_ reader tag component-count]
       (ValueType. (-> reader .readObject keyword)
                   (-> reader .readObject keyword)
-                  (-> reader .readObject keyword)))))
+                  (-> reader .readObject keyword)
+                  (.readInt reader)
+                  (.readInt reader)
+                  (.readInt reader)
+                  (.readBoolean reader)))))
 
 (def ^:private field-reader
   (reify ReadHandler
@@ -88,7 +105,7 @@
                               'val map->value-type-with-defaults}}
                    s))
 
-(defn- required? [elem] (= (type elem) Required))
+(defn- wrapped-required? [elem] (= (type elem) Required))
 
 (defn- value-type? [elem] (= (type elem) ValueType))
 
@@ -106,7 +123,7 @@
 (defmethod parse :value-type
   [value-type]
   (if (symbol? value-type)
-    (ValueType. (keyword value-type) :plain :none)
+    (map->value-type-with-defaults {:type (keyword value-type)})
     value-type))
 
 (defmethod parse :list
@@ -133,7 +150,7 @@
 (defmethod parse :record
   [coll]
   (Field. nil :optional
-          (for [[k v] coll :let [mark-required? (required? v)
+          (for [[k v] coll :let [mark-required? (wrapped-required? v)
                                  v (if mark-required? (:value v) v)]]
             (let [parsed-v (parse v)
                   field (if (value-type? parsed-v)
@@ -147,6 +164,70 @@
   (let [[key-elem val-elem] (first coll)]
     (Field. nil :map [(Field. :key :required (parse key-elem))
                       (Field. :value :required (parse key-elem))])))
+
+(defn- column-indexed-schema [field current-column-index]
+  (if (record? field)
+    (let [[indexed-sub-fields next-index]
+            (reduce (fn [[indexed-sub-fields i] sub-field]
+                      (let [[indexed-sub-field next-index] (column-indexed-schema sub-field i)]
+                        [(conj indexed-sub-fields indexed-sub-field) next-index]))
+                    [[] current-column-index]
+                    (sub-fields field))]
+      [(assoc field :value indexed-sub-fields) next-index])
+    [(update-in field [:value] assoc :column-index current-column-index)
+     (inc current-column-index)]))
+
+(defn- index-columns [schema]
+  (first (column-indexed-schema schema 0)))
+
+(defn- repeated? [{repetition :repetition}] (not (#{:optional :required} repetition)))
+
+(defn- required? [{repetition :repetition}] (= repetition :required))
+
+(defn- set-nested-flags [schema]
+  (if (record? schema)
+    (update-in schema [:value] #(mapv (fn [field]
+                                        (if (or (record? field) (repeated? field))
+                                          field
+                                          (assoc-in field [:value :nested?] false)))
+                                      %))
+    (assoc-in schema [:value :nested?] false)))
+
+(defn- schema-with-level [field current-level pred k]
+  (if (record? field)
+    (let [sub-fields
+          (reduce (fn [sub-fields sub-field]
+                    (let [next-level (if (pred sub-field) (inc current-level) current-level)]
+                      (conj sub-fields (schema-with-level sub-field next-level pred k))))
+                  []
+                  (sub-fields field))]
+      (assoc field :value sub-fields))
+    (assoc-in field [:value k] current-level)))
+
+(defn- set-definition-levels [schema]
+  (schema-with-level schema 0 (complement required?) :definition-level))
+
+(defn- set-repetition-levels [schema]
+  (schema-with-level schema 0 repeated? :repetition-level))
+
+(defn annotate [schema]
+  (-> schema
+      index-columns
+      set-nested-flags
+      set-definition-levels
+      set-repetition-levels))
+
+(defn- recursive-value-types [field previous-value-types]
+  (if (record? field)
+    (reduce (fn [value-types sub-field]
+              (recursive-value-types sub-field value-types))
+            previous-value-types
+            (sub-fields field))
+    (conj previous-value-types (:value field))))
+
+(defn value-types [schema]
+  (->> (recursive-value-types schema [])
+       (sort-by :column-index)))
 
 (defmulti human-readable type)
 
