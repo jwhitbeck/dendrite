@@ -62,3 +62,11 @@
            :url string}]
     :meta {string string}
     :keywords #{string}}")
+
+(def dremel-paper-schema-str
+  "{:docid #req int64
+    :links {:backward [int64]
+            :forward [in64]}
+    :name [{:language [{:code #req string
+                        :country string}]
+           :url string}]}")
