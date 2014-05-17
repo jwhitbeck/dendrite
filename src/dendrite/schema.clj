@@ -210,9 +210,13 @@
 (defn- set-repetition-levels [schema]
   (schema-with-level schema 0 repeated? :repetition-level))
 
+(defn- set-top-record-required [schema]
+  (assoc schema :repetition :required))
+
 (defn annotate [schema]
   (-> schema
       index-columns
+      set-top-record-required
       set-nested-flags
       set-definition-levels
       set-repetition-levels))

@@ -22,6 +22,7 @@
 (deftest schema-annotation
   (testing "Value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse annotate)]
+      (is (= :required (:repetition schema)))
       (are [ks m] (let [vt (:value (sub-field-in schema ks))]
                     (and (= (:column-index vt) (:column-index m))
                          (= (:repetition-level vt) (:repetition-level m))
