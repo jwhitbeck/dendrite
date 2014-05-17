@@ -23,9 +23,10 @@
   (testing "Value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse annotate)]
       (is (= :required (:repetition schema)))
-      (are [ks m] (let [vt (:value (sub-field-in schema ks))]
+      (are [ks m] (let [field (sub-field-in schema ks)
+                        vt (:value field)]
                     (and (= (:column-index vt) (:column-index m))
-                         (= (:repetition-level vt) (:repetition-level m))
+                         (= (:repetition-level field) (:repetition-level m))
                          (= (:definition-level vt) (:definition-level m))
                          (= (:nested? vt) (:nested? m))))
            [:docid] {:column-index 0 :repetition-level 0 :definition-level 0 :nested? false}

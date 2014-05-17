@@ -12,18 +12,18 @@
 
 (def column-type ->ColumnType)
 
-(defrecord ValueType [type encoding compression column-index repetition-level definition-level nested?])
+(defrecord ValueType [type encoding compression column-index definition-level nested?])
 
 (defn- map->value-type-with-defaults [m]
   (map->ValueType (merge {:encoding :plain :compression :none :nested? true} m)))
 
 (defmethod print-method ValueType
   [v ^Writer w]
-  (.write w (str "#val " (cond-> (dissoc v :column-index :repetition-level :definition-level :nested?)
+  (.write w (str "#val " (cond-> (dissoc v :column-index :definition-level :nested?)
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
-(defrecord Field [name repetition value])
+(defrecord Field [name repetition value repetition-level])
 
 (defn record? [field] (-> field :value type (not= ValueType)))
 
@@ -47,7 +47,6 @@
         (.writeString (-> value-type :encoding name))
         (.writeString (-> value-type :compression name))
         (.writeInt (:column-index value-type))
-        (.writeInt (:repetition-level value-type))
         (.writeInt (:definition-level value-type))
         (.writeBoolean (:nested? value-type))))))
 
@@ -60,6 +59,7 @@
         (.writeTag field-tag 3)
         (.writeString (-> field :name name))
         (.writeString (-> field :repetition name))
+        (.writeInt (:repetition-level field))
         (.writeObject (:value field))))))
 
 (def ^:private write-handlers
@@ -77,7 +77,6 @@
                   (-> reader .readObject keyword)
                   (.readInt reader)
                   (.readInt reader)
-                  (.readInt reader)
                   (.readBoolean reader)))))
 
 (def ^:private field-reader
@@ -85,7 +84,8 @@
     (read [_ reader tag component-count]
       (Field. (-> reader .readObject keyword)
               (-> reader .readObject keyword)
-              (-> reader .readObject)))))
+              (.readInt reader)
+              (.readObject reader)))))
 
 (def ^:private read-handlers
   (-> (merge {value-type-tag value-type-reader
@@ -130,40 +130,41 @@
   [coll]
   (let [sub-schema (parse (first coll))]
     (if (= (type sub-schema) ValueType)
-      (Field. nil :list sub-schema)
+      (map->Field {:repetition :list :value sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse :vector
   [coll]
   (let [sub-schema (parse (first coll))]
     (if (= (type sub-schema) ValueType)
-      (Field. nil :vector sub-schema)
+      (map->Field {:repetition :vector :value sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse :set
   [coll]
   (let [sub-schema (parse (first coll))]
     (if (= (type sub-schema) ValueType)
-      (Field. nil :set sub-schema)
+      (map->Field {:repetition :set :value sub-schema})
       (assoc sub-schema :repetition :set))))
 
 (defmethod parse :record
   [coll]
-  (Field. nil :optional
-          (for [[k v] coll :let [mark-required? (wrapped-required? v)
-                                 v (if mark-required? (:value v) v)]]
-            (let [parsed-v (parse v)
-                  field (if (value-type? parsed-v)
-                          (Field. k :optional parsed-v)
-                          (assoc parsed-v :name k))]
-              (cond-> field
-                      mark-required? (assoc :repetition :required))))))
+  (map->Field {:repetition :optional
+               :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
+                                             v (if mark-required? (:value v) v)]]
+                        (let [parsed-v (parse v)
+                              field (if (value-type? parsed-v)
+                                      (map->Field {:name k :repetition :optional :value parsed-v})
+                                      (assoc parsed-v :name k))]
+                          (cond-> field
+                                  mark-required? (assoc :repetition :required))))}))
 
 (defmethod parse :map
   [coll]
   (let [[key-elem val-elem] (first coll)]
-    (Field. nil :map [(Field. :key :required (parse key-elem))
-                      (Field. :value :required (parse key-elem))])))
+    (map->Field {:repetition :map
+                 :value [(map->Field {:name :key :repetition :required :value (parse key-elem)})
+                         (map->Field {:name :value :repetition :required :value (parse val-elem)})]})))
 
 (defn- column-indexed-schema [field current-column-index]
   (if (record? field)
@@ -193,22 +194,23 @@
                                       %))
     (assoc-in schema [:value :nested?] false)))
 
-(defn- schema-with-level [field current-level pred k]
+(defn- schema-with-level [field current-level pred ks all-fields?]
   (if (record? field)
     (let [sub-fields
           (reduce (fn [sub-fields sub-field]
                     (let [next-level (if (pred sub-field) (inc current-level) current-level)]
-                      (conj sub-fields (schema-with-level sub-field next-level pred k))))
+                      (conj sub-fields (schema-with-level sub-field next-level pred ks all-fields?))))
                   []
                   (sub-fields field))]
-      (assoc field :value sub-fields))
-    (assoc-in field [:value k] current-level)))
+      (cond-> (assoc field :value sub-fields)
+              all-fields? (assoc-in ks current-level)))
+    (assoc-in field ks current-level)))
 
 (defn- set-definition-levels [schema]
-  (schema-with-level schema 0 (complement required?) :definition-level))
+  (schema-with-level schema 0 (complement required?) [:value :definition-level] false))
 
 (defn- set-repetition-levels [schema]
-  (schema-with-level schema 0 repeated? :repetition-level))
+  (schema-with-level schema 0 repeated? [:repetition-level] true))
 
 (defn- set-top-record-required [schema]
   (assoc schema :repetition :required))
