@@ -1,7 +1,9 @@
 (ns dendrite.schema
   (:require [clojure.data.fressian :as fressian]
             [clojure.edn :as edn]
-            [clojure.string :as string])
+            [dendrite.core :refer [format-ks]]
+            [dendrite.encoding :as encoding]
+            [dendrite.compression :as compression])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [java.io Writer])
   (:refer-clojure :exclude [read-string val]))
@@ -37,6 +39,10 @@
   (if (empty? ks)
     (sub-field field k)
     (sub-field-in (sub-field field k) ks)))
+
+(defn- repeated? [{repetition :repetition}] (not (#{:optional :required} repetition)))
+
+(defn- required? [{repetition :repetition}] (= repetition :required))
 
 (def ^:private value-type-tag "dendrite/value-type")
 
@@ -114,7 +120,7 @@
 (defn- value-type? [elem] (instance? ValueType elem))
 
 (defmulti ^:private parse-tree
-  (fn [elem]
+  (fn [elem parents]
     (cond
      (or (symbol? elem) (value-type? elem)) :value-type
      (and (map? elem) ((some-fn value-type? symbol?) (-> elem first key))) :map
@@ -125,50 +131,67 @@
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
 (defmethod parse-tree :value-type
-  [value-type]
-  (if (symbol? value-type)
-    (map->value-type-with-defaults {:type (keyword value-type)})
-    value-type))
+  [value-type parents]
+  (let [vt (if (symbol? value-type)
+             (map->value-type-with-defaults {:type (keyword value-type)})
+             value-type)]
+    (when-not (encoding/valid-value-type? (:type vt))
+      (throw (IllegalArgumentException.
+              (format "Unsupported type '%s' for column %s" (:type vt) (format-ks parents)))))
+    (when-not (encoding/valid-encoding-for-type? (:type vt) (:encoding vt))
+      (throw (IllegalArgumentException.
+              (format "Mismatched type '%s' and encoding '%s' for column %s"
+                      (:type vt) (:encoding vt) (format-ks parents)))))
+    (when-not (compression/valid-compression-type? (:compression vt))
+      (throw (IllegalArgumentException.
+              (format "Unsupported compression type '%s' for column" (:compression vt) (format-ks parents)))))
+    vt))
 
 (defmethod parse-tree :list
-  [coll]
-  (let [sub-schema (parse-tree (first coll))]
+  [coll parents]
+  (let [sub-schema (parse-tree (first coll) parents)]
     (if (value-type? sub-schema)
       (map->Field {:repetition :list :value sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse-tree :vector
-  [coll]
-  (let [sub-schema (parse-tree (first coll))]
+  [coll parents]
+  (let [sub-schema (parse-tree (first coll) parents)]
     (if (value-type? sub-schema)
       (map->Field {:repetition :vector :value sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse-tree :set
-  [coll]
-  (let [sub-schema (parse-tree (first coll))]
+  [coll parents]
+  (let [sub-schema (parse-tree (first coll) parents)]
     (if (value-type? sub-schema)
       (map->Field {:repetition :set :value sub-schema})
       (assoc sub-schema :repetition :set))))
 
 (defmethod parse-tree :record
-  [coll]
-  (map->Field {:repetition :optional
-               :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
-                                             v (if mark-required? (:value v) v)]]
-                        (let [parsed-v (parse-tree v)
-                              field (if (value-type? parsed-v)
-                                      (map->Field {:name k :repetition :optional :value parsed-v})
-                                      (assoc parsed-v :name k))]
-                          (cond-> field
-                                  mark-required? (assoc :repetition :required))))}))
+  [coll parents]
+  (map->Field
+   {:repetition :optional
+    :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
+                                  v (if mark-required? (:value v) v)]]
+             (let [parsed-v (parse-tree v (conj parents k))
+                   field (if (value-type? parsed-v)
+                           (map->Field {:name k :repetition :optional :value parsed-v})
+                           (assoc parsed-v :name k))]
+               (when (and mark-required? (repeated? field))
+                 (throw (IllegalArgumentException.
+                         (format "Field '%s' is marked both required and repeated"
+                                 (format-ks (conj parents k))))))
+               (cond-> field
+                       mark-required? (assoc :repetition :required))))}))
 
 (defmethod parse-tree :map
-  [coll]
+  [coll parents]
   (let [[key-elem val-elem] (first coll)]
-    (map->Field {:repetition :map
-                 :value [(map->Field {:name :key :repetition :required :value (parse-tree key-elem)})
-                         (map->Field {:name :value :repetition :required :value (parse-tree val-elem)})]})))
+    (map->Field
+     {:repetition :map
+      :value [(map->Field {:name :key :repetition :required :value (parse-tree key-elem parents)})
+              (map->Field {:name :value :repetition :required :value (parse-tree val-elem parents)})]})))
 
 (defn- column-indexed-schema [field current-column-index]
   (if (record? field)
@@ -184,10 +207,6 @@
 
 (defn- index-columns [schema]
   (first (column-indexed-schema schema 0)))
-
-(defn- repeated? [{repetition :repetition}] (not (#{:optional :required} repetition)))
-
-(defn- required? [{repetition :repetition}] (= repetition :required))
 
 (defn- set-nested-flags [schema]
   (if (record? schema)
@@ -227,7 +246,11 @@
       set-definition-levels
       set-repetition-levels))
 
-(defn parse [human-readable-schema] (-> human-readable-schema parse-tree annotate))
+(defn parse [human-readable-schema]
+  (try
+    (-> human-readable-schema (parse-tree []) annotate)
+    (catch Exception e
+      (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" human-readable-schema) e)))))
 
 (defn- recursive-value-types [field previous-value-types]
   (if (record? field)
