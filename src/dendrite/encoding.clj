@@ -224,8 +224,8 @@
                    :int64 long
                    :float float
                    :double double
-                   :byte-array bytes
-                   :fixed-length-byte-array bytes))]
+                   :byte-array byte-array
+                   :fixed-length-byte-array byte-array))]
     (fn [v]
       (try
         (coerce v)
