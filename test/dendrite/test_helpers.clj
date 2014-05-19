@@ -1,4 +1,5 @@
 (ns dendrite.test-helpers
+  (:require [dendrite.core :refer [leveled-value]])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter ByteArrayWritable]
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))
@@ -41,6 +42,32 @@
 
 (defn rand-member [coll]
   (nth (seq coll) (-> coll count clojure.core/rand-int)))
+
+(defn leveled [{:keys [max-definition-level max-repetition-level] :or {nested? true} :as spec} coll]
+  (lazy-seq
+   (let [next-value (first coll)
+         rand-repetition-level (clojure.core/rand-int (inc max-repetition-level))
+         rand-definition-level
+           (clojure.core/rand-int (if next-value (inc max-definition-level) max-definition-level))]
+     (if (or (not next-value) (= rand-definition-level max-definition-level))
+       (cons (leveled-value rand-repetition-level rand-definition-level (first coll))
+             (leveled spec (rest coll)))
+       (cons (leveled-value rand-repetition-level rand-definition-level nil)
+             (leveled spec coll))))))
+
+(defn rand-partition [n coll]
+  (lazy-seq
+   (when-not (empty? coll)
+     (let [k (inc (clojure.core/rand-int n))]
+       (cons (take k coll) (rand-partition n (drop k coll)))))))
+
+(defn avg [coll] (/ (reduce + coll) (count coll)))
+
+(defn abs [x] (if (pos? x) x (- x)))
+
+(defn roughly
+  ([a b] (roughly a b 0.1))
+  ([a b r] (< (abs (- a b)) (* a r))))
 
 (def lorem-ipsum
   "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et

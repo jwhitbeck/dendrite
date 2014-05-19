@@ -2,118 +2,83 @@
   (:require [clojure.test :refer :all]
             [dendrite.core :refer [leveled-value]]
             [dendrite.page :refer :all]
-            [dendrite.test-helpers :refer [get-byte-array-reader]])
+            [dendrite.test-helpers :refer [get-byte-array-reader leveled] :as helpers])
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read type]))
 
-(defn- rand-leveled-value [schema-depth]
-  (let [definition-level (rand-int (inc schema-depth))
-        repetition-level (rand-int (inc schema-depth))
-        v (if (= definition-level schema-depth) (rand-int 1024) nil)]
-    (leveled-value repetition-level definition-level v)))
-
-(defn- rand-leveled-nil-value [schema-depth]
-  (let [definition-level (rand-int schema-depth)
-        repetition-level (rand-int (inc schema-depth))]
-    (leveled-value repetition-level definition-level nil)))
-
-(defn- rand-required-leveled-value [schema-depth]
-  (let [definition-level schema-depth
-        repetition-level (rand-int (inc schema-depth))
-        v (rand-int 1024)]
-    (leveled-value repetition-level definition-level v)))
-
-(defn- rand-top-level-leveled-value []
-  (let [repetition-level 0
-        definition-level (rand-int 2)
-        v (if (= definition-level 1) (rand-int 1024) nil)]
-    (leveled-value repetition-level definition-level v)))
-
-(defn rand-required-top-level-leveled-value []
-  (leveled-value 0 1 (rand-int 1024)))
-
 (defn- write-read-single-data-page
-  [max-definition-level required? value-type encoding compression-type input-values]
-  (let [page-writer (data-page-writer max-definition-level required? value-type encoding compression-type)
-        page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression-type)]
+  [{:keys [max-definition-level max-repetition-level]} value-type encoding compression input-values]
+  (let [page-writer (data-page-writer max-repetition-level max-definition-level
+                                      value-type encoding compression)
+        page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression)]
     (-> page-writer (write input-values) get-byte-array-reader page-reader-ctor read)))
 
 (defn- write-read-single-dictionary-page
-  [value-type encoding compression-type input-values]
-  (let [page-writer (dictionary-page-writer value-type encoding compression-type)
-        page-reader-ctor #(dictionary-page-reader % value-type encoding compression-type)]
+  [value-type encoding compression input-values]
+  (let [page-writer (dictionary-page-writer value-type encoding compression)
+        page-reader-ctor #(dictionary-page-reader % value-type encoding compression)]
     (-> page-writer (write input-values) get-byte-array-reader page-reader-ctor read)))
 
 (deftest data-page
   (testing "write/read a data page"
     (testing "uncompressed"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-leveled-value max-definition-level))
-            output-values (write-read-single-data-page max-definition-level false
-                                                       :int :plain :none input-values)]
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "all nils"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-leveled-nil-value max-definition-level))
-            output-values (write-read-single-data-page max-definition-level false
-                                                       :int :plain :none input-values)]
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeat nil) (leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "compressed"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-leveled-value max-definition-level))
-            output-values (write-read-single-data-page max-definition-level false
-                                                       :int :plain :deflate input-values)]
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :deflate input-values)]
         (is (= output-values input-values))))
     (testing "required"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-required-leveled-value max-definition-level))
-            output-values (write-read-single-data-page max-definition-level true
-                                                       :int :plain :none input-values)]
+      (let [spec {:max-definition-level 0 :max-repetition-level 0}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
-    (testing "top-level"
-      (let [max-definition-level 1
-            input-values (repeatedly 1000 #(rand-top-level-leveled-value))
-            output-values (write-read-single-data-page max-definition-level false
-                                                       :int :plain :none input-values)]
-        (is (= output-values input-values))))
-    (testing "required top-level"
-      (let [max-definition-level 1
-            input-values (repeatedly 1000 #(rand-required-top-level-leveled-value))
-            output-values (write-read-single-data-page max-definition-level true
-                                                       :int :plain :none input-values)]
+    (testing "non-repeated"
+      (let [spec {:max-definition-level 2 :max-repetition-level 0}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "empty page"
-      (let [max-definition-level 1
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values []
-            output-values (write-read-single-data-page max-definition-level true
-                                                       :int :plain :none input-values)]
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "repeatable writes"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-leveled-value max-definition-level))
-            page-writer (-> (data-page-writer max-definition-level false :int :plain :none)
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
+                                              :int :plain :none)
                             (write input-values))
             baw1 (doto (ByteArrayWriter. 10) (.write page-writer))
             baw2 (doto (ByteArrayWriter. 10) (.write page-writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatable reads"
-      (let [max-definition-level 3
-            input-values (repeatedly 1000 #(rand-leveled-value max-definition-level))
-            page-writer (-> (data-page-writer max-definition-level false :int :plain :none)
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeatedly helpers/rand-int) (leveled spec) (take 1000))
+            page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
+                                              :int :plain :none)
                             (write input-values))
             page-reader (-> page-writer
                             get-byte-array-reader
-                            (data-page-reader max-definition-level :int :plain :none))]
+                            (data-page-reader (:max-definition-level spec) :int :plain :none))]
         (is (= (read page-reader) (read page-reader)))))))
 
 (deftest dictionary-page
   (testing "write/read a dictionary page"
     (testing "uncompressed"
-      (let [input-values (repeatedly 1000 #(rand-int 10000))
+      (let [input-values (repeatedly 1000 helpers/rand-int)
             output-values (write-read-single-dictionary-page :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "compressed"
-      (let [input-values (repeatedly 1000 #(rand-int 10000))
+      (let [input-values (repeatedly 1000 helpers/rand-int)
             output-values (write-read-single-dictionary-page :int :plain :lz4 input-values)]
         (is (= output-values input-values))))
     (testing "empty page"
@@ -121,14 +86,14 @@
             output-values (write-read-single-dictionary-page :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "repeatable writes"
-      (let [input-values (repeatedly 1000 #(rand-int 10000))
+      (let [input-values (repeatedly 1000 helpers/rand-int)
             page-writer (-> (dictionary-page-writer :int :plain :none)
                             (write input-values))
             baw1 (doto (ByteArrayWriter. 10) (.write page-writer))
             baw2 (doto (ByteArrayWriter. 10) (.write page-writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatable reads"
-      (let [input-values (repeatedly 1000 #(rand-int 10000))
+      (let [input-values (repeatedly 1000 helpers/rand-int)
             page-writer (-> (dictionary-page-writer :int :plain :none)
                             (write input-values))
             page-reader (-> page-writer
@@ -138,13 +103,16 @@
 
 (deftest incompatible-pages
   (testing "read incompatible page types throws an exception"
-    (let [data-bar (-> (data-page-writer 1 false :int :plain :none)
-                       (write (repeatedly 100 #(rand-leveled-value 1)))
+    (let [spec {:max-definition-level 1 :max-repetition-level 1}
+          data-bar (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
+                                         :int :plain :none)
+                       (write (->> (repeatedly helpers/rand-int) (leveled spec) (take 100)))
                        get-byte-array-reader)
           dict-bar (-> (dictionary-page-writer :int :plain :none)
                        (write (range 100))
                        get-byte-array-reader)]
       (is (data-page-reader data-bar 1 :int :plain :none))
-      (is (thrown? IllegalArgumentException (data-page-reader dict-bar 1 :int :plain :none)))
+      (is (thrown? IllegalArgumentException (data-page-reader dict-bar (:max-definition-level spec)
+                                                              :int :plain :none)))
       (is (dictionary-page-reader dict-bar :int :plain :none))
       (is (thrown? IllegalArgumentException (dictionary-page-reader data-bar :int :plain :none))))))

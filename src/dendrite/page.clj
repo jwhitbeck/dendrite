@@ -151,7 +151,7 @@
   (provisional-header [_]
     (DataPageHeader. (encode-page-type :data)
                      num-values
-                      (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
+                     (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
                      (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
                      (.estimatedSize data-encoder)
                      (.estimatedSize data-encoder)))
@@ -202,12 +202,12 @@
       (.write byte-array-writer definition-level-encoder))
     (.write byte-array-writer (if data-compressor data-compressor data-encoder))))
 
-(defn data-page-writer [max-definition-level required? value-type encoding compression-type]
+(defn data-page-writer [max-repetition-level max-definition-level value-type encoding compression]
   (DataPageWriter. 0 (estimation/ratio-estimator)
-                   (when-not (= 1 max-definition-level) (levels-encoder max-definition-level))
-                   (when-not required? (levels-encoder max-definition-level))
+                   (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
+                   (when (pos? max-definition-level) (levels-encoder max-definition-level))
                    (encoder value-type encoding)
-                   (compressor compression-type)
+                   (compressor compression)
                    false))
 
 (deftype DictionaryPageWriter [^:unsynchronized-mutable num-values
@@ -258,10 +258,10 @@
       (.write (header this))
       (.write (if data-compressor data-compressor data-encoder)))))
 
-(defn dictionary-page-writer [value-type encoding compression-type]
+(defn dictionary-page-writer [value-type encoding compression]
   (DictionaryPageWriter. 0 (estimation/ratio-estimator)
                          (encoder value-type encoding)
-                         (compressor compression-type)
+                         (compressor compression)
                          false))
 
 (defprotocol IPageReader
@@ -322,27 +322,27 @@
     (.sliceAhead byte-array-reader (body-length header))))
 
 (defn data-page-reader
-  [^ByteArrayReader byte-array-reader max-definition-level value-type encoding compression-type]
+  [^ByteArrayReader byte-array-reader max-definition-level value-type encoding compression]
   (let [bar (.slice byte-array-reader)
         page-type (read-next-data-page-type bar)]
     (DataPageReader. bar max-definition-level (decoder-ctor value-type encoding)
-                     (decompressor-ctor compression-type) (read-data-page-header bar page-type))))
+                     (decompressor-ctor compression) (read-data-page-header bar page-type))))
 
 (defn data-page-readers
-  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
+  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression]
   (let [num-data-pages (int num-data-pages)]
     (lazy-seq
      (when (pos? num-data-pages)
        (let [next-data-page-reader (data-page-reader byte-array-reader max-definition-level value-type
-                                                     encoding compression-type)]
+                                                     encoding compression)]
          (cons next-data-page-reader
                (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-definition-level
-                                  value-type encoding compression-type)))))))
+                                  value-type encoding compression)))))))
 
 (defn read-data-pages
-  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression-type]
+  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression]
   (->> (data-page-readers byte-array-reader num-data-pages max-definition-level value-type
-                          encoding compression-type)
+                          encoding compression)
        (mapcat read)))
 
 (defn read-data-page-headers
@@ -375,15 +375,15 @@
            (take (:num-values header))))))
 
 (defn dictionary-page-reader
-  [^ByteArrayReader byte-array-reader value-type encoding compression-type]
+  [^ByteArrayReader byte-array-reader value-type encoding compression]
   (let [bar (.slice byte-array-reader)
         page-type (read-next-dictionary-page-type bar)]
     (DictionaryPageReader. bar (decoder-ctor value-type encoding)
-                           (decompressor-ctor compression-type)
+                           (decompressor-ctor compression)
                            (read-dictionary-page-header bar page-type))))
 
-(defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression-type]
-  (read (dictionary-page-reader byte-array-reader value-type encoding compression-type)))
+(defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression]
+  (read (dictionary-page-reader byte-array-reader value-type encoding compression)))
 
 (defn read-dictionary-header [^ByteArrayReader byte-array-reader]
   (let [bar (.slice byte-array-reader)

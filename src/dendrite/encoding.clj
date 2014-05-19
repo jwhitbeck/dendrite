@@ -120,11 +120,11 @@
 
 (defn- packed-bit-width [n] (- 32 (Integer/numberOfLeadingZeros n)))
 
-(defn levels-encoder [max-definition-level]
-  (IntFixedBitWidthPackedRunLengthEncoder. (packed-bit-width max-definition-level)))
+(defn levels-encoder [max-level]
+  (IntFixedBitWidthPackedRunLengthEncoder. (packed-bit-width max-level)))
 
-(defn levels-decoder [^ByteArrayReader byte-array-reader max-definition-level]
-  (IntFixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-definition-level)))
+(defn levels-decoder [^ByteArrayReader byte-array-reader max-level]
+  (IntFixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-level)))
 
 (def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 

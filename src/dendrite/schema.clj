@@ -10,20 +10,16 @@
 
 (set! *warn-on-reflection* true)
 
-(defrecord ColumnType [value-type encoding compression-type required?])
-
-(def column-type ->ColumnType)
-
-(defrecord ColumnSpec [type encoding compression column-index definition-level nested?])
+(defrecord ColumnSpec [type encoding compression column-index max-repetition-level max-definition-level])
 
 (defn- map->column-spec-with-defaults [m]
-  (map->ColumnSpec (merge {:encoding :plain :compression :none :nested? true} m)))
+  (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
 
 (def val map->column-spec-with-defaults)
 
 (defmethod print-method ColumnSpec
   [v ^Writer w]
-  (.write w (str "#val " (cond-> (dissoc v :column-index :definition-level :nested?)
+  (.write w (str "#val " (cond-> (dissoc v :column-index :max-definition-level :max-repetition-level)
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
@@ -55,8 +51,8 @@
         (.writeString (-> column-spec :encoding name))
         (.writeString (-> column-spec :compression name))
         (.writeInt (:column-index column-spec))
-        (.writeInt (:definition-level column-spec))
-        (.writeBoolean (:nested? column-spec))))))
+        (.writeInt (:max-repetition-level column-spec))
+        (.writeInt (:max-definition-level column-spec))))))
 
 (def ^:private field-tag "dendrite/field")
 
@@ -85,7 +81,7 @@
                    (-> reader .readObject keyword)
                    (.readInt reader)
                    (.readInt reader)
-                   (.readBoolean reader)))))
+                   (.readInt reader)))))
 
 (def ^:private field-reader
   (reify ReadHandler
@@ -208,15 +204,6 @@
 (defn- index-columns [schema]
   (first (column-indexed-schema schema 0)))
 
-(defn- set-nested-flags [schema]
-  (if (record? schema)
-    (update-in schema [:value] #(mapv (fn [field]
-                                        (if (or (record? field) (repeated? field))
-                                          field
-                                          (assoc-in field [:value :nested?] false)))
-                                      %))
-    (assoc-in schema [:value :nested?] false)))
-
 (defn- schema-with-level [field current-level pred ks all-fields?]
   (if (record? field)
     (let [sub-fields
@@ -230,10 +217,12 @@
     (assoc-in field ks current-level)))
 
 (defn- set-definition-levels [schema]
-  (schema-with-level schema 0 (complement required?) [:value :definition-level] false))
+  (schema-with-level schema 0 (complement required?) [:value :max-definition-level] false))
 
 (defn- set-repetition-levels [schema]
-  (schema-with-level schema 0 repeated? [:repetition-level] true))
+  (-> schema
+      (schema-with-level 0 repeated? [:value :max-repetition-level] false)
+      (schema-with-level 0 repeated? [:repetition-level] true)))
 
 (defn- set-top-record-required [schema]
   (assoc schema :repetition :required))
@@ -242,9 +231,8 @@
   (-> schema
       index-columns
       set-top-record-required
-      set-nested-flags
-      set-definition-levels
-      set-repetition-levels))
+      set-repetition-levels
+      set-definition-levels))
 
 (defn parse [human-readable-schema]
   (try

@@ -61,16 +61,15 @@
     (.finish this)
     (.write baw byte-array-writer)))
 
-(defn- data-column-writer [target-data-page-size schema-path column-type]
-  (let [{:keys [required? value-type encoding compression-type]} column-type
-        max-definition-level (count schema-path)]
+(defn- data-column-writer [target-data-page-size column-spec]
+  (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
     (DataColumnWriter. 10
                        0
                        target-data-page-size
                        (estimation/ratio-estimator)
                        (ByteArrayWriter.)
-                       (page/data-page-writer max-definition-level required? value-type
-                                              encoding compression-type))))
+                       (page/data-page-writer max-repetition-level max-definition-level type
+                                              encoding compression))))
 
 (defn- bytes? [x] (instance? (Class/forName "[B") x))
 
@@ -123,24 +122,23 @@
     (.write baw dictionary-writer)
     (.write baw data-column-writer)))
 
-(defn- dictionary-indices-column-type [column-type]
-  (assoc column-type
-    :value-type :int
+(defn- dictionary-indices-column-spec [column-spec]
+  (assoc column-spec
+    :type :int
     :encoding :packed-run-length
-    :compression-type :none))
+    :compression :none))
 
-(defn- dictionary-column-writer [target-data-page-size schema-path column-type]
-  (let [{:keys [required? value-type encoding compression-type]} column-type
-        max-definition-level (count schema-path)]
+(defn- dictionary-column-writer [target-data-page-size column-spec]
+  (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
     (DictionaryColumnWriter.
      (HashMap.)
-     (page/dictionary-page-writer (:value-type column-type) :plain (:compression-type column-type))
-     (data-column-writer target-data-page-size schema-path (dictionary-indices-column-type column-type)))))
+     (page/dictionary-page-writer type :plain compression)
+     (data-column-writer target-data-page-size (dictionary-indices-column-spec column-spec)))))
 
-(defn column-writer [target-data-page-size schema-path column-type]
-  (if (= :dictionary (:encoding column-type))
-    (dictionary-column-writer target-data-page-size schema-path column-type)
-    (data-column-writer target-data-page-size schema-path column-type)))
+(defn column-writer [target-data-page-size column-spec]
+  (if (= :dictionary (:encoding column-spec))
+    (dictionary-column-writer target-data-page-size column-spec)
+    (data-column-writer target-data-page-size column-spec)))
 
 (defprotocol IColumnReader
   (read [_] [_ map-fn])
@@ -171,19 +169,18 @@
 
 (defrecord DataColumnReader [^ByteArrayReader byte-array-reader
                              column-chunk-metadata
-                             schema-path
-                             column-type]
+                             column-spec]
   IColumnReader
   (read [this]
     (read this identity))
   (read [_ map-fn]
-    (let [{:keys [value-type encoding compression-type]} column-type]
+    (let [{:keys [type encoding compression max-definition-level]} column-spec]
       (->> (page/read-data-pages (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                                  (:num-data-pages column-chunk-metadata)
-                                 (count schema-path)
-                                 value-type
+                                 max-definition-level
+                                 type
                                  encoding
-                                 compression-type)
+                                 compression)
            (map (partial apply-to-leveled-value map-fn)))))
   (stats [_]
     (->> (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
@@ -192,8 +189,8 @@
          (reduce add-column-stats))))
 
 (defn- data-column-reader
-  [byte-array-reader column-chunk-metadata schema-path column-type]
-  (DataColumnReader. byte-array-reader column-chunk-metadata schema-path column-type))
+  [byte-array-reader column-chunk-metadata column-spec]
+  (DataColumnReader. byte-array-reader column-chunk-metadata column-spec))
 
 (defprotocol IDictionaryColumnReader
   (read-indices [_])
@@ -202,8 +199,7 @@
 
 (defrecord DictionaryColumnReader [^ByteArrayReader byte-array-reader
                                    column-chunk-metadata
-                                   schema-path
-                                   column-type]
+                                   column-spec]
   IColumnReader
   (read [this]
     (read this identity))
@@ -227,43 +223,41 @@
   IDictionaryColumnReader
   (read-dictionary [_]
     (page/read-dictionary (.sliceAhead byte-array-reader (:dictionary-page-offset column-chunk-metadata))
-                          (:value-type column-type)
+                          (:type column-spec)
                           :plain
-                          (:compression-type column-type)))
+                          (:compression column-spec)))
   (read-indices [_]
     (read (data-column-reader byte-array-reader
                               column-chunk-metadata
-                              schema-path
-                              (dictionary-indices-column-type column-type))))
+                              (dictionary-indices-column-spec column-spec))))
   (indices-stats [_]
     (stats (data-column-reader byte-array-reader
                                column-chunk-metadata
-                               schema-path
-                               (dictionary-indices-column-type column-type)))))
+                               (dictionary-indices-column-spec column-spec)))))
 
 (defn- dictionary-column-reader
-  [byte-array-reader column-chunk-metadata schema-path column-type]
-  (DictionaryColumnReader. byte-array-reader column-chunk-metadata schema-path column-type))
+  [byte-array-reader column-chunk-metadata column-spec]
+  (DictionaryColumnReader. byte-array-reader column-chunk-metadata column-spec))
 
 (defn column-reader
-  [byte-array-reader column-chunk-metadata schema-path column-type]
-  (if (= :dictionary (:encoding column-type))
-    (dictionary-column-reader byte-array-reader column-chunk-metadata schema-path column-type)
-    (data-column-reader byte-array-reader column-chunk-metadata schema-path column-type)))
+  [byte-array-reader column-chunk-metadata column-spec]
+  (if (= :dictionary (:encoding column-spec))
+    (dictionary-column-reader byte-array-reader column-chunk-metadata column-spec)
+    (data-column-reader byte-array-reader column-chunk-metadata column-spec)))
 
-(defn- compute-size-for-column-type [column-reader new-colum-type target-data-page-size]
-  (let [writer (-> (column-writer target-data-page-size (:schema-path column-reader) new-colum-type)
+(defn- compute-size-for-column-spec [column-reader new-colum-spec target-data-page-size]
+  (let [writer (-> (column-writer target-data-page-size new-colum-spec)
                    (write (read column-reader)))]
     (-> (doto ^BufferedByteArrayWriter writer .finish)
         .size)))
 
 (defn find-best-encoding [column-reader target-data-page-size]
-  (let [ct (-> column-reader :column-type (assoc :compression-type :none))
-        eligible-encodings (cons :dictionary (list-encodings-for-type (:value-type ct)))]
+  (let [ct (-> column-reader :column-spec (assoc :compression :none))
+        eligible-encodings (cons :dictionary (list-encodings-for-type (:type ct)))]
     (->> eligible-encodings
          (reduce (fn [results encoding]
                    (assoc results encoding
-                          (compute-size-for-column-type column-reader
+                          (compute-size-for-column-spec column-reader
                                                         (assoc ct :encoding encoding)
                                                         target-data-page-size)))
                  {})
@@ -271,33 +265,33 @@
          first
          key)))
 
-(defn find-best-compression-type
+(defn find-best-compression
   [column-reader target-data-page-size candidates-treshold-map & {:keys [encoding]}]
-  (let [ct  (cond-> (:column-type column-reader)
+  (let [ct  (cond-> (:column-spec column-reader)
                     encoding (assoc :encoding encoding))
         compressed-sizes-map
           (->> (assoc candidates-treshold-map :none 1)
                keys
-               (reduce (fn [results compression-type]
-                         (assoc results compression-type
-                                (compute-size-for-column-type column-reader
-                                                              (assoc ct :compression-type compression-type)
+               (reduce (fn [results compression]
+                         (assoc results compression
+                                (compute-size-for-column-spec column-reader
+                                                              (assoc ct :compression compression)
                                                               target-data-page-size)))
                        {}))
         no-compression-size (:none compressed-sizes-map)
-        best-compression-type
+        best-compression
           (->> (dissoc compressed-sizes-map :none)
-               (filter (fn [[compression-type size]]
-                         (<= (/ size no-compression-size) (get candidates-treshold-map compression-type))))
+               (filter (fn [[compression size]]
+                         (<= (/ size no-compression-size) (get candidates-treshold-map compression))))
                (sort-by val)
                ffirst)]
-    (or best-compression-type :none)))
+    (or best-compression :none)))
 
-(defn find-best-column-type [column-reader target-data-page-size compression-candidates-treshold-map]
+(defn find-best-column-spec [column-reader target-data-page-size compression-candidates-treshold-map]
   (let [best-encoding (find-best-encoding column-reader target-data-page-size)
-        best-compression-type (find-best-compression-type column-reader target-data-page-size
+        best-compression (find-best-compression column-reader target-data-page-size
                                                           compression-candidates-treshold-map
                                                           :encoding best-encoding)]
-    (assoc (:column-type column-reader)
+    (assoc (:column-spec column-reader)
       :encoding best-encoding
-      :compression-type best-compression-type)))
+      :compression best-compression)))

@@ -23,21 +23,19 @@
   (testing "value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse)]
       (is (= :required (:repetition schema)))
-      (are [ks m] (let [field (sub-field-in schema ks)
-                        vt (:value field)]
-                    (and (= (:column-index vt) (:column-index m))
-                         (= (:repetition-level field) (:repetition-level m))
-                         (= (:definition-level vt) (:definition-level m))
-                         (= (:nested? vt) (:nested? m))))
-           [:docid] {:column-index 0 :repetition-level 0 :definition-level 0 :nested? false}
-           [:links :backward] {:column-index 1 :repetition-level 1 :definition-level 2 :nested? true}
-           [:links :forward] {:column-index 2 :repetition-level 1 :definition-level 2 :nested? true}
-           [:name :language :code] {:column-index 3 :repetition-level 2 :definition-level 2 :nested? true}
-           [:name :language :country] {:column-index 4 :repetition-level 2 :definition-level 3 :nested? true}
-           [:name :url] {:column-index 5 :repetition-level 1 :definition-level 2 :nested? true}
-           [:meta :key] {:column-index 6 :repetition-level 1 :definition-level 1 :nested? true}
-           [:meta :value] {:column-index 7 :repetition-level 1 :definition-level 1 :nested? true}
-           [:keywords] {:column-index 8 :repetition-level 1 :definition-level 1 :nested? true}))))
+      (are [ks m] (let [cs  (-> schema (sub-field-in ks) :value)]
+                    (and (= (:column-index cs) (:column-index m))
+                         (= (:max-repetition-level cs) (:max-repetition-level m))
+                         (= (:max-definition-level cs) (:max-definition-level m))))
+           [:docid] {:column-index 0 :max-repetition-level 0 :max-definition-level 0}
+           [:links :backward] {:column-index 1 :max-repetition-level 1 :max-definition-level 2}
+           [:links :forward] {:column-index 2 :max-repetition-level 1 :max-definition-level 2}
+           [:name :language :code] {:column-index 3 :max-repetition-level 2 :max-definition-level 2}
+           [:name :language :country] {:column-index 4 :max-repetition-level 2 :max-definition-level 3}
+           [:name :url] {:column-index 5 :max-repetition-level 1 :max-definition-level 2}
+           [:meta :key] {:column-index 6 :max-repetition-level 1 :max-definition-level 1}
+           [:meta :value] {:column-index 7 :max-repetition-level 1 :max-definition-level 1}
+           [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}))))
 
 (deftest invalid-schemas
   (testing "unsupported types"
