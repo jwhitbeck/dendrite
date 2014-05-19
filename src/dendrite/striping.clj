@@ -10,7 +10,7 @@
 
 (defn- format-parents [parents] (format "[%s]" (string/join " " parents)))
 
-(defmulti recursively-stripe-record
+(defmulti ^:private recursively-stripe-record
   (fn [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
     (case (:repetition schema)
       (:vector :list :set) :seq
