@@ -166,7 +166,8 @@
   (lazy-seq
    (if (base-type? t)
      [t]
-     (cons t (type-hierarchy (get-in (all-derived-types) [t :base-type]))))))
+     (when-let [next-type (get-in (all-derived-types) [t :base-type])]
+       (cons t (type-hierarchy next-type))))))
 
 (defn- base-type [t] (last (type-hierarchy t)))
 
