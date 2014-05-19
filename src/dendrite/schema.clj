@@ -4,7 +4,7 @@
             [clojure.string :as string])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [java.io Writer])
-  (:refer-clojure :exclude [read-string]))
+  (:refer-clojure :exclude [read-string val]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,6 +16,8 @@
 
 (defn- map->value-type-with-defaults [m]
   (map->ValueType (merge {:encoding :plain :compression :none :nested? true} m)))
+
+(def val map->value-type-with-defaults)
 
 (defmethod print-method ValueType
   [v ^Writer w]
@@ -99,6 +101,8 @@
   [v ^Writer w]
   (.write w "#req ")
   (print-method (:value v) w))
+
+(def req ->Required)
 
 (defn read-string [s]
   (edn/read-string {:readers {'req ->Required
