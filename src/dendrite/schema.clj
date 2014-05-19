@@ -109,9 +109,9 @@
                               'val map->value-type-with-defaults}}
                    s))
 
-(defn- wrapped-required? [elem] (= (type elem) Required))
+(defn- wrapped-required? [elem] (instance? Required elem))
 
-(defn- value-type? [elem] (= (type elem) ValueType))
+(defn- value-type? [elem] (instance? ValueType elem))
 
 (defmulti ^:private parse-tree
   (fn [elem]
@@ -133,21 +133,21 @@
 (defmethod parse-tree :list
   [coll]
   (let [sub-schema (parse-tree (first coll))]
-    (if (= (type sub-schema) ValueType)
+    (if (value-type? sub-schema)
       (map->Field {:repetition :list :value sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse-tree :vector
   [coll]
   (let [sub-schema (parse-tree (first coll))]
-    (if (= (type sub-schema) ValueType)
+    (if (value-type? sub-schema)
       (map->Field {:repetition :vector :value sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse-tree :set
   [coll]
   (let [sub-schema (parse-tree (first coll))]
-    (if (= (type sub-schema) ValueType)
+    (if (value-type? sub-schema)
       (map->Field {:repetition :set :value sub-schema})
       (assoc sub-schema :repetition :set))))
 

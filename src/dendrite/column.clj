@@ -72,7 +72,7 @@
                        (page/data-page-writer max-definition-level required? value-type
                                               encoding compression-type))))
 
-(defn- bytes? [x] (= (type x) (Class/forName "[B")))
+(defn- bytes? [x] (instance? (Class/forName "[B") x))
 
 (defn- keyable [x]
   (if (bytes? x)
