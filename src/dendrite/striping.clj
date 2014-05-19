@@ -1,14 +1,11 @@
 (ns dendrite.striping
-  (:require [clojure.string :as string]
-            [dendrite.core :refer [leveled-value]]
+  (:require [dendrite.core :refer [format-ks leveled-value]]
             [dendrite.encoding :refer [coercion-fn]]
             [dendrite.schema :as schema]))
 
 (defn- new-striped-record [n] (vec (repeat n nil)))
 
 (defn- coercion-fns-vec [value-types] (mapv (comp coercion-fn :type) value-types))
-
-(defn- format-parents [parents] (format "[%s]" (string/join " " parents)))
 
 (defmulti ^:private recursively-stripe-record
   (fn [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
@@ -22,7 +19,7 @@
 (defmethod recursively-stripe-record :atomic
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
   (when (and (= :required (:repetition schema)) (nil? record) (not nil-parent?))
-    (throw (IllegalArgumentException. (format "Required field %s is missing" (format-parents parents)))))
+    (throw (IllegalArgumentException. (format "Required field %s is missing" (format-ks parents)))))
   (let [value-type (:value schema)
         value (when record
                 (let [coercion-fn (get coercion-fns (:column-index value-type))]
@@ -30,7 +27,7 @@
                     (coercion-fn record)
                     (catch Exception e
                       (throw (IllegalArgumentException.
-                              (format "Could not coerce value in %s" (format-parents parents)) e))))))
+                              (format "Could not coerce value in %s" (format-ks parents)) e))))))
         value-with-level (leveled-value repetition-level
                                         (if value (:definition-level value-type) definition-level)
                                         value)]
@@ -50,7 +47,7 @@
 (defmethod recursively-stripe-record :required
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
   (when (and (empty? record) (not nil-parent?))
-    (throw (IllegalArgumentException. (format "Required field %s is missing" (format-parents parents)))))
+    (throw (IllegalArgumentException. (format "Required field %s is missing" (format-ks parents)))))
   (reduce (fn [striped-record field]
             (let [v (get record (:name field))]
               (recursively-stripe-record striped-record v field (conj parents (:name field)) (empty? record)
