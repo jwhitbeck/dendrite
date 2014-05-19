@@ -6,21 +6,21 @@
   (:refer-clojure :exclude [read-string val]))
 
 (deftest parse-human-readable-schema-str
-  (testing "Write/read human-readable schema"
+  (testing "write/read human-readable schema"
     (is (= (read-string test-schema-str)
            (-> test-schema-str read-string str read-string))))
-  (testing "Parse human-reable schema"
+  (testing "parse human-reable schema"
     (is (= (read-string test-schema-str)
            (-> test-schema-str read-string parse human-readable)))))
 
 (deftest schema-serialization
-  (testing "Fressian serialization"
+  (testing "fressian serialization"
     (let [schema (-> test-schema-str read-string parse)]
       (is (= schema
              (-> (fressian/write schema) fressian/read))))))
 
 (deftest schema-annotation
-  (testing "Value types are properly annotated"
+  (testing "value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse)]
       (is (= :required (:repetition schema)))
       (are [ks m] (let [field (sub-field-in schema ks)

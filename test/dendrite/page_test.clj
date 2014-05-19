@@ -137,7 +137,7 @@
         (is (= (read page-reader) (read page-reader)))))))
 
 (deftest incompatible-pages
-  (testing "Read incompatible page types throws an exception"
+  (testing "read incompatible page types throws an exception"
     (let [data-bar (-> (data-page-writer 1 false :int :plain :none)
                        (write (repeatedly 100 #(rand-leveled-value 1)))
                        get-byte-array-reader)

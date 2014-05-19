@@ -13,7 +13,7 @@
                     :url 'string}]}))
 
 (deftest dremel-paper
-  (testing "Record striping matches dremel paper"
+  (testing "record striping matches dremel paper"
     (= (stripe-record {:docid 10
                        :links {:forward [20 40 60]}
                        :name [{:language [{:code "en-us" :country "us"}
@@ -42,17 +42,7 @@
         [(leveled-value 0 2 "http://C")]])))
 
 (deftest invalid-records
-  (testing "Missing required field"
-    (let [schema (s/parse {:docid (s/req 'long)
-                           :name [{:language {:country 'string
-                                              :code (s/req 'string)}}]})]
-      (is (stripe-record {:docid 10} schema))
-      (is (thrown? IllegalArgumentException (stripe-record {} schema)))
-      #_(is (thrown? IllegalArgumentException (stripe-record {} dremel-paper-schema)))
-      #_(is (thrown? IllegalArgumentException (stripe-record {}))))))
-
-(deftest invalid-records
-  (testing "Missing required field"
+  (testing "missing required field"
     (let [schema (s/parse {:docid (s/req 'long)
                            :name [{:language (s/req {:country 'string
                                                      :code (s/req 'string)})}
@@ -67,7 +57,7 @@
            {:docid 10 :name [{:url "http://A"}]}
            (:docid 10 :name [{:language {}}])
            {:docid 10 :name [{:language {:country "us"}}]})))
-  (testing "Incompatible value types"
+  (testing "incompatible value types"
     (let [schema (s/parse {:boolean 'boolean
                            :int 'int
                            :long 'long
