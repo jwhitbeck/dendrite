@@ -20,9 +20,9 @@
           (String. "UTF-8")))))
 
 (deftest deflate-test
-  (testing "Deflate compression works"
+  (testing "deflate compression"
     (is (= lorem-ipsum (compress-decompress-lorum-ipsum (DeflateCompressor.) (DeflateDecompressor.))))))
 
 (deftest lz4-test
-  (testing "Deflate compression works"
+  (testing "deflate compression"
     (is (= lorem-ipsum (compress-decompress-lorum-ipsum (LZ4Compressor.) (LZ4Decompressor.))))))

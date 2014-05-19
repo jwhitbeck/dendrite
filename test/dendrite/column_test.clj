@@ -75,10 +75,10 @@
         reader (write-column-and-get-reader ct input-blocks)
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
         output-values (read reader)]
-    (testing "Write/read a colum works"
+    (testing "write/read a colum"
       (is (roughly= num-pages 13))
       (is (= (flatten input-blocks) output-values)))
-    (testing "value mapping works"
+    (testing "value mapping"
       (is (= (->> input-blocks flatten (map #(some-> % :value (* 2))))
              (map :value (read reader (partial * 2))))))
     (testing "repeatable writes"
@@ -104,9 +104,9 @@
         input-blocks (->> #(helpers/rand-int-bits 10) rand-blocks (take 5000))
         reader (write-column-and-get-reader ct input-blocks)
         output-values (read reader)]
-    (testing "Write/read a dictionary colum works"
+    (testing "write/read a dictionary colum"
       (is (= (flatten input-blocks) output-values)))
-    (testing "value mapping works"
+    (testing "value mapping"
       (is (= (->> input-blocks flatten (map #(some-> % :value (* 2))))
              (map :value (read reader (partial * 2))))))
     (testing "repeatable writes"

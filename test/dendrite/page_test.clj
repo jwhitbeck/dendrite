@@ -45,7 +45,7 @@
     (-> page-writer (write input-values) get-byte-array-reader page-reader-ctor read)))
 
 (deftest data-page
-  (testing "Write/read a data page works"
+  (testing "write/read a data page"
     (testing "uncompressed"
       (let [max-definition-level 3
             input-values (repeatedly 1000 #(rand-leveled-value max-definition-level))
@@ -107,7 +107,7 @@
         (is (= (read page-reader) (read page-reader)))))))
 
 (deftest dictionary-page
-  (testing "Write/read a dictionary page works"
+  (testing "write/read a dictionary page"
     (testing "uncompressed"
       (let [input-values (repeatedly 1000 #(rand-int 10000))
             output-values (write-read-single-dictionary-page :int :plain :none input-values)]
