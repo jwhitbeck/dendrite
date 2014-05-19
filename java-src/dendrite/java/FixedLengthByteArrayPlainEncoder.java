@@ -9,7 +9,7 @@ public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder implements
     if (length != bs.length) {
       if (length == -1) {
         length = bs.length;
-        byte_array_writer.writeUInt32(length);
+        byte_array_writer.writeUInt(length);
       } else {
         throw new IllegalStateException("Different byte-array lengths in FixedLengthByteArrayEncoder");
       }

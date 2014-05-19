@@ -125,7 +125,7 @@
 
 (defn- dictionary-indices-column-type [column-type]
   (assoc column-type
-    :value-type :int32
+    :value-type :int
     :encoding :packed-run-length
     :compression-type :none))
 

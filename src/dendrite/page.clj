@@ -20,7 +20,7 @@
 (defn- decode-page-type [encoded-page-type] (get page-types encoded-page-type))
 
 (defn- read-next-page-type [^ByteArrayReader bar]
-  (-> bar .readUInt32 decode-page-type))
+  (-> bar .readUInt decode-page-type))
 
 (defn- read-next-data-page-type [^ByteArrayReader bar]
   (let [data-page-type (read-next-page-type bar)]
@@ -50,10 +50,10 @@
   (byte-offset-definition-levels [this]))
 
 (defn- uints32-encoded-size [coll]
-  (reduce #(+ %1 (ByteArrayWriter/getNumUInt32Bytes %2)) 0 coll))
+  (reduce #(+ %1 (ByteArrayWriter/getNumUIntBytes %2)) 0 coll))
 
 (defn- encode-uints32 [^ByteArrayWriter byte-array-writer coll]
-  (reduce #(doto ^ByteArrayWriter %1 (.writeUInt32 %2)) byte-array-writer coll))
+  (reduce #(doto ^ByteArrayWriter %1 (.writeUInt %2)) byte-array-writer coll))
 
 (defrecord DataPageHeader [^int encoded-page-type
                            ^int num-values
@@ -84,11 +84,11 @@
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-data-page-header [^ByteArrayReader bar data-page-type]
-  (let [num-values (.readUInt32 bar)
-        repetition-levels-size (.readUInt32 bar)
-        definition-levels-size (.readUInt32 bar)
-        compressed-data-size (.readUInt32 bar)
-        uncompressed-data-size (.readUInt32 bar)]
+  (let [num-values (.readUInt bar)
+        repetition-levels-size (.readUInt bar)
+        definition-levels-size (.readUInt bar)
+        compressed-data-size (.readUInt bar)
+        uncompressed-data-size (.readUInt bar)]
     (DataPageHeader. (encode-page-type data-page-type) num-values repetition-levels-size
                      definition-levels-size compressed-data-size uncompressed-data-size)))
 
@@ -110,9 +110,9 @@
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
-  (let [num-values (.readUInt32 bar)
-        compressed-data-size (.readUInt32 bar)
-        uncompressed-data-size (.readUInt32 bar)]
+  (let [num-values (.readUInt bar)
+        compressed-data-size (.readUInt bar)
+        uncompressed-data-size (.readUInt bar)]
     (DictionaryPageHeader. (encode-page-type dictionary-page-type) num-values compressed-data-size
                            uncompressed-data-size)))
 

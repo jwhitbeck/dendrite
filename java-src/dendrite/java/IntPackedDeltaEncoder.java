@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Encoder {
+public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder {
 
   private static final int MIN_BLOCK_SIZE = 128;
   private static final int MIN_MINIBLOCK_SIZE = 8;
@@ -86,12 +86,12 @@ public class Int32PackedDeltaEncoder extends AbstractEncoder implements Int32Enc
     for (int j=0; j<num_miniblocks; ++j) {
       miniblock_bit_widths[j] = getMiniBlockBitWidth(j * miniBlockSize, miniBlockSize);
     }
-    baw.writeUInt32(block_size);
-    baw.writeUInt32(num_miniblocks);
-    baw.writeUInt32(num_values);
-    baw.writeSInt32(start_value);
+    baw.writeUInt(block_size);
+    baw.writeUInt(num_miniblocks);
+    baw.writeUInt(num_values);
+    baw.writeSInt(start_value);
     if (num_miniblocks > 0){
-      baw.writeSInt64(min_delta);
+      baw.writeSLong(min_delta);
       for (int j=0; j<num_miniblocks; ++j) {
         baw.writeByte((byte) (miniblock_bit_widths[j] & 0xff));
       }

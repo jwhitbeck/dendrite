@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public interface Int32Decoder {
+public interface IntDecoder {
 
   public int decode();
 

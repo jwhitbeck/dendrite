@@ -3,11 +3,11 @@ package dendrite.java;
 public class ByteArrayDeltaLengthDecoder implements ByteArrayDecoder {
 
   private final ByteArrayReader byte_array_reader;
-  private final Int32PackedDeltaDecoder lengths_decoder;
+  private final IntPackedDeltaDecoder lengths_decoder;
 
   public ByteArrayDeltaLengthDecoder(final ByteArrayReader baw) {
-    int lengths_num_bytes = baw.readUInt32();
-    lengths_decoder = new Int32PackedDeltaDecoder(baw);
+    int lengths_num_bytes = baw.readUInt();
+    lengths_decoder = new IntPackedDeltaDecoder(baw);
     byte_array_reader = baw.sliceAhead(lengths_num_bytes);
   }
 

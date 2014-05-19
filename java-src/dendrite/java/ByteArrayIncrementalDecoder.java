@@ -3,12 +3,12 @@ package dendrite.java;
 public class ByteArrayIncrementalDecoder implements ByteArrayDecoder {
 
   private final ByteArrayDeltaLengthDecoder byte_array_decoder;
-  private final Int32PackedDeltaDecoder prefix_lengths_decoder;
+  private final IntPackedDeltaDecoder prefix_lengths_decoder;
   private final ByteArrayWriter buffer;
 
   public ByteArrayIncrementalDecoder(final ByteArrayReader baw) {
-    int prefix_lengths_num_bytes = baw.readUInt32();
-    prefix_lengths_decoder = new Int32PackedDeltaDecoder(baw);
+    int prefix_lengths_num_bytes = baw.readUInt();
+    prefix_lengths_decoder = new IntPackedDeltaDecoder(baw);
     byte_array_decoder = new ByteArrayDeltaLengthDecoder(baw.sliceAhead(prefix_lengths_num_bytes));
     buffer = new ByteArrayWriter(128);
   }

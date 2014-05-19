@@ -22,7 +22,7 @@ public class ByteArrayReader {
     return b;
   }
 
-  public int readFixedInt32() {
+  public int readFixedInt() {
     final int i1 =  (int) readByte() & 0xff;
     final int i2 = ((int) readByte() & 0xff) <<  8;
     final int i3 = ((int) readByte() & 0xff) << 16;
@@ -30,7 +30,7 @@ public class ByteArrayReader {
     return i4 | i3 | i2 | i1;
   }
 
-  public int readUInt32() {
+  public int readUInt() {
     int shift = 0;
     int result = 0;
     while (shift < 32) {
@@ -41,18 +41,18 @@ public class ByteArrayReader {
       }
       shift += 7;
     }
-    throw new IllegalStateException("Failed to parse UInt32");
+    throw new IllegalStateException("Failed to parse UInt");
   }
 
   private static int decodeZigZag32(final int i) {
     return (i >>> 1) ^ -(i & 1);
   }
 
-  public int readSInt32() {
-    return decodeZigZag32(readUInt32());
+  public int readSInt() {
+    return decodeZigZag32(readUInt());
   }
 
-  public long readFixedInt64() {
+  public long readFixedLong() {
     final long l1 =  (long) readByte() & 0xff;
     final long l2 = ((long) readByte() & 0xff) << 8;
     final long l3 = ((long) readByte() & 0xff) << 16;
@@ -64,7 +64,7 @@ public class ByteArrayReader {
     return l8 | l7 | l6 | l5 | l4 | l3 | l2 | l1;
   }
 
-  public long readUInt64() {
+  public long readULong() {
     int shift = 0;
     long result = 0;
     while (shift < 64) {
@@ -75,19 +75,19 @@ public class ByteArrayReader {
       }
       shift += 7;
     }
-    throw new IllegalStateException("Failed to parse UInt64");
+    throw new IllegalStateException("Failed to parse ULong");
   }
 
   private static long decodeZigZag64(final long l) {
     return (l >>> 1) ^ -(l & 1);
   }
 
-  public long readSInt64() {
-    return decodeZigZag64(readUInt64());
+  public long readSLong() {
+    return decodeZigZag64(readULong());
   }
 
   public BigInteger readBigInt() {
-    int length = readUInt32();
+    int length = readUInt();
     byte[] int_as_bytes = new byte[length];
     readByteArray(int_as_bytes, 0, length);
     return new BigInteger(int_as_bytes);
@@ -142,11 +142,11 @@ public class ByteArrayReader {
   }
 
   public float readFloat() {
-    return Float.intBitsToFloat(readFixedInt32());
+    return Float.intBitsToFloat(readFixedInt());
   }
 
   public double readDouble() {
-    return Double.longBitsToDouble(readFixedInt64());
+    return Double.longBitsToDouble(readFixedLong());
   }
 
   public void readByteArray(final byte[] bytes) {
@@ -167,7 +167,7 @@ public class ByteArrayReader {
     position += n;
   }
 
-  public int readPackedInt32(final int width) {
+  public int readPackedInt(final int width) {
     final int mask = ~((-1) << width);
     int i = 0;
     int read_bits = 0;

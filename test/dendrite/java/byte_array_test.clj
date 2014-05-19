@@ -26,53 +26,53 @@
           read-bytes (write-read #(.writeByte %1 %2) #(.readByte %) rand-bytes)]
       (is (every? true? (map = read-bytes rand-bytes))))))
 
-(deftest read-write-fixed-int32
-  (testing "writeFixedInt32/readFixedInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int32)
-          read-ints (write-read #(.writeFixedInt32 %1 %2) #(.readFixedInt32 %) rand-ints)]
+(deftest read-write-fixed-int
+  (testing "writeFixedInt/readFixedInt work"
+    (let [rand-ints (repeatedly helpers/rand-int)
+          read-ints (write-read #(.writeFixedInt %1 %2) #(.readFixedInt %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
-(deftest read-write-uint32
-  (testing "writeUInt32/readUInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int32)
-          read-ints (write-read #(.writeUInt32 %1 %2) #(.readUInt32 %) rand-ints)]
+(deftest read-write-uint
+  (testing "writeUInt/readUInt work"
+    (let [rand-ints (repeatedly helpers/rand-int)
+          read-ints (write-read #(.writeUInt %1 %2) #(.readUInt %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
-  (testing "read invalid uint32 throws exception"
+  (testing "read invalid uint throws exception"
     (let [bar (->> [-1 -1 -1 -1 -1] (map unchecked-byte) byte-array ByteArrayReader.)]
-      (is (thrown? IllegalStateException (.readUInt32 bar))))))
+      (is (thrown? IllegalStateException (.readUInt bar))))))
 
-(deftest read-write-packed-int32
-  (testing "writePackedInt32/readPackedInt32 work"
+(deftest read-write-packed-int
+  (testing "writePackedInt/readPackedInt work"
     (let [width 12
           rand-ints (repeatedly #(helpers/rand-int-bits width))
-          read-ints (write-read #(.writePackedInt32 %1 %2 width) #(.readPackedInt32 % width) rand-ints)]
+          read-ints (write-read #(.writePackedInt %1 %2 width) #(.readPackedInt % width) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
-(deftest read-write-sint32
-  (testing "writeSInt32/readSInt32 work"
-    (let [rand-ints (repeatedly helpers/rand-int32)
-          read-ints (write-read #(.writeSInt32 %1 %2) #(.readSInt32 %) rand-ints)]
+(deftest read-write-sint
+  (testing "writeSInt/readSInt work"
+    (let [rand-ints (repeatedly helpers/rand-int)
+          read-ints (write-read #(.writeSInt %1 %2) #(.readSInt %) rand-ints)]
       (is (every? true? (map = read-ints rand-ints))))))
 
-(deftest read-write-fixed-int64
-  (testing "writeFixedInt64/readFixedInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-int64)
-          read-longs (write-read #(.writeFixedInt64 %1 %2) #(.readFixedInt64 %) rand-longs)]
+(deftest read-write-fixed-long
+  (testing "writeFixedLong/readFixedLong work"
+    (let [rand-longs (repeatedly helpers/rand-long)
+          read-longs (write-read #(.writeFixedLong %1 %2) #(.readFixedLong %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
-(deftest read-write-uint64
-  (testing "writeUInt64/readUInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-int64)
-          read-longs (write-read #(.writeUInt64 %1 %2) #(.readUInt64 %) rand-longs)]
+(deftest read-write-ulong
+  (testing "writeULong/readULong work"
+    (let [rand-longs (repeatedly helpers/rand-long)
+          read-longs (write-read #(.writeULong %1 %2) #(.readULong %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs)))))
-  (testing "read invalid uint64 throws exception"
+  (testing "read invalid ulong throws exception"
     (let [bar (->> [-1 -1 -1 -1 -1 -1 -1 -1 -1 -1] (map unchecked-byte) byte-array ByteArrayReader.)]
-      (is (thrown? IllegalStateException (.readUInt64 bar))))))
+      (is (thrown? IllegalStateException (.readULong bar))))))
 
-(deftest read-write-sint64
-  (testing "writeSInt64/readSInt64 work"
-    (let [rand-longs (repeatedly helpers/rand-int64)
-          read-longs (write-read #(.writeSInt64 %1 %2) #(.readSInt64 %) rand-longs)]
+(deftest read-write-slong
+  (testing "writeSLong/readSLong work"
+    (let [rand-longs (repeatedly helpers/rand-long)
+          read-longs (write-read #(.writeSLong %1 %2) #(.readSLong %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
 (deftest read-write-big-int
@@ -135,9 +135,9 @@
                            (map (comp unchecked-byte #(Integer/parseInt % 2)))))
                (every? true?)))))
 
-  (testing "writePackedInt32/readPackedInt32 works"
+  (testing "writePackedInt/readPackedInt works"
     (let [rand-ints (repeatedly #(rand-int 8))
-          read-ints (write-read #(.writePackedInt32 %1 %2 3) #(.readPackedInt32 % 3) rand-ints)]
+          read-ints (write-read #(.writePackedInt %1 %2 3) #(.readPackedInt % 3) rand-ints)]
       (is (every? true? (map = read-ints rand-ints)))))
 
   (testing "writePackedInts32/readPackedInts32 works"
@@ -194,7 +194,7 @@
                                          rand-long-arrays)]
         (is (every? true? (map helpers/array= read-long-arrays rand-long-arrays)))))
     (testing "width equals 64 bits"
-      (let [rand-long-arrays (->> (repeatedly helpers/rand-int64) (partition 8) (map long-array))
+      (let [rand-long-arrays (->> (repeatedly helpers/rand-long) (partition 8) (map long-array))
             read-long-arrays (write-read #(.writePackedInts64 %1 %2 64 8)
                                          #(let [longs (long-array 8)]
                                             (.readPackedInts64 % longs 64 8)

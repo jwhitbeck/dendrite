@@ -2,11 +2,11 @@ package dendrite.java;
 
 public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
 
-  private final Int32PackedDeltaEncoder lengths_encoder;
+  private final IntPackedDeltaEncoder lengths_encoder;
   private final ByteArrayWriter byte_array_writer;
 
   public ByteArrayDeltaLengthEncoder() {
-    lengths_encoder = new Int32PackedDeltaEncoder();
+    lengths_encoder = new IntPackedDeltaEncoder();
     byte_array_writer = new ByteArrayWriter();
   }
 
@@ -34,20 +34,20 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
 
   @Override
   public int size() {
-    return ByteArrayWriter.getNumUInt32Bytes(lengths_encoder.size())
+    return ByteArrayWriter.getNumUIntBytes(lengths_encoder.size())
       + lengths_encoder.size() + byte_array_writer.size();
   }
 
   public int estimatedSize() {
     int estimated_lengths_encoder_size = lengths_encoder.estimatedSize();
-    return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(estimated_lengths_encoder_size)
+    return byte_array_writer.size() + ByteArrayWriter.getNumUIntBytes(estimated_lengths_encoder_size)
       + estimated_lengths_encoder_size;
   }
 
   @Override
   public void writeTo(final ByteArrayWriter baw) {
     finish();
-    baw.writeUInt32(lengths_encoder.size());
+    baw.writeUInt(lengths_encoder.size());
     lengths_encoder.writeTo(baw);
     byte_array_writer.writeTo(baw);
   }

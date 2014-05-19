@@ -7,7 +7,7 @@ public class FixedLengthByteArrayPlainDecoder implements FixedLengthByteArrayDec
 
   public FixedLengthByteArrayPlainDecoder(final ByteArrayReader baw) {
     byte_array_reader = baw;
-    this.length = baw.readUInt32();
+    this.length = baw.readUInt();
   }
 
   @Override

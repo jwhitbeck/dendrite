@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class Int32FixedBitWidthPackedRunLengthDecoder implements Int32Decoder {
+public class IntFixedBitWidthPackedRunLengthDecoder implements IntDecoder {
 
   private final ByteArrayReader byte_array_reader;
   private final int[] octuplet = new int[8];
@@ -10,7 +10,7 @@ public class Int32FixedBitWidthPackedRunLengthDecoder implements Int32Decoder {
   private int num_rle_values_to_read = 0;
   private final int width;
 
-  public Int32FixedBitWidthPackedRunLengthDecoder(final ByteArrayReader baw, final int width) {
+  public IntFixedBitWidthPackedRunLengthDecoder(final ByteArrayReader baw, final int width) {
     byte_array_reader = baw;
     this.width = width;
   }
@@ -49,7 +49,7 @@ public class Int32FixedBitWidthPackedRunLengthDecoder implements Int32Decoder {
 
   private void bufferNextRLERun(final int num_occurences_rle_value) {
     num_rle_values_to_read = num_occurences_rle_value;
-    rle_value = byte_array_reader.readPackedInt32(width);
+    rle_value = byte_array_reader.readPackedInt(width);
   }
 
   private void bufferNextPackedIntRun(final int num_octuplets) {
@@ -58,7 +58,7 @@ public class Int32FixedBitWidthPackedRunLengthDecoder implements Int32Decoder {
   }
 
   private void bufferNextRun() {
-    int n = byte_array_reader.readUInt32();
+    int n = byte_array_reader.readUInt();
     if ((n & 1) == 1) {
       bufferNextPackedIntRun(n >>> 1);
     } else {

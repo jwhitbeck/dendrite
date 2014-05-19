@@ -2,7 +2,7 @@ package dendrite.java;
 
 import java.math.BigInteger;
 
-public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Encoder {
+public class LongPackedDeltaEncoder extends AbstractEncoder implements LongEncoder {
 
   private static final int MIN_BLOCK_SIZE = 128;
   private static final int MIN_MINIBLOCK_SIZE = 8;
@@ -88,10 +88,10 @@ public class Int64PackedDeltaEncoder extends AbstractEncoder implements Int64Enc
     for (int j=0; j<num_miniblocks; ++j) {
       miniblock_bit_widths[j] = getMiniBlockBitWidth(j * miniBlockSize, miniBlockSize);
     }
-    baw.writeUInt32(block_size);
-    baw.writeUInt32(num_miniblocks);
-    baw.writeUInt32(num_values);
-    baw.writeSInt64(start_value);
+    baw.writeUInt(block_size);
+    baw.writeUInt(num_miniblocks);
+    baw.writeUInt(num_values);
+    baw.writeSLong(start_value);
     if (num_miniblocks > 0){
       baw.writeSIntVLQ(min_delta);
       for (int j=0; j<num_miniblocks; ++j) {

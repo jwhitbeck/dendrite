@@ -4,10 +4,10 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
 
   private byte[] previous_byte_array = null;
   private final ByteArrayDeltaLengthEncoder byte_array_encoder;
-  private final Int32PackedDeltaEncoder prefix_lengths_encoder;
+  private final IntPackedDeltaEncoder prefix_lengths_encoder;
 
   public ByteArrayIncrementalEncoder() {
-    prefix_lengths_encoder = new Int32PackedDeltaEncoder();
+    prefix_lengths_encoder = new IntPackedDeltaEncoder();
     byte_array_encoder = new ByteArrayDeltaLengthEncoder();
   }
 
@@ -44,21 +44,21 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
 
   @Override
   public int size() {
-    return ByteArrayWriter.getNumUInt32Bytes(prefix_lengths_encoder.size())
+    return ByteArrayWriter.getNumUIntBytes(prefix_lengths_encoder.size())
       + prefix_lengths_encoder.size() + byte_array_encoder.size();
   }
 
   @Override
   public int estimatedSize() {
     int estimated_prefix_lengths_encoder_size = prefix_lengths_encoder.estimatedSize();
-    return ByteArrayWriter.getNumUInt32Bytes(estimated_prefix_lengths_encoder_size)
+    return ByteArrayWriter.getNumUIntBytes(estimated_prefix_lengths_encoder_size)
       + estimated_prefix_lengths_encoder_size + byte_array_encoder.size();
   }
 
   @Override
   public void writeTo(final ByteArrayWriter baw) {
     finish();
-    baw.writeUInt32(prefix_lengths_encoder.size());
+    baw.writeUInt(prefix_lengths_encoder.size());
     prefix_lengths_encoder.writeTo(baw);
     byte_array_encoder.writeTo(baw);
   }

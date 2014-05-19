@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder implements Int32Encoder {
+public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder implements IntEncoder {
 
   private int rle_value = 0;
   private int num_occurences_rle_value = 0;
@@ -11,7 +11,7 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
   private int rle_threshold;
   private int width;
 
-  public Int32FixedBitWidthPackedRunLengthEncoder(final int width) {
+  public IntFixedBitWidthPackedRunLengthEncoder(final int width) {
     setWidth(width);
   }
 
@@ -75,10 +75,10 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
   @Override
   public int estimatedSize() {
     if (num_occurences_rle_value > 0) {
-      return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(rle_value)
+      return byte_array_writer.size() + ByteArrayWriter.getNumUIntBytes(rle_value)
         + ByteArrayWriter.getBitWidth(num_occurences_rle_value << 1);
     } else {
-      return byte_array_writer.size() + ByteArrayWriter.getNumUInt32Bytes(num_buffered_octuplets << 1)
+      return byte_array_writer.size() + ByteArrayWriter.getNumUIntBytes(num_buffered_octuplets << 1)
         + (8 * width * num_buffered_octuplets) + current_octuplet_position > 0? (8 * width) : 0;
     }
   }
@@ -112,7 +112,7 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
   }
 
   private void writeBitPackedHeader() {
-    byte_array_writer.writeUInt32(num_buffered_octuplets << 1 | 1);
+    byte_array_writer.writeUInt(num_buffered_octuplets << 1 | 1);
   }
 
   private void flushBitPackedBuffer() {
@@ -130,11 +130,11 @@ public class Int32FixedBitWidthPackedRunLengthEncoder extends AbstractEncoder im
   }
 
   private void writeRLEHeader() {
-    byte_array_writer.writeUInt32(num_occurences_rle_value << 1);
+    byte_array_writer.writeUInt(num_occurences_rle_value << 1);
   }
 
   private void writeRLEValue () {
-    byte_array_writer.writePackedInt32(rle_value, width);
+    byte_array_writer.writePackedInt(rle_value, width);
   }
 
 }

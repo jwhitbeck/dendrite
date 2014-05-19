@@ -10,7 +10,7 @@ public class ByteArrayPlainDecoder implements ByteArrayDecoder {
 
   @Override
   public byte[] decode() {
-    int length = byte_array_reader.readFixedInt32();
+    int length = byte_array_reader.readFixedInt();
     byte[] byte_array = new byte[length];
     byte_array_reader.readByteArray(byte_array, 0, length);
     return byte_array;

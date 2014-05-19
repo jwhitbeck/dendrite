@@ -1,12 +1,12 @@
 (ns dendrite.encoding
   (:import [dendrite.java
             BooleanEncoder BooleanDecoder BooleanPackedEncoder BooleanPackedDecoder
-            Int32Encoder Int32Decoder Int32PlainEncoder Int32PlainDecoder
-            Int32PackedDeltaEncoder Int32PackedDeltaDecoder
-            Int32FixedBitWidthPackedRunLengthEncoder Int32FixedBitWidthPackedRunLengthDecoder
-            Int32PackedRunLengthEncoder Int32PackedRunLengthDecoder
-            Int64Encoder Int64Decoder Int64PlainEncoder Int64PlainDecoder
-            Int64PackedDeltaEncoder Int64PackedDeltaDecoder
+            IntEncoder IntDecoder IntPlainEncoder IntPlainDecoder
+            IntPackedDeltaEncoder IntPackedDeltaDecoder
+            IntFixedBitWidthPackedRunLengthEncoder IntFixedBitWidthPackedRunLengthDecoder
+            IntPackedRunLengthEncoder IntPackedRunLengthDecoder
+            LongEncoder LongDecoder LongPlainEncoder LongPlainDecoder
+            LongPackedDeltaEncoder LongPackedDeltaDecoder
             FloatEncoder FloatDecoder FloatPlainEncoder FloatPlainDecoder
             DoubleEncoder DoubleDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayEncoder FixedLengthByteArrayDecoder
@@ -25,10 +25,10 @@
 (extend-protocol Decoder
   BooleanDecoder
   (decode [boolean-decoder] (.decode boolean-decoder))
-  Int32Decoder
-  (decode [int32-decoder] (.decode int32-decoder))
-  Int64Decoder
-  (decode [int64-decoder] (.decode int64-decoder))
+  IntDecoder
+  (decode [int-decoder] (.decode int-decoder))
+  LongDecoder
+  (decode [long-decoder] (.decode long-decoder))
   FloatDecoder
   (decode [float-decoder] (.decode float-decoder))
   DoubleDecoder
@@ -47,10 +47,10 @@
 (extend-protocol Encoder
   BooleanEncoder
   (encode [boolean-encoder value] (doto boolean-encoder (.encode value)))
-  Int32Encoder
-  (encode [int32-encoder value] (doto int32-encoder (.encode value)))
-  Int64Encoder
-  (encode [int64-encoder value] (doto int64-encoder (.encode value)))
+  IntEncoder
+  (encode [int-encoder value] (doto int-encoder (.encode value)))
+  LongEncoder
+  (encode [long-encoder value] (doto long-encoder (.encode value)))
   FloatEncoder
   (encode [float-encoder value] (doto float-encoder (.encode value)))
   DoubleEncoder
@@ -65,8 +65,8 @@
 
 (def ^:private valid-encodings-for-types
   {:boolean #{:plain}
-   :int32 #{:plain :packed-run-length :delta}
-   :int64 #{:plain :delta}
+   :int #{:plain :packed-run-length :delta}
+   :long #{:plain :delta}
    :float #{:plain}
    :double #{:plain}
    :byte-array #{:plain :incremental :delta-length}
@@ -85,13 +85,13 @@
 (defn- base-decoder-ctor [base-type encoding]
   (case base-type
     :boolean #(BooleanPackedDecoder. %)
-    :int32 (case encoding
-             :plain #(Int32PlainDecoder. %)
-             :packed-run-length #(Int32PackedRunLengthDecoder. %)
-             :delta #(Int32PackedDeltaDecoder. %))
-    :int64 (case encoding
-             :plain #(Int64PlainDecoder. %)
-             :delta #(Int64PackedDeltaDecoder. %))
+    :int (case encoding
+             :plain #(IntPlainDecoder. %)
+             :packed-run-length #(IntPackedRunLengthDecoder. %)
+             :delta #(IntPackedDeltaDecoder. %))
+    :long (case encoding
+             :plain #(LongPlainDecoder. %)
+             :delta #(LongPackedDeltaDecoder. %))
     :float #(FloatPlainDecoder. %)
     :double #(DoublePlainDecoder. %)
     :byte-array (case encoding
@@ -103,13 +103,13 @@
 (defn- base-encoder [base-type encoding]
   (case base-type
     :boolean (BooleanPackedEncoder.)
-    :int32 (case encoding
-             :plain (Int32PlainEncoder.)
-             :packed-run-length (Int32PackedRunLengthEncoder.)
-             :delta (Int32PackedDeltaEncoder.))
-    :int64 (case encoding
-             :plain (Int64PlainEncoder.)
-             :delta (Int64PackedDeltaEncoder.))
+    :int (case encoding
+             :plain (IntPlainEncoder.)
+             :packed-run-length (IntPackedRunLengthEncoder.)
+             :delta (IntPackedDeltaEncoder.))
+    :long (case encoding
+             :plain (LongPlainEncoder.)
+             :delta (LongPackedDeltaEncoder.))
     :float (FloatPlainEncoder.)
     :double (DoublePlainEncoder.)
     :byte-array (case encoding
@@ -121,10 +121,10 @@
 (defn- packed-bit-width [n] (- 32 (Integer/numberOfLeadingZeros n)))
 
 (defn levels-encoder [max-definition-level]
-  (Int32FixedBitWidthPackedRunLengthEncoder. (packed-bit-width max-definition-level)))
+  (IntFixedBitWidthPackedRunLengthEncoder. (packed-bit-width max-definition-level)))
 
 (defn levels-decoder [^ByteArrayReader byte-array-reader max-definition-level]
-  (Int32FixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-definition-level)))
+  (IntFixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-definition-level)))
 
 (def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 
@@ -141,7 +141,7 @@
             :coercion-fn str
             :to-base-type-fn str->utf8-bytes
             :from-base-type-fn utf8-bytes->str}
-   :char {:base-type :int32
+   :char {:base-type :int
           :coercion-fn char
           :to-base-type-fn int
           :from-base-type-fn char}
@@ -220,8 +220,8 @@
                  (get-in (all-derived-types) [t :coercion-fn] identity)
                  (case t
                    :boolean boolean
-                   :int32 int
-                   :int64 long
+                   :int int
+                   :long long
                    :float float
                    :double double
                    :byte-array byte-array

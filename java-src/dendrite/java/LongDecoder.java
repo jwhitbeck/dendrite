@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public interface Int64Decoder {
+public interface LongDecoder {
 
   public long decode();
 

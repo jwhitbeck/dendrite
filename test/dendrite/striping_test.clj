@@ -5,9 +5,9 @@
             [dendrite.striping :refer :all]))
 
 (def dremel-paper-schema
-  (-> {:docid (s/req 'int64)
-       :links {:forward ['in64]
-               :backward ['int64]}
+  (-> {:docid (s/req 'long)
+       :links {:forward ['long]
+               :backward ['long]}
        :name [{:language [{:code (s/req 'string)
                            :country 'string}]
                :url 'string}]}
@@ -45,7 +45,7 @@
 
 (deftest invalid-records
   (testing "Missing required field"
-    (let [schema (-> {:docid (s/req 'int64)
+    (let [schema (-> {:docid (s/req 'long)
                       :name [{:language {:country 'string
                                          :code (s/req 'string)}}]}
                      s/parse s/annotate)]
@@ -56,7 +56,7 @@
 
 (deftest invalid-records
   (testing "Missing required field"
-    (let [schema (-> {:docid (s/req 'int64)
+    (let [schema (-> {:docid (s/req 'long)
                       :name [{:language (s/req {:country 'string
                                                 :code (s/req 'string)})}
                              :url 'string]}
@@ -73,8 +73,8 @@
            {:docid 10 :name [{:language {:country "us"}}]})))
   (testing "Incompatible value types"
     (let [schema (-> {:boolean 'boolean
-                      :int 'int32
-                      :long 'int64
+                      :int 'int
+                      :long 'long
                       :float 'float
                       :double 'double
                       :string 'string

@@ -49,14 +49,14 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     }
   }
 
-  public void writeFixedInt32(final int i){
+  public void writeFixedInt(final int i){
     writeByte((byte)  i       );
     writeByte((byte) (i >>  8));
     writeByte((byte) (i >> 16));
     writeByte((byte) (i >> 24));
   }
 
-  public static int getNumUInt32Bytes(final int i) {
+  public static int getNumUIntBytes(final int i) {
     int num_bytes = 0;
     int v = i;
     do {
@@ -66,7 +66,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     return num_bytes;
   }
 
-  public void writeUInt32(final int i) {
+  public void writeUInt(final int i) {
     int value = i;
     while (true) {
       if ((value & ~0x7f) == 0) {
@@ -83,11 +83,11 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     return (i << 1) ^ (i >> 31);
   }
 
-  public void writeSInt32(final int i) {
-    writeUInt32(encodeZigZag32(i));
+  public void writeSInt(final int i) {
+    writeUInt(encodeZigZag32(i));
   }
 
-  public void writeFixedInt64(final long l) {
+  public void writeFixedLong(final long l) {
     writeByte((byte)  l        );
     writeByte((byte) (l >>  8));
     writeByte((byte) (l >> 16));
@@ -98,7 +98,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     writeByte((byte) (l >> 56));
   }
 
-  public void writeUInt64(final long l) {
+  public void writeULong(final long l) {
     long value = l;
     while (true) {
       if ((value & ~0x7fL) == 0) {
@@ -115,13 +115,13 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     return (l << 1) ^ (l >> 63);
   }
 
-  public void writeSInt64(final long l) {
-    writeUInt64(encodeZigZag64(l));
+  public void writeSLong(final long l) {
+    writeULong(encodeZigZag64(l));
   }
 
   public void writeBigInt(final BigInteger bi) {
     byte[] int_as_bytes = bi.toByteArray();
-    writeUInt32(int_as_bytes.length);
+    writeUInt(int_as_bytes.length);
     writeByteArray(int_as_bytes);
   }
 
@@ -165,11 +165,11 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   }
 
   public void writeFloat(final float f) {
-    writeFixedInt32(Float.floatToRawIntBits(f));
+    writeFixedInt(Float.floatToRawIntBits(f));
   }
 
   public void writeDouble(final double d) {
-    writeFixedInt64(Double.doubleToRawLongBits(d));
+    writeFixedLong(Double.doubleToRawLongBits(d));
   }
 
   public void writeByteArray(final byte[] bytes) {
@@ -198,7 +198,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     return 64 - Long.numberOfLeadingZeros(l);
   }
 
-  public void writePackedInt32(final int i, final int width) {
+  public void writePackedInt(final int i, final int width) {
     final int mask = ~((-1) << width);
     int current_byte = i & mask;
     int remaining_width = width;

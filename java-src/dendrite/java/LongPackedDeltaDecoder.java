@@ -2,7 +2,7 @@ package dendrite.java;
 
 import java.math.BigInteger;
 
-public class Int64PackedDeltaDecoder implements Int64Decoder {
+public class LongPackedDeltaDecoder implements LongDecoder {
 
   private final ByteArrayReader byte_array_reader;
   private long[] miniblock_buffer = new long[128];
@@ -16,7 +16,7 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
   private BigInteger block_min_delta;
   private BigInteger block_current_value;
 
-  public Int64PackedDeltaDecoder(final ByteArrayReader baw) {
+  public LongPackedDeltaDecoder(final ByteArrayReader baw) {
     byte_array_reader = baw;
   }
 
@@ -78,15 +78,15 @@ public class Int64PackedDeltaDecoder implements Int64Decoder {
   }
 
   private void initNextBlock() {
-    block_size = byte_array_reader.readUInt32();
-    num_miniblocks = byte_array_reader.readUInt32();
+    block_size = byte_array_reader.readUInt();
+    num_miniblocks = byte_array_reader.readUInt();
     miniblock_size = num_miniblocks > 0? block_size / num_miniblocks : 0;
     ensureMiniBlocksSizeInSufficient(miniblock_size);
     ensureMiniBlocksBitWidthsSizeIsSufficient(num_miniblocks);
-    remaining_values_in_block = byte_array_reader.readUInt32();
+    remaining_values_in_block = byte_array_reader.readUInt();
     miniblock_position = -1;
     current_miniblock_index = -1;
-    block_current_value = BigInteger.valueOf(byte_array_reader.readSInt64());
+    block_current_value = BigInteger.valueOf(byte_array_reader.readSLong());
     if (num_miniblocks > 0) {
       block_min_delta = byte_array_reader.readSIntVLQ();
       for (int i=0; i<num_miniblocks; ++i) {
