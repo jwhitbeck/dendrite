@@ -15,13 +15,13 @@
 
 (deftest schema-serialization
   (testing "Fressian serialization"
-    (let [schema (-> test-schema-str read-string parse annotate)]
+    (let [schema (-> test-schema-str read-string parse)]
       (is (= schema
              (-> (fressian/write schema) fressian/read))))))
 
 (deftest schema-annotation
   (testing "Value types are properly annotated"
-    (let [schema (-> test-schema-str read-string parse annotate)]
+    (let [schema (-> test-schema-str read-string parse)]
       (is (= :required (:repetition schema)))
       (are [ks m] (let [field (sub-field-in schema ks)
                         vt (:value field)]

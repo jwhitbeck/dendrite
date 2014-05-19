@@ -113,7 +113,7 @@
 
 (defn- value-type? [elem] (= (type elem) ValueType))
 
-(defmulti parse
+(defmulti ^:private parse-tree
   (fn [elem]
     (cond
      (or (symbol? elem) (value-type? elem)) :value-type
@@ -124,51 +124,51 @@
      (list? elem) :list
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
-(defmethod parse :value-type
+(defmethod parse-tree :value-type
   [value-type]
   (if (symbol? value-type)
     (map->value-type-with-defaults {:type (keyword value-type)})
     value-type))
 
-(defmethod parse :list
+(defmethod parse-tree :list
   [coll]
-  (let [sub-schema (parse (first coll))]
+  (let [sub-schema (parse-tree (first coll))]
     (if (= (type sub-schema) ValueType)
       (map->Field {:repetition :list :value sub-schema})
       (assoc sub-schema :repetition :list))))
 
-(defmethod parse :vector
+(defmethod parse-tree :vector
   [coll]
-  (let [sub-schema (parse (first coll))]
+  (let [sub-schema (parse-tree (first coll))]
     (if (= (type sub-schema) ValueType)
       (map->Field {:repetition :vector :value sub-schema})
       (assoc sub-schema :repetition :vector))))
 
-(defmethod parse :set
+(defmethod parse-tree :set
   [coll]
-  (let [sub-schema (parse (first coll))]
+  (let [sub-schema (parse-tree (first coll))]
     (if (= (type sub-schema) ValueType)
       (map->Field {:repetition :set :value sub-schema})
       (assoc sub-schema :repetition :set))))
 
-(defmethod parse :record
+(defmethod parse-tree :record
   [coll]
   (map->Field {:repetition :optional
                :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
                                              v (if mark-required? (:value v) v)]]
-                        (let [parsed-v (parse v)
+                        (let [parsed-v (parse-tree v)
                               field (if (value-type? parsed-v)
                                       (map->Field {:name k :repetition :optional :value parsed-v})
                                       (assoc parsed-v :name k))]
                           (cond-> field
                                   mark-required? (assoc :repetition :required))))}))
 
-(defmethod parse :map
+(defmethod parse-tree :map
   [coll]
   (let [[key-elem val-elem] (first coll)]
     (map->Field {:repetition :map
-                 :value [(map->Field {:name :key :repetition :required :value (parse key-elem)})
-                         (map->Field {:name :value :repetition :required :value (parse val-elem)})]})))
+                 :value [(map->Field {:name :key :repetition :required :value (parse-tree key-elem)})
+                         (map->Field {:name :value :repetition :required :value (parse-tree val-elem)})]})))
 
 (defn- column-indexed-schema [field current-column-index]
   (if (record? field)
@@ -219,13 +219,15 @@
 (defn- set-top-record-required [schema]
   (assoc schema :repetition :required))
 
-(defn annotate [schema]
+(defn- annotate [schema]
   (-> schema
       index-columns
       set-top-record-required
       set-nested-flags
       set-definition-levels
       set-repetition-levels))
+
+(defn parse [human-readable-schema] (-> human-readable-schema parse-tree annotate))
 
 (defn- recursive-value-types [field previous-value-types]
   (if (record? field)
@@ -245,7 +247,7 @@
   [vt]
   (if (and (= (:compression vt) :none) (= (:encoding vt) :plain))
     (-> vt :type name symbol)
-    (map->ValueType vt)))
+    (map->value-type-with-defaults (select-keys vt [:type :encoding :compression]))))
 
 (defmethod human-readable Field
   [field]

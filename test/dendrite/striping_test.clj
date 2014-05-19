@@ -5,14 +5,12 @@
             [dendrite.striping :refer :all]))
 
 (def dremel-paper-schema
-  (-> {:docid (s/req 'long)
-       :links {:forward ['long]
-               :backward ['long]}
-       :name [{:language [{:code (s/req 'string)
-                           :country 'string}]
-               :url 'string}]}
-      s/parse
-      s/annotate))
+  (s/parse {:docid (s/req 'long)
+            :links {:forward ['long]
+                    :backward ['long]}
+            :name [{:language [{:code (s/req 'string)
+                                :country 'string}]
+                    :url 'string}]}))
 
 (deftest dremel-paper
   (testing "Record striping matches dremel paper"
@@ -45,10 +43,9 @@
 
 (deftest invalid-records
   (testing "Missing required field"
-    (let [schema (-> {:docid (s/req 'long)
-                      :name [{:language {:country 'string
-                                         :code (s/req 'string)}}]}
-                     s/parse s/annotate)]
+    (let [schema (s/parse {:docid (s/req 'long)
+                           :name [{:language {:country 'string
+                                              :code (s/req 'string)}}]})]
       (is (stripe-record {:docid 10} schema))
       (is (thrown? IllegalArgumentException (stripe-record {} schema)))
       #_(is (thrown? IllegalArgumentException (stripe-record {} dremel-paper-schema)))
@@ -56,11 +53,10 @@
 
 (deftest invalid-records
   (testing "Missing required field"
-    (let [schema (-> {:docid (s/req 'long)
-                      :name [{:language (s/req {:country 'string
-                                                :code (s/req 'string)})}
-                             :url 'string]}
-                     s/parse s/annotate)]
+    (let [schema (s/parse {:docid (s/req 'long)
+                           :name [{:language (s/req {:country 'string
+                                                     :code (s/req 'string)})}
+                                  :url 'string]})]
       (are [x] (stripe-record x schema)
            {:docid 10}
            {:docid 10 :name []}
@@ -72,19 +68,18 @@
            (:docid 10 :name [{:language {}}])
            {:docid 10 :name [{:language {:country "us"}}]})))
   (testing "Incompatible value types"
-    (let [schema (-> {:boolean 'boolean
-                      :int 'int
-                      :long 'long
-                      :float 'float
-                      :double 'double
-                      :string 'string
-                      :fixed-length-byte-array 'fixed-length-byte-array
-                      :byte-array 'byte-array
-                      :char 'char
-                      :bigint 'bigint
-                      :keyword 'keyword
-                      :symbol 'symbol}
-                     s/parse s/annotate)]
+    (let [schema (s/parse {:boolean 'boolean
+                           :int 'int
+                           :long 'long
+                           :float 'float
+                           :double 'double
+                           :string 'string
+                           :fixed-length-byte-array 'fixed-length-byte-array
+                           :byte-array 'byte-array
+                           :char 'char
+                           :bigint 'bigint
+                           :keyword 'keyword
+                           :symbol 'symbol})]
       (are [x] (stripe-record x schema)
            {:boolean true}
            {:boolean nil}
