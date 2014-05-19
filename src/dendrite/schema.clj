@@ -14,14 +14,14 @@
 
 (def column-type ->ColumnType)
 
-(defrecord ValueType [type encoding compression column-index definition-level nested?])
+(defrecord ColumnSpec [type encoding compression column-index definition-level nested?])
 
-(defn- map->value-type-with-defaults [m]
-  (map->ValueType (merge {:encoding :plain :compression :none :nested? true} m)))
+(defn- map->column-spec-with-defaults [m]
+  (map->ColumnSpec (merge {:encoding :plain :compression :none :nested? true} m)))
 
-(def val map->value-type-with-defaults)
+(def val map->column-spec-with-defaults)
 
-(defmethod print-method ValueType
+(defmethod print-method ColumnSpec
   [v ^Writer w]
   (.write w (str "#val " (cond-> (dissoc v :column-index :definition-level :nested?)
                                  (= (:compression v) :none) (dissoc :compression)
@@ -29,7 +29,7 @@
 
 (defrecord Field [name repetition value repetition-level])
 
-(defn record? [field] (-> field :value type (not= ValueType)))
+(defn record? [field] (-> field :value type (not= ColumnSpec)))
 
 (defn sub-field [field k] (->> field :value (filter #(= (:name %) k)) first))
 
@@ -44,19 +44,19 @@
 
 (defn- required? [{repetition :repetition}] (= repetition :required))
 
-(def ^:private value-type-tag "dendrite/value-type")
+(def ^:private column-spec-tag "dendrite/column-spec")
 
-(def ^:private value-type-writer
+(def ^:private column-spec-writer
   (reify WriteHandler
-    (write [_ writer value-type]
+    (write [_ writer column-spec]
       (doto writer
-        (.writeTag value-type-tag 3)
-        (.writeString (-> value-type :type name))
-        (.writeString (-> value-type :encoding name))
-        (.writeString (-> value-type :compression name))
-        (.writeInt (:column-index value-type))
-        (.writeInt (:definition-level value-type))
-        (.writeBoolean (:nested? value-type))))))
+        (.writeTag column-spec-tag 3)
+        (.writeString (-> column-spec :type name))
+        (.writeString (-> column-spec :encoding name))
+        (.writeString (-> column-spec :compression name))
+        (.writeInt (:column-index column-spec))
+        (.writeInt (:definition-level column-spec))
+        (.writeBoolean (:nested? column-spec))))))
 
 (def ^:private field-tag "dendrite/field")
 
@@ -71,21 +71,21 @@
         (.writeObject (:value field))))))
 
 (def ^:private write-handlers
-  (-> (merge {ValueType {value-type-tag value-type-writer}
+  (-> (merge {ColumnSpec {column-spec-tag column-spec-writer}
               Field {field-tag field-writer}}
              fressian/clojure-write-handlers)
       fressian/associative-lookup
       fressian/inheritance-lookup))
 
-(def ^:private value-type-reader
+(def ^:private column-spec-reader
   (reify ReadHandler
     (read [_ reader tag component-count]
-      (ValueType. (-> reader .readObject keyword)
-                  (-> reader .readObject keyword)
-                  (-> reader .readObject keyword)
-                  (.readInt reader)
-                  (.readInt reader)
-                  (.readBoolean reader)))))
+      (ColumnSpec. (-> reader .readObject keyword)
+                   (-> reader .readObject keyword)
+                   (-> reader .readObject keyword)
+                   (.readInt reader)
+                   (.readInt reader)
+                   (.readBoolean reader)))))
 
 (def ^:private field-reader
   (reify ReadHandler
@@ -96,7 +96,7 @@
               (.readObject reader)))))
 
 (def ^:private read-handlers
-  (-> (merge {value-type-tag value-type-reader
+  (-> (merge {column-spec-tag column-spec-reader
               field-tag field-reader}
              fressian/clojure-read-handlers)
       fressian/associative-lookup))
@@ -112,59 +112,59 @@
 
 (defn read-string [s]
   (edn/read-string {:readers {'req ->Required
-                              'val map->value-type-with-defaults}}
+                              'val map->column-spec-with-defaults}}
                    s))
 
 (defn- wrapped-required? [elem] (instance? Required elem))
 
-(defn- value-type? [elem] (instance? ValueType elem))
+(defn- column-spec? [elem] (instance? ColumnSpec elem))
 
 (defmulti ^:private parse-tree
   (fn [elem parents]
     (cond
-     (or (symbol? elem) (value-type? elem)) :value-type
-     (and (map? elem) ((some-fn value-type? symbol?) (-> elem first key))) :map
+     (or (symbol? elem) (column-spec? elem)) :column-spec
+     (and (map? elem) ((some-fn column-spec? symbol?) (-> elem first key))) :map
      (and (map? elem) (keyword? (-> elem first key))) :record
      (set? elem) :set
      (vector? elem) :vector
      (list? elem) :list
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
-(defmethod parse-tree :value-type
-  [value-type parents]
-  (let [vt (if (symbol? value-type)
-             (map->value-type-with-defaults {:type (keyword value-type)})
-             value-type)]
-    (when-not (encoding/valid-value-type? (:type vt))
+(defmethod parse-tree :column-spec
+  [column-spec parents]
+  (let [cs (if (symbol? column-spec)
+             (map->column-spec-with-defaults {:type (keyword column-spec)})
+             column-spec)]
+    (when-not (encoding/valid-value-type? (:type cs))
       (throw (IllegalArgumentException.
-              (format "Unsupported type '%s' for column %s" (:type vt) (format-ks parents)))))
-    (when-not (encoding/valid-encoding-for-type? (:type vt) (:encoding vt))
+              (format "Unsupported type '%s' for column %s" (:type cs) (format-ks parents)))))
+    (when-not (encoding/valid-encoding-for-type? (:type cs) (:encoding cs))
       (throw (IllegalArgumentException.
               (format "Mismatched type '%s' and encoding '%s' for column %s"
-                      (:type vt) (:encoding vt) (format-ks parents)))))
-    (when-not (compression/valid-compression-type? (:compression vt))
+                      (:type cs) (:encoding cs) (format-ks parents)))))
+    (when-not (compression/valid-compression-type? (:compression cs))
       (throw (IllegalArgumentException.
-              (format "Unsupported compression type '%s' for column" (:compression vt) (format-ks parents)))))
-    vt))
+              (format "Unsupported compression type '%s' for column" (:compression cs) (format-ks parents)))))
+    cs))
 
 (defmethod parse-tree :list
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
-    (if (value-type? sub-schema)
+    (if (column-spec? sub-schema)
       (map->Field {:repetition :list :value sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse-tree :vector
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
-    (if (value-type? sub-schema)
+    (if (column-spec? sub-schema)
       (map->Field {:repetition :vector :value sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse-tree :set
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
-    (if (value-type? sub-schema)
+    (if (column-spec? sub-schema)
       (map->Field {:repetition :set :value sub-schema})
       (assoc sub-schema :repetition :set))))
 
@@ -175,7 +175,7 @@
     :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
                                   v (if mark-required? (:value v) v)]]
              (let [parsed-v (parse-tree v (conj parents k))
-                   field (if (value-type? parsed-v)
+                   field (if (column-spec? parsed-v)
                            (map->Field {:name k :repetition :optional :value parsed-v})
                            (assoc parsed-v :name k))]
                (when (and mark-required? (repeated? field))
@@ -252,25 +252,25 @@
     (catch Exception e
       (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" human-readable-schema) e)))))
 
-(defn- recursive-value-types [field previous-value-types]
+(defn- recursive-column-specs [field previous-column-specs]
   (if (record? field)
-    (reduce (fn [value-types sub-field]
-              (recursive-value-types sub-field value-types))
-            previous-value-types
+    (reduce (fn [column-specs sub-field]
+              (recursive-column-specs sub-field column-specs))
+            previous-column-specs
             (sub-fields field))
-    (conj previous-value-types (:value field))))
+    (conj previous-column-specs (:value field))))
 
-(defn value-types [schema]
-  (->> (recursive-value-types schema [])
+(defn column-specs [schema]
+  (->> (recursive-column-specs schema [])
        (sort-by :column-index)))
 
 (defmulti human-readable type)
 
-(defmethod human-readable ValueType
-  [vt]
-  (if (and (= (:compression vt) :none) (= (:encoding vt) :plain))
-    (-> vt :type name symbol)
-    (map->value-type-with-defaults (select-keys vt [:type :encoding :compression]))))
+(defmethod human-readable ColumnSpec
+  [cs]
+  (if (and (= (:compression cs) :none) (= (:encoding cs) :plain))
+    (-> cs :type name symbol)
+    (map->column-spec-with-defaults (select-keys cs [:type :encoding :compression]))))
 
 (defmethod human-readable Field
   [field]

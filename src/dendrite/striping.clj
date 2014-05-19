@@ -81,9 +81,9 @@
   (recursively-stripe-record (new-striped-record-fn) record schema [] false coercion-fns 0 0))
 
 (defn- striper [schema]
-  (let [value-types (schema/value-types schema)
-        coercion-fns (coercion-fns-vec value-types)
-        num-cols (count value-types)]
+  (let [column-specs (schema/column-specs schema)
+        coercion-fns (coercion-fns-vec column-specs)
+        num-cols (count column-specs)]
     (fn [record]
       (try
         (recursively-stripe-record* record schema #(new-striped-record num-cols) coercion-fns)
