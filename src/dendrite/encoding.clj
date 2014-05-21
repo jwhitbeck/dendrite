@@ -20,48 +20,46 @@
 
 (set! *warn-on-reflection* true)
 
-(defprotocol Decoder (decode [decoder]))
+(defprotocol Decoder (decode-value [decoder]))
 
 (extend-protocol Decoder
   BooleanDecoder
-  (decode [boolean-decoder] (.decode boolean-decoder))
+  (decode-value [boolean-decoder] (.decode boolean-decoder))
   IntDecoder
-  (decode [int-decoder] (.decode int-decoder))
+  (decode-value [int-decoder] (.decode int-decoder))
   LongDecoder
-  (decode [long-decoder] (.decode long-decoder))
+  (decode-value [long-decoder] (.decode long-decoder))
   FloatDecoder
-  (decode [float-decoder] (.decode float-decoder))
+  (decode-value [float-decoder] (.decode float-decoder))
   DoubleDecoder
-  (decode [double-decoder] (.decode double-decoder))
+  (decode-value [double-decoder] (.decode double-decoder))
   FixedLengthByteArrayDecoder
-  (decode [fixed-length-byte-array-decoder] (.decode fixed-length-byte-array-decoder))
+  (decode-value [fixed-length-byte-array-decoder] (.decode fixed-length-byte-array-decoder))
   ByteArrayDecoder
-  (decode [byte-array-decoder] (.decode byte-array-decoder)))
+  (decode-value [byte-array-decoder] (.decode byte-array-decoder)))
 
-(defn decode-values [decoder]
+(defn decode [decoder]
   (lazy-seq
-   (cons (decode decoder) (decode-values decoder))))
+   (cons (decode-value decoder) (decode decoder))))
 
-(defprotocol Encoder (encode [encoder value]))
+(defprotocol Encoder (encode-value! [encoder value]))
 
 (extend-protocol Encoder
   BooleanEncoder
-  (encode [boolean-encoder value] (doto boolean-encoder (.encode value)))
+  (encode-value! [boolean-encoder value] (doto boolean-encoder (.encode value)))
   IntEncoder
-  (encode [int-encoder value] (doto int-encoder (.encode value)))
+  (encode-value! [int-encoder value] (doto int-encoder (.encode value)))
   LongEncoder
-  (encode [long-encoder value] (doto long-encoder (.encode value)))
+  (encode-value! [long-encoder value] (doto long-encoder (.encode value)))
   FloatEncoder
-  (encode [float-encoder value] (doto float-encoder (.encode value)))
+  (encode-value! [float-encoder value] (doto float-encoder (.encode value)))
   DoubleEncoder
-  (encode [double-encoder value] (doto double-encoder (.encode value)))
+  (encode-value! [double-encoder value] (doto double-encoder (.encode value)))
   FixedLengthByteArrayEncoder
-  (encode [fixed-length-byte-array-encoder value] (doto fixed-length-byte-array-encoder (.encode value)))
+  (encode-value! [fixed-length-byte-array-encoder value]
+    (doto fixed-length-byte-array-encoder (.encode value)))
   ByteArrayEncoder
-  (encode [byte-array-encoder value] (doto byte-array-encoder (.encode value))))
-
-(defn encode-values [encoder values]
-  (reduce encode encoder values))
+  (encode-value! [byte-array-encoder value] (doto byte-array-encoder (.encode value))))
 
 (def ^:private valid-encodings-for-types
   {:boolean #{:plain}
@@ -198,7 +196,7 @@
           derived->base-type (derived->base-type-fn t)]
       (reify
         Encoder
-        (encode [this v] (encode be (derived->base-type v)) this)
+        (encode-value! [this v] (encode-value! be (derived->base-type v)) this)
         BufferedByteArrayWriter
         (reset [_] (.reset ^BufferedByteArrayWriter be))
         (finish [_] (.finish ^BufferedByteArrayWriter be))
@@ -214,7 +212,7 @@
       #(let [bd (bdc %)]
          (reify
            Decoder
-           (decode [_] (-> (decode bd) base->derived-type)))))))
+           (decode-value [_] (-> (decode-value bd) base->derived-type)))))))
 
 (defn coercion-fn [t]
   (let [coerce (if-not (base-type? t)

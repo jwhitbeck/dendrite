@@ -1,7 +1,7 @@
 (ns dendrite.page
   (:require [dendrite.common :refer :all]
             [dendrite.compression :refer [compressor decompressor-ctor]]
-            [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder encoder
+            [dendrite.encoding :refer [encode-value! decode levels-encoder levels-decoder encoder
                                        decoder-ctor]]
             [dendrite.estimation :as estimation])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
@@ -117,15 +117,15 @@
                            uncompressed-data-size)))
 
 (defprotocol IPageWriter
-  (write-value [this value])
+  (write-value! [this value])
   (num-values [this]))
 
 (defprotocol IPageWriterImpl
   (provisional-header [this])
   (header [this]))
 
-(defn write [page-writer values]
-  (reduce write-value page-writer values))
+(defn write! [page-writer values]
+  (reduce write-value! page-writer values))
 
 (deftype DataPageWriter
     [^:unsynchronized-mutable num-values
@@ -136,14 +136,14 @@
      ^Compressor data-compressor
      ^:unsynchronized-mutable finished?]
   IPageWriter
-  (write-value [this leveled-value]
+  (write-value! [this leveled-value]
     (let [v (:value leveled-value)]
       (when-not (nil? v)
-        (encode data-encoder v)))
+        (encode-value! data-encoder v)))
     (when repetition-level-encoder
-      (encode repetition-level-encoder (:repetition-level leveled-value)))
+      (encode-value! repetition-level-encoder (:repetition-level leveled-value)))
     (when definition-level-encoder
-      (encode definition-level-encoder (:definition-level leveled-value)))
+      (encode-value! definition-level-encoder (:definition-level leveled-value)))
     (set! num-values (inc num-values))
     this)
   (num-values [_] num-values)
@@ -216,8 +216,8 @@
                                ^Compressor data-compressor
                                ^:unsynchronized-mutable finished?]
   IPageWriter
-  (write-value [this value]
-    (encode data-encoder value)
+  (write-value! [this value]
+    (encode-value! data-encoder value)
     (set! num-values (inc num-values))
     this)
   (num-values [_] num-values)
@@ -299,14 +299,14 @@
       (-> byte-array-reader
           (.sliceAhead (byte-offset-repetition-levels header))
           (levels-decoder max-definition-level)
-          decode-values)
+          decode)
       (repeat 0)))
   (read-definition-levels [_]
     (if (has-definition-levels? header)
       (-> byte-array-reader
           (.sliceAhead (byte-offset-definition-levels header))
           (levels-decoder max-definition-level)
-          decode-values)
+          decode)
       (repeat max-definition-level)))
   (read-data [_]
     (let [data-bytes-reader (-> byte-array-reader
@@ -317,7 +317,7 @@
                                            (:compressed-data-size header)
                                            (:uncompressed-data-size header))
                               data-bytes-reader)]
-      (decode-values (data-decoder-ctor data-bytes-reader))))
+      (decode (data-decoder-ctor data-bytes-reader))))
   (skip [_]
     (.sliceAhead byte-array-reader (body-length header))))
 
@@ -370,9 +370,7 @@
                                            (:compressed-data-size header)
                                            (:uncompressed-data-size header))
                               data-bytes-reader)]
-      (->> (data-decoder-ctor data-bytes-reader)
-           decode-values
-           (take (:num-values header))))))
+      (->> (data-decoder-ctor data-bytes-reader) decode (take (:num-values header))))))
 
 (defn dictionary-page-reader
   [^ByteArrayReader byte-array-reader value-type encoding compression]

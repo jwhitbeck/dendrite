@@ -15,7 +15,7 @@
 (def target-data-page-size 1000)
 
 (defn write-blocks [column-writer blocks]
-  (reduce write column-writer blocks))
+  (reduce write! column-writer blocks))
 
 (defn write-column-and-get-reader
   [column-spec input-blocks]

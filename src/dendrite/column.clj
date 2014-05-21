@@ -11,11 +11,11 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol IColumnWriter
-  (write [this leveled-values])
+  (write! [this leveled-values])
   (metadata [_]))
 
 (defprotocol IDataColumnWriter
-  (flush-data-page-writer [_]))
+  (flush-data-page-writer! [_]))
 
 (deftype DataColumnWriter [^:unsynchronized-mutable next-num-values-for-page-size-check
                            ^:unsynchronized-mutable num-pages
@@ -24,20 +24,20 @@
                            ^ByteArrayWriter byte-array-writer
                            ^DataPageWriter page-writer]
   IColumnWriter
-  (write [this leveled-values]
+  (write! [this leveled-values]
     (when (>= (page/num-values page-writer) next-num-values-for-page-size-check)
       (let [estimated-page-size (.estimatedSize page-writer)]
         (if (>= estimated-page-size target-data-page-size)
-          (flush-data-page-writer this)
+          (flush-data-page-writer! this)
           (set! next-num-values-for-page-size-check
                 (estimation/next-threshold-check (page/num-values page-writer) estimated-page-size
                                                  target-data-page-size)))))
-    (page/write page-writer leveled-values)
+    (page/write! page-writer leveled-values)
     this)
   (metadata [this]
     (metadata/column-chunk-metadata (.size this) num-pages 0 0))
   IDataColumnWriter
-  (flush-data-page-writer [_]
+  (flush-data-page-writer! [_]
     (when (pos? (page/num-values page-writer))
       (.write byte-array-writer page-writer)
       (set! num-pages (inc num-pages))
@@ -51,7 +51,7 @@
   (finish [this]
     (when (pos? (page/num-values page-writer))
       (let [estimated-size (+ (.size byte-array-writer) (.estimatedSize page-writer))]
-        (flush-data-page-writer this)
+        (flush-data-page-writer! this)
         (estimation/update! size-estimator (.size this) estimated-size))))
   (size [_]
     (.size byte-array-writer))
@@ -85,14 +85,14 @@
                                  ^DictionaryPageWriter dictionary-writer
                                  ^DataColumnWriter data-column-writer]
   IColumnWriter
-  (write [this leveled-values]
+  (write! [this leveled-values]
     (->> leveled-values
          (map (fn [leveled-value]
                 (let [v (:value leveled-value)]
                   (if (nil? v)
                     leveled-value
                     (assoc leveled-value :value (value-index this v))))))
-         (write data-column-writer))
+         (write! data-column-writer))
     this)
   (metadata [this]
     (metadata/column-chunk-metadata (.size this) (-> data-column-writer metadata :num-data-pages)
@@ -103,7 +103,7 @@
       (or (.get reverse-dictionary k)
           (do (let [idx (.size reverse-dictionary)]
                 (.put reverse-dictionary k idx)
-                (page/write-value dictionary-writer v)
+                (page/write-value! dictionary-writer v)
                 idx)))))
   BufferedByteArrayWriter
   (reset [_]
@@ -247,7 +247,7 @@
 
 (defn- compute-size-for-column-spec [column-reader new-colum-spec target-data-page-size]
   (let [writer (-> (column-writer target-data-page-size new-colum-spec)
-                   (write (read column-reader)))]
+                   (write! (read column-reader)))]
     (-> (doto ^BufferedByteArrayWriter writer .finish)
         .size)))
 
