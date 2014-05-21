@@ -1,5 +1,5 @@
 (ns dendrite.page
-  (:require [dendrite.core :refer [leveled-value]]
+  (:require [dendrite.common :refer :all]
             [dendrite.compression :refer [compressor decompressor-ctor]]
             [dendrite.encoding :refer [encode decode-values levels-encoder levels-decoder encoder
                                        decoder-ctor]]

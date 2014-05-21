@@ -1,4 +1,4 @@
-(ns dendrite.core
+(ns dendrite.common
   (:require [clojure.string :as string]))
 
 (set! *warn-on-reflection* true)

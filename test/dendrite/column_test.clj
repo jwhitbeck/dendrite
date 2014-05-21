@@ -1,12 +1,12 @@
 (ns dendrite.column-test
   (:require [clojure.string :as string]
             [clojure.test :refer :all]
-            [dendrite.core :refer [leveled-value]]
+            [dendrite.common :refer :all]
             [dendrite.column :refer :all]
             [dendrite.encoding :as encoding]
             [dendrite.page :as page]
             [dendrite.schema :as schema]
-            [dendrite.test-helpers :refer [avg get-byte-array-reader roughly] :as helpers])
+            [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
@@ -24,7 +24,7 @@
                  .finish)
         column-chunk-metadata (metadata writer)]
     (-> writer
-        get-byte-array-reader
+        helpers/get-byte-array-reader
         (column-reader column-chunk-metadata column-spec))))
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
@@ -56,7 +56,7 @@
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
         output-values (read reader)]
     (testing "write/read a colum"
-      (is (roughly num-pages 11))
+      (is (helpers/roughly num-pages 11))
       (is (= (flatten input-blocks) output-values)))
     (testing "value mapping"
       (is (= (->> input-blocks flatten (map #(some-> % :value (* 2))))
@@ -76,8 +76,8 @@
            (map data-page-header->partial-column-stats)
            (map #(+ (:header-bytes %) (:repetition-level-bytes %) (:definition-level-bytes %)
                     (:data-bytes %)))
-           avg
-           (roughly target-data-page-size)))))
+           helpers/avg
+           (helpers/roughly target-data-page-size)))))
 
 (deftest dictionary-column
   (let [cs (column-spec :int :dictionary :deflate)

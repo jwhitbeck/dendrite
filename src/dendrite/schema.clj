@@ -1,7 +1,7 @@
 (ns dendrite.schema
   (:require [clojure.data.fressian :as fressian]
             [clojure.edn :as edn]
-            [dendrite.core :refer [format-ks]]
+            [dendrite.common :refer :all]
             [dendrite.encoding :as encoding]
             [dendrite.compression :as compression])
   (:import [org.fressian.handlers WriteHandler ReadHandler]

@@ -1,6 +1,6 @@
 (ns dendrite.striping-test
   (:require [clojure.test :refer :all]
-            [dendrite.core :refer [leveled-value]]
+            [dendrite.common :refer :all]
             [dendrite.schema :as s]
             [dendrite.striping :refer :all]))
 

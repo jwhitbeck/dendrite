@@ -1,11 +1,11 @@
 (ns dendrite.striping
-  (:require [dendrite.core :refer [format-ks leveled-value]]
-            [dendrite.encoding :refer [coercion-fn]]
+  (:require [dendrite.common :refer :all]
+            [dendrite.encoding :as encoding]
             [dendrite.schema :as schema]))
 
 (defn- new-striped-record [n] (vec (repeat n nil)))
 
-(defn- coercion-fns-vec [value-types] (mapv (comp coercion-fn :type) value-types))
+(defn- coercion-fns-vec [value-types] (mapv (comp encoding/coercion-fn :type) value-types))
 
 (defmulti ^:private recursively-stripe-record
   (fn [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
