@@ -23,18 +23,9 @@
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
-(defrecord Field [name repetition value repetition-level])
+(defrecord Field [name repetition repetition-level column-spec sub-fields])
 
-(defn record? [field] (-> field :value type (not= ColumnSpec)))
-
-(defn sub-field [field k] (->> field :value (filter #(= (:name %) k)) first))
-
-(defn sub-fields [field] (when (record? field) (:value field)))
-
-(defn sub-field-in [field [k & ks]]
-  (if (empty? ks)
-    (sub-field field k)
-    (sub-field-in (sub-field field k) ks)))
+(defn record? [field] (-> field :sub-fields empty? not))
 
 (defn- repeated? [{repetition :repetition}] (not (#{:optional :required} repetition)))
 
@@ -46,7 +37,7 @@
   (reify WriteHandler
     (write [_ writer column-spec]
       (doto writer
-        (.writeTag column-spec-tag 3)
+        (.writeTag column-spec-tag 6)
         (.writeString (-> column-spec :type name))
         (.writeString (-> column-spec :encoding name))
         (.writeString (-> column-spec :compression name))
@@ -60,11 +51,12 @@
   (reify WriteHandler
     (write [_ writer field]
       (doto writer
-        (.writeTag field-tag 3)
+        (.writeTag field-tag 5)
         (.writeString (-> field :name name))
         (.writeString (-> field :repetition name))
         (.writeInt (:repetition-level field))
-        (.writeObject (:value field))))))
+        (.writeObject (:column-spec field))
+        (.writeObject (:sub-fields field))))))
 
 (def ^:private write-handlers
   (-> (merge {ColumnSpec {column-spec-tag column-spec-writer}
@@ -89,6 +81,7 @@
       (Field. (-> reader .readObject keyword)
               (-> reader .readObject keyword)
               (.readInt reader)
+              (.readObject reader)
               (.readObject reader)))))
 
 (def ^:private read-handlers
@@ -147,47 +140,51 @@
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
     (if (column-spec? sub-schema)
-      (map->Field {:repetition :list :value sub-schema})
+      (map->Field {:repetition :list :column-spec sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse-tree :vector
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
     (if (column-spec? sub-schema)
-      (map->Field {:repetition :vector :value sub-schema})
+      (map->Field {:repetition :vector :column-spec sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse-tree :set
   [coll parents]
   (let [sub-schema (parse-tree (first coll) parents)]
     (if (column-spec? sub-schema)
-      (map->Field {:repetition :set :value sub-schema})
+      (map->Field {:repetition :set :column-spec sub-schema})
       (assoc sub-schema :repetition :set))))
 
 (defmethod parse-tree :record
   [coll parents]
   (map->Field
    {:repetition :optional
-    :value (for [[k v] coll :let [mark-required? (wrapped-required? v)
-                                  v (if mark-required? (:value v) v)]]
-             (let [parsed-v (parse-tree v (conj parents k))
-                   field (if (column-spec? parsed-v)
-                           (map->Field {:name k :repetition :optional :value parsed-v})
-                           (assoc parsed-v :name k))]
-               (when (and mark-required? (repeated? field))
-                 (throw (IllegalArgumentException.
-                         (format "Field '%s' is marked both required and repeated"
-                                 (format-ks (conj parents k))))))
-               (cond-> field
-                       mark-required? (assoc :repetition :required))))}))
+    :sub-fields (for [[k v] coll :let [mark-required? (wrapped-required? v)
+                                       v (if mark-required? (:value v) v)]]
+                  (let [parsed-v (parse-tree v (conj parents k))
+                        field (if (column-spec? parsed-v)
+                                (map->Field {:name k :repetition :optional :column-spec parsed-v})
+                                (assoc parsed-v :name k))]
+                    (when (and mark-required? (repeated? field))
+                      (throw (IllegalArgumentException.
+                              (format "Field '%s' is marked both required and repeated"
+                                      (format-ks (conj parents k))))))
+                    (cond-> field
+                            mark-required? (assoc :repetition :required))))}))
 
 (defmethod parse-tree :map
   [coll parents]
-  (let [[key-elem val-elem] (first coll)]
+  (let [[key-tree val-tree] (map #(parse-tree % parents) (first coll))]
     (map->Field
      {:repetition :map
-      :value [(map->Field {:name :key :repetition :required :value (parse-tree key-elem parents)})
-              (map->Field {:name :value :repetition :required :value (parse-tree val-elem parents)})]})))
+      :sub-fields [(-> {:name :key :repetition :required}
+                       (assoc (if (column-spec? key-tree) :column-spec :sub-fields) key-tree)
+                       map->Field)
+                   (-> {:name :value :repetition :required}
+                       (assoc (if (column-spec? key-tree) :column-spec :sub-fields) val-tree)
+                       map->Field)]})))
 
 (defn- column-indexed-schema [field current-column-index]
   (if (record? field)
@@ -196,9 +193,9 @@
                       (let [[indexed-sub-field next-index] (column-indexed-schema sub-field i)]
                         [(conj indexed-sub-fields indexed-sub-field) next-index]))
                     [[] current-column-index]
-                    (sub-fields field))]
-      [(assoc field :value indexed-sub-fields) next-index])
-    [(update-in field [:value] assoc :column-index current-column-index)
+                    (:sub-fields field))]
+      [(assoc field :sub-fields indexed-sub-fields) next-index])
+    [(update-in field [:column-spec] assoc :column-index current-column-index)
      (inc current-column-index)]))
 
 (defn- index-columns [schema]
@@ -211,17 +208,17 @@
                     (let [next-level (if (pred sub-field) (inc current-level) current-level)]
                       (conj sub-fields (schema-with-level sub-field next-level pred ks all-fields?))))
                   []
-                  (sub-fields field))]
-      (cond-> (assoc field :value sub-fields)
+                  (:sub-fields field))]
+      (cond-> (assoc field :sub-fields sub-fields)
               all-fields? (assoc-in ks current-level)))
     (assoc-in field ks current-level)))
 
 (defn- set-definition-levels [schema]
-  (schema-with-level schema 0 (complement required?) [:value :max-definition-level] false))
+  (schema-with-level schema 0 (complement required?) [:column-spec :max-definition-level] false))
 
 (defn- set-repetition-levels [schema]
   (-> schema
-      (schema-with-level 0 repeated? [:value :max-repetition-level] false)
+      (schema-with-level 0 repeated? [:column-spec :max-repetition-level] false)
       (schema-with-level 0 repeated? [:repetition-level] true)))
 
 (defn- set-top-record-required [schema]
@@ -245,8 +242,8 @@
     (reduce (fn [column-specs sub-field]
               (recursive-column-specs sub-field column-specs))
             previous-column-specs
-            (sub-fields field))
-    (conj previous-column-specs (:value field))))
+            (:sub-fields field))
+    (conj previous-column-specs (:column-spec field))))
 
 (defn column-specs [schema]
   (->> (recursive-column-specs schema [])
@@ -263,11 +260,11 @@
 (defmethod human-readable Field
   [field]
   (let [sub-edn (if (record? field)
-                  (->> (:value field)
+                  (->> (:sub-fields field)
                        (map (fn [sub-field]
                               [(:name sub-field) (human-readable sub-field)]))
                        (into {}))
-                  (cond-> (human-readable (:value field))
+                  (cond-> (human-readable (:column-spec field))
                           (= :required (:repetition field)) ->Required))]
     (case (:repetition field)
       :list (list sub-edn)

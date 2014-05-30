@@ -20,19 +20,19 @@
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
   (when (and (= :required (:repetition schema)) (nil? record) (not nil-parent?))
     (throw (IllegalArgumentException. (format "Required field %s is missing" (format-ks parents)))))
-  (let [value-type (:value schema)
+  (let [column-spec (:column-spec schema)
         value (when record
-                (let [coercion-fn (get coercion-fns (:column-index value-type))]
+                (let [coercion-fn (get coercion-fns (:column-index column-spec))]
                   (try
                     (coercion-fn record)
                     (catch Exception e
                       (throw (IllegalArgumentException.
                               (format "Could not coerce value in %s" (format-ks parents)) e))))))
         value-with-level (leveled-value repetition-level
-                                        (if value (:definition-level value-type) definition-level)
+                                        (if value (:definition-level column-spec) definition-level)
                                         value)]
     (update-in striped-record
-               [(:column-index value-type)] #(conj (or % [] leveled-value) value-with-level))))
+               [(:column-index column-spec)] #(conj (or % [] leveled-value) value-with-level))))
 
 (defmethod recursively-stripe-record :optional
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
@@ -42,7 +42,7 @@
                 (recursively-stripe-record striped-record v field (conj parents (:name field))
                                            (empty? record) coercion-fns repetition-level definition-level)))
             striped-record
-            (schema/sub-fields schema))))
+            (:sub-fields schema))))
 
 (defmethod recursively-stripe-record :required
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
@@ -53,7 +53,7 @@
               (recursively-stripe-record striped-record v field (conj parents (:name field)) (empty? record)
                                          coercion-fns repetition-level definition-level)))
           striped-record
-          (schema/sub-fields schema)))
+          (:sub-fields schema)))
 
 (defmethod recursively-stripe-record :seq
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]

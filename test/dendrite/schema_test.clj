@@ -19,11 +19,18 @@
       (is (= schema
              (-> (fressian/write schema) fressian/read))))))
 
+(defn sub-field [field k] (->> field :sub-fields (filter #(= (:name %) k)) first))
+
+(defn sub-field-in [field [k & ks]]
+  (if (empty? ks)
+    (sub-field field k)
+    (sub-field-in (sub-field field k) ks)))
+
 (deftest schema-annotation
   (testing "value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse)]
       (is (= :required (:repetition schema)))
-      (are [ks m] (let [cs  (-> schema (sub-field-in ks) :value)]
+      (are [ks m] (let [cs  (-> schema (sub-field-in ks) :column-spec)]
                     (and (= (:column-index cs) (:column-index m))
                          (= (:max-repetition-level cs) (:max-repetition-level m))
                          (= (:max-definition-level cs) (:max-definition-level m))))
