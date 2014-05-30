@@ -39,11 +39,11 @@
       iterate-calendar-by-day))
 
 (defn- column-spec [value-type encoding compression]
-  (schema/val {:type value-type :encoding encoding :compression compression
+  (schema/col {:type value-type :encoding encoding :compression compression
                :max-definition-level 3 :max-repetition-level 2}))
 
 (defn- column-spec-no-levels [value-type encoding compression]
-  (schema/val {:type value-type :encoding encoding :compression compression
+  (schema/col {:type value-type :encoding encoding :compression compression
                :max-definition-level 0 :max-repetition-level 0}))
 
 (defn- rand-blocks [column-spec coll]

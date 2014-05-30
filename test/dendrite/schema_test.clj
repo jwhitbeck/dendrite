@@ -49,9 +49,9 @@
     (is (thrown? IllegalArgumentException (parse {:foo 'invalid})))
     (is (thrown? IllegalArgumentException (parse {:foo {:bar 'invalid}}))))
   (testing "mismatched type and encodings"
-    (is (thrown? IllegalArgumentException (parse {:foo (val {:type :int :encoding :incremental})})))
-    (is (thrown? IllegalArgumentException (parse {:foo {:var (val {:type :string :encoding :delta})}}))))
+    (is (thrown? IllegalArgumentException (parse {:foo (col {:type :int :encoding :incremental})})))
+    (is (thrown? IllegalArgumentException (parse {:foo {:var (col {:type :string :encoding :delta})}}))))
   (testing "unsupported compression types"
-    (is (thrown? IllegalArgumentException (parse {:foo (val {:type :int :compression :snappy})}))))
+    (is (thrown? IllegalArgumentException (parse {:foo (col {:type :int :compression :snappy})}))))
   (testing "marking a field as both reapeated and required"
     (is (thrown? IllegalArgumentException (parse {:foo (req ['int])})))))

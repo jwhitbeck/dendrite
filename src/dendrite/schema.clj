@@ -6,7 +6,7 @@
             [dendrite.compression :as compression])
   (:import [org.fressian.handlers WriteHandler ReadHandler]
            [java.io Writer])
-  (:refer-clojure :exclude [read-string val]))
+  (:refer-clojure :exclude [read-string col]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,11 +15,11 @@
 (defn- map->column-spec-with-defaults [m]
   (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
 
-(def val map->column-spec-with-defaults)
+(def col map->column-spec-with-defaults)
 
 (defmethod print-method ColumnSpec
   [v ^Writer w]
-  (.write w (str "#val " (cond-> (dissoc v :column-index :max-definition-level :max-repetition-level)
+  (.write w (str "#col " (cond-> (dissoc v :column-index :max-definition-level :max-repetition-level)
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
@@ -101,7 +101,7 @@
 
 (defn read-string [s]
   (edn/read-string {:readers {'req ->Required
-                              'val map->column-spec-with-defaults}}
+                              'col map->column-spec-with-defaults}}
                    s))
 
 (defn- wrapped-required? [elem] (instance? Required elem))

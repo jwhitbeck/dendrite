@@ -82,9 +82,9 @@
     (-> baw .buffer ByteArrayReader.)))
 
 (def test-schema-str
-  "{:docid #req #val {:type :long :encoding :delta :compression :lz4}
+  "{:docid #req #col {:type :long :encoding :delta :compression :lz4}
     :links {:backward (long)
-            :forward [#val {:type :long :encoding :delta}]}
+            :forward [#col {:type :long :encoding :delta}]}
     :name [{:language [{:code #req string
                         :country string}]
            :url string}]
