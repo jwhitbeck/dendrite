@@ -90,21 +90,21 @@
              fressian/clojure-read-handlers)
       fressian/associative-lookup))
 
-(defrecord Required [value])
+(defrecord RequiredField [field])
 
-(defmethod print-method Required
+(defmethod print-method RequiredField
   [v ^Writer w]
   (.write w "#req ")
-  (print-method (:value v) w))
+  (print-method (:field v) w))
 
-(def req ->Required)
+(def req ->RequiredField)
 
 (defn read-string [s]
-  (edn/read-string {:readers {'req ->Required
+  (edn/read-string {:readers {'req ->RequiredField
                               'col map->column-spec-with-defaults}}
                    s))
 
-(defn- wrapped-required? [elem] (instance? Required elem))
+(defn- required-field? [elem] (instance? RequiredField elem))
 
 (defn- column-spec? [elem] (instance? ColumnSpec elem))
 
@@ -161,8 +161,8 @@
   [coll parents]
   (map->Field
    {:repetition :optional
-    :sub-fields (for [[k v] coll :let [mark-required? (wrapped-required? v)
-                                       v (if mark-required? (:value v) v)]]
+    :sub-fields (for [[k v] coll :let [mark-required? (required-field? v)
+                                       v (if mark-required? (:field v) v)]]
                   (let [parsed-v (parse-tree v (conj parents k))
                         field (if (column-spec? parsed-v)
                                 (map->Field {:name k :repetition :optional :column-spec parsed-v})
@@ -265,10 +265,10 @@
                               [(:name sub-field) (human-readable sub-field)]))
                        (into {}))
                   (cond-> (human-readable (:column-spec field))
-                          (= :required (:repetition field)) ->Required))]
+                          (= :required (:repetition field)) ->RequiredField))]
     (case (:repetition field)
       :list (list sub-edn)
       :vector [sub-edn]
       :set #{sub-edn}
-      :map {(-> sub-edn :key :value) (-> sub-edn :value :value)}
+      :map {(-> sub-edn :key :field) (-> sub-edn :value :field)}
       sub-edn)))
