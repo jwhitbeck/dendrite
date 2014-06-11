@@ -134,13 +134,13 @@
   (testing "small selection of random ints"
     (let [cs (column-spec-no-levels :int :plain :none)
           random-ints (repeatedly 100 helpers/rand-int)
-          input-blocks (->> #(helpers/rand-member random-ints) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth random-ints) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size)))))
   (testing "small selection of chars"
     (let [cs (column-spec-no-levels :char :plain :none)
-          input-blocks (->> #(helpers/rand-member [\c \return \u1111]) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth [\c \return \u1111]) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
@@ -182,7 +182,7 @@
   (testing "small selection of random longs"
     (let [cs (column-spec-no-levels :long :plain :none)
           random-ints (repeatedly 100 helpers/rand-long)
-          input-blocks (->> #(helpers/rand-member random-ints) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth random-ints) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
@@ -197,7 +197,7 @@
   (testing "small selection of random floats"
     (let [cs (column-spec-no-levels :float :plain :none)
           random-floats (repeatedly 100 helpers/rand-float)
-          input-blocks (->> #(helpers/rand-member random-floats) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth random-floats) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
@@ -212,7 +212,7 @@
   (testing "small selection of random doubles"
     (let [cs (column-spec-no-levels :double :plain :none)
           random-doubles (repeatedly 100 helpers/rand-double)
-          input-blocks (->> #(helpers/rand-member random-doubles) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth random-doubles) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
@@ -243,13 +243,13 @@
           (is (= :incremental (find-best-encoding reader target-data-page-size)))))))
   (testing "small set of keywords"
     (let [cs (column-spec-no-levels :keyword :plain :none)
-          input-blocks (->> #(helpers/rand-member [:foo :bar :baz]) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth [:foo :bar :baz]) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size)))))
   (testing "small set of symbols"
     (let [cs (column-spec-no-levels :symbol :plain :none)
-          input-blocks (->> #(helpers/rand-member ['foo 'bar 'baz]) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth ['foo 'bar 'baz]) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :dictionary (find-best-encoding reader target-data-page-size))))))
@@ -266,7 +266,7 @@
   (testing "small selection of random byte arrays"
     (let [cs (column-spec-no-levels :fixed-length-byte-array :plain :none)
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
-          input-blocks (->> #(helpers/rand-member rand-byte-arrays) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (every? true? (map helpers/array=
                              (->> reader read (map :value))
@@ -289,10 +289,10 @@
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
           lorem-ipsum-words (-> helpers/lorem-ipsum (string/split #" ") set)
           lorem-ipsum-shuffles (repeatedly 100 #(->> lorem-ipsum-words shuffle (apply str)))
-          input-blocks (->>  #(helpers/rand-member lorem-ipsum-shuffles)
-                             repeatedly
-                             (rand-blocks cs)
-                             (take 5000))
+          input-blocks (->> #(rand-nth lorem-ipsum-shuffles)
+                            repeatedly
+                            (rand-blocks cs)
+                            (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (assoc cs
                :encoding :dictionary

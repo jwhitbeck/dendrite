@@ -40,9 +40,6 @@
   ([] (rand-byte-array (clojure.core/rand-int 24)))
   ([n] (byte-array (repeatedly n rand-byte))))
 
-(defn rand-member [coll]
-  (nth (seq coll) (-> coll count clojure.core/rand-int)))
-
 (defn leveled [{:keys [max-definition-level max-repetition-level] :or {nested? true} :as spec} coll]
   (lazy-seq
    (let [next-value (first coll)
