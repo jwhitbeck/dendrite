@@ -19,13 +19,6 @@
       (is (= schema
              (-> (fressian/write schema) fressian/read))))))
 
-(defn sub-field [field k] (->> field :sub-fields (filter #(= (:name %) k)) first))
-
-(defn sub-field-in [field [k & ks]]
-  (if (empty? ks)
-    (sub-field field k)
-    (sub-field-in (sub-field field k) ks)))
-
 (deftest schema-annotation
   (testing "value types are properly annotated"
     (let [schema (-> test-schema-str read-string parse)]
@@ -55,3 +48,49 @@
     (is (thrown? IllegalArgumentException (parse {:foo (col {:type :int :compression :snappy})}))))
   (testing "marking a field as both reapeated and required"
     (is (thrown? IllegalArgumentException (parse {:foo (req ['int])})))))
+
+(deftest queries
+  (let [schema (-> test-schema-str read-string parse)]
+    (testing "read from string"
+      (is (= (read-query-string "{:docid _ :links #foo {:backward (long)}}")
+             {:docid '_ :links (tag 'foo {:backward (list 'long)})})))
+    (testing "select sub-schema from query"
+      (are [query sub-schema] (= (human-readable (sub-schema-for-query schema query)) sub-schema)
+           {:docid '_} {:docid (req (col {:type :long :encoding :delta :compression :lz4}))}
+           {:links '_} {:links {:backward (list 'long)
+                                :forward [(col {:type :long :encoding :delta})]}}
+           {:links {:backward ['long]}} {:links {:backward ['long]}}
+           {:name [{:language [{:country '_}]}]} {:name [{:language [{:country 'string}]}]}
+           {:name [{:language (list {:code 'string})}]} {:name [{:language (list {:code (req 'string)})}]}
+           {:meta '_ :name [{:url '_}]} {:name [{:url 'string}] :meta {'string 'string}}
+           {:keywords ['_]} {:keywords ['string]}
+           {:meta ['_]} {:meta [{:key (req 'string) :value (req 'string)}]}))
+    (testing "tagging"
+      (let [bogus-fn (fn [])]
+        (is (= bogus-fn (-> (sub-schema-for-query schema {:docid (tag 'foo '_)} :readers {'foo bogus-fn})
+                            (sub-field :docid)
+                            :reader-fn)))
+        (is (= bogus-fn (-> (sub-schema-for-query schema {:name [{:language [{:code (tag 'foo '_)}]}]}
+                                                  :readers {'foo bogus-fn})
+                            (sub-field-in [:name :language :code])
+                            :reader-fn)))
+        (is (= bogus-fn (-> (sub-schema-for-query schema {:name (tag 'foo '_)} :readers {'foo bogus-fn})
+                            (sub-field :name)
+                            :reader-fn)))
+        (is (nil? (-> (sub-schema-for-query schema {:docid (tag 'foo '_)})
+                      (sub-field :docid)
+                      :reader-fn)))))
+    (testing "missing fields throw errors if enforced"
+      (is (thrown? IllegalArgumentException (sub-schema-for-query schema {:docid '_ :missing '_}
+                                                                  :missing-fields-as-nil? false))))
+    (testing "bad queries"
+      (are [query] (thrown? IllegalArgumentException (sub-schema-for-query schema query))
+           (Object.)
+           {:docid 'int}
+           {:docid '_ :links {:backward ['int]}}
+           {:links 'int}
+           {:docid {:foo '_}}
+           {:docid (list 'long)}
+           {:docid ['long]}
+           {:name #{{:url '_}}}
+           {:name {'string '_}}))))
