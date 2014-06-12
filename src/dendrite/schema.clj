@@ -117,7 +117,7 @@
 
 (defn- column-spec? [elem] (instance? ColumnSpec elem))
 
-(defmulti ^:private parse-tree
+(defmulti ^:private parse*
   (fn [elem parents]
     (cond
      (or (symbol? elem) (column-spec? elem)) :column-spec
@@ -128,7 +128,7 @@
      (list? elem) :list
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
-(defmethod parse-tree :column-spec
+(defmethod parse* :column-spec
   [column-spec parents]
   (let [cs (if (symbol? column-spec)
              (map->column-spec-with-defaults {:type (keyword column-spec)})
@@ -145,34 +145,34 @@
               (format "Unsupported compression type '%s' for column" (:compression cs) (format-ks parents)))))
     cs))
 
-(defmethod parse-tree :list
+(defmethod parse* :list
   [coll parents]
-  (let [sub-schema (parse-tree (first coll) parents)]
+  (let [sub-schema (parse* (first coll) parents)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :list :column-spec sub-schema})
       (assoc sub-schema :repetition :list))))
 
-(defmethod parse-tree :vector
+(defmethod parse* :vector
   [coll parents]
-  (let [sub-schema (parse-tree (first coll) parents)]
+  (let [sub-schema (parse* (first coll) parents)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :vector :column-spec sub-schema})
       (assoc sub-schema :repetition :vector))))
 
-(defmethod parse-tree :set
+(defmethod parse* :set
   [coll parents]
-  (let [sub-schema (parse-tree (first coll) parents)]
+  (let [sub-schema (parse* (first coll) parents)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :set :column-spec sub-schema})
       (assoc sub-schema :repetition :set))))
 
-(defmethod parse-tree :record
+(defmethod parse* :record
   [coll parents]
   (map->Field
    {:repetition :optional
     :sub-fields (for [[k v] coll :let [mark-required? (required-field? v)
                                        v (if mark-required? (:field v) v)]]
-                  (let [parsed-v (parse-tree v (conj parents k))
+                  (let [parsed-v (parse* v (conj parents k))
                         field (if (column-spec? parsed-v)
                                 (map->Field {:name k :repetition :optional :column-spec parsed-v})
                                 (assoc parsed-v :name k))]
@@ -183,9 +183,9 @@
                     (cond-> field
                             mark-required? (assoc :repetition :required))))}))
 
-(defmethod parse-tree :map
+(defmethod parse* :map
   [coll parents]
-  (let [[key-tree val-tree] (map #(parse-tree % parents) (first coll))]
+  (let [[key-tree val-tree] (map #(parse* % parents) (first coll))]
     (map->Field
      {:repetition :map
       :sub-fields [(-> {:name :key :repetition :required}
@@ -242,7 +242,7 @@
 
 (defn parse [human-readable-schema]
   (try
-    (-> human-readable-schema (parse-tree []) annotate)
+    (-> human-readable-schema (parse* []) annotate)
     (catch Exception e
       (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" human-readable-schema) e)))))
 
