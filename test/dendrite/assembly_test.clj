@@ -10,8 +10,8 @@
     (is (= dremel-paper-record1 (assemble dremel-paper-schema dremel-paper-record1-striped)))
     (is (= dremel-paper-record2 (assemble dremel-paper-schema dremel-paper-record2-striped))))
   (testing "two fields example"
-    (let [sub-schema (schema/sub-schema-for-query dremel-paper-schema
-                                                  {:docid '_ :name [{:language [{:country '_}]}]})]
+    (let [sub-schema (schema/apply-query dremel-paper-schema
+                                         {:docid '_ :name [{:language [{:country '_}]}]})]
       (is (= {:docid 10
               :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
              (assemble sub-schema
