@@ -1,9 +1,9 @@
 (ns dendrite.striping-test
   (:require [clojure.test :refer :all]
             [dendrite.common :refer :all]
+            [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as s]
-            [dendrite.striping :refer :all]
-            [dendrite.dremel-paper-examples :refer :all]))
+            [dendrite.striping :refer :all]))
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
