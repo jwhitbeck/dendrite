@@ -14,6 +14,7 @@
          :string "foo"
          :char \c
          :bigint 2
+         :bigdec 2.3
          :keyword :foo
          :symbol 'foo)
     (are [t y] (thrown? IllegalArgumentException ((coercion-fn t) y))
@@ -26,6 +27,7 @@
          :fixed-length-byte-array [1 10]
          :char "f"
          :bigint "foo"
+         :bigdec "foo"
          :symbol 2)))
 
 (deftest validity-checks

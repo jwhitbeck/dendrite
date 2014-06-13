@@ -15,8 +15,7 @@
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
             ByteArrayReader BufferedByteArrayWriter]
-           [java.nio.charset Charset]
-           [java.math BigInteger]))
+           [java.nio.charset Charset]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,6 +133,27 @@
 
 (defn bytes->bigint [^bytes bs] (BigInteger. bs))
 
+(defn bigdec->bytes [^BigDecimal bd]
+  (let [unscaled-bigint-bytes (-> bd .unscaledValue .toByteArray)
+        scale (.scale bd)
+        ba (byte-array (+ (alength unscaled-bigint-bytes) 4))]
+    (System/arraycopy unscaled-bigint-bytes 0 ba 4 (alength unscaled-bigint-bytes))
+    (aset ba 3 (unchecked-byte scale))
+    (aset ba 2 (unchecked-byte (bit-shift-right scale 8)))
+    (aset ba 1 (unchecked-byte (bit-shift-right scale 16)))
+    (aset ba 0 (unchecked-byte (bit-shift-right scale 24)))
+    ba))
+
+(defn bytes->bigdec [^bytes bs]
+  (let [scale (bit-or (bit-shift-left (aget bs 0) 24)
+                      (bit-shift-left (aget bs 1) 16)
+                      (bit-shift-left (aget bs 2) 8)
+                      (aget bs 3))
+        unscaled-length (- (alength bs) 4)
+        unscaled-bigint-bytes (byte-array unscaled-length)]
+    (System/arraycopy bs 4 unscaled-bigint-bytes 0 unscaled-length)
+    (BigDecimal. (BigInteger. unscaled-bigint-bytes) scale)))
+
 (def ^:private derived-types
   {:string {:base-type :byte-array
             :coercion-fn str
@@ -147,6 +167,10 @@
             :coercion-fn bigint
             :to-base-type-fn bigint->bytes
             :from-base-type-fn bytes->bigint}
+   :bigdec {:base-type :byte-array
+            :coercion-fn bigdec
+            :to-base-type-fn bigdec->bytes
+            :from-base-type-fn bytes->bigdec}
    :keyword {:base-type :byte-array
              :coercion-fn keyword
              :to-base-type-fn (comp str->utf8-bytes name)

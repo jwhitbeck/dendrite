@@ -32,6 +32,8 @@
 
 (defn rand-big-int [n] (BigInteger. n rng))
 
+(defn rand-big-dec [n] (BigDecimal. (rand-big-int n) (rand-int-bits 2)))
+
 (defn rand-big-int-signed [n]
   (cond-> (rand-big-int n)
           (= (rand-sign) 1) .negate))

@@ -232,6 +232,12 @@
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
+  (testing "random big decimals"
+    (let [cs (column-spec-no-levels :bigdec :plain :none)
+          input-blocks (->> #(helpers/rand-big-dec 40) repeatedly (rand-blocks cs) (take 5000))
+          reader (write-column-and-get-reader cs input-blocks)]
+      (is (= (read reader) (flatten input-blocks)))
+      (is (= :incremental (find-best-encoding reader target-data-page-size)))))
   (testing "incrementing dates"
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 5000))]
