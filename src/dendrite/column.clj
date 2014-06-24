@@ -141,8 +141,18 @@
     (data-column-writer target-data-page-size column-spec)))
 
 (defprotocol IColumnReader
-  (read [_])
+  (stream [_])
   (stats [_]))
+
+(defn partition-by-record [leveled-values]
+  (lazy-seq
+   (when-let [coll (seq leveled-values)]
+     (let [fst (first coll)
+           run (cons fst (take-while (comp not zero? :repetition-level) (next coll)))]
+       (cons run (partition-by-record (drop (count run) coll)))))))
+
+(defn read [column-reader]
+  (-> column-reader stream partition-by-record))
 
 (defn- apply-to-leveled-value [f leveled-value]
   (let [v (:value leveled-value)]
@@ -172,7 +182,7 @@
                              column-spec
                              map-fn]
   IColumnReader
-  (read [this]
+  (stream [this]
     (let [{:keys [type encoding compression max-definition-level]} column-spec
           leveled-values (page/read-data-pages
                            (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
@@ -194,7 +204,7 @@
   (DataColumnReader. byte-array-reader column-chunk-metadata column-spec map-fn))
 
 (defprotocol IDictionaryColumnReader
-  (read-indices [_])
+  (stream-indices [_])
   (read-dictionary [_])
   (indices-stats [_]))
 
@@ -203,15 +213,15 @@
                                    column-spec
                                    map-fn]
   IColumnReader
-  (read [this]
+  (stream [this]
     (let [dictionary-array (into-array (cond->> (read-dictionary this)
                                                 map-fn (map map-fn)))]
-      (->> (read-indices this)
+      (->> (stream-indices this)
            (map (fn [leveled-value]
                   (let [i (:value leveled-value)]
                     (if (nil? i)
                       leveled-value
-                      (assoc leveled-value :value (aget ^objects dictionary-array (int i)))))))
+                      (assoc leveled-value :value (aget ^objects dictionary-array (int i))))))))))
   (stats [this]
     (let [dictionary-header (->> column-chunk-metadata
                                  :dictionary-page-offset
@@ -227,8 +237,8 @@
                           (:type column-spec)
                           :plain
                           (:compression column-spec)))
-  (read-indices [_]
-    (read (data-column-reader byte-array-reader
+  (stream-indices [_]
+    (stream (data-column-reader byte-array-reader
                               column-chunk-metadata
                               (dictionary-indices-column-spec column-spec)
                               nil)))
@@ -249,8 +259,8 @@
     (data-column-reader byte-array-reader column-chunk-metadata column-spec map-fn)))
 
 (defn- compute-size-for-column-spec [column-reader new-colum-spec target-data-page-size]
-  (let [writer (-> (column-writer target-data-page-size new-colum-spec)
-                   (write! (read column-reader)))]
+  (let [writer (column-writer target-data-page-size new-colum-spec)
+        writer (reduce write! writer (read column-reader))]
     (-> (doto ^BufferedByteArrayWriter writer .finish)
         .size)))
 

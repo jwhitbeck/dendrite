@@ -56,12 +56,6 @@
        (cons (leveled-value rand-repetition-level rand-definition-level nil)
              (leveled spec coll))))))
 
-(defn rand-partition [n coll]
-  (lazy-seq
-   (when-not (empty? coll)
-     (let [k (inc (clojure.core/rand-int n))]
-       (cons (take k coll) (rand-partition n (drop k coll)))))))
-
 (defn avg [coll] (/ (reduce + coll) (count coll)))
 
 (defn abs [x] (if (pos? x) x (- x)))
