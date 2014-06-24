@@ -135,7 +135,7 @@
      (page/dictionary-page-writer type :plain compression)
      (data-column-writer target-data-page-size (dictionary-indices-column-spec column-spec)))))
 
-(defn column-writer [target-data-page-size column-spec]
+(defn writer [target-data-page-size column-spec]
   (if (= :dictionary (:encoding column-spec))
     (dictionary-column-writer target-data-page-size column-spec)
     (data-column-writer target-data-page-size column-spec)))
@@ -252,17 +252,15 @@
   [byte-array-reader column-chunk-metadata column-spec map-fn]
   (DictionaryColumnReader. byte-array-reader column-chunk-metadata column-spec map-fn))
 
-(defn column-reader
+(defn reader
   [byte-array-reader column-chunk-metadata column-spec map-fn]
   (if (= :dictionary (:encoding column-spec))
     (dictionary-column-reader byte-array-reader column-chunk-metadata column-spec map-fn)
     (data-column-reader byte-array-reader column-chunk-metadata column-spec map-fn)))
 
 (defn- compute-size-for-column-spec [column-reader new-colum-spec target-data-page-size]
-  (let [writer (column-writer target-data-page-size new-colum-spec)
-        writer (reduce write! writer (read column-reader))]
-    (-> (doto ^BufferedByteArrayWriter writer .finish)
-        .size)))
+  (let [w (reduce write! (writer target-data-page-size new-colum-spec) (read column-reader))]
+    (.size (doto ^BufferedByteArrayWriter w .finish))))
 
 (defn find-best-encoding [column-reader target-data-page-size]
   (let [ct (-> column-reader :column-spec (assoc :compression :none))

@@ -19,13 +19,13 @@
 
 (defn write-column-and-get-reader
   [column-spec input-blocks & {:keys [map-fn]}]
-  (let [writer (doto (column-writer target-data-page-size column-spec)
-                 (write-blocks input-blocks)
-                 .finish)
-        column-chunk-metadata (metadata writer)]
-    (-> writer
+  (let [w (doto (writer target-data-page-size column-spec)
+            (write-blocks input-blocks)
+            .finish)
+        column-chunk-metadata (metadata w)]
+    (-> w
         helpers/get-byte-array-reader
-        (column-reader column-chunk-metadata column-spec map-fn))))
+        (reader column-chunk-metadata column-spec map-fn))))
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -64,10 +64,10 @@
           (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
                  (->> mapped-reader read flatten (map :value))))))
     (testing "repeatable writes"
-      (let [writer (doto (column-writer target-data-page-size cs)
-                     (write-blocks input-blocks))
-            baw1 (doto (ByteArrayWriter. 10) (.write writer))
-            baw2 (doto (ByteArrayWriter. 10) (.write writer))]
+      (let [w (doto (writer target-data-page-size cs)
+                (write-blocks input-blocks))
+            baw1 (doto (ByteArrayWriter. 10) (.write w))
+            baw2 (doto (ByteArrayWriter. 10) (.write w))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))
@@ -94,10 +94,10 @@
         (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
                (->> mapped-reader read flatten (map :value))))))
     (testing "repeatable writes"
-      (let [writer (doto (column-writer target-data-page-size cs)
-                     (write-blocks input-blocks))
-            baw1 (doto (ByteArrayWriter. 10) (.write writer))
-            baw2 (doto (ByteArrayWriter. 10) (.write writer))]
+      (let [w (doto (writer target-data-page-size cs)
+                (write-blocks input-blocks))
+            baw1 (doto (ByteArrayWriter. 10) (.write w))
+            baw2 (doto (ByteArrayWriter. 10) (.write w))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))))
