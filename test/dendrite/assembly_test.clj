@@ -9,8 +9,8 @@
 
 (deftest dremel-paper
   (testing "full schema"
-    (is (= dremel-paper-record1 (assemble dremel-paper-record1-striped dremel-paper-schema)))
-    (is (= dremel-paper-record2 (assemble dremel-paper-record2-striped dremel-paper-schema))))
+    (is (= dremel-paper-record1 (assemble dremel-paper-record1-striped dremel-paper-full-query-schema)))
+    (is (= dremel-paper-record2 (assemble dremel-paper-record2-striped dremel-paper-full-query-schema))))
   (testing "two fields example"
     (let [sub-schema (schema/apply-query dremel-paper-schema
                                          {:docid '_ :name [{:language [{:country '_}]}]})]
@@ -39,7 +39,7 @@
 
 (deftest repetition-types
   (testing "full schema"
-    (is (= test-record (assemble test-record-striped test-schema))))
+    (is (= test-record (assemble test-record-striped (schema/apply-query test-schema '_)))))
   (testing "queries"
     (are [answer query column-indices]
       (let [stripes (mapv (partial get test-record-striped) column-indices)]

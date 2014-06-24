@@ -11,7 +11,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defrecord ColumnSpec [type encoding compression column-index max-repetition-level max-definition-level])
+(defrecord ColumnSpec [type encoding compression column-index query-column-index
+                       max-repetition-level max-definition-level])
 
 (defn- map->column-spec-with-defaults [m]
   (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
@@ -20,7 +21,8 @@
 
 (defmethod print-method ColumnSpec
   [v ^Writer w]
-  (.write w (str "#col " (cond-> (dissoc v :column-index :max-definition-level :max-repetition-level)
+  (.write w (str "#col " (cond-> (dissoc v :column-index :query-column-index
+                                         :max-definition-level :max-repetition-level)
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
@@ -80,6 +82,7 @@
                    (-> reader .readObject keyword)
                    (-> reader .readObject keyword)
                    (.readInt reader)
+                   nil
                    (.readInt reader)
                    (.readInt reader)))))
 
@@ -195,20 +198,20 @@
                        (assoc (if (column-spec? key-tree) :column-spec :sub-fields) val-tree)
                        map->Field)]})))
 
-(defn- column-indexed-schema [field current-column-index]
+(defn- column-indexed-schema [field current-column-index index-keyword]
   (if (record? field)
     (let [[indexed-sub-fields next-index]
             (reduce (fn [[indexed-sub-fields i] sub-field]
-                      (let [[indexed-sub-field next-index] (column-indexed-schema sub-field i)]
+                      (let [[indexed-sub-field next-index] (column-indexed-schema sub-field i index-keyword)]
                         [(conj indexed-sub-fields indexed-sub-field) next-index]))
                     [[] current-column-index]
                     (:sub-fields field))]
       [(assoc field :sub-fields indexed-sub-fields) next-index])
-    [(update-in field [:column-spec] assoc :column-index current-column-index)
+    [(update-in field [:column-spec] assoc index-keyword current-column-index)
      (inc current-column-index)]))
 
-(defn- index-columns [schema]
-  (first (column-indexed-schema schema 0)))
+(defn- index-columns [schema index-keyword]
+  (first (column-indexed-schema schema 0 index-keyword)))
 
 (defn- schema-with-level [field current-level pred ks all-fields?]
   (if (record? field)
@@ -235,7 +238,7 @@
 
 (defn- annotate [schema]
   (-> schema
-      index-columns
+      (index-columns :column-index)
       set-top-record-required
       set-repetition-levels
       set-definition-levels))
@@ -400,7 +403,7 @@
   (try
     (-> schema
         (apply-query* query readers missing-fields-as-nil? [])
-        index-columns)
+        (index-columns :query-column-index))
     (catch Exception e
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))

@@ -27,7 +27,7 @@
            record))
        next-repetition-level
        next-leveled-values-vec])
-    (let [column-index (-> schema :column-spec :column-index)
+    (let [column-index (-> schema :column-spec :query-column-index)
           leveled-values (get leveled-values-vec column-index)
           value (-> leveled-values first :value)
           next-repetition-level (or (some-> leveled-values second :repetition-level) 0)]

@@ -12,6 +12,8 @@
 
 (def dremel-paper-schema (-> dremel-paper-schema-str schema/read-string schema/parse))
 
+(def dremel-paper-full-query-schema (schema/apply-query dremel-paper-schema '_))
+
 (def dremel-paper-record1
   {:docid 10
    :links {:forward [20 40 60]}
