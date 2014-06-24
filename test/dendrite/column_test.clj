@@ -18,14 +18,14 @@
   (reduce write! column-writer blocks))
 
 (defn write-column-and-get-reader
-  [column-spec input-blocks]
+  [column-spec input-blocks & {:keys [map-fn]}]
   (let [writer (doto (column-writer target-data-page-size column-spec)
                  (write-blocks input-blocks)
                  .finish)
         column-chunk-metadata (metadata writer)]
     (-> writer
         helpers/get-byte-array-reader
-        (column-reader column-chunk-metadata column-spec))))
+        (column-reader column-chunk-metadata column-spec map-fn))))
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -59,8 +59,10 @@
       (is (helpers/roughly num-pages 11))
       (is (= (flatten input-blocks) output-values)))
     (testing "value mapping"
-      (is (= (->> input-blocks flatten (map #(some-> % :value (* 2))))
-             (map :value (read reader (partial * 2))))))
+        (let [map-fn (partial * 2)
+              mapped-reader (write-column-and-get-reader cs input-blocks :map-fn map-fn)]
+          (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
+                 (map :value (read mapped-reader))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size cs)
                      (write-blocks input-blocks))
@@ -87,8 +89,10 @@
     (testing "write/read a dictionary colum"
       (is (= (flatten input-blocks) output-values)))
     (testing "value mapping"
-      (is (= (->> input-blocks flatten (map #(some-> % :value (* 2))))
-             (map :value (read reader (partial * 2))))))
+      (let [map-fn (partial * 2)
+            mapped-reader (write-column-and-get-reader cs input-blocks :map-fn map-fn)]
+        (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
+               (map :value (read mapped-reader))))))
     (testing "repeatable writes"
       (let [writer (doto (column-writer target-data-page-size cs)
                      (write-blocks input-blocks))
