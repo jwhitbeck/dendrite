@@ -118,11 +118,11 @@
 
 (deftest find-best-int-encodings
   (testing "random ints"
-    (let [cs (column-spec :int :plain :none)
+    (let [cs (column-spec-no-levels :int :plain :none)
           input-blocks (->> helpers/rand-int repeatedly (rand-blocks cs) (take 100))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
-      (is (#{:plain :delta} (find-best-encoding reader target-data-page-size)))))
+      (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small ints"
     (let [cs (column-spec-no-levels :int :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
@@ -155,7 +155,7 @@
           input-blocks (->> helpers/rand-long repeatedly (rand-blocks cs) (take 100))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
-      (is (#{:plain :delta} (find-best-encoding reader target-data-page-size)))))
+      (is (= :plain (find-best-encoding reader target-data-page-size)))))
   (testing "random small longs"
     (let [cs (column-spec-no-levels :long :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
