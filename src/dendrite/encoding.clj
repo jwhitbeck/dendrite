@@ -129,9 +129,9 @@
 
 (defn utf8-bytes->str [^bytes bs] (String. bs utf8-charset))
 
-(defn bigint->bytes [^BigInteger bi] (.toByteArray bi))
+(defn bigint->bytes [^clojure.lang.BigInt bi] (-> bi .toBigInteger .toByteArray))
 
-(defn bytes->bigint [^bytes bs] (BigInteger. bs))
+(defn bytes->bigint [^bytes bs] (bigint (BigInteger. bs)))
 
 (defn bigdec->bytes [^BigDecimal bd]
   (let [unscaled-bigint-bytes (-> bd .unscaledValue .toByteArray)

@@ -75,23 +75,23 @@
           read-longs (write-read #(.writeSLong %1 %2) #(.readSLong %) rand-longs)]
       (is (every? true? (map = read-longs rand-longs))))))
 
-(deftest read-write-big-int
+(deftest read-write-biginteger
   (testing "writeBigInt/readBigInt"
-    (let [rand-big-ints (repeatedly #(helpers/rand-big-int 72))
-          read-big-ints (write-read #(.writeBigInt %1 %2) #(.readBigInt %) rand-big-ints)]
-      (is (every? true? (map = read-big-ints rand-big-ints))))))
+    (let [rand-bigintegers (repeatedly #(helpers/rand-biginteger 72))
+          read-bigintegers (write-read #(.writeBigInt %1 %2) #(.readBigInt %) rand-bigintegers)]
+      (is (every? true? (map = read-bigintegers rand-bigintegers))))))
 
 (deftest read-write-uint-vlq
   (testing "writeUIntVLQ/readUIntVLQ"
-    (let [rand-big-ints (repeatedly #(helpers/rand-big-int 72))
-          read-big-ints (write-read #(.writeUIntVLQ %1 %2) #(.readUIntVLQ %) rand-big-ints)]
-      (is (every? true? (map = read-big-ints rand-big-ints))))))
+    (let [rand-bigintegers (repeatedly #(helpers/rand-biginteger 72))
+          read-bigintegers (write-read #(.writeUIntVLQ %1 %2) #(.readUIntVLQ %) rand-bigintegers)]
+      (is (every? true? (map = read-bigintegers rand-bigintegers))))))
 
 (deftest read-write-sint-vlq
   (testing "writeSIntVLQ/readSIntVLQ"
-    (let [rand-big-ints (repeatedly #(helpers/rand-big-int-signed 72))
-          read-big-ints (write-read #(.writeSIntVLQ %1 %2) #(.readSIntVLQ %) rand-big-ints)]
-      (is (every? true? (map = read-big-ints rand-big-ints))))))
+    (let [rand-bigintegers (repeatedly #(helpers/rand-biginteger-signed 72))
+          read-bigintegers (write-read #(.writeSIntVLQ %1 %2) #(.readSIntVLQ %) rand-bigintegers)]
+      (is (every? true? (map = read-bigintegers rand-bigintegers))))))
 
 (deftest read-write-packed-boolean
   (testing "writePackedBooleans/readPackedBooleans"

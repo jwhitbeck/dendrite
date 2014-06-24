@@ -30,12 +30,14 @@
 
 (defn rand-double [] (-> (rand Double/MAX_VALUE) (* (rand-sign)) unchecked-double))
 
-(defn rand-big-int [n] (BigInteger. n rng))
+(defn rand-biginteger [n] (BigInteger. n rng))
 
-(defn rand-big-dec [n] (BigDecimal. (rand-big-int n) (rand-int-bits 2)))
+(defn rand-bigint [n] (bigint (rand-biginteger n)))
 
-(defn rand-big-int-signed [n]
-  (cond-> (rand-big-int n)
+(defn rand-bigdec [n] (BigDecimal. (rand-biginteger n) (rand-int-bits 2)))
+
+(defn rand-biginteger-signed [n]
+  (cond-> (rand-biginteger n)
           (= (rand-sign) 1) .negate))
 
 (defn rand-byte-array

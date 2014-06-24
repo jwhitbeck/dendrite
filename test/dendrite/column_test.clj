@@ -228,13 +228,13 @@
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "random big ints"
     (let [cs (column-spec-no-levels :bigint :plain :none)
-          input-blocks (->> #(helpers/rand-big-int 100) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(helpers/rand-bigint 100) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :delta-length (find-best-encoding reader target-data-page-size)))))
   (testing "random big decimals"
     (let [cs (column-spec-no-levels :bigdec :plain :none)
-          input-blocks (->> #(helpers/rand-big-dec 40) repeatedly (rand-blocks cs) (take 5000))
+          input-blocks (->> #(helpers/rand-bigdec 40) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= (read reader) (flatten input-blocks)))
       (is (= :incremental (find-best-encoding reader target-data-page-size)))))
