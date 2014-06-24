@@ -56,6 +56,7 @@
              {:docid '_ :links (tag 'foo {:backward (list 'long)})})))
     (testing "select sub-schema from query"
       (are [query sub-schema] (= (human-readable (apply-query schema query)) sub-schema)
+           '_ (human-readable schema)
            {:docid '_} {:docid (req (col {:type :long :encoding :delta :compression :lz4}))}
            {:links '_} {:links {:backward (list 'long)
                                 :forward [(col {:type :long :encoding :delta})]}}
