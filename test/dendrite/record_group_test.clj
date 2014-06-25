@@ -1,0 +1,35 @@
+(ns dendrite.record-group-test
+  (:require [clojure.test :refer :all]
+            [dendrite.column :as column]
+            [dendrite.common :refer :all]
+            [dendrite.dremel-paper-examples :refer :all]
+            [dendrite.record-group :refer :all]
+            [dendrite.schema :as schema]
+            [dendrite.test-helpers :as helpers])
+  (:import [dendrite.java ByteArrayWriter])
+  (:refer-clojure :exclude [read]))
+
+(def target-data-page-size 1000)
+
+(deftest dremem-write-read
+  (let [w (doto (writer target-data-page-size (schema/column-specs dremel-paper-schema))
+            (write! dremel-paper-record1-striped)
+            (write! dremel-paper-record2-striped)
+            .finish)
+        record-group-metadata (metadata w)
+        bar (helpers/get-byte-array-reader w)]
+    (testing "full schema"
+      (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
+             (read (record-group-byte-array-reader bar
+                                                   record-group-metadata
+                                                   dremel-paper-full-query-schema)))))
+    (testing "two fields example"
+      (let [two-fields-schema (schema/apply-query dremel-paper-schema
+                                                  {:docid '_ :name [{:language [{:country '_}]}]})]
+        (is (= [[[(leveled-value 0 0 10)]
+                 [(leveled-value 0 3 "us") (leveled-value 2 2 nil)
+                  (leveled-value 1 1 nil) (leveled-value 1 3 "gb")]]
+                [[(leveled-value 0 0 20)]
+                 [(leveled-value 0 1 nil)]]]
+               (-> (record-group-byte-array-reader bar record-group-metadata two-fields-schema)
+                   read)))))))

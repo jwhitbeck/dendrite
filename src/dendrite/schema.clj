@@ -408,3 +408,14 @@
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
               e)))))
+
+(defn queried-columns-set [queried-schema]
+  (->> queried-schema column-specs (map :column-index) set))
+
+(defn- column-reader-fns* [queried-schema reader-fns-vec]
+  (if (record? queried-schema)
+    (reduce #(column-reader-fns* %2 %1) reader-fns-vec (:sub-fields queried-schema))
+    (conj reader-fns-vec (:reader-fn queried-schema))))
+
+(defn column-reader-fns [queried-schema]
+  (column-reader-fns* queried-schema []))
