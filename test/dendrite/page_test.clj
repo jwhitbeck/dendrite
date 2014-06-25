@@ -10,7 +10,8 @@
   [{:keys [max-definition-level max-repetition-level]} value-type encoding compression input-values]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
                                       value-type encoding compression)
-        page-reader-ctor #(data-page-reader % max-definition-level value-type encoding compression)]
+        page-reader-ctor #(data-page-reader % max-repetition-level max-definition-level value-type
+                                            encoding compression)]
     (-> page-writer (write! input-values) helpers/get-byte-array-reader page-reader-ctor read)))
 
 (defn- write-read-single-dictionary-page
@@ -68,7 +69,8 @@
                             (write! input-values))
             page-reader (-> page-writer
                             helpers/get-byte-array-reader
-                            (data-page-reader (:max-definition-level spec) :int :plain :none))]
+                            (data-page-reader (:max-repetition-level spec) (:max-definition-level spec)
+                                              :int :plain :none))]
         (is (= (read page-reader) (read page-reader)))))))
 
 (deftest dictionary-page
@@ -111,7 +113,7 @@
           dict-bar (-> (dictionary-page-writer :int :plain :none)
                        (write! (range 100))
                        helpers/get-byte-array-reader)]
-      (is (data-page-reader data-bar 1 :int :plain :none))
+      (is (data-page-reader data-bar 1 1 :int :plain :none))
       (is (thrown? IllegalArgumentException (data-page-reader dict-bar (:max-definition-level spec)
                                                               :int :plain :none)))
       (is (dictionary-page-reader dict-bar :int :plain :none))

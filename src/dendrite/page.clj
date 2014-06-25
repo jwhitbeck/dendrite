@@ -274,6 +274,7 @@
   (skip [_]))
 
 (defrecord DataPageReader [^ByteArrayReader byte-array-reader
+                           max-repetition-level
                            max-definition-level
                            data-decoder-ctor
                            decompressor-ctor
@@ -298,7 +299,7 @@
     (if (has-repetition-levels? header)
       (-> byte-array-reader
           (.sliceAhead (byte-offset-repetition-levels header))
-          (levels-decoder max-definition-level)
+          (levels-decoder max-repetition-level)
           decode)
       (repeat 0)))
   (read-definition-levels [_]
@@ -322,27 +323,30 @@
     (.sliceAhead byte-array-reader (body-length header))))
 
 (defn data-page-reader
-  [^ByteArrayReader byte-array-reader max-definition-level value-type encoding compression]
+  [^ByteArrayReader byte-array-reader max-repetition-level max-definition-level value-type encoding
+   compression]
   (let [bar (.slice byte-array-reader)
         page-type (read-next-data-page-type bar)]
-    (DataPageReader. bar max-definition-level (decoder-ctor value-type encoding)
+    (DataPageReader. bar max-repetition-level max-definition-level (decoder-ctor value-type encoding)
                      (decompressor-ctor compression) (read-data-page-header bar page-type))))
 
 (defn data-page-readers
-  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression]
+  [^ByteArrayReader byte-array-reader num-data-pages max-repetition-level max-definition-level
+   value-type encoding compression]
   (let [num-data-pages (int num-data-pages)]
     (lazy-seq
      (when (pos? num-data-pages)
-       (let [next-data-page-reader (data-page-reader byte-array-reader max-definition-level value-type
-                                                     encoding compression)]
+       (let [next-data-page-reader (data-page-reader byte-array-reader max-repetition-level
+                                                     max-definition-level value-type encoding compression)]
          (cons next-data-page-reader
-               (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-definition-level
-                                  value-type encoding compression)))))))
+               (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-repetition-level
+                                  max-definition-level value-type encoding compression)))))))
 
 (defn read-data-pages
-  [^ByteArrayReader byte-array-reader num-data-pages max-definition-level value-type encoding compression]
-  (->> (data-page-readers byte-array-reader num-data-pages max-definition-level value-type
-                          encoding compression)
+  [^ByteArrayReader byte-array-reader num-data-pages max-repetition-level max-definition-level
+   value-type encoding compression]
+  (->> (data-page-readers byte-array-reader num-data-pages max-repetition-level max-definition-level
+                          value-type encoding compression)
        (mapcat read)))
 
 (defn read-data-page-headers

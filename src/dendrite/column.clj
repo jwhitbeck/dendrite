@@ -183,10 +183,11 @@
                              map-fn]
   IColumnReader
   (stream [this]
-    (let [{:keys [type encoding compression max-definition-level]} column-spec
+    (let [{:keys [type encoding compression max-repetition-level max-definition-level]} column-spec
           leveled-values (page/read-data-pages
                            (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                            (:num-data-pages column-chunk-metadata)
+                           max-repetition-level
                            max-definition-level
                            type
                            encoding
