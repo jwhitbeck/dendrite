@@ -35,7 +35,10 @@
     (page/write! page-writer leveled-values)
     this)
   (metadata [this]
-    (metadata/column-chunk-metadata (.size this) num-pages 0 0))
+    (metadata/map->ColumnChunkMetadata {:bytes-size (.size this)
+                                        :num-data-pages num-pages
+                                        :data-page-offset 0
+                                        :dictionary-page-offset 0}))
   IDataColumnWriter
   (flush-data-page-writer! [_]
     (when (pos? (page/num-values page-writer))
@@ -95,8 +98,10 @@
          (write! data-column-writer))
     this)
   (metadata [this]
-    (metadata/column-chunk-metadata (.size this) (-> data-column-writer metadata :num-data-pages)
-                                    (.size dictionary-writer) 0))
+    (metadata/map->ColumnChunkMetadata {:bytes-size (.size this)
+                                        :num-data-pages (-> data-column-writer metadata :num-data-pages)
+                                        :data-page-offset (.size dictionary-writer)
+                                        :dictionary-page-offset 0}))
   IDictionaryColumWriter
   (value-index [_ v]
     (let [k (keyable v)]

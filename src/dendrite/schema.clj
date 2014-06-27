@@ -1,32 +1,17 @@
 (ns dendrite.schema
-  (:require [clojure.data.fressian :as fressian]
-            [clojure.edn :as edn]
+  (:require [clojure.edn :as edn]
             [clojure.string :as string]
             [dendrite.common :refer :all]
             [dendrite.encoding :as encoding]
-            [dendrite.compression :as compression])
-  (:import [org.fressian.handlers WriteHandler ReadHandler]
+            [dendrite.compression :as compression]
+            [dendrite.metadata :refer [map->column-spec-with-defaults map->Field]])
+  (:import [dendrite.metadata ColumnSpec Field]
            [java.io Writer])
   (:refer-clojure :exclude [read-string col]))
 
 (set! *warn-on-reflection* true)
 
-(defrecord ColumnSpec [type encoding compression column-index query-column-index
-                       max-repetition-level max-definition-level])
-
-(defn- map->column-spec-with-defaults [m]
-  (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
-
 (def col map->column-spec-with-defaults)
-
-(defmethod print-method ColumnSpec
-  [v ^Writer w]
-  (.write w (str "#col " (cond-> (dissoc v :column-index :query-column-index
-                                         :max-definition-level :max-repetition-level)
-                                 (= (:compression v) :none) (dissoc :compression)
-                                 (= (:encoding v) :plain) (dissoc :encoding)))))
-
-(defrecord Field [name repetition repetition-level reader-fn column-spec sub-fields])
 
 (defn record? [field] (-> field :sub-fields empty? not))
 
@@ -40,67 +25,6 @@
   (if (empty? ks)
     (sub-field field k)
     (sub-field-in (sub-field field k) ks)))
-
-(def ^:private column-spec-tag "dendrite/column-spec")
-
-(def ^:private column-spec-writer
-  (reify WriteHandler
-    (write [_ writer column-spec]
-      (doto writer
-        (.writeTag column-spec-tag 6)
-        (.writeString (-> column-spec :type name))
-        (.writeString (-> column-spec :encoding name))
-        (.writeString (-> column-spec :compression name))
-        (.writeInt (:column-index column-spec))
-        (.writeInt (:max-repetition-level column-spec))
-        (.writeInt (:max-definition-level column-spec))))))
-
-(def ^:private field-tag "dendrite/field")
-
-(def ^:private field-writer
-  (reify WriteHandler
-    (write [_ writer field]
-      (doto writer
-        (.writeTag field-tag 5)
-        (.writeString (-> field :name name))
-        (.writeString (-> field :repetition name))
-        (.writeInt (:repetition-level field))
-        (.writeObject (:column-spec field))
-        (.writeObject (:sub-fields field))))))
-
-(def ^:private write-handlers
-  (-> (merge {ColumnSpec {column-spec-tag column-spec-writer}
-              Field {field-tag field-writer}}
-             fressian/clojure-write-handlers)
-      fressian/associative-lookup
-      fressian/inheritance-lookup))
-
-(def ^:private column-spec-reader
-  (reify ReadHandler
-    (read [_ reader tag component-count]
-      (ColumnSpec. (-> reader .readObject keyword)
-                   (-> reader .readObject keyword)
-                   (-> reader .readObject keyword)
-                   (.readInt reader)
-                   nil
-                   (.readInt reader)
-                   (.readInt reader)))))
-
-(def ^:private field-reader
-  (reify ReadHandler
-    (read [_ reader tag component-count]
-      (Field. (-> reader .readObject keyword)
-              (-> reader .readObject keyword)
-              (.readInt reader)
-              nil ; the reader-fn is not serialized
-              (.readObject reader)
-              (.readObject reader)))))
-
-(def ^:private read-handlers
-  (-> (merge {column-spec-tag column-spec-reader
-              field-tag field-reader}
-             fressian/clojure-read-handlers)
-      fressian/associative-lookup))
 
 (defrecord RequiredField [field])
 

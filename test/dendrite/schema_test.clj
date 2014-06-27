@@ -1,6 +1,5 @@
 (ns dendrite.schema-test
-  (:require [clojure.data.fressian :as fressian]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [dendrite.schema :refer :all]
             [dendrite.test-helpers :refer [test-schema-str]])
   (:refer-clojure :exclude [read-string val]))
@@ -12,12 +11,6 @@
   (testing "parse human-reable schema"
     (is (= (read-string test-schema-str)
            (-> test-schema-str read-string parse human-readable)))))
-
-(deftest schema-serialization
-  (testing "fressian serialization"
-    (let [schema (-> test-schema-str read-string parse)]
-      (is (= schema
-             (-> (fressian/write schema) fressian/read))))))
 
 (deftest schema-annotation
   (testing "value types are properly annotated"

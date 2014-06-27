@@ -23,7 +23,9 @@
     (set! num-records (inc num-records))
     this)
   (metadata [this]
-    (metadata/record-group-metadata (.size this) num-records (mapv column/metadata column-writers)))
+    (metadata/map->RecordGroupMetadata {:bytes-size (.size this)
+                                        :num-records num-records
+                                        :column-chunks-metadata (mapv column/metadata column-writers)}))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-records 0)
