@@ -1,5 +1,6 @@
 package dendrite.java;
 
+import java.nio.ByteBuffer;
 import java.math.BigInteger;
 
 public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
@@ -323,6 +324,17 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
 
   public void write(final ByteArrayWritable writable) {
     writable.writeTo(this);
+  }
+
+  public void write(final ByteBuffer byte_buffer) {
+    int buffer_length = buffer.length;
+    int new_data_length = byte_buffer.limit() - byte_buffer.position();
+    while (position + new_data_length > buffer_length) {
+      grow();
+      buffer_length <<= 1;
+    }
+    byte_buffer.get(buffer, position, new_data_length);
+    position += new_data_length;
   }
 
 }

@@ -1,7 +1,8 @@
 (ns dendrite.java.byte-array-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ByteArrayReader ByteArrayWriter]))
+  (:import [dendrite.java ByteArrayReader ByteArrayWriter]
+           [java.nio ByteBuffer]))
 
 (deftest writer-growth
   (testing "ByteArrayWriter grows properly"
@@ -201,3 +202,12 @@
                                             longs)
                                          rand-long-arrays)]
         (is (every? true? (map helpers/array= read-long-arrays rand-long-arrays)))))))
+
+(deftest read-write-byte-buffer
+  (testing "handle java.io.ByteBuffer"
+    (let [test-byte-array (->> helpers/rand-byte repeatedly (take 100) byte-array)
+          test-byte-buffer (ByteBuffer/wrap test-byte-array 10 80)
+          baw (doto (ByteArrayWriter.) (.write test-byte-buffer))
+          read-test-byte-buffer (ByteBuffer/wrap (.buffer baw))]
+      (.position test-byte-buffer 10)
+      (is (every? true? (repeatedly 80 #(= (.get test-byte-buffer) (.get read-test-byte-buffer))))))))

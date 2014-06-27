@@ -1,5 +1,6 @@
 package dendrite.java;
 
+import java.nio.ByteBuffer;
 import java.math.BigInteger;
 
 public class ByteArrayReader {
@@ -14,6 +15,11 @@ public class ByteArrayReader {
   public ByteArrayReader(final byte[] buf, final int offset) {
     buffer = buf;
     position = offset;
+  }
+
+  public ByteArrayReader(final ByteBuffer byte_buffer) {
+    buffer = byte_buffer.array();
+    position = byte_buffer.arrayOffset();
   }
 
   public byte readByte() {
