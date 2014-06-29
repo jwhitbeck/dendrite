@@ -29,7 +29,7 @@
                       (throw (IllegalArgumentException.
                               (format "Could not coerce value in %s" (format-ks parents)) e))))))
         value-with-level (leveled-value repetition-level
-                                        (if value (:definition-level column-spec) definition-level)
+                                        (if value (:max-definition-level column-spec) definition-level)
                                         value)]
     (update-in striped-record
                [(:column-index column-spec)] #(conj (or % [] leveled-value) value-with-level))))
@@ -77,7 +77,7 @@
       (stripe striped-record (map (fn [[k v]] {:key k :value v}) record) schema-as-list
               parents false coercion-fns repetition-level definition-level))))
 
-(defn- stripe-fn [schema]
+(defn stripe-fn [schema]
   (let [column-specs (schema/column-specs schema)
         coercion-fns (coercion-fns-vec column-specs)
         num-cols (count column-specs)]

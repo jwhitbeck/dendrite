@@ -7,8 +7,8 @@
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
-    (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema))
-    (= dremel-paper-record2-striped (stripe-record dremel-paper-record2 dremel-paper-schema))))
+    (is (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema)))
+    (is (= dremel-paper-record2-striped (stripe-record dremel-paper-record2 dremel-paper-schema)))))
 
 (deftest invalid-records
   (testing "missing required field"
