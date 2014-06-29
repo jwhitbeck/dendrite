@@ -44,7 +44,7 @@
     (when (pos? (page/num-values page-writer))
       (.write byte-array-writer page-writer)
       (set! num-pages (inc num-pages))
-      (set! next-num-values-for-page-size-check (int (/ (.size page-writer) 2)))
+      (set! next-num-values-for-page-size-check (int (/ (page/num-values page-writer) 2)))
       (.reset page-writer)))
   BufferedByteArrayWriter
   (reset [_]
