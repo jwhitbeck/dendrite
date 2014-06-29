@@ -65,6 +65,7 @@
   (->> record-group-metadata
        :column-chunks-metadata
        (map :bytes-size)
+       butlast
        (reductions + 0)))
 
 (defn filter-column-byte-offsets [queried-columns-set column-byte-offsets]
