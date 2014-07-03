@@ -90,12 +90,12 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
     num_occurences_rle_value = 0;
   }
 
-  private void startRLERun(int i) {
+  private void startRLERun(final int i) {
     num_occurences_rle_value = 1;
     rle_value = i;
   }
 
-  private void bufferPackedInt(int i) {
+  private void bufferPackedInt(final int i) {
     current_octuplet[current_octuplet_position] = i;
     current_octuplet_position += 1;
     if (current_octuplet_position == 8) {
