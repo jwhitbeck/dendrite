@@ -174,7 +174,7 @@ public class ByteArrayReader {
   }
 
   public int readPackedInt(final int width) {
-    final int mask = ~((-1) << width);
+    final int mask = (width == 32)? -1 : ~((-1) << width);
     int i = 0;
     int read_bits = 0;
     while (read_bits < width) {

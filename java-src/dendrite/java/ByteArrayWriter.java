@@ -200,7 +200,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
   }
 
   public void writePackedInt(final int i, final int width) {
-    final int mask = ~((-1) << width);
+    final int mask = (width == 32)? -1 : ~((-1) << width);
     int current_byte = i & mask;
     int remaining_width = width;
     while (remaining_width > 0) {
