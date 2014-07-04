@@ -289,8 +289,8 @@
           input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-and-get-reader cs input-blocks)]
       (is (= :none (find-best-compression reader target-data-page-size {})))
-      (is (= :deflate (find-best-compression reader target-data-page-size {:lz4 0.9 :deflate 0.6})))
-      (is (= :lz4 (find-best-compression reader target-data-page-size {:lz4 0.9 :deflate 0.2})))
+      (is (= :deflate (find-best-compression reader target-data-page-size {:lz4 0.95 :deflate 0.6})))
+      (is (= :lz4 (find-best-compression reader target-data-page-size {:lz4 0.95 :deflate 0.2})))
       (is (= :none (find-best-compression reader target-data-page-size {:lz4 0.5 :deflate 0.2}))))))
 
 (deftest find-best-column-types
