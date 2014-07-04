@@ -14,7 +14,7 @@
       (is (= (alength (.buffer baw)) 20)))))
 
 (defn write-read [write-fn read-fn input-seq]
-  (let [n 1000
+  (let [n 100
         baw (ByteArrayWriter.)]
     (doseq [x (take n input-seq)]
       (write-fn baw x))
