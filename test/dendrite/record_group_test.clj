@@ -5,11 +5,12 @@
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.record-group :refer :all]
             [dendrite.schema :as schema]
+            [dendrite.striping :as striping]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read]))
 
-(def target-data-page-size 1000)
+(def target-data-page-size 1024)
 
 (deftest dremel-write-read
   (let [w (doto (writer target-data-page-size (schema/column-specs dremel-paper-schema))
@@ -33,3 +34,18 @@
                  [(leveled-value 0 1 nil)]]]
                (-> (record-group-byte-array-reader bar record-group-metadata two-fields-schema)
                    read)))))))
+
+(deftest random-records-write-read
+  (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
+        records (take 1000 (helpers/rand-test-records))
+        striped-records (map (striping/stripe-fn test-schema) records)
+        w (doto (writer target-data-page-size (schema/column-specs test-schema))
+            (#(reduce write! % striped-records))
+            .finish)
+        record-group-metadata (metadata w)
+        bar (helpers/get-byte-array-reader w)]
+    (testing "full schema"
+      (is (= striped-records
+             (read (record-group-byte-array-reader bar
+                                                   record-group-metadata
+                                                   (schema/apply-query test-schema '_))))))))

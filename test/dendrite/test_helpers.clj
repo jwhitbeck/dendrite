@@ -1,5 +1,6 @@
 (ns dendrite.test-helpers
-  (:require [dendrite.common :refer :all])
+  (:require [clojure.string :as string]
+            [dendrite.common :refer :all])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter ByteArrayWritable]
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))
@@ -85,3 +86,27 @@
            :url string}]
     :meta {string string}
     :keywords #{string}}")
+
+(defn- rand-test-record [docid]
+  (letfn [(rand-language []
+            (rand-nth [{:code "us"} {:code "us" :country "USA"} {:code "gb" :country "Great Britain"}
+                       {:code "fr" :country "France"}]))
+          (rand-name []
+            {:language (take (clojure.core/rand-int 3) (repeatedly rand-language))
+             :url (str "http://" (->> (range 65 90) (map (comp str char)) rand-nth))})
+          (rand-word []
+            (->> (string/split lorem-ipsum #"\W") set vec rand-nth))]
+    {:docid docid
+     :links {:backward (take (clojure.core/rand-int 3) (repeatedly rand-long))
+             :forward (take (clojure.core/rand-int 3) (repeatedly rand-long))}
+     :name (take (clojure.core/rand-int 3) (repeatedly rand-name))
+     :meta (->> (repeatedly rand-word)
+                (partition 2)
+                (map vec)
+                (take (clojure.core/rand-int 10))
+                (into {}))
+     :keywords (->> (repeatedly rand-word)
+                    (take (clojure.core/rand-int 4))
+                    set)}))
+
+(defn rand-test-records [] (map rand-test-record (range)))
