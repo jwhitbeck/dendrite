@@ -194,13 +194,14 @@
          (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
-    (doto byte-array-writer
-      (.write (header this)))
+    (.write byte-array-writer ^DataPageHeader (header this))
     (when repetition-level-encoder
       (.write byte-array-writer repetition-level-encoder))
     (when definition-level-encoder
       (.write byte-array-writer definition-level-encoder))
-    (.write byte-array-writer (if data-compressor data-compressor data-encoder))))
+    (.write byte-array-writer (if data-compressor
+                                ^ByteArrayWritable data-compressor
+                                ^ByteArrayWritable data-encoder))))
 
 (defn data-page-writer [max-repetition-level max-definition-level value-type encoding compression]
   (DataPageWriter. 0 (estimation/ratio-estimator)
@@ -254,9 +255,10 @@
          (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
-    (doto byte-array-writer
-      (.write (header this))
-      (.write (if data-compressor data-compressor data-encoder)))))
+    (.write byte-array-writer ^DataPageHeader (header this))
+    (.write byte-array-writer (if data-compressor
+                                ^ByteArrayWritable data-compressor
+                                ^ByteArrayWritable data-encoder))))
 
 (defn dictionary-page-writer [value-type encoding compression]
   (DictionaryPageWriter. 0 (estimation/ratio-estimator)
