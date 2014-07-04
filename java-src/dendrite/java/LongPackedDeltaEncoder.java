@@ -56,7 +56,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder implements LongEncod
     int min_size = best_encoding.size();
 
     miniblock_size <<= 1;
-    while (miniblock_size <= MIN_BLOCK_SIZE) {
+    while (miniblock_size <= Math.min(MIN_BLOCK_SIZE, block_size)) {
       current_encoding.reset();
       flushBlockWithNumMiniBlocks(current_encoding, miniblock_size, block_size, num_values, start_value);
       int current_size = current_encoding.size();

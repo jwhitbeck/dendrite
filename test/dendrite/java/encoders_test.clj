@@ -14,14 +14,24 @@
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder]))
 
-(defn write-read [encoder-constructor decoder-constructor input-seq]
-  (let [n 1000
-        encoder (encoder-constructor)]
-    (doseq [x (take n input-seq)]
-      (.encode encoder x))
-    (let [decoder (-> encoder helpers/get-byte-array-reader decoder-constructor)]
-      (->> (repeatedly #(.decode decoder))
-           (take n)))))
+(defn write-read
+  ([encoder-constructor decoder-constructor input-seq]
+     (write-read 1000 encoder-constructor decoder-constructor input-seq))
+  ([n encoder-constructor decoder-constructor input-seq]
+     (let [encoder (encoder-constructor)]
+       (doseq [x (take n input-seq)]
+         (.encode encoder x))
+       (let [decoder (-> encoder helpers/get-byte-array-reader decoder-constructor)]
+         (->> (repeatedly #(.decode decoder))
+              (take n))))))
+
+(defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
+  (let [output-seq (write-read n encoder-constructor decoder-constructor input-seq)]
+    (is (every? true? (map = output-seq input-seq)))))
+
+(defn test-encoder [encoder-constructor decoder-constructor input-seq]
+  (doseq [n [0 1 2 3 4 5 6 7 8 1000]]
+    (test-encode-n-values n encoder-constructor decoder-constructor input-seq)))
 
 (defn finish-repeatedly [n encoder-constructor input-seq]
   (let [encoder (encoder-constructor)
@@ -34,9 +44,7 @@
 
 (deftest boolean-encoders
   (testing "packed encoder/decoder"
-    (let [rand-bools (repeatedly helpers/rand-bool)
-          read-bools (write-read #(BooleanPackedEncoder.) #(BooleanPackedDecoder. %) rand-bools)]
-      (is (every? true? (map = read-bools rand-bools)))))
+    (test-encoder #(BooleanPackedEncoder.) #(BooleanPackedDecoder. %) (repeatedly helpers/rand-bool)))
   (testing "packed encoder's finish method is idempotent"
     (let [rand-bools (repeatedly helpers/rand-bool)
           finish-fn (fn [n] (finish-repeatedly n #(BooleanPackedEncoder.) rand-bools))]
@@ -44,44 +52,38 @@
 
 (deftest int-encoders
   (testing "plain encoder/decoder"
-    (let [rand-ints (repeatedly helpers/rand-int)
-          read-ints (write-read #(IntPlainEncoder.) #(IntPlainDecoder. %) rand-ints)]
-      (is (every? true? (map = read-ints rand-ints)))))
+    (test-encoder #(IntPlainEncoder.) #(IntPlainDecoder. %) (repeatedly helpers/rand-int)))
   (testing "fixed-bit-width packed run-length encoder/decoder"
     (testing "sparse input"
-      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-            read-ints (write-read #(IntFixedBitWidthPackedRunLengthEncoder. 3)
-                                  #(IntFixedBitWidthPackedRunLengthDecoder. % 3) rand-ints)]
-        (is (every? true? (map = read-ints rand-ints)))))
+      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))]
+        (test-encoder #(IntFixedBitWidthPackedRunLengthEncoder. 3)
+                      #(IntFixedBitWidthPackedRunLengthDecoder. % 3)
+                      rand-ints)))
     (testing "random input"
-      (let [rand-ints (repeatedly helpers/rand-int)
-            read-ints (write-read #(IntFixedBitWidthPackedRunLengthEncoder. 32)
-                                  #(IntFixedBitWidthPackedRunLengthDecoder. % 32) rand-ints)]
-        (is (every? true? (map = read-ints rand-ints))))))
+      (test-encoder #(IntFixedBitWidthPackedRunLengthEncoder. 32)
+                    #(IntFixedBitWidthPackedRunLengthDecoder. % 32)
+                    (repeatedly helpers/rand-int))))
   (testing "fixed-bit-width packed run-length encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int)
           finish-fn (fn [n] (finish-repeatedly n #(IntFixedBitWidthPackedRunLengthEncoder. 32) rand-ints))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "packed run-length encoder"
     (testing "sparse input"
-      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))
-            read-ints (write-read #(IntPackedRunLengthEncoder.)
-                                  #(IntPackedRunLengthDecoder. %) rand-ints)]
-        (is (every? true? (map = read-ints rand-ints)))))
+      (test-encoder #(IntPackedRunLengthEncoder.)
+                    #(IntPackedRunLengthDecoder. %)
+                    (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))))
     (testing "random input"
-      (let [rand-ints (repeatedly helpers/rand-int)
-            read-ints (write-read #(IntPackedRunLengthEncoder.)
-                                  #(IntPackedRunLengthDecoder. %) rand-ints)]
-        (is (every? true? (map = read-ints rand-ints))))))
+      (test-encoder #(IntPackedRunLengthEncoder.)
+                    #(IntPackedRunLengthDecoder. %)
+                    (repeatedly helpers/rand-int))))
   (testing "packed run-length encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int)
           finish-fn (fn [n] (finish-repeatedly n #(IntPackedRunLengthEncoder.) rand-ints))]
       (is (every? true? (map = (finish-fn 0) (finish-fn 3))))))
   (testing "packed delta encoder/decoder"
-    (let [rand-ints (repeatedly helpers/rand-int)
-          read-ints (write-read #(IntPackedDeltaEncoder.)
-                                #(IntPackedDeltaDecoder. %) rand-ints)]
-      (is (every? true? (map = read-ints rand-ints)))))
+    (test-encoder #(IntPackedDeltaEncoder.)
+                  #(IntPackedDeltaDecoder. %)
+                  (repeatedly helpers/rand-int)))
   (testing "packed delta encoder's finish method is idempotent"
     (let [rand-ints (repeatedly helpers/rand-int)
           finish-fn (fn [n] (finish-repeatedly n #(IntPackedDeltaEncoder.) rand-ints))]
@@ -89,13 +91,9 @@
 
 (deftest long-encoders
   (testing "plain encoder/decoder"
-    (let [rand-longs (repeatedly helpers/rand-long)
-          read-longs (write-read #(LongPlainEncoder.) #(LongPlainDecoder. %) rand-longs)]
-      (is (every? true? (map = read-longs rand-longs)))))
+    (test-encoder #(LongPlainEncoder.) #(LongPlainDecoder. %) (repeatedly helpers/rand-long)))
   (testing "packed delta encoder/decoder"
-    (let [rand-longs (repeatedly helpers/rand-long)
-          read-longs (write-read #(LongPackedDeltaEncoder.) #(LongPackedDeltaDecoder. %) rand-longs)]
-      (is (every? true? (map = read-longs rand-longs)))))
+    (test-encoder #(LongPackedDeltaEncoder.) #(LongPackedDeltaDecoder. %) (repeatedly helpers/rand-long)))
   (testing "packed delta encoder's finish method is idempotent"
     (let [rand-longs (repeatedly helpers/rand-long)
           finish-fn (fn [n] (finish-repeatedly n #(LongPackedDeltaEncoder.) rand-longs))]
@@ -103,15 +101,11 @@
 
 (deftest float-encoders
   (testing "plain encoder/decoder"
-    (let [rand-floats (repeatedly helpers/rand-float)
-          read-floats (write-read #(FloatPlainEncoder.) #(FloatPlainDecoder. %) rand-floats)]
-      (is (every? true? (map = read-floats rand-floats))))))
+    (test-encoder #(FloatPlainEncoder.) #(FloatPlainDecoder. %) (repeatedly helpers/rand-float))))
 
 (deftest double-encoders
   (testing "plain encoder/decoder"
-    (let [rand-doubles (repeatedly helpers/rand-double)
-          read-doubles (write-read #(DoublePlainEncoder.) #(DoublePlainDecoder. %) rand-doubles)]
-      (is (every? true? (map = read-doubles rand-doubles))))))
+    (test-encoder #(DoublePlainEncoder.) #(DoublePlainDecoder. %) (repeatedly helpers/rand-double))))
 
 (deftest fixed-length-byte-array-encoders
   (testing "length byte array plain encoder/decoder"
