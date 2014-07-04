@@ -14,8 +14,8 @@
   (testing "missing required field"
     (let [schema (s/parse {:docid (s/req 'long)
                            :name [{:language (s/req {:country 'string
-                                                     :code (s/req 'string)})}
-                                  :url 'string]})]
+                                                     :code (s/req 'string)})
+                                   :url 'string}]})]
       (are [x] (stripe-record x schema)
            {:docid 10}
            {:docid 10 :name []}
