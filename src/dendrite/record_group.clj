@@ -19,7 +19,7 @@
     (->> (interleave column-writers striped-record)
          (partition 2)
          (map (partial apply column/write!))
-         doall)
+         dorun)
     (set! num-records (inc num-records))
     this)
   (metadata [this]
