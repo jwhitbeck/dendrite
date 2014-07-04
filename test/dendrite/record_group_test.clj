@@ -11,7 +11,7 @@
 
 (def target-data-page-size 1000)
 
-(deftest dremem-write-read
+(deftest dremel-write-read
   (let [w (doto (writer target-data-page-size (schema/column-specs dremel-paper-schema))
             (write! dremel-paper-record1-striped)
             (write! dremel-paper-record2-striped)
