@@ -56,9 +56,11 @@
 
 (defrecord RecordGroupReader [num-records column-readers]
   IRecordGroupReader
-  (read [_] (->> (map column/read column-readers)
-                 (apply map vector)
-                 (take num-records)))
+  (read [_] (if-not (seq column-readers)
+              (repeat num-records nil)
+              (->> (map column/read column-readers)
+                   (apply map vector)
+                   (take num-records))))
   (stats [_] (map column/stats column-readers)))
 
 (defn column-byte-offsets [record-group-metadata]
