@@ -1,5 +1,5 @@
 (ns dendrite.record-group
-  (:require [dendrite.column :as column]
+  (:require [dendrite.column-chunk :as column-chunk]
             [dendrite.metadata :as metadata]
             [dendrite.schema :as schema])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader])
@@ -19,7 +19,7 @@
   (write! [this striped-record]
     (->> (interleave column-writers striped-record)
          (partition 2)
-         (map (partial apply column/write!))
+         (map (partial apply column-chunk/write!))
          dorun)
     (set! num-records (inc num-records))
     this)
@@ -28,7 +28,7 @@
   (metadata [this]
     (metadata/map->RecordGroupMetadata {:bytes-size (.size this)
                                         :num-records num-records
-                                        :column-chunks-metadata (mapv column/metadata column-writers)}))
+                                        :column-chunks-metadata (mapv column-chunk/metadata column-writers)}))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-records 0)
@@ -51,7 +51,7 @@
       (.writeTo ^BufferedByteArrayWriter column-writer baw))))
 
 (defn writer [target-data-page-size column-specs]
-  (RecordGroupWriter. 0 (mapv (partial column/writer target-data-page-size) column-specs)))
+  (RecordGroupWriter. 0 (mapv (partial column-chunk/writer target-data-page-size) column-specs)))
 
 (defprotocol IRecordGroupReader
   (read [_])
@@ -61,10 +61,10 @@
   IRecordGroupReader
   (read [_] (if-not (seq column-readers)
               (repeat num-records nil)
-              (->> (map column/read column-readers)
+              (->> (map column-chunk/read column-readers)
                    (apply map vector)
                    (take num-records))))
-  (stats [_] (map column/stats column-readers)))
+  (stats [_] (map column-chunk/stats column-readers)))
 
 (defn column-byte-offsets [record-group-metadata]
   (->> record-group-metadata
@@ -87,7 +87,7 @@
                (filter-column-byte-offsets (schema/queried-columns-set queried-schema))
                (map #(.sliceAhead byte-array-reader %)))]
     (RecordGroupReader. (:num-records record-group-metadata)
-                        (map column/reader
+                        (map column-chunk/reader
                              byte-array-readers
                              (:column-chunks-metadata record-group-metadata)
                              (schema/column-specs queried-schema)

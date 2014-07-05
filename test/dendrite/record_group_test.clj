@@ -1,6 +1,5 @@
 (ns dendrite.record-group-test
   (:require [clojure.test :refer :all]
-            [dendrite.column :as column]
             [dendrite.common :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.record-group :refer :all]
