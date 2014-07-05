@@ -39,7 +39,7 @@
   (let [non-repeated-schema (assoc schema :repetition :optional)
         [value next-repetition-level next-leveled-values-vec]
           (assemble* leveled-values-vec non-repeated-schema)]
-    (if-not value
+    (if (and (not value) (> (:repetition-level schema) next-repetition-level))
       [nil next-repetition-level next-leveled-values-vec]
       (let [init-coll (case (:repetition schema)
                         :list (list value)

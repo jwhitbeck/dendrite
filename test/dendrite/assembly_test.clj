@@ -29,8 +29,8 @@
 (def test-record {:docid 10
                   :links {:backward (list 1 2 3)
                           :forward [4 5]}
-                  :name [{:language [{:code "us" :country "USA"}]
-                          :url "http://A"}]
+                  :name [nil {:language [{:code "us" :country "USA"}]
+                              :url "http://A"}]
                   :meta {"key1" "value1"
                          "key2" "value2"}
                   :keywords #{"lorem" "ipsum"}})
@@ -46,7 +46,7 @@
         (= answer (assemble stripes (schema/apply-query test-schema query))))
       {:docid 10} {:docid '_} [0]
       {:links {:backward (list 1 2 3) :forward [4 5]}} {:links '_} [1 2]
-      {:name [{:language [{:code "us" :country "USA"}] :url "http://A"}]} {:name '_} [3 4 5]
+      {:name [nil {:language [{:code "us" :country "USA"}] :url "http://A"}]} {:name '_} [3 4 5]
       {:meta {"key1" "value1" "key2" "value2"}} {:meta '_} [6 7]
       {:keywords #{"lorem" "ipsum"}} {:keywords '_} [8])))
 
