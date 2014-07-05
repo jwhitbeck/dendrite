@@ -92,21 +92,34 @@
             (rand-nth [{:code "us"} {:code "us" :country "USA"} {:code "gb" :country "Great Britain"}
                        {:code "fr" :country "France"}]))
           (rand-name []
-            {:language (take (clojure.core/rand-int 3) (repeatedly rand-language))
-             :url (str "http://" (->> (range 65 90) (map (comp str char)) rand-nth))})
+            (let [language (take (clojure.core/rand-int 3) (repeatedly rand-language))
+                  url (when (pos? (clojure.core/rand-int 3))
+                        (str "http://" (->> (range 65 90) (map (comp str char)) rand-nth)))
+                  n (cond-> {}
+                            (seq language) (assoc :language language)
+                            url (assoc :url url))]
+              (when (seq n)
+                n)))
           (rand-word []
             (->> (string/split lorem-ipsum #"\W") set vec rand-nth))]
-    {:docid docid
-     :links {:backward (take (clojure.core/rand-int 3) (repeatedly rand-long))
-             :forward (take (clojure.core/rand-int 3) (repeatedly rand-long))}
-     :name (take (clojure.core/rand-int 3) (repeatedly rand-name))
-     :meta (->> (repeatedly rand-word)
-                (partition 2)
-                (map vec)
-                (take (clojure.core/rand-int 10))
-                (into {}))
-     :keywords (->> (repeatedly rand-word)
-                    (take (clojure.core/rand-int 4))
-                    set)}))
+    (let [meta-map (->> (repeatedly rand-word)
+                        (partition 2)
+                        (map vec)
+                        (take (clojure.core/rand-int 10))
+                        (into {}))
+          keywords (->> (repeatedly rand-word)
+                        (take (clojure.core/rand-int 4))
+                        set)
+          backward (take (clojure.core/rand-int 3) (repeatedly rand-long))
+          forward (take (clojure.core/rand-int 3) (repeatedly rand-long))
+          names (take (clojure.core/rand-int 3) (remove nil? (repeatedly rand-name)))
+          links (cond-> {}
+                        (seq backward) (assoc :backward backward)
+                        (seq forward) (assoc :forward forward))]
+      (cond-> {:docid docid}
+       (seq links) (assoc :links links)
+       (seq names) (assoc :name names)
+       (seq meta-map) (assoc :meta meta-map)
+       (seq keywords) (assoc :keywords keywords)))))
 
 (defn rand-test-records [] (map rand-test-record (range)))
