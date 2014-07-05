@@ -9,6 +9,7 @@
 
 (defprotocol IRecordGroupWriter
   (write! [_ striped-record])
+  (num-records [_])
   (metadata [_]))
 
 (deftype RecordGroupWriter
@@ -22,6 +23,8 @@
          dorun)
     (set! num-records (inc num-records))
     this)
+  (num-records [_]
+    num-records)
   (metadata [this]
     (metadata/map->RecordGroupMetadata {:bytes-size (.size this)
                                         :num-records num-records
