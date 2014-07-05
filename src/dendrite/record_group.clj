@@ -26,7 +26,7 @@
   (num-records [_]
     num-records)
   (metadata [this]
-    (metadata/map->RecordGroupMetadata {:bytes-size (.size this)
+    (metadata/map->RecordGroupMetadata {:bytes (.size this)
                                         :num-records num-records
                                         :column-chunks-metadata (mapv column-chunk/metadata column-writers)}))
   BufferedByteArrayWriter
@@ -69,7 +69,7 @@
 (defn column-byte-offsets [record-group-metadata]
   (->> record-group-metadata
        :column-chunks-metadata
-       (map :bytes-size)
+       (map :bytes)
        butlast
        (reductions + 0)))
 

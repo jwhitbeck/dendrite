@@ -87,7 +87,7 @@
 
 (defn- record-group-readers [^ByteArrayReader byte-array-reader record-groups-metadata queried-schema]
   (->> record-groups-metadata
-       (map :bytes-size)
+       (map :bytes)
        butlast
        (reductions #(.sliceAhead ^ByteArrayReader %1 ^int %2) byte-array-reader)
        (interleave record-groups-metadata)
