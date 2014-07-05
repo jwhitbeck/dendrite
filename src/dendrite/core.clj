@@ -115,24 +115,23 @@
     (.limit (+ offset length))))
 
 (defn byte-buffer-reader
-  ([^ByteBuffer byte-buffer] (byte-buffer-reader byte-buffer '_))
-  ([^ByteBuffer byte-buffer query]
-     (let [length (.limit byte-buffer)
-           magic-length (count magic-bytes)
-           int-length 4]
-       (if-not (and (valid-magic-bytes? (sub-byte-buffer byte-buffer 0 magic-length))
-                    (valid-magic-bytes? (sub-byte-buffer byte-buffer (- length magic-length) magic-length)))
-         (throw (IllegalArgumentException.
-                 "Provided byte buffer does not contain a valid dendrite serialization."))
-         (let [metadata-length (.getInt (doto (sub-byte-buffer byte-buffer
-                                                               (- length magic-length int-length)
-                                                               int-length)
-                                          (.order ByteOrder/LITTLE_ENDIAN)))
-               metadata (-> (sub-byte-buffer byte-buffer
-                                             (- length magic-length int-length metadata-length)
-                                             metadata-length)
-                            metadata/read)
-               queried-schema (schema/apply-query (:schema metadata) query)]
-           (ByteBufferReader. (-> byte-buffer ByteArrayReader. (.sliceAhead magic-length))
-                              metadata
-                              queried-schema))))))
+  [^ByteBuffer byte-buffer & {:as opts :keys [query] :or {query '_}}]
+  (let [length (.limit byte-buffer)
+        magic-length (count magic-bytes)
+        int-length 4]
+    (if-not (and (valid-magic-bytes? (sub-byte-buffer byte-buffer 0 magic-length))
+                 (valid-magic-bytes? (sub-byte-buffer byte-buffer (- length magic-length) magic-length)))
+      (throw (IllegalArgumentException.
+              "Provided byte buffer does not contain a valid dendrite serialization."))
+      (let [metadata-length (.getInt (doto (sub-byte-buffer byte-buffer
+                                                            (- length magic-length int-length)
+                                                            int-length)
+                                       (.order ByteOrder/LITTLE_ENDIAN)))
+            metadata (-> (sub-byte-buffer byte-buffer
+                                          (- length magic-length int-length metadata-length)
+                                          metadata-length)
+                         metadata/read)
+            queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))]
+        (ByteBufferReader. (-> byte-buffer ByteArrayReader. (.sliceAhead magic-length))
+                           metadata
+                           queried-schema)))))

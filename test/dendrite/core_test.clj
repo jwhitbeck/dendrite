@@ -14,12 +14,14 @@
 (deftest dremel-paper
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
     (testing "full schema"
-      (is (= [dremel-paper-record1 dremel-paper-record2] (-> byte-buffer (byte-buffer-reader '_) read))))
+      (is (= [dremel-paper-record1 dremel-paper-record2] (-> byte-buffer byte-buffer-reader read))))
     (testing "two fields example"
       (is (= [{:docid 10
                :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
               {:docid 20}]
-             (-> byte-buffer (byte-buffer-reader {:docid '_ :name [{:language [{:country '_}]}]}) read))))))
+             (-> byte-buffer
+                 (byte-buffer-reader :query {:docid '_ :name [{:language [{:country '_}]}]})
+                 read))))))
 
 (deftest random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
@@ -34,7 +36,7 @@
         writer (doto (dremel-paper-writer)
                  (set-metadata! test-custom-metadata))
         byte-buffer (byte-buffer! writer)]
-    (is (= test-custom-metadata (-> byte-buffer (byte-buffer-reader '_) metadata)))))
+    (is (= test-custom-metadata (-> byte-buffer byte-buffer-reader metadata)))))
 
 (deftest corrupt-data
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
