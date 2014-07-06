@@ -343,7 +343,7 @@
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
               e)))))
 
-(defn queried-columns-set [queried-schema]
+(defn queried-column-indices-set [queried-schema]
   (->> queried-schema column-specs (map :column-index) set))
 
 (defn- column-reader-fns* [queried-schema reader-fns-vec]

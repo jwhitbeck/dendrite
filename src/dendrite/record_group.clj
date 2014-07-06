@@ -79,18 +79,18 @@
        butlast
        (reductions + 0)))
 
-(defn filter-column-byte-offsets [queried-columns-set column-byte-offsets]
+(defn filter-column-byte-offsets [queried-column-indices-set column-byte-offsets]
   (->> column-byte-offsets
        (interleave (range))
        (partition 2)
-       (filter (comp queried-columns-set first))
+       (filter (comp queried-column-indices-set first))
        (map second)))
 
 (defn record-group-byte-array-reader [^ByteArrayReader byte-array-reader record-group-metadata queried-schema]
   (let [byte-array-readers
           (->> record-group-metadata
                column-byte-offsets
-               (filter-column-byte-offsets (schema/queried-columns-set queried-schema))
+               (filter-column-byte-offsets (schema/queried-column-indices-set queried-schema))
                (map #(.sliceAhead byte-array-reader %)))]
     (RecordGroupReader. (:num-records record-group-metadata)
                         (map column-chunk/reader
