@@ -20,7 +20,7 @@
 
 (deftype DataColumnChunkWriter [^:unsynchronized-mutable next-num-values-for-page-size-check
                                 ^:unsynchronized-mutable num-pages
-                                ^int target-data-page-size
+                                target-data-page-size
                                 size-estimator
                                 ^ByteArrayWriter byte-array-writer
                                 ^DataPageWriter page-writer]
@@ -195,7 +195,7 @@
 
 (defn- data-column-chunk-reader
   [byte-array-reader column-chunk-metadata column-spec]
-  (DataColumnChunkReader. byte-array-reader column-chunk-metadata column-spec))
+  (->DataColumnChunkReader byte-array-reader column-chunk-metadata column-spec))
 
 (defprotocol IDictionaryColumnChunkReader
   (stream-indices [_])
@@ -239,7 +239,7 @@
 
 (defn- dictionary-column-chunk-reader
   [byte-array-reader column-chunk-metadata column-spec]
-  (DictionaryColumnChunkReader. byte-array-reader column-chunk-metadata column-spec))
+  (->DictionaryColumnChunkReader byte-array-reader column-chunk-metadata column-spec))
 
 (defn reader
   [byte-array-reader column-chunk-metadata column-spec]

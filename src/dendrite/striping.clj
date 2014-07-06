@@ -28,9 +28,9 @@
                     (catch Exception e
                       (throw (IllegalArgumentException.
                               (format "Could not coerce value in %s" (format-ks parents)) e))))))
-        value-with-level (leveled-value repetition-level
-                                        (if value (:max-definition-level column-spec) definition-level)
-                                        value)]
+        value-with-level (->LeveledValue repetition-level
+                                         (if value (:max-definition-level column-spec) definition-level)
+                                         value)]
     (update-in striped-record
                [(:column-index column-spec)] #(conj (or % []) value-with-level))))
 

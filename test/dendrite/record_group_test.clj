@@ -26,11 +26,11 @@
     (testing "two fields example"
       (let [two-fields-schema (schema/apply-query dremel-paper-schema
                                                   {:docid '_ :name [{:language [{:country '_}]}]})]
-        (is (= [[[(leveled-value 0 0 10)]
-                 [(leveled-value 0 3 "us") (leveled-value 2 2 nil)
-                  (leveled-value 1 1 nil) (leveled-value 1 3 "gb")]]
-                [[(leveled-value 0 0 20)]
-                 [(leveled-value 0 1 nil)]]]
+        (is (= [[[(->LeveledValue 0 0 10)]
+                 [(->LeveledValue 0 3 "us") (->LeveledValue 2 2 nil)
+                  (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
+                [[(->LeveledValue 0 0 20)]
+                 [(->LeveledValue 0 1 nil)]]]
                (-> (record-group-byte-array-reader bar record-group-metadata two-fields-schema)
                    read)))))))
 

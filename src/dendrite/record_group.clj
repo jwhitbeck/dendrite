@@ -92,8 +92,9 @@
                column-byte-offsets
                (filter-column-byte-offsets (schema/queried-column-indices-set queried-schema))
                (map #(.sliceAhead byte-array-reader %)))]
-    (RecordGroupReader. (:num-records record-group-metadata)
-                        (map column-chunk/reader
-                             byte-array-readers
-                             (:column-chunks-metadata record-group-metadata)
-                             (schema/column-specs queried-schema)))))
+    (map->RecordGroupReader
+     {:num-records (:num-records record-group-metadata)
+      :column-chunk-readers (map column-chunk/reader
+                                 byte-array-readers
+                                 (:column-chunks-metadata record-group-metadata)
+                                 (schema/column-specs queried-schema))})))

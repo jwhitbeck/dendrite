@@ -5,6 +5,4 @@
 
 (defrecord LeveledValue [repetition-level definition-level value])
 
-(def leveled-value ->LeveledValue)
-
 (defn format-ks [ks] (format "[%s]" (string/join " " ks)))

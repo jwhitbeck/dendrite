@@ -33,7 +33,7 @@
   (byte-buffer! [_]))
 
 (deftype ByteBufferWriter [^:unsynchronized-mutable next-num-records-for-record-group-size-check
-                           ^int target-record-group-size
+                           target-record-group-size
                            ^BufferedByteArrayWriter record-group-writer
                            ^ByteArrayWriter byte-array-writer
                            metadata-atom
@@ -90,7 +90,7 @@
   (->> record-groups-metadata
        (map :num-bytes)
        butlast
-       (reductions #(.sliceAhead ^ByteArrayReader %1 ^int %2) byte-array-reader)
+       (reductions #(.sliceAhead ^ByteArrayReader %1 %2) byte-array-reader)
        (interleave record-groups-metadata)
        (partition 2)
        (map (fn [[record-group-metadata bar]]
@@ -144,7 +144,8 @@
                                           metadata-num-bytes)
                          metadata/read)
             queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))]
-        (ByteBufferReader. (-> byte-buffer ByteArrayReader. (.sliceAhead magic-num-bytes))
-                           num-bytes
-                           metadata
-                           queried-schema)))))
+        (map->ByteBufferReader
+         {:byte-array-reader (-> byte-buffer ByteArrayReader. (.sliceAhead magic-num-bytes))
+          :buffer-num-bytes num-bytes
+          :metadata metadata
+          :queried-schema queried-schema})))))

@@ -52,9 +52,9 @@
          rand-definition-level
            (clojure.core/rand-int (if next-value (inc max-definition-level) max-definition-level))]
      (if (or (not next-value) (= rand-definition-level max-definition-level))
-       (cons (leveled-value rand-repetition-level rand-definition-level (first coll))
+       (cons (->LeveledValue rand-repetition-level rand-definition-level (first coll))
              (leveled spec (rest coll)))
-       (cons (leveled-value rand-repetition-level rand-definition-level nil)
+       (cons (->LeveledValue rand-repetition-level rand-definition-level nil)
              (leveled spec coll))))))
 
 (defn avg [coll] (/ (reduce + coll) (count coll)))
