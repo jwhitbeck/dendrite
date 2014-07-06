@@ -73,12 +73,12 @@
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))
     (testing "Page size estimation converges"
-      (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
-           rest                         ; the first page is always inaccurate
-           butlast                      ; the last page can have any size
-           (map (comp :total-bytes page/stats))
-           helpers/avg
-           (helpers/roughly target-data-page-size)))))
+      (is (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
+               rest                      ; the first page is always inaccurate
+               butlast                   ; the last page can have any size
+               (map (comp :total-bytes page/stats))
+               helpers/avg
+               (helpers/roughly target-data-page-size))))))
 
 (deftest dictionary-column
   (let [cs (column-spec :int :dictionary :deflate)
