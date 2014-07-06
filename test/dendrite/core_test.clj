@@ -55,4 +55,17 @@
 
 (deftest record-group-sizes
   (testing "record-group sizes are approximately equal to target-record-group-size"
-    ))
+    (let [records (take 1000 (helpers/rand-test-records))
+          target-record-group-size (* 3 1024)
+          writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string)
+                                           :target-record-group-size target-record-group-size)
+                   (#(reduce write! % records)))
+          byte-buffer (byte-buffer! writer)]
+      (is (->> (byte-buffer-reader byte-buffer)
+               stats
+               :record-groups
+               rest
+               butlast
+               (map :total-bytes)
+               helpers/avg
+               (helpers/roughly target-record-group-size))))))
