@@ -160,6 +160,15 @@
 (defn- set-top-record-required [schema]
   (assoc schema :repetition :required))
 
+(defn- set-column-spec-paths* [field path]
+  (let [next-path (if (:name field) (conj path (:name field)) path)]
+    (if (record? field)
+      (assoc field :sub-fields (map #(set-column-spec-paths* % next-path) (:sub-fields field)))
+      (assoc-in field [:column-spec :path] next-path))))
+
+(defn- set-column-spec-paths [schema]
+  (set-column-spec-paths* schema []))
+
 (defn- annotate [schema]
   (-> schema
       (index-columns :column-index)
@@ -327,7 +336,8 @@
   (try
     (-> schema
         (apply-query* query readers missing-fields-as-nil? [])
-        (index-columns :query-column-index))
+        (index-columns :query-column-index)
+        set-column-spec-paths)
     (catch Exception e
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
