@@ -40,8 +40,8 @@
 
 (defprotocol IPageHeader
   (type [this])
-  (header-length [this])
-  (body-length [this])
+  (header-num-bytes [this])
+  (body-num-bytes [this])
   (byte-offset-body [this])
   (stats [_]))
 
@@ -51,7 +51,7 @@
   (byte-offset-repetition-levels [this])
   (byte-offset-definition-levels [this]))
 
-(defn- uints32-encoded-size [coll]
+(defn- uints32-encoded-num-bytes [coll]
   (reduce #(+ %1 (ByteArrayWriter/getNumUIntBytes %2)) 0 coll))
 
 (defn- encode-uints32 [^ByteArrayWriter byte-array-writer coll]
@@ -59,77 +59,77 @@
 
 (defrecord DataPageHeader [^int encoded-page-type
                            ^int num-values
-                           ^int repetition-levels-size
-                           ^int definition-levels-size
-                           ^int compressed-data-size
-                           ^int uncompressed-data-size]
+                           ^int repetition-levels-num-bytes
+                           ^int definition-levels-num-bytes
+                           ^int compressed-data-num-bytes
+                           ^int uncompressed-data-num-bytes]
   IPageHeader
   (type [this]
     (decode-page-type encoded-page-type))
-  (header-length [this]
-    (uints32-encoded-size (vals this)))
-  (body-length [_]
-    (+ repetition-levels-size definition-levels-size compressed-data-size))
+  (header-num-bytes [this]
+    (uints32-encoded-num-bytes (vals this)))
+  (body-num-bytes [_]
+    (+ repetition-levels-num-bytes definition-levels-num-bytes compressed-data-num-bytes))
   (byte-offset-body [_]
-    (+ repetition-levels-size definition-levels-size))
+    (+ repetition-levels-num-bytes definition-levels-num-bytes))
   (stats [this]
     (stats/map->PageStats
      {:num-values num-values
-      :total-bytes (+ (header-length this) (body-length this))
-      :byte-stats (stats/map->ByteStats {:header-bytes (header-length this)
-                                         :repetition-levels-bytes repetition-levels-size
-                                         :definition-levels-bytes definition-levels-size
-                                         :data-bytes compressed-data-size})}))
+      :num-bytes (+ (header-num-bytes this) (body-num-bytes this))
+      :byte-stats (stats/map->ByteStats {:header-num-bytes (header-num-bytes this)
+                                         :repetition-levels-num-bytes repetition-levels-num-bytes
+                                         :definition-levels-num-bytes definition-levels-num-bytes
+                                         :data-num-bytes compressed-data-num-bytes})}))
   IDataPageHeader
   (has-repetition-levels? [_]
-    (pos? repetition-levels-size))
+    (pos? repetition-levels-num-bytes))
   (has-definition-levels? [_]
-    (pos? definition-levels-size))
+    (pos? definition-levels-num-bytes))
   (byte-offset-repetition-levels [_]
     0)
   (byte-offset-definition-levels [_]
-    repetition-levels-size)
+    repetition-levels-num-bytes)
   ByteArrayWritable
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-data-page-header [^ByteArrayReader bar data-page-type]
   (let [num-values (.readUInt bar)
-        repetition-levels-size (.readUInt bar)
-        definition-levels-size (.readUInt bar)
-        compressed-data-size (.readUInt bar)
-        uncompressed-data-size (.readUInt bar)]
-    (DataPageHeader. (encode-page-type data-page-type) num-values repetition-levels-size
-                     definition-levels-size compressed-data-size uncompressed-data-size)))
+        repetition-levels-num-bytes (.readUInt bar)
+        definition-levels-num-bytes (.readUInt bar)
+        compressed-data-num-bytes (.readUInt bar)
+        uncompressed-data-num-bytes (.readUInt bar)]
+    (DataPageHeader. (encode-page-type data-page-type) num-values repetition-levels-num-bytes
+                     definition-levels-num-bytes compressed-data-num-bytes uncompressed-data-num-bytes)))
 
 (defrecord DictionaryPageHeader [^int encoded-page-type
                                  ^int num-values
-                                 ^int compressed-data-size
-                                 ^int uncompressed-data-size]
+                                 ^int compressed-data-num-bytes
+                                 ^int uncompressed-data-num-bytes]
   IPageHeader
   (type [this]
     (decode-page-type encoded-page-type))
-  (header-length [this]
-    (uints32-encoded-size (vals this)))
-  (body-length [_]
-    compressed-data-size)
+  (header-num-bytes [this]
+    (uints32-encoded-num-bytes (vals this)))
+  (body-num-bytes [_]
+    compressed-data-num-bytes)
   (byte-offset-body [_]
     0)
   (stats [this]
     (stats/map->PageStats
-     {:total-bytes (+ (header-length this) (body-length this))
-      :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-length this)
-                                         :dictionary-bytes compressed-data-size})}))
+     {:num-bytes (+ (header-num-bytes this) (body-num-bytes this))
+      :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-num-bytes this)
+                                         :dictionary-bytes compressed-data-num-bytes})}))
   ByteArrayWritable
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
   (let [num-values (.readUInt bar)
-        compressed-data-size (.readUInt bar)
-        uncompressed-data-size (.readUInt bar)]
-    (DictionaryPageHeader. (encode-page-type dictionary-page-type) num-values compressed-data-size
-                           uncompressed-data-size)))
+        compressed-data-num-bytes (.readUInt bar)
+        uncompressed-data-num-bytes (.readUInt bar)]
+    (DictionaryPageHeader. (encode-page-type dictionary-page-type) num-values compressed-data-num-bytes
+                           uncompressed-data-num-bytes)))
 
 (defprotocol IPageWriter
   (write-value! [this value])
@@ -144,7 +144,7 @@
 
 (deftype DataPageWriter
     [^:unsynchronized-mutable num-values
-     body-length-estimator
+     body-num-bytes-estimator
      ^BufferedByteArrayWriter repetition-level-encoder
      ^BufferedByteArrayWriter definition-level-encoder
      ^BufferedByteArrayWriter data-encoder
@@ -190,7 +190,7 @@
       (.reset data-compressor)))
   (finish [this]
     (when-not finished?
-      (let [estimated-body-length (-> this provisional-header body-length)]
+      (let [estimated-body-num-bytes (-> this provisional-header body-num-bytes)]
         (when repetition-level-encoder
           (.finish repetition-level-encoder))
         (when definition-level-encoder
@@ -198,15 +198,16 @@
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
-        (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length))
+        (estimation/update! body-num-bytes-estimator
+                            (-> this header body-num-bytes) estimated-body-num-bytes))
       (set! finished? true)))
   (size [this]
     (let [h (header this)]
-      (+ (header-length h) (body-length h))))
+      (+ (header-num-bytes h) (body-num-bytes h))))
   (estimatedSize [this]
     (let [provisional-header (provisional-header this)]
       (+ (.size ^DataPageHeader provisional-header)
-         (estimation/correct body-length-estimator (body-length provisional-header)))))
+         (estimation/correct body-num-bytes-estimator (body-num-bytes provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
     (.write byte-array-writer ^DataPageHeader (header this))
@@ -227,7 +228,7 @@
                    false))
 
 (deftype DictionaryPageWriter [^:unsynchronized-mutable num-values
-                               body-length-estimator
+                               body-num-bytes-estimator
                                ^BufferedByteArrayWriter data-encoder
                                ^Compressor data-compressor
                                ^:unsynchronized-mutable finished?]
@@ -255,19 +256,20 @@
       (.reset data-compressor)))
   (finish [this]
     (when-not finished?
-      (let [estimated-body-length (-> this provisional-header body-length)]
+      (let [estimated-body-num-bytes (-> this provisional-header body-num-bytes)]
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
-        (estimation/update! body-length-estimator (-> this header body-length) estimated-body-length))
+        (estimation/update! body-num-bytes-estimator
+                            (-> this header body-num-bytes) estimated-body-num-bytes))
       (set! finished? true)))
   (size [this]
     (let [h (header this)]
-      (+ (header-length h) (body-length h))))
+      (+ (header-num-bytes h) (body-num-bytes h))))
   (estimatedSize [this]
     (let [provisional-header (provisional-header this)]
       (+ (.size ^DataPageHeader provisional-header)
-         (estimation/correct body-length-estimator (body-length provisional-header)))))
+         (estimation/correct body-num-bytes-estimator (body-num-bytes provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
     (.write byte-array-writer ^DataPageHeader (header this))
@@ -332,12 +334,12 @@
           data-bytes-reader (if-let [decompressor (decompressor-ctor)]
                               (.decompress ^Decompressor decompressor
                                            data-bytes-reader
-                                           (:compressed-data-size header)
-                                           (:uncompressed-data-size header))
+                                           (:compressed-data-num-bytes header)
+                                           (:uncompressed-data-num-bytes header))
                               data-bytes-reader)]
       (decode (data-decoder-ctor data-bytes-reader))))
   (skip [_]
-    (.sliceAhead byte-array-reader (body-length header))))
+    (.sliceAhead byte-array-reader (body-num-bytes header))))
 
 (defn data-page-reader
   [^ByteArrayReader byte-array-reader max-repetition-level max-definition-level value-type encoding
@@ -374,7 +376,7 @@
      (when (pos? num-data-pages)
        (let [page-type (read-next-data-page-type bar)
              next-header (read-data-page-header bar page-type)
-             next-byte-array-reader (.sliceAhead bar (body-length next-header))]
+             next-byte-array-reader (.sliceAhead bar (body-num-bytes next-header))]
          (cons next-header (read-data-page-headers next-byte-array-reader (dec num-data-pages))))))))
 
 (defrecord DictionaryPageReader [^ByteArrayReader byte-array-reader
@@ -388,8 +390,8 @@
           data-bytes-reader (if-let [decompressor (decompressor-ctor)]
                               (.decompress ^Decompressor decompressor
                                            data-bytes-reader
-                                           (:compressed-data-size header)
-                                           (:uncompressed-data-size header))
+                                           (:compressed-data-num-bytes header)
+                                           (:uncompressed-data-num-bytes header))
                               data-bytes-reader)]
       (->> (data-decoder-ctor data-bytes-reader) decode (take (:num-values header))))))
 
