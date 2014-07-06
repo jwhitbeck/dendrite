@@ -32,7 +32,7 @@
                                         (if value (:max-definition-level column-spec) definition-level)
                                         value)]
     (update-in striped-record
-               [(:column-index column-spec)] #(conj (or % [] leveled-value) value-with-level))))
+               [(:column-index column-spec)] #(conj (or % []) value-with-level))))
 
 (defmethod stripe :optional
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
