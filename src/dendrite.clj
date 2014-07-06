@@ -18,3 +18,4 @@
 
 (defalias col s/col)
 (defalias req s/req)
+(defalias tag s/tag)
