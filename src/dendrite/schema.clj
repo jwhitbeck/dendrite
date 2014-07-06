@@ -163,11 +163,16 @@
 (defn- with-column-spec-paths* [field path]
   (let [next-path (if (:name field) (conj path (:name field)) path)]
     (if (record? field)
-      (assoc field :sub-fields (map #(with-column-spec-paths* % next-path) (:sub-fields field)))
+      (update-in field [:sub-fields] (partial map #(with-column-spec-paths* % next-path)))
       (assoc-in field [:column-spec :path] next-path))))
 
 (defn- with-column-spec-paths [schema]
   (with-column-spec-paths* schema []))
+
+(defn- with-map-fns [field]
+  (if (record? field)
+    (update-in field [:sub-fields] (partial map with-map-fns))
+    (assoc-in field [:column-spec :map-fn] (:reader-fn field))))
 
 (defn- annotate [schema]
   (-> schema
@@ -337,7 +342,8 @@
     (-> schema
         (apply-query* query readers missing-fields-as-nil? [])
         (with-column-indices :query-column-index)
-        with-column-spec-paths)
+        with-column-spec-paths
+        with-map-fns)
     (catch Exception e
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
@@ -345,11 +351,3 @@
 
 (defn queried-column-indices-set [queried-schema]
   (->> queried-schema column-specs (map :column-index) set))
-
-(defn- column-reader-fns* [queried-schema reader-fns-vec]
-  (if (record? queried-schema)
-    (reduce #(column-reader-fns* %2 %1) reader-fns-vec (:sub-fields queried-schema))
-    (conj reader-fns-vec (:reader-fn queried-schema))))
-
-(defn column-reader-fns [queried-schema]
-  (column-reader-fns* queried-schema []))

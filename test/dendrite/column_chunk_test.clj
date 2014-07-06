@@ -19,14 +19,14 @@
   (reduce write! column-chunk-writer blocks))
 
 (defn write-column-chunk-and-get-reader
-  [column-spec input-blocks & {:keys [map-fn]}]
+  [column-spec input-blocks]
   (let [w (doto (writer target-data-page-size column-spec)
             (write-blocks input-blocks)
             .finish)
         column-chunk-metadata (metadata w)]
     (-> w
         helpers/get-byte-array-reader
-        (reader column-chunk-metadata column-spec map-fn))))
+        (reader column-chunk-metadata column-spec))))
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -61,7 +61,7 @@
       (is (= input-blocks output-blocks)))
     (testing "value mapping"
         (let [map-fn (partial * 2)
-              mapped-reader (write-column-chunk-and-get-reader cs input-blocks :map-fn map-fn)]
+              mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
           (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
                  (->> mapped-reader read flatten (map :value))))))
     (testing "repeatable writes"
@@ -89,7 +89,7 @@
       (is (= input-blocks output-blocks)))
     (testing "value mapping"
       (let [map-fn (partial * 2)
-            mapped-reader (write-column-chunk-and-get-reader cs input-blocks :map-fn map-fn)]
+            mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
         (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
                (->> mapped-reader read flatten (map :value))))))
     (testing "repeatable writes"

@@ -96,5 +96,4 @@
                         (map column-chunk/reader
                              byte-array-readers
                              (:column-chunks-metadata record-group-metadata)
-                             (schema/column-specs queried-schema)
-                             (schema/column-reader-fns queried-schema)))))
+                             (schema/column-specs queried-schema)))))

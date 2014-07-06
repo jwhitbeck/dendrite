@@ -12,7 +12,7 @@
 (defrecord RecordGroupMetadata [num-bytes num-records column-chunks-metadata])
 
 (defrecord ColumnSpec [type encoding compression column-index query-column-index
-                       max-repetition-level max-definition-level path])
+                       max-repetition-level max-definition-level map-fn path])
 
 (defn map->column-spec-with-defaults [m]
   (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
