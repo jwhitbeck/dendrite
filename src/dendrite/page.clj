@@ -3,7 +3,8 @@
             [dendrite.compression :refer [compressor decompressor-ctor]]
             [dendrite.encoding :refer [encode-value! decode levels-encoder levels-decoder encoder
                                        decoder-ctor]]
-            [dendrite.estimation :as estimation])
+            [dendrite.estimation :as estimation]
+            [dendrite.stats :as stats])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
             Compressor Decompressor])
   (:refer-clojure :exclude [read type]))
@@ -41,7 +42,8 @@
   (type [this])
   (header-length [this])
   (body-length [this])
-  (byte-offset-body [this]))
+  (byte-offset-body [this])
+  (stats [_]))
 
 (defprotocol IDataPageHeader
   (has-repetition-levels? [this])
@@ -70,6 +72,14 @@
     (+ repetition-levels-size definition-levels-size compressed-data-size))
   (byte-offset-body [_]
     (+ repetition-levels-size definition-levels-size))
+  (stats [this]
+    (stats/map->PageStats
+     {:num-values num-values
+      :total-bytes (+ (header-length this) (body-length this))
+      :byte-stats (stats/map->ByteStats {:header-bytes (header-length this)
+                                         :repetition-levels-bytes repetition-levels-size
+                                         :definition-levels-bytes definition-levels-size
+                                         :data-bytes compressed-data-size})}))
   IDataPageHeader
   (has-repetition-levels? [_]
     (pos? repetition-levels-size))
@@ -105,6 +115,11 @@
     compressed-data-size)
   (byte-offset-body [_]
     0)
+  (stats [this]
+    (stats/map->PageStats
+     {:total-bytes (+ (header-length this) (body-length this))
+      :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-length this)
+                                         :dictionary-bytes compressed-data-size})}))
   ByteArrayWritable
   (writeTo [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
@@ -367,7 +382,7 @@
                                  decompressor-ctor
                                  header]
   IPageReader
-  (read [this]
+  (read [_]
     (let [data-bytes-reader (-> byte-array-reader
                                 (.sliceAhead (byte-offset-body header)))
           data-bytes-reader (if-let [decompressor (decompressor-ctor)]

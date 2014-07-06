@@ -4,7 +4,8 @@
             [dendrite.estimation :as estimation]
             [dendrite.metadata :as metadata]
             [dendrite.record-group :as record-group]
-            [dendrite.schema :as schema])
+            [dendrite.schema :as schema]
+            [dendrite.stats :as stats])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [java.nio ByteBuffer ByteOrder])
   (:refer-clojure :exclude [read]))
@@ -95,15 +96,24 @@
        (map (fn [[record-group-metadata bar]]
               (record-group/record-group-byte-array-reader bar record-group-metadata queried-schema)))))
 
-(defrecord ByteBufferReader [^ByteArrayReader byte-array-reader metadata queried-schema]
+(defrecord ByteBufferReader [^ByteArrayReader byte-array-reader buffer-num-bytes metadata queried-schema]
   IReader
   (read [_]
     (->> (record-group-readers byte-array-reader (:record-groups-metadata metadata) queried-schema)
          (mapcat record-group/read)
          (map #(assembly/assemble % queried-schema))))
   (stats [_]
-    (->> (record-group-readers byte-array-reader (:record-groups-metadata metadata) queried-schema)
-         (map record-group/stats)))
+    (let [all-stats (->> (record-group-readers byte-array-reader
+                                               (:record-groups-metadata metadata)
+                                               queried-schema)
+                         (map record-group/stats))
+          record-groups-stats (map :record-group all-stats)
+          columns-stats (->> (map :column-chunks all-stats)
+                             (apply map vector)
+                             (map stats/column-chunks->column-stats))]
+      {:record-groups record-groups-stats
+       :columns columns-stats
+       :global (stats/record-groups->global-stats buffer-num-bytes record-groups-stats)}))
   (metadata [_]
     (:custom metadata))
   (schema [_]
@@ -133,5 +143,6 @@
                          metadata/read)
             queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))]
         (ByteBufferReader. (-> byte-buffer ByteArrayReader. (.sliceAhead magic-length))
+                           length
                            metadata
                            queried-schema)))))

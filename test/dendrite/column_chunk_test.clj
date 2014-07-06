@@ -6,6 +6,7 @@
             [dendrite.encoding :as encoding]
             [dendrite.page :as page]
             [dendrite.schema :as schema]
+            [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter]
            [java.util Date Calendar]
@@ -75,9 +76,7 @@
       (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
            rest                         ; the first page is always inaccurate
            butlast                      ; the last page can have any size
-           (map data-page-header->partial-column-chunk-stats)
-           (map #(+ (:header-bytes %) (:repetition-level-bytes %) (:definition-level-bytes %)
-                    (:data-bytes %)))
+           (map (comp :total-bytes page/stats))
            helpers/avg
            (helpers/roughly target-data-page-size)))))
 

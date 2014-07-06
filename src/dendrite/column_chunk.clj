@@ -2,7 +2,8 @@
   (:require [dendrite.estimation :as estimation]
             [dendrite.encoding :as encoding]
             [dendrite.metadata :as metadata]
-            [dendrite.page :as page])
+            [dendrite.page :as page]
+            [dendrite.stats :as stats])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
            [dendrite.page DataPageWriter DictionaryPageWriter]
            [java.util HashMap])
@@ -147,7 +148,12 @@
 
 (defprotocol IColumnChunkReader
   (stream [_])
-  (stats [_]))
+  (page-headers [_]))
+
+(defn stats [column-chunk-reader]
+  (->> (page-headers column-chunk-reader)
+       (map page/stats)
+       (stats/pages->column-chunk-stats (:column-spec column-chunk-reader))))
 
 (defn partition-by-record [leveled-values]
   (lazy-seq
@@ -164,21 +170,6 @@
     (if (nil? v)
       leveled-value
       (assoc leveled-value :value (f v)))))
-
-(defrecord ColumnChunkStats [num-values num-pages header-bytes repetition-level-bytes
-                             definition-level-bytes data-bytes dictionary-header-bytes dictionary-bytes])
-
-(defn data-page-header->partial-column-chunk-stats [data-page-header]
-  (map->ColumnChunkStats {:num-values (:num-values data-page-header)
-                          :num-pages 1
-                          :header-bytes (page/header-length data-page-header)
-                          :repetition-level-bytes (:repetition-levels-size data-page-header)
-                          :definition-level-bytes (:definition-levels-size data-page-header)
-                          :data-bytes (:compressed-data-size data-page-header)}))
-
-(defn add-column-chunk-stats [column-chunk-stats-a column-chunk-stats-b]
-  (->> (map #(+ (or %1 0) (or %2 0)) (vals column-chunk-stats-a) (vals column-chunk-stats-b))
-       (apply ->ColumnChunkStats)))
 
 (defrecord DataColumnChunkReader [^ByteArrayReader byte-array-reader
                                   column-chunk-metadata
@@ -197,11 +188,9 @@
                            compression)]
       (cond->> leveled-values
                map-fn (map (partial apply-to-leveled-value map-fn)))))
-  (stats [_]
-    (->> (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
-                                      (:num-data-pages column-chunk-metadata))
-         (map data-page-header->partial-column-chunk-stats)
-         (reduce add-column-chunk-stats))))
+  (page-headers [_]
+    (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
+                                 (:num-data-pages column-chunk-metadata))))
 
 (defn- data-column-chunk-reader
   [byte-array-reader column-chunk-metadata column-spec map-fn]
@@ -209,8 +198,8 @@
 
 (defprotocol IDictionaryColumnChunkReader
   (stream-indices [_])
-  (read-dictionary [_])
-  (indices-stats [_]))
+  (indices-page-headers [_])
+  (read-dictionary [_]))
 
 (defrecord DictionaryColumnChunkReader [^ByteArrayReader byte-array-reader
                                         column-chunk-metadata
@@ -226,15 +215,12 @@
                     (if (nil? i)
                       leveled-value
                       (assoc leveled-value :value (aget ^objects dictionary-array (int i))))))))))
-  (stats [this]
-    (let [dictionary-header (->> column-chunk-metadata
-                                 :dictionary-page-offset
-                                 (.sliceAhead byte-array-reader)
-                                 page/read-dictionary-header)
-          data-column-stats (indices-stats this)]
-      (assoc data-column-stats
-        :dictionary-header-bytes (page/header-length dictionary-header)
-        :dictionary-bytes (page/body-length dictionary-header))))
+  (page-headers [this]
+    (let [dictionary-page-header (->> column-chunk-metadata
+                                      :dictionary-page-offset
+                                      (.sliceAhead byte-array-reader)
+                                      page/read-dictionary-header)]
+      (cons dictionary-page-header (indices-page-headers this))))
   IDictionaryColumnChunkReader
   (read-dictionary [_]
     (page/read-dictionary (.sliceAhead byte-array-reader (:dictionary-page-offset column-chunk-metadata))
@@ -246,11 +232,11 @@
                                       column-chunk-metadata
                                       (dictionary-indices-column-spec column-spec)
                                       nil)))
-  (indices-stats [_]
-    (stats (data-column-chunk-reader byte-array-reader
-                                     column-chunk-metadata
-                                     (dictionary-indices-column-spec column-spec)
-                                     nil))))
+  (indices-page-headers [_]
+    (page-headers (data-column-chunk-reader byte-array-reader
+                                            column-chunk-metadata
+                                            (dictionary-indices-column-spec column-spec)
+                                            nil))))
 
 (defn- dictionary-column-chunk-reader
   [byte-array-reader column-chunk-metadata column-spec map-fn]
