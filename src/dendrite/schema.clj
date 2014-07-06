@@ -134,7 +134,7 @@
     [(update-in field [:column-spec] assoc index-keyword current-column-index)
      (inc current-column-index)]))
 
-(defn- index-columns [schema index-keyword]
+(defn- with-column-indices [schema index-keyword]
   (first (column-indexed-schema schema 0 index-keyword)))
 
 (defn- schema-with-level [field current-level pred ks all-fields?]
@@ -149,32 +149,32 @@
               all-fields? (assoc-in ks current-level)))
     (assoc-in field ks current-level)))
 
-(defn- set-definition-levels [schema]
+(defn- with-definition-levels [schema]
   (schema-with-level schema 0 (complement required?) [:column-spec :max-definition-level] false))
 
-(defn- set-repetition-levels [schema]
+(defn- with-repetition-levels [schema]
   (-> schema
       (schema-with-level 0 repeated? [:column-spec :max-repetition-level] false)
       (schema-with-level 0 repeated? [:repetition-level] true)))
 
-(defn- set-top-record-required [schema]
+(defn- with-top-record-required [schema]
   (assoc schema :repetition :required))
 
-(defn- set-column-spec-paths* [field path]
+(defn- with-column-spec-paths* [field path]
   (let [next-path (if (:name field) (conj path (:name field)) path)]
     (if (record? field)
-      (assoc field :sub-fields (map #(set-column-spec-paths* % next-path) (:sub-fields field)))
+      (assoc field :sub-fields (map #(with-column-spec-paths* % next-path) (:sub-fields field)))
       (assoc-in field [:column-spec :path] next-path))))
 
-(defn- set-column-spec-paths [schema]
-  (set-column-spec-paths* schema []))
+(defn- with-column-spec-paths [schema]
+  (with-column-spec-paths* schema []))
 
 (defn- annotate [schema]
   (-> schema
-      (index-columns :column-index)
-      set-top-record-required
-      set-repetition-levels
-      set-definition-levels))
+      (with-column-indices :column-index)
+      with-top-record-required
+      with-repetition-levels
+      with-definition-levels))
 
 (defn parse [human-readable-schema]
   (try
@@ -336,8 +336,8 @@
   (try
     (-> schema
         (apply-query* query readers missing-fields-as-nil? [])
-        (index-columns :query-column-index)
-        set-column-spec-paths)
+        (with-column-indices :query-column-index)
+        with-column-spec-paths)
     (catch Exception e
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
