@@ -91,10 +91,9 @@
        (map :num-bytes)
        butlast
        (reductions #(.sliceAhead ^ByteArrayReader %1 %2) byte-array-reader)
-       (interleave record-groups-metadata)
-       (partition 2)
-       (map (fn [[record-group-metadata bar]]
-              (record-group/record-group-byte-array-reader bar record-group-metadata queried-schema)))))
+       (map (fn [record-group-metadata bar]
+              (record-group/record-group-byte-array-reader bar record-group-metadata queried-schema))
+            record-groups-metadata)))
 
 (defrecord ByteBufferReader [^ByteArrayReader byte-array-reader buffer-num-bytes metadata queried-schema]
   IReader

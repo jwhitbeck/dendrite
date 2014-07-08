@@ -18,10 +18,7 @@
      column-chunk-writers]
   IRecordGroupWriter
   (write! [this striped-record]
-    (->> (interleave column-chunk-writers striped-record)
-         (partition 2)
-         (map (partial apply column-chunk/write!))
-         dorun)
+    (dorun (map column-chunk/write! column-chunk-writers striped-record))
     (set! num-records (inc num-records))
     this)
   (num-records [_]
