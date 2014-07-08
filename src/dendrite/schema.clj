@@ -1,10 +1,10 @@
 (ns dendrite.schema
   (:require [clojure.edn :as edn]
             [clojure.string :as string]
-            [dendrite.common :refer :all]
             [dendrite.encoding :as encoding]
             [dendrite.compression :as compression]
-            [dendrite.metadata :refer [map->column-spec-with-defaults map->Field]])
+            [dendrite.metadata :refer [map->column-spec-with-defaults map->Field]]
+            [dendrite.utils :refer [format-ks]])
   (:import [dendrite.metadata ColumnSpec Field]
            [java.io Writer])
   (:refer-clojure :exclude [read-string col]))

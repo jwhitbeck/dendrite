@@ -1,7 +1,7 @@
 (ns dendrite.record-group-test
   (:require [clojure.test :refer :all]
-            [dendrite.common :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
+            [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.record-group :refer :all]
             [dendrite.schema :as schema]
             [dendrite.striping :as striping]

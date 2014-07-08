@@ -1,6 +1,6 @@
 (ns dendrite.test-helpers
   (:require [clojure.string :as string]
-            [dendrite.common :refer :all])
+            [dendrite.leveled-value :refer [->LeveledValue]])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter ByteArrayWritable]
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))

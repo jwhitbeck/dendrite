@@ -1,5 +1,5 @@
 (ns dendrite.dremel-paper-examples
-  (:require [dendrite.common :refer :all]
+  (:require [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]))
 
 (def dremel-paper-schema-str

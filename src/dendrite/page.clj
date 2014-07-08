@@ -1,9 +1,9 @@
 (ns dendrite.page
-  (:require [dendrite.common :refer :all]
-            [dendrite.compression :refer [compressor decompressor-ctor]]
+  (:require [dendrite.compression :refer [compressor decompressor-ctor]]
             [dendrite.encoding :refer [encode-value! decode levels-encoder levels-decoder encoder
                                        decoder-ctor]]
             [dendrite.estimation :as estimation]
+            [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.stats :as stats])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
             Compressor Decompressor])

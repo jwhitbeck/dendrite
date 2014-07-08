@@ -1,7 +1,6 @@
 (ns dendrite.column-chunk-test
   (:require [clojure.string :as string]
             [clojure.test :refer :all]
-            [dendrite.common :refer :all]
             [dendrite.column-chunk :refer :all]
             [dendrite.encoding :as encoding]
             [dendrite.page :as page]

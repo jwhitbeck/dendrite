@@ -1,7 +1,7 @@
 (ns dendrite
   (:require [dendrite.core :as core]
-            [dendrite.def :refer [defalias]]
-            [dendrite.schema :as s])
+            [dendrite.schema :as s]
+            [dendrite.utils :refer [defalias]])
   (:refer-clojure :exclude [read]))
 
 (defalias byte-buffer-writer core/byte-buffer-writer)

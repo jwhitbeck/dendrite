@@ -1,6 +1,5 @@
 (ns dendrite.page-test
   (:require [clojure.test :refer :all]
-            [dendrite.common :refer :all]
             [dendrite.page :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter])

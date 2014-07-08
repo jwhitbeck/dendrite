@@ -1,5 +1,5 @@
 (ns dendrite.assembly
-  (:require [dendrite.common :refer :all]
+  (:require [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]))
 
 (defmulti ^:private assemble*

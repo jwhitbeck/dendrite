@@ -1,8 +1,8 @@
 (ns dendrite.assembly-test
   (:require [clojure.test :refer :all]
             [dendrite.assembly :refer :all]
-            [dendrite.common :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
+            [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]
             [dendrite.striping :refer [stripe-record]]
             [dendrite.test-helpers :refer [test-schema-str]]))

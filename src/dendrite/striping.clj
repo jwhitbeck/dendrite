@@ -1,7 +1,8 @@
 (ns dendrite.striping
-  (:require [dendrite.common :refer :all]
-            [dendrite.encoding :as encoding]
-            [dendrite.schema :as schema]))
+  (:require [dendrite.encoding :as encoding]
+            [dendrite.leveled-value :refer [->LeveledValue]]
+            [dendrite.schema :as schema]
+            [dendrite.utils :refer [format-ks]]))
 
 (defn- new-striped-record [n] (vec (repeat n nil)))
 
