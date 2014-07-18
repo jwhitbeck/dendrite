@@ -66,6 +66,6 @@
                :record-groups
                rest
                butlast
-               (map :num-bytes)
+               (map :length)
                helpers/avg
                (helpers/roughly target-record-group-length))))))

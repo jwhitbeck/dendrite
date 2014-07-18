@@ -7,9 +7,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defrecord ColumnChunkMetadata [num-bytes num-data-pages data-page-offset dictionary-page-offset])
+(defrecord ColumnChunkMetadata [length num-data-pages data-page-offset dictionary-page-offset])
 
-(defrecord RecordGroupMetadata [num-bytes num-records column-chunks-metadata])
+(defrecord RecordGroupMetadata [length num-records column-chunks-metadata])
 
 (defrecord ColumnSpec [type encoding compression column-index query-column-index
                        max-repetition-level max-definition-level map-fn path])

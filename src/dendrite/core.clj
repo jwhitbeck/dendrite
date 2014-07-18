@@ -88,14 +88,14 @@
 
 (defn- record-group-readers [^ByteArrayReader byte-array-reader record-groups-metadata queried-schema]
   (->> record-groups-metadata
-       (map :num-bytes)
+       (map :length)
        butlast
        (reductions #(.sliceAhead ^ByteArrayReader %1 %2) byte-array-reader)
        (map (fn [record-group-metadata bar]
               (record-group/record-group-byte-array-reader bar record-group-metadata queried-schema))
             record-groups-metadata)))
 
-(defrecord ByteBufferReader [^ByteArrayReader byte-array-reader buffer-num-bytes metadata queried-schema]
+(defrecord ByteBufferReader [^ByteArrayReader byte-array-reader buffer-length metadata queried-schema]
   IReader
   (read [_]
     (->> (record-group-readers byte-array-reader (:record-groups-metadata metadata) queried-schema)
@@ -112,39 +112,39 @@
                              (map stats/column-chunks->column-stats))]
       {:record-groups record-groups-stats
        :columns columns-stats
-       :global (stats/record-groups->global-stats buffer-num-bytes record-groups-stats)}))
+       :global (stats/record-groups->global-stats buffer-length record-groups-stats)}))
   (metadata [_]
     (:custom metadata))
   (schema [_]
     (:schema metadata)))
 
-(defn- sub-byte-buffer ^ByteBuffer [^ByteBuffer bb offset num-bytes]
+(defn- sub-byte-buffer ^ByteBuffer [^ByteBuffer bb offset length]
   (doto (.slice bb)
     (.position offset)
-    (.limit (+ offset num-bytes))))
+    (.limit (+ offset length))))
 
 (defn byte-buffer-reader
   [^ByteBuffer byte-buffer & {:as opts :keys [query] :or {query '_}}]
-  (let [num-bytes (.limit byte-buffer)
-        magic-num-bytes (count magic-bytes)
-        int-num-bytes 4]
-    (if-not (and (valid-magic-bytes? (sub-byte-buffer byte-buffer 0 magic-num-bytes))
+  (let [length (.limit byte-buffer)
+        magic-length (count magic-bytes)
+        int-length 4]
+    (if-not (and (valid-magic-bytes? (sub-byte-buffer byte-buffer 0 magic-length))
                  (valid-magic-bytes? (sub-byte-buffer byte-buffer
-                                                      (- num-bytes magic-num-bytes)
-                                                      magic-num-bytes)))
+                                                      (- length magic-length)
+                                                      magic-length)))
       (throw (IllegalArgumentException.
               "Provided byte buffer does not contain a valid dendrite serialization."))
-      (let [metadata-num-bytes (.getInt (doto (sub-byte-buffer byte-buffer
-                                                               (- num-bytes magic-num-bytes int-num-bytes)
-                                                               int-num-bytes)
+      (let [metadata-length (.getInt (doto (sub-byte-buffer byte-buffer
+                                                               (- length magic-length int-length)
+                                                               int-length)
                                           (.order ByteOrder/LITTLE_ENDIAN)))
             metadata (-> (sub-byte-buffer byte-buffer
-                                          (- num-bytes magic-num-bytes int-num-bytes metadata-num-bytes)
-                                          metadata-num-bytes)
+                                          (- length magic-length int-length metadata-length)
+                                          metadata-length)
                          metadata/read)
             queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))]
         (map->ByteBufferReader
-         {:byte-array-reader (-> byte-buffer ByteArrayReader. (.sliceAhead magic-num-bytes))
-          :buffer-num-bytes num-bytes
+         {:byte-array-reader (-> byte-buffer ByteArrayReader. (.sliceAhead magic-length))
+          :buffer-length length
           :metadata metadata
           :queried-schema queried-schema})))))

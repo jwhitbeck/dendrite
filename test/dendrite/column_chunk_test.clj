@@ -75,7 +75,7 @@
       (is (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
                rest                      ; the first page is always inaccurate
                butlast                   ; the last page can have any length
-               (map (comp :num-bytes page/stats))
+               (map (comp :length page/stats))
                helpers/avg
                (helpers/roughly target-data-page-length))))))
 

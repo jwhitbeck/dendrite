@@ -36,7 +36,7 @@
     (page/write! page-writer leveled-values)
     this)
   (metadata [this]
-    (metadata/map->ColumnChunkMetadata {:num-bytes (.length this)
+    (metadata/map->ColumnChunkMetadata {:length (.length this)
                                         :num-data-pages num-pages
                                         :data-page-offset 0
                                         :dictionary-page-offset 0}))
@@ -99,7 +99,7 @@
          (write! data-column-chunk-writer))
     this)
   (metadata [this]
-    (metadata/map->ColumnChunkMetadata {:num-bytes (.length this)
+    (metadata/map->ColumnChunkMetadata {:length (.length this)
                                         :num-data-pages (-> data-column-chunk-writer metadata :num-data-pages)
                                         :data-page-offset (.length dictionary-writer)
                                         :dictionary-page-offset 0}))
