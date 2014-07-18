@@ -17,13 +17,13 @@ public class DeflateCompressor implements Compressor {
   @Override
   public void compress(final ByteArrayWritable byte_array_writable) {
     byte_array_writable.writeTo(input_buffer);
-    deflater.setInput(input_buffer.buffer, 0, input_buffer.size());
+    deflater.setInput(input_buffer.buffer, 0, input_buffer.length());
     deflater.finish();
-    output_buffer.ensureRemainingCapacity(input_buffer.size());
+    output_buffer.ensureRemainingCapacity(input_buffer.length());
     deflater.deflate(output_buffer.buffer, 0, output_buffer.buffer.length - output_buffer.position);
     while (!deflater.finished()) {
       int prev_buffer_length = output_buffer.buffer.length;
-      output_buffer.ensureRemainingCapacity(input_buffer.size());
+      output_buffer.ensureRemainingCapacity(input_buffer.length());
       deflater.deflate(output_buffer.buffer, prev_buffer_length,
                        output_buffer.buffer.length - prev_buffer_length);
     }
@@ -38,13 +38,13 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public int uncompressedSize() {
-    return input_buffer.size();
+  public int uncompressedLength() {
+    return input_buffer.length();
   }
 
   @Override
-  public int compressedSize() {
-    return output_buffer.size();
+  public int compressedLength() {
+    return output_buffer.length();
   }
 
   @Override

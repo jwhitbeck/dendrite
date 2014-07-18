@@ -17,13 +17,13 @@ public abstract class AbstractEncoder implements BufferedByteArrayWriter {
   public void finish() {}
 
   @Override
-  public int size() {
-    return byte_array_writer.size();
+  public int length() {
+    return byte_array_writer.length();
   }
 
   @Override
-  public int estimatedSize() {
-    return size();
+  public int estimatedLength() {
+    return length();
   }
 
   @Override

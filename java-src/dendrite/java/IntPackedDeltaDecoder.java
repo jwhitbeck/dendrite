@@ -5,12 +5,12 @@ public class IntPackedDeltaDecoder implements IntDecoder {
   private final ByteArrayReader byte_array_reader;
   private int[] miniblock_buffer = new int[128];
   private int miniblock_position = 0;
-  private int miniblock_size = 0;
+  private int miniblock_length = 0;
   private int current_miniblock_index = 0;
   private int num_miniblocks = 0;
   private int[] miniblock_bit_widths = new int[32];
   private int remaining_values_in_block = 0;
-  private int block_size = 0;
+  private int block_length = 0;
   private long block_min_delta = 0;
   private long block_current_value = 0;
 
@@ -26,7 +26,7 @@ public class IntPackedDeltaDecoder implements IntDecoder {
       } else if (current_miniblock_index == -1) { // no miniblock loaded
         initNextMiniBlock();
         setCurrentValueFromMiniBlockBuffer();
-      } else if (miniblock_position < miniblock_size) { // reading from buffered miniblock
+      } else if (miniblock_position < miniblock_length) { // reading from buffered miniblock
         setCurrentValueFromMiniBlockBuffer();
       } else { // finished reading current mini block
         initNextMiniBlock();
@@ -50,29 +50,29 @@ public class IntPackedDeltaDecoder implements IntDecoder {
   private void initNextMiniBlock() {
     current_miniblock_index += 1;
     int width = miniblock_bit_widths[current_miniblock_index];
-    int length = remaining_values_in_block < miniblock_size? remaining_values_in_block : miniblock_size;
+    int length = remaining_values_in_block < miniblock_length? remaining_values_in_block : miniblock_length;
     byte_array_reader.readPackedInts32(miniblock_buffer, width, length);
     miniblock_position = 0;
   }
 
-  private void ensureMiniBlocksSizeInSufficient(final int miniblock_size) {
-    if (miniblock_buffer.length < miniblock_size) {
-      miniblock_buffer = new int[miniblock_size];
+  private void ensureMiniBlocksLengthInSufficient(final int miniblock_length) {
+    if (miniblock_buffer.length < miniblock_length) {
+      miniblock_buffer = new int[miniblock_length];
     }
   }
 
-  private void ensureMiniBlocksBitWidthsSizeIsSufficient(final int num_miniblocks) {
+  private void ensureMiniBlocksBitWidthsLengthIsSufficient(final int num_miniblocks) {
     if (miniblock_bit_widths.length < num_miniblocks) {
       miniblock_bit_widths = new int[num_miniblocks];
     }
   }
 
   private void initNextBlock() {
-    block_size = byte_array_reader.readUInt();
+    block_length = byte_array_reader.readUInt();
     num_miniblocks = byte_array_reader.readUInt();
-    miniblock_size = num_miniblocks > 0? block_size / num_miniblocks : 0;
-    ensureMiniBlocksSizeInSufficient(miniblock_size);
-    ensureMiniBlocksBitWidthsSizeIsSufficient(num_miniblocks);
+    miniblock_length = num_miniblocks > 0? block_length / num_miniblocks : 0;
+    ensureMiniBlocksLengthInSufficient(miniblock_length);
+    ensureMiniBlocksBitWidthsLengthIsSufficient(num_miniblocks);
     remaining_values_in_block = byte_array_reader.readUInt();
     miniblock_position = -1;
     current_miniblock_index = -1;

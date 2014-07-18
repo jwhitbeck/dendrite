@@ -49,12 +49,12 @@ public class IntPackedRunLengthEncoder implements IntEncoder {
   }
 
   @Override
-  public int size() {
-    return 1 + rle_encoder.size();
+  public int length() {
+    return 1 + rle_encoder.length();
   }
 
   @Override
-  public int estimatedSize() {
+  public int estimatedLength() {
     int estimated_num_octoplets = (num_buffered_values / 8) + 1;
     return 1 + ByteArrayWriter.getNumUIntBytes(estimated_num_octoplets << 1)
       + (8 * estimated_num_octoplets * max_width);

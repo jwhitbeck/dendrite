@@ -9,10 +9,10 @@
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read]))
 
-(def target-data-page-size 1024)
+(def target-data-page-length 1024)
 
 (deftest dremel-write-read
-  (let [w (doto (writer target-data-page-size (schema/column-specs dremel-paper-schema))
+  (let [w (doto (writer target-data-page-length (schema/column-specs dremel-paper-schema))
             (write! dremel-paper-record1-striped)
             (write! dremel-paper-record2-striped)
             .finish)
@@ -38,7 +38,7 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema) records)
-        w (doto (writer target-data-page-size (schema/column-specs test-schema))
+        w (doto (writer target-data-page-length (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)

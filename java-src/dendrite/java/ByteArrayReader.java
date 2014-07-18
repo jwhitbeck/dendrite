@@ -115,7 +115,7 @@ public class ByteArrayReader {
       if ((current_byte & 0x80) == 0) {
         baw.writeByte((byte)byte_buffer);
         byte[] bytes_little_endian = baw.buffer;
-        int length = baw.size();
+        int length = baw.length();
         byte[] bytes_big_endian = new byte[length];
         for(int i=0; i<length; ++i) {
           bytes_big_endian[i] = bytes_little_endian[length-i-1];

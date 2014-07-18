@@ -167,18 +167,20 @@
     (map->DataPageHeader
      {:encoded-page-type (encode-page-type :data)
       :num-values num-values
-      :repetition-levels-num-bytes (if repetition-level-encoder (.estimatedSize repetition-level-encoder) 0)
-      :definition-levels-num-bytes (if definition-level-encoder (.estimatedSize definition-level-encoder) 0)
-      :compressed-data-num-bytes (.estimatedSize data-encoder)
-      :uncompressed-data-num-bytes (.estimatedSize data-encoder)}))
+      :repetition-levels-num-bytes (if repetition-level-encoder (.estimatedLength repetition-level-encoder) 0)
+      :definition-levels-num-bytes (if definition-level-encoder (.estimatedLength definition-level-encoder) 0)
+      :compressed-data-num-bytes (.estimatedLength data-encoder)
+      :uncompressed-data-num-bytes (.estimatedLength data-encoder)}))
   (header [_]
     (map->DataPageHeader
      {:encoded-page-type (encode-page-type :data)
       :num-values num-values
-      :repetition-levels-num-bytes (if repetition-level-encoder (.size repetition-level-encoder) 0)
-      :definition-levels-num-bytes (if definition-level-encoder (.size definition-level-encoder) 0)
-      :compressed-data-num-bytes (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
-      :uncompressed-data-num-bytes (.size data-encoder)}))
+      :repetition-levels-num-bytes (if repetition-level-encoder (.length repetition-level-encoder) 0)
+      :definition-levels-num-bytes (if definition-level-encoder (.length definition-level-encoder) 0)
+      :compressed-data-num-bytes (if data-compressor
+                                   (.compressedLength data-compressor)
+                                   (.length data-encoder))
+      :uncompressed-data-num-bytes (.length data-encoder)}))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
@@ -203,12 +205,12 @@
         (estimation/update! body-num-bytes-estimator
                             (-> this header body-num-bytes) estimated-body-num-bytes))
       (set! finished? true)))
-  (size [this]
+  (length [this]
     (let [h (header this)]
       (+ (header-num-bytes h) (body-num-bytes h))))
-  (estimatedSize [this]
+  (estimatedLength [this]
     (let [provisional-header (provisional-header this)]
-      (+ (.size ^DataPageHeader provisional-header)
+      (+ (header-num-bytes provisional-header)
          (estimation/correct body-num-bytes-estimator (body-num-bytes provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)
@@ -245,14 +247,16 @@
     (map->DictionaryPageHeader
      {:encoded-page-type (encode-page-type :dictionary)
       :num-values num-values
-      :compressed-data-num-bytes (.estimatedSize data-encoder)
-      :uncompressed-data-num-bytes (.estimatedSize data-encoder)}))
+      :compressed-data-num-bytes (.estimatedLength data-encoder)
+      :uncompressed-data-num-bytes (.estimatedLength data-encoder)}))
   (header [_]
     (map->DictionaryPageHeader
      {:encoded-page-type (encode-page-type :dictionary)
       :num-values num-values
-      :compressed-data-num-bytes (if data-compressor (.compressedSize data-compressor) (.size data-encoder))
-      :uncompressed-data-num-bytes (.size data-encoder)}))
+      :compressed-data-num-bytes (if data-compressor
+                                   (.compressedLength data-compressor)
+                                   (.length data-encoder))
+      :uncompressed-data-num-bytes (.length data-encoder)}))
   BufferedByteArrayWriter
   (reset [_]
     (set! num-values 0)
@@ -269,12 +273,12 @@
         (estimation/update! body-num-bytes-estimator
                             (-> this header body-num-bytes) estimated-body-num-bytes))
       (set! finished? true)))
-  (size [this]
+  (length [this]
     (let [h (header this)]
       (+ (header-num-bytes h) (body-num-bytes h))))
-  (estimatedSize [this]
+  (estimatedLength [this]
     (let [provisional-header (provisional-header this)]
-      (+ (.size ^DataPageHeader provisional-header)
+      (+ (header-num-bytes provisional-header)
          (estimation/correct body-num-bytes-estimator (body-num-bytes provisional-header)))))
   (writeTo [this byte-array-writer]
     (.finish this)

@@ -25,7 +25,7 @@
     num-records)
   (metadata [this]
     (metadata/map->RecordGroupMetadata
-     {:num-bytes (.size this)
+     {:num-bytes (.length this)
       :num-records num-records
       :column-chunks-metadata (mapv column-chunk/metadata column-chunk-writers)}))
   BufferedByteArrayWriter
@@ -36,21 +36,21 @@
   (finish [this]
     (doseq [column-chunk-writer column-chunk-writers]
       (.finish ^BufferedByteArrayWriter column-chunk-writer)))
-  (size [_]
+  (length [_]
     (->> column-chunk-writers
-         (map #(.size ^BufferedByteArrayWriter %))
+         (map #(.length ^BufferedByteArrayWriter %))
          (reduce +)))
-  (estimatedSize [_]
+  (estimatedLength [_]
     (->> column-chunk-writers
-         (map #(.estimatedSize ^BufferedByteArrayWriter %))
+         (map #(.estimatedLength ^BufferedByteArrayWriter %))
          (reduce +)))
   (writeTo [this baw]
     (.finish this)
     (doseq [column-chunk-writer column-chunk-writers]
       (.writeTo ^BufferedByteArrayWriter column-chunk-writer baw))))
 
-(defn writer [target-data-page-size column-specs]
-  (RecordGroupWriter. 0 (mapv (partial column-chunk/writer target-data-page-size) column-specs)))
+(defn writer [target-data-page-length column-specs]
+  (RecordGroupWriter. 0 (mapv (partial column-chunk/writer target-data-page-length) column-specs)))
 
 (defprotocol IRecordGroupReader
   (read [_])

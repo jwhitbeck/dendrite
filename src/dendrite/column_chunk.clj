@@ -18,25 +18,25 @@
 (defprotocol IDataColumnChunkWriter
   (flush-data-page-writer! [_]))
 
-(deftype DataColumnChunkWriter [^:unsynchronized-mutable next-num-values-for-page-size-check
+(deftype DataColumnChunkWriter [^:unsynchronized-mutable next-num-values-for-page-length-check
                                 ^:unsynchronized-mutable num-pages
-                                target-data-page-size
-                                size-estimator
+                                target-data-page-length
+                                length-estimator
                                 ^ByteArrayWriter byte-array-writer
                                 ^DataPageWriter page-writer]
   IColumnChunkWriter
   (write! [this leveled-values]
-    (when (>= (page/num-values page-writer) next-num-values-for-page-size-check)
-      (let [estimated-page-size (.estimatedSize page-writer)]
-        (if (>= estimated-page-size target-data-page-size)
+    (when (>= (page/num-values page-writer) next-num-values-for-page-length-check)
+      (let [estimated-page-length (.estimatedLength page-writer)]
+        (if (>= estimated-page-length target-data-page-length)
           (flush-data-page-writer! this)
-          (set! next-num-values-for-page-size-check
-                (estimation/next-threshold-check (page/num-values page-writer) estimated-page-size
-                                                 target-data-page-size)))))
+          (set! next-num-values-for-page-length-check
+                (estimation/next-threshold-check (page/num-values page-writer) estimated-page-length
+                                                 target-data-page-length)))))
     (page/write! page-writer leveled-values)
     this)
   (metadata [this]
-    (metadata/map->ColumnChunkMetadata {:num-bytes (.size this)
+    (metadata/map->ColumnChunkMetadata {:num-bytes (.length this)
                                         :num-data-pages num-pages
                                         :data-page-offset 0
                                         :dictionary-page-offset 0}))
@@ -45,7 +45,7 @@
     (when (pos? (page/num-values page-writer))
       (.write byte-array-writer page-writer)
       (set! num-pages (inc num-pages))
-      (set! next-num-values-for-page-size-check (int (/ (page/num-values page-writer) 2)))
+      (set! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
       (.reset page-writer)))
   BufferedByteArrayWriter
   (reset [_]
@@ -54,22 +54,22 @@
     (.reset page-writer))
   (finish [this]
     (when (pos? (page/num-values page-writer))
-      (let [estimated-size (+ (.size byte-array-writer) (.estimatedSize page-writer))]
+      (let [estimated-length (+ (.length byte-array-writer) (.estimatedLength page-writer))]
         (flush-data-page-writer! this)
-        (estimation/update! size-estimator (.size this) estimated-size))))
-  (size [_]
-    (.size byte-array-writer))
-  (estimatedSize [this]
-    (estimation/correct size-estimator (+ (.size byte-array-writer) (.estimatedSize page-writer))))
+        (estimation/update! length-estimator (.length this) estimated-length))))
+  (length [_]
+    (.length byte-array-writer))
+  (estimatedLength [this]
+    (estimation/correct length-estimator (+ (.length byte-array-writer) (.estimatedLength page-writer))))
   (writeTo [this baw]
     (.finish this)
     (.write baw byte-array-writer)))
 
-(defn- data-column-chunk-writer [target-data-page-size column-spec]
+(defn- data-column-chunk-writer [target-data-page-length column-spec]
   (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
     (DataColumnChunkWriter. 10
                             0
-                            target-data-page-size
+                            target-data-page-length
                             (estimation/ratio-estimator)
                             (ByteArrayWriter.)
                             (page/data-page-writer max-repetition-level max-definition-level type
@@ -99,9 +99,9 @@
          (write! data-column-chunk-writer))
     this)
   (metadata [this]
-    (metadata/map->ColumnChunkMetadata {:num-bytes (.size this)
+    (metadata/map->ColumnChunkMetadata {:num-bytes (.length this)
                                         :num-data-pages (-> data-column-chunk-writer metadata :num-data-pages)
-                                        :data-page-offset (.size dictionary-writer)
+                                        :data-page-offset (.length dictionary-writer)
                                         :dictionary-page-offset 0}))
   IDictionaryColumChunkWriter
   (value-index [_ v]
@@ -119,10 +119,10 @@
   (finish [_]
     (.finish dictionary-writer)
     (.finish data-column-chunk-writer))
-  (size [_]
-    (+ (.size dictionary-writer) (.size data-column-chunk-writer)))
-  (estimatedSize [_]
-    (+ (.estimatedSize dictionary-writer) (.estimatedSize data-column-chunk-writer)))
+  (length [_]
+    (+ (.length dictionary-writer) (.length data-column-chunk-writer)))
+  (estimatedLength [_]
+    (+ (.estimatedLength dictionary-writer) (.estimatedLength data-column-chunk-writer)))
   (writeTo [this baw]
     (.finish this)
     (.write baw dictionary-writer)
@@ -135,17 +135,17 @@
              :compression :none)
       (dissoc :map-fn)))
 
-(defn- dictionary-column-chunk-writer [target-data-page-size column-spec]
+(defn- dictionary-column-chunk-writer [target-data-page-length column-spec]
   (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
     (DictionaryColumnChunkWriter.
      (HashMap.)
      (page/dictionary-page-writer type :plain compression)
-     (data-column-chunk-writer target-data-page-size (dictionary-indices-column-spec column-spec)))))
+     (data-column-chunk-writer target-data-page-length (dictionary-indices-column-spec column-spec)))))
 
-(defn writer [target-data-page-size column-spec]
+(defn writer [target-data-page-length column-spec]
   (if (= :dictionary (:encoding column-spec))
-    (dictionary-column-chunk-writer target-data-page-size column-spec)
-    (data-column-chunk-writer target-data-page-size column-spec)))
+    (dictionary-column-chunk-writer target-data-page-length column-spec)
+    (data-column-chunk-writer target-data-page-length column-spec)))
 
 (defprotocol IColumnChunkReader
   (stream [_])
@@ -247,49 +247,49 @@
     (dictionary-column-chunk-reader byte-array-reader column-chunk-metadata column-spec)
     (data-column-chunk-reader byte-array-reader column-chunk-metadata column-spec)))
 
-(defn- compute-size-for-column-spec [column-chunk-reader new-colum-spec target-data-page-size]
-  (let [w (reduce write! (writer target-data-page-size new-colum-spec) (read column-chunk-reader))]
-    (.size (doto ^BufferedByteArrayWriter w .finish))))
+(defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length]
+  (let [w (reduce write! (writer target-data-page-length new-colum-spec) (read column-chunk-reader))]
+    (.length (doto ^BufferedByteArrayWriter w .finish))))
 
-(defn find-best-encoding [column-chunk-reader target-data-page-size]
+(defn find-best-encoding [column-chunk-reader target-data-page-length]
   (let [ct (-> column-chunk-reader :column-spec (assoc :compression :none))
         eligible-encodings (cons :dictionary (encoding/list-encodings-for-type (:type ct)))]
     (->> eligible-encodings
          (reduce (fn [results encoding]
                    (assoc results encoding
-                          (compute-size-for-column-spec column-chunk-reader
-                                                        (assoc ct :encoding encoding)
-                                                        target-data-page-size)))
+                          (compute-length-for-column-spec column-chunk-reader
+                                                          (assoc ct :encoding encoding)
+                                                          target-data-page-length)))
                  {})
          (sort-by val)
          first
          key)))
 
 (defn find-best-compression
-  [column-chunk-reader target-data-page-size candidates-treshold-map & {:keys [encoding]}]
+  [column-chunk-reader target-data-page-length candidates-treshold-map & {:keys [encoding]}]
   (let [ct  (cond-> (:column-spec column-chunk-reader)
                     encoding (assoc :encoding encoding))
-        compressed-sizes-map
+        compressed-lengths-map
           (->> (assoc candidates-treshold-map :none 1)
                keys
                (reduce (fn [results compression]
                          (assoc results compression
-                                (compute-size-for-column-spec column-chunk-reader
-                                                              (assoc ct :compression compression)
-                                                              target-data-page-size)))
+                                (compute-length-for-column-spec column-chunk-reader
+                                                                (assoc ct :compression compression)
+                                                                target-data-page-length)))
                        {}))
-        no-compression-size (:none compressed-sizes-map)
+        no-compression-length (:none compressed-lengths-map)
         best-compression
-          (->> (dissoc compressed-sizes-map :none)
-               (filter (fn [[compression size]]
-                         (<= (/ size no-compression-size) (get candidates-treshold-map compression))))
+          (->> (dissoc compressed-lengths-map :none)
+               (filter (fn [[compression length]]
+                         (<= (/ length no-compression-length) (get candidates-treshold-map compression))))
                (sort-by val)
                ffirst)]
     (or best-compression :none)))
 
-(defn find-best-column-spec [column-chunk-reader target-data-page-size compression-candidates-treshold-map]
-  (let [best-encoding (find-best-encoding column-chunk-reader target-data-page-size)
-        best-compression (find-best-compression column-chunk-reader target-data-page-size
+(defn find-best-column-spec [column-chunk-reader target-data-page-length compression-candidates-treshold-map]
+  (let [best-encoding (find-best-encoding column-chunk-reader target-data-page-length)
+        best-compression (find-best-compression column-chunk-reader target-data-page-length
                                                 compression-candidates-treshold-map
                                                 :encoding best-encoding)]
     (assoc (:column-spec column-chunk-reader)

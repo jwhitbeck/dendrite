@@ -16,8 +16,8 @@ public class LZ4Compressor implements Compressor {
   public void compress(final ByteArrayWritable byte_array_writable) {
     byte_array_writable.writeTo(input_buffer);
     net.jpountz.lz4.LZ4Compressor lz4_compressor = LZ4.compressor();
-    output_buffer.ensureRemainingCapacity(lz4_compressor.maxCompressedLength(input_buffer.size()));
-    int compressed_length = lz4_compressor.compress(input_buffer.buffer, 0, input_buffer.size(),
+    output_buffer.ensureRemainingCapacity(lz4_compressor.maxCompressedLength(input_buffer.length()));
+    int compressed_length = lz4_compressor.compress(input_buffer.buffer, 0, input_buffer.length(),
                                                 output_buffer.buffer, 0);
     output_buffer.position += compressed_length;
   }
@@ -29,13 +29,13 @@ public class LZ4Compressor implements Compressor {
   }
 
   @Override
-  public int uncompressedSize() {
-    return input_buffer.size();
+  public int uncompressedLength() {
+    return input_buffer.length();
   }
 
   @Override
-  public int compressedSize() {
-    return output_buffer.size();
+  public int compressedLength() {
+    return output_buffer.length();
   }
 
   @Override

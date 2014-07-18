@@ -3,19 +3,19 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 import java.math.BigInteger;
 
-public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
+public class ByteArrayWriter implements ByteArrayWritable, Resetable, Lengthable {
 
-  private static int DEFAULT_BUFFER_SIZE = 1024;
+  private static int DEFAULT_BUFFER_LENGTH = 1024;
 
   public byte[] buffer;
   public int position = 0;
 
   public ByteArrayWriter() {
-    buffer = new byte[DEFAULT_BUFFER_SIZE];
+    buffer = new byte[DEFAULT_BUFFER_LENGTH];
   }
 
-  public ByteArrayWriter(final int size) {
-    buffer = new byte[size];
+  public ByteArrayWriter(final int length) {
+    buffer = new byte[length];
   }
 
   @Override
@@ -36,7 +36,7 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Sizeable {
     }
   }
 
-  public int size() {
+  public int length() {
     return position;
   }
 

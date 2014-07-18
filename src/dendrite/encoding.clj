@@ -224,8 +224,8 @@
         BufferedByteArrayWriter
         (reset [_] (.reset ^BufferedByteArrayWriter be))
         (finish [_] (.finish ^BufferedByteArrayWriter be))
-        (size [_] (.size ^BufferedByteArrayWriter be))
-        (estimatedSize [_] (.estimatedSize ^BufferedByteArrayWriter be))
+        (length [_] (.length ^BufferedByteArrayWriter be))
+        (estimatedLength [_] (.estimatedLength ^BufferedByteArrayWriter be))
         (writeTo [_ byte-array-writer] (.writeTo ^BufferedByteArrayWriter be byte-array-writer))))))
 
 (defn decoder-ctor [t encoding]

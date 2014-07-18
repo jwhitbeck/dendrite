@@ -2,14 +2,14 @@ package dendrite.java;
 
 public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder {
 
-  private static final int MIN_BLOCK_SIZE = 128;
-  private static final int MIN_MINIBLOCK_SIZE = 8;
+  private static final int MIN_BLOCK_LENGTH = 128;
+  private static final int MIN_MINIBLOCK_LENGTH = 8;
 
-  private long[] value_buffer = new long[2 * MIN_BLOCK_SIZE + 1];
+  private long[] value_buffer = new long[2 * MIN_BLOCK_LENGTH + 1];
   private int position = 0;
-  private long[] deltas = new long[2 * MIN_BLOCK_SIZE];
+  private long[] deltas = new long[2 * MIN_BLOCK_LENGTH];
   private long min_delta = 0;
-  private int [] reference_frame = new int[2 * MIN_BLOCK_SIZE];
+  private int [] reference_frame = new int[2 * MIN_BLOCK_LENGTH];
   private int num_encoded_values = 0;
 
   private ByteArrayWriter best_encoding = new ByteArrayWriter(128);
@@ -17,7 +17,7 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
 
   @Override
   public void encode(final int i) {
-    if (position % MIN_BLOCK_SIZE == 1 && position > 2 * MIN_BLOCK_SIZE) {
+    if (position % MIN_BLOCK_LENGTH == 1 && position > 2 * MIN_BLOCK_LENGTH) {
       tryFlushFirstBlocks();
     }
     encodeAndGrowIfNecessary(i);
@@ -41,36 +41,36 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
 
   private ByteArrayWriter getBestMiniblockEncodingForBlock(final int start_position, final int end_position) {
     int num_values = end_position - start_position;
-    int block_size = getBlockSize(num_values);
+    int block_length = getBlockLength(num_values);
     int start_value = (int)value_buffer[start_position];
-    computeDeltas(start_position, end_position, block_size);
+    computeDeltas(start_position, end_position, block_length);
     computeFrameOfReference(num_values);
 
-    int miniblock_size = 8;
+    int miniblock_length = 8;
 
     best_encoding.reset();
-    flushBlockWithNumMiniBlocks(best_encoding, miniblock_size, block_size, num_values, start_value);
+    flushBlockWithNumMiniBlocks(best_encoding, miniblock_length, block_length, num_values, start_value);
 
-    int min_size = best_encoding.size();
+    int min_length = best_encoding.length();
 
-    miniblock_size <<= 1;
-    while (miniblock_size <= Math.min(MIN_BLOCK_SIZE, block_size)) {
+    miniblock_length <<= 1;
+    while (miniblock_length <= Math.min(MIN_BLOCK_LENGTH, block_length)) {
       current_encoding.reset();
-      flushBlockWithNumMiniBlocks(current_encoding, miniblock_size, block_size, num_values, start_value);
-      int current_size = current_encoding.size();
-      if (current_size < min_size) {
+      flushBlockWithNumMiniBlocks(current_encoding, miniblock_length, block_length, num_values, start_value);
+      int current_length = current_encoding.length();
+      if (current_length < min_length) {
         ByteArrayWriter tmp = best_encoding;
         best_encoding = current_encoding;
         current_encoding = tmp;
-        min_size = current_size;
+        min_length = current_length;
       }
-      miniblock_size <<= 1;
+      miniblock_length <<= 1;
     }
 
-    if (block_size > MIN_BLOCK_SIZE) {
+    if (block_length > MIN_BLOCK_LENGTH) {
       current_encoding.reset();
-      flushBlockWithNumMiniBlocks(current_encoding, block_size, block_size, num_values, start_value);
-      if (current_encoding.size() < min_size) {
+      flushBlockWithNumMiniBlocks(current_encoding, block_length, block_length, num_values, start_value);
+      if (current_encoding.length() < min_length) {
         best_encoding = current_encoding;
       }
     }
@@ -78,15 +78,15 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
     return best_encoding;
   }
 
-  private void flushBlockWithNumMiniBlocks(final ByteArrayWriter baw, final int miniBlockSize,
-                                          final int block_size, final int num_values,
+  private void flushBlockWithNumMiniBlocks(final ByteArrayWriter baw, final int miniBlockLength,
+                                          final int block_length, final int num_values,
                                           final int start_value) {
-    int num_miniblocks = block_size / miniBlockSize;
+    int num_miniblocks = block_length / miniBlockLength;
     int[] miniblock_bit_widths = new int[num_miniblocks];
     for (int j=0; j<num_miniblocks; ++j) {
-      miniblock_bit_widths[j] = getMiniBlockBitWidth(j * miniBlockSize, miniBlockSize);
+      miniblock_bit_widths[j] = getMiniBlockBitWidth(j * miniBlockLength, miniBlockLength);
     }
-    baw.writeUInt(block_size);
+    baw.writeUInt(block_length);
     baw.writeUInt(num_miniblocks);
     baw.writeUInt(num_values);
     baw.writeSInt(start_value);
@@ -96,16 +96,16 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
         baw.writeByte((byte) (miniblock_bit_widths[j] & 0xff));
       }
       for (int j=0; j<num_miniblocks; ++j) {
-        int num_remaining_values = num_values - 1 - j * miniBlockSize;
-        int length = num_remaining_values < miniBlockSize ? num_remaining_values : miniBlockSize;
-        baw.writePackedInts32(reference_frame, miniblock_bit_widths[j], j * miniBlockSize, length);
+        int num_remaining_values = num_values - 1 - j * miniBlockLength;
+        int length = num_remaining_values < miniBlockLength ? num_remaining_values : miniBlockLength;
+        baw.writePackedInts32(reference_frame, miniblock_bit_widths[j], j * miniBlockLength, length);
       }
     }
   }
 
-  private int getMiniBlockBitWidth(final int miniBlockStartPosition, final int miniBlockSize) {
+  private int getMiniBlockBitWidth(final int miniBlockStartPosition, final int miniBlockLength) {
     int max_bit_width = 0;
-    for (int j=miniBlockStartPosition; j<miniBlockStartPosition+miniBlockSize; ++j) {
+    for (int j=miniBlockStartPosition; j<miniBlockStartPosition+miniBlockLength; ++j) {
       int bit_width = ByteArrayWriter.getBitWidth(reference_frame[j]);
       if (bit_width > max_bit_width) {
         max_bit_width = bit_width;
@@ -114,14 +114,14 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
     return max_bit_width;
   }
 
-  private void ensureDeltasBufferIsLargeEnough(final int size) {
-    if (deltas.length < size) {
-      deltas = new long[size];
+  private void ensureDeltasBufferIsLargeEnough(final int length) {
+    if (deltas.length < length) {
+      deltas = new long[length];
     }
   }
 
-  private void computeDeltas(final int start_position, final int end_position, final int block_size) {
-    ensureDeltasBufferIsLargeEnough(block_size);
+  private void computeDeltas(final int start_position, final int end_position, final int block_length) {
+    ensureDeltasBufferIsLargeEnough(block_length);
     min_delta = Long.MAX_VALUE;
     for (int j=start_position+1; j<end_position; ++j) {
       long delta = value_buffer[j] - value_buffer[j-1];
@@ -132,11 +132,11 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
     }
   }
 
-  private void prepareFrameOfReference(final int size) {
-    if (reference_frame.length < size) {
-      reference_frame = new int[size];
+  private void prepareFrameOfReference(final int length) {
+    if (reference_frame.length < length) {
+      reference_frame = new int[length];
     } else {
-      for (int i=0; i<size; i++) {
+      for (int i=0; i<length; i++) {
         reference_frame[i] = 0;
       }
     }
@@ -150,47 +150,48 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
     }
   }
 
-  private static int getBlockSize(final int num_values_in_block) {
+  private static int getBlockLength(final int num_values_in_block) {
     int ints_after_first = num_values_in_block - 1;
     if (ints_after_first == 0) {
       return 0;
-    } else if (ints_after_first < MIN_BLOCK_SIZE) {
-      int block_size = 8;
-      while (ints_after_first > block_size && block_size < MIN_BLOCK_SIZE) {
-        block_size <<= 1;
+    } else if (ints_after_first < MIN_BLOCK_LENGTH) {
+      int block_length = 8;
+      while (ints_after_first > block_length && block_length < MIN_BLOCK_LENGTH) {
+        block_length <<= 1;
       }
-      return block_size;
+      return block_length;
     } else {
-      int block_size = MIN_BLOCK_SIZE;
-      while (ints_after_first > block_size) {
-        block_size += MIN_BLOCK_SIZE;
+      int block_length = MIN_BLOCK_LENGTH;
+      while (ints_after_first > block_length) {
+        block_length += MIN_BLOCK_LENGTH;
       }
-      return block_size;
+      return block_length;
     }
   }
 
   private int getEndPositionOfLastFullBlock() {
-    return ((position / MIN_BLOCK_SIZE) - 1) * MIN_BLOCK_SIZE + 1;
+    return ((position / MIN_BLOCK_LENGTH) - 1) * MIN_BLOCK_LENGTH + 1;
   }
 
-  private int getSizeEncodedAsOneBlock() {
-    return getBestMiniblockEncodingForBlock(0, position).size();
+  private int getLengthEncodedAsOneBlock() {
+    return getBestMiniblockEncodingForBlock(0, position).length();
   }
 
-  private int getSizeEncodedAsTwoBlocks() {
+  private int getLengthEncodedAsTwoBlocks() {
     int end_position_of_last_full_block = getEndPositionOfLastFullBlock();
     /* compute the blocks in this order so that best_encoding contains the serialized first block in we choose
        to flush it */
-    int second_block_size = getBestMiniblockEncodingForBlock(end_position_of_last_full_block, position).size();
-    int first_block_size = getBestMiniblockEncodingForBlock(0, end_position_of_last_full_block).size();
-    return first_block_size + second_block_size;
+    int second_block_length =
+      getBestMiniblockEncodingForBlock(end_position_of_last_full_block, position).length();
+    int first_block_length = getBestMiniblockEncodingForBlock(0, end_position_of_last_full_block).length();
+    return first_block_length + second_block_length;
   }
 
   private void tryFlushFirstBlocks() {
-    if (position > MIN_BLOCK_SIZE + 1){
-      int size_as_one_block = getSizeEncodedAsOneBlock();
-      int size_as_two_blocks = getSizeEncodedAsTwoBlocks();
-      if (size_as_two_blocks < size_as_one_block) {
+    if (position > MIN_BLOCK_LENGTH + 1){
+      int length_as_one_block = getLengthEncodedAsOneBlock();
+      int length_as_two_blocks = getLengthEncodedAsTwoBlocks();
+      if (length_as_two_blocks < length_as_one_block) {
         flushFirstBlocks();
       }
     }
@@ -231,11 +232,11 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
   }
 
   @Override
-  public int estimatedSize() {
+  public int estimatedLength() {
     if (num_encoded_values == 0) {
       return position; // very rough estimate when we haven't flushed anything yet
     }
-    return byte_array_writer.size() * (int)(1 + (double)position / (double)num_encoded_values);
+    return byte_array_writer.length() * (int)(1 + (double)position / (double)num_encoded_values);
   }
 
 }

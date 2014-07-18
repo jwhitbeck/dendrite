@@ -2,9 +2,9 @@ package dendrite.java;
 
 public interface Compressor extends Resetable, ByteArrayWritable {
 
-  public int uncompressedSize();
+  public int uncompressedLength();
 
-  public int compressedSize();
+  public int compressedLength();
 
   public void compress(final ByteArrayWritable byteArrayWritable);
 

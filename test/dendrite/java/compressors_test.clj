@@ -15,7 +15,7 @@
       (.writeTo compressed-baw))
     (let [bar (ByteArrayReader. (.buffer compressed-baw))]
       (-> decompressor
-          (.decompress bar (.compressedSize compressor) (.uncompressedSize compressor))
+          (.decompress bar (.compressedLength compressor) (.uncompressedLength compressor))
           .buffer
           (String. "UTF-8")))))
 

@@ -73,12 +73,12 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
   }
 
   @Override
-  public int estimatedSize() {
+  public int estimatedLength() {
     if (num_occurences_rle_value > 0) {
-      return byte_array_writer.size() + ByteArrayWriter.getNumUIntBytes(rle_value)
+      return byte_array_writer.length() + ByteArrayWriter.getNumUIntBytes(rle_value)
         + ByteArrayWriter.getBitWidth(num_occurences_rle_value << 1);
     } else {
-      return byte_array_writer.size() + ByteArrayWriter.getNumUIntBytes(num_buffered_octuplets << 1)
+      return byte_array_writer.length() + ByteArrayWriter.getNumUIntBytes(num_buffered_octuplets << 1)
         + (8 * width * num_buffered_octuplets) + current_octuplet_position > 0? (8 * width) : 0;
     }
   }
