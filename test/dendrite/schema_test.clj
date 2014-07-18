@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.schema :refer :all]
             [dendrite.test-helpers :refer [test-schema-str]])
-  (:refer-clojure :exclude [read-string val]))
+  (:refer-clojure :exclude [read-string val record?]))
 
 (deftest parse-human-readable-schema-str
   (testing "write/read human-readable schema"

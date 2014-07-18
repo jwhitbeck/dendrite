@@ -23,8 +23,8 @@
          :long "foo"
          :float "foo"
          :double "foo"
-         :byte-array [1 10]
-         :fixed-length-byte-array [1 10]
+         :byte-array ["a" 10]
+         :fixed-length-byte-array ["a" 10]
          :char "f"
          :bigint "foo"
          :bigdec "foo"

@@ -7,7 +7,7 @@
             [dendrite.utils :refer [format-ks]])
   (:import [dendrite.metadata ColumnSpec Field]
            [java.io Writer])
-  (:refer-clojure :exclude [read-string col]))
+  (:refer-clojure :exclude [read-string col record?]))
 
 (set! *warn-on-reflection* true)
 

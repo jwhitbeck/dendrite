@@ -59,8 +59,8 @@
            {:long "2"}
            {:float "2"}
            {:double "2"}
-           {:fixed-length-byte-array [1 2 3]}
-           {:byte-array [1 2 3]}
+           {:fixed-length-byte-array ["a" 2 3]}
+           {:byte-array ["a" 2 3]}
            {:char "f"}
            {:bigint "foo"}
            {:symbol 2}))))

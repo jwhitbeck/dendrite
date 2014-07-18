@@ -56,4 +56,4 @@
     (are [answer reader-fn]
       (= answer (assemble stripes (schema/apply-query test-schema query :readers {'foo reader-fn})))
       {:meta 2} count
-      {:meta ["key1" "key2"]} keys)))
+      {:meta ["key2" "key1"]} keys)))
