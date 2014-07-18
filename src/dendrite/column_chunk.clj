@@ -18,38 +18,38 @@
 (defprotocol IDataColumnChunkWriter
   (flush-data-page-writer! [_]))
 
-(deftype DataColumnChunkWriter [^:unsynchronized-mutable next-num-values-for-page-length-check
-                                ^:unsynchronized-mutable num-pages
-                                target-data-page-length
-                                length-estimator
-                                ^ByteArrayWriter byte-array-writer
-                                ^DataPageWriter page-writer]
+(defrecord DataColumnChunkWriter [next-num-values-for-page-length-check
+                                  num-pages
+                                  target-data-page-length
+                                  length-estimator
+                                  ^ByteArrayWriter byte-array-writer
+                                  ^DataPageWriter page-writer]
   IColumnChunkWriter
   (write! [this leveled-values]
-    (when (>= (page/num-values page-writer) next-num-values-for-page-length-check)
+    (when (>= (page/num-values page-writer) @next-num-values-for-page-length-check)
       (let [estimated-page-length (.estimatedLength page-writer)]
         (if (>= estimated-page-length target-data-page-length)
           (flush-data-page-writer! this)
-          (set! next-num-values-for-page-length-check
-                (estimation/next-threshold-check (page/num-values page-writer) estimated-page-length
-                                                 target-data-page-length)))))
+          (reset! next-num-values-for-page-length-check
+                  (estimation/next-threshold-check (page/num-values page-writer) estimated-page-length
+                                                   target-data-page-length)))))
     (page/write! page-writer leveled-values)
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
-                                        :num-data-pages num-pages
+                                        :num-data-pages @num-pages
                                         :data-page-offset 0
                                         :dictionary-page-offset 0}))
   IDataColumnChunkWriter
   (flush-data-page-writer! [_]
     (when (pos? (page/num-values page-writer))
       (.write byte-array-writer page-writer)
-      (set! num-pages (inc num-pages))
-      (set! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
+      (swap! num-pages inc)
+      (reset! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
       (.reset page-writer)))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-pages 0)
+    (reset! num-pages 0)
     (.reset byte-array-writer)
     (.reset page-writer))
   (finish [this]
@@ -67,13 +67,14 @@
 
 (defn- data-column-chunk-writer [target-data-page-length column-spec]
   (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
-    (DataColumnChunkWriter. 10
-                            0
-                            target-data-page-length
-                            (estimation/ratio-estimator)
-                            (ByteArrayWriter.)
-                            (page/data-page-writer max-repetition-level max-definition-level type
-                                                   encoding compression))))
+    (map->DataColumnChunkWriter
+     {:next-num-values-for-page-length-check (atom 10)
+      :num-pages (atom 0)
+      :target-data-page-length target-data-page-length
+      :length-estimator (estimation/ratio-estimator)
+      :byte-array-writer (ByteArrayWriter.)
+      :page-writer (page/data-page-writer max-repetition-level max-definition-level type
+                                          encoding compression)})))
 
 (defn- bytes? [x] (instance? (Class/forName "[B") x))
 
@@ -85,9 +86,9 @@
 (defprotocol IDictionaryColumChunkWriter
   (value-index [this v]))
 
-(deftype DictionaryColumnChunkWriter [^HashMap reverse-dictionary
-                                      ^DictionaryPageWriter dictionary-writer
-                                      ^DataColumnChunkWriter data-column-chunk-writer]
+(defrecord DictionaryColumnChunkWriter [^HashMap reverse-dictionary
+                                        ^DictionaryPageWriter dictionary-writer
+                                        ^DataColumnChunkWriter data-column-chunk-writer]
   IColumnChunkWriter
   (write! [this leveled-values]
     (->> leveled-values
@@ -137,10 +138,11 @@
 
 (defn- dictionary-column-chunk-writer [target-data-page-length column-spec]
   (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
-    (DictionaryColumnChunkWriter.
-     (HashMap.)
-     (page/dictionary-page-writer type :plain compression)
-     (data-column-chunk-writer target-data-page-length (dictionary-indices-column-spec column-spec)))))
+    (map->DictionaryColumnChunkWriter
+     {:reverse-dictionary (HashMap.)
+      :dictionary-writer (page/dictionary-page-writer type :plain compression)
+      :data-column-chunk-writer (data-column-chunk-writer target-data-page-length
+                                                          (dictionary-indices-column-spec column-spec))})))
 
 (defn writer [target-data-page-length column-spec]
   (if (= :dictionary (:encoding column-spec))

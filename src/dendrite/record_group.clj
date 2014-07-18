@@ -13,24 +13,22 @@
   (num-records [_])
   (metadata [_]))
 
-(deftype RecordGroupWriter
-    [^:unsynchronized-mutable num-records
-     column-chunk-writers]
+(defrecord RecordGroupWriter [num-records column-chunk-writers]
   IRecordGroupWriter
   (write! [this striped-record]
     (dorun (map column-chunk/write! column-chunk-writers striped-record))
-    (set! num-records (inc num-records))
+    (swap! num-records inc)
     this)
   (num-records [_]
-    num-records)
+    @num-records)
   (metadata [this]
     (metadata/map->RecordGroupMetadata
      {:length (.length this)
-      :num-records num-records
+      :num-records @num-records
       :column-chunks-metadata (mapv column-chunk/metadata column-chunk-writers)}))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-records 0)
+    (reset! num-records 0)
     (doseq [column-chunk-writer column-chunk-writers]
       (.reset ^BufferedByteArrayWriter column-chunk-writer)))
   (finish [this]
@@ -50,7 +48,9 @@
       (.writeTo ^BufferedByteArrayWriter column-chunk-writer baw))))
 
 (defn writer [target-data-page-length column-specs]
-  (RecordGroupWriter. 0 (mapv (partial column-chunk/writer target-data-page-length) column-specs)))
+  (map->RecordGroupWriter
+   {:num-records (atom 0)
+    :column-chunk-writers (mapv (partial column-chunk/writer target-data-page-length) column-specs)}))
 
 (defprotocol IRecordGroupReader
   (read [_])

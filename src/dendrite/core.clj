@@ -32,21 +32,22 @@
 (defprotocol IByteBufferWriter
   (byte-buffer! [_]))
 
-(deftype ByteBufferWriter [^:unsynchronized-mutable next-num-records-for-record-group-length-check
-                           target-record-group-length
-                           ^BufferedByteArrayWriter record-group-writer
-                           ^ByteArrayWriter byte-array-writer
-                           metadata-atom
-                           stripe-fn]
+(defrecord ByteBufferWriter [next-num-records-for-record-group-length-check
+                             target-record-group-length
+                             ^BufferedByteArrayWriter record-group-writer
+                             ^ByteArrayWriter byte-array-writer
+                             metadata-atom
+                             stripe-fn]
   IWriter
   (write! [this record]
-    (when (>= (record-group/num-records record-group-writer) next-num-records-for-record-group-length-check)
+    (when (>= (record-group/num-records record-group-writer) @next-num-records-for-record-group-length-check)
       (let [estimated-record-group-length (.estimatedLength record-group-writer)]
         (if (>= estimated-record-group-length target-record-group-length)
           (flush-record-group-writer! this)
-          (set! next-num-records-for-record-group-length-check
-                (estimation/next-threshold-check (record-group/num-records record-group-writer)
-                                                 estimated-record-group-length target-record-group-length)))))
+          (reset! next-num-records-for-record-group-length-check
+                  (estimation/next-threshold-check (record-group/num-records record-group-writer)
+                                                   estimated-record-group-length
+                                                   target-record-group-length)))))
     (record-group/write! record-group-writer (stripe-fn record))
     this)
   (set-metadata! [_ metadata]
@@ -55,8 +56,8 @@
     (.finish record-group-writer)
     (swap! metadata-atom update-in [:record-groups-metadata] conj (record-group/metadata record-group-writer))
     (.write byte-array-writer record-group-writer)
-    (set! next-num-records-for-record-group-length-check
-          (int (/ (record-group/num-records record-group-writer) 2)))
+    (reset! next-num-records-for-record-group-length-check
+            (int (/ (record-group/num-records record-group-writer) 2)))
     (.reset record-group-writer))
   IByteBufferWriter
   (byte-buffer! [this]
@@ -70,15 +71,14 @@
 
 (defn byte-buffer-writer [schema & {:as options}]
   (let [{:keys [target-record-group-length target-data-page-length]} (merge default-options options)
-        byte-array-writer (doto (ByteArrayWriter.) (.writeByteArray magic-bytes))
-        parsed-schema (schema/parse schema)
-        record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))]
-    (ByteBufferWriter. 10
-                       target-record-group-length
-                       record-group-writer
-                       byte-array-writer
-                       (atom (metadata/map->Metadata {:record-groups-metadata [] :schema parsed-schema}))
-                       (striping/stripe-fn parsed-schema))))
+        parsed-schema (schema/parse schema)]
+    (map->ByteBufferWriter
+     {:next-num-records-for-record-group-length-check (atom 10)
+      :target-record-group-length target-record-group-length
+      :record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
+      :byte-array-writer (doto (ByteArrayWriter.) (.writeByteArray magic-bytes))
+      :metadata-atom (atom (metadata/map->Metadata {:record-groups-metadata [] :schema parsed-schema}))
+      :stripe-fn (striping/stripe-fn parsed-schema)})))
 
 (defn- valid-magic-bytes? [^ByteBuffer bb]
   (and (= (.get bb) (byte \d))

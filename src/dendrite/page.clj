@@ -142,14 +142,14 @@
 (defn write! [page-writer values]
   (reduce write-value! page-writer values))
 
-(deftype DataPageWriter
-    [^:unsynchronized-mutable num-values
+(defrecord DataPageWriter
+    [num-values
      body-length-estimator
      ^BufferedByteArrayWriter repetition-level-encoder
      ^BufferedByteArrayWriter definition-level-encoder
      ^BufferedByteArrayWriter data-encoder
      ^Compressor data-compressor
-     ^:unsynchronized-mutable finished?]
+     finished?]
   IPageWriter
   (write-value! [this leveled-value]
     (let [v (:value leveled-value)]
@@ -159,14 +159,14 @@
       (encode-value! repetition-level-encoder (:repetition-level leveled-value)))
     (when definition-level-encoder
       (encode-value! definition-level-encoder (:definition-level leveled-value)))
-    (set! num-values (inc num-values))
+    (swap! num-values inc)
     this)
-  (num-values [_] num-values)
+  (num-values [_] @num-values)
   IPageWriterImpl
   (provisional-header [_]
     (map->DataPageHeader
      {:encoded-page-type (encode-page-type :data)
-      :num-values num-values
+      :num-values @num-values
       :repetition-levels-length (if repetition-level-encoder (.estimatedLength repetition-level-encoder) 0)
       :definition-levels-length (if definition-level-encoder (.estimatedLength definition-level-encoder) 0)
       :compressed-data-length (.estimatedLength data-encoder)
@@ -174,7 +174,7 @@
   (header [_]
     (map->DataPageHeader
      {:encoded-page-type (encode-page-type :data)
-      :num-values num-values
+      :num-values @num-values
       :repetition-levels-length (if repetition-level-encoder (.length repetition-level-encoder) 0)
       :definition-levels-length (if definition-level-encoder (.length definition-level-encoder) 0)
       :compressed-data-length (if data-compressor
@@ -183,8 +183,8 @@
       :uncompressed-data-length (.length data-encoder)}))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-values 0)
-    (set! finished? false)
+    (reset! num-values 0)
+    (reset! finished? false)
     (when repetition-level-encoder
       (.reset repetition-level-encoder))
     (when definition-level-encoder
@@ -193,7 +193,7 @@
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (when-not finished?
+    (when-not @finished?
       (let [estimated-body-length (-> this provisional-header body-length)]
         (when repetition-level-encoder
           (.finish repetition-level-encoder))
@@ -204,7 +204,7 @@
           (.compress data-compressor data-encoder))
         (estimation/update! body-length-estimator
                             (-> this header body-length) estimated-body-length))
-      (set! finished? true)))
+      (reset! finished? true)))
   (length [this]
     (let [h (header this)]
       (+ (header-length h) (body-length h))))
@@ -224,55 +224,57 @@
                                 ^ByteArrayWritable data-encoder))))
 
 (defn data-page-writer [max-repetition-level max-definition-level value-type encoding compression]
-  (DataPageWriter. 0 (estimation/ratio-estimator)
-                   (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
-                   (when (pos? max-definition-level) (levels-encoder max-definition-level))
-                   (encoder value-type encoding)
-                   (compressor compression)
-                   false))
+  (map->DataPageWriter
+     {:num-values (atom 0)
+      :body-length-estimator (estimation/ratio-estimator)
+      :repetition-level-encoder (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
+      :definition-level-encoder (when (pos? max-definition-level) (levels-encoder max-definition-level))
+      :data-encoder (encoder value-type encoding)
+      :data-compressor (compressor compression)
+      :finished? (atom false)}))
 
-(deftype DictionaryPageWriter [^:unsynchronized-mutable num-values
-                               body-length-estimator
-                               ^BufferedByteArrayWriter data-encoder
-                               ^Compressor data-compressor
-                               ^:unsynchronized-mutable finished?]
+(defrecord DictionaryPageWriter [num-values
+                                 body-length-estimator
+                                 ^BufferedByteArrayWriter data-encoder
+                                 ^Compressor data-compressor
+                                 finished?]
   IPageWriter
   (write-value! [this value]
     (encode-value! data-encoder value)
-    (set! num-values (inc num-values))
+    (swap! num-values inc)
     this)
-  (num-values [_] num-values)
+  (num-values [_] @num-values)
   IPageWriterImpl
   (provisional-header [_]
     (map->DictionaryPageHeader
      {:encoded-page-type (encode-page-type :dictionary)
-      :num-values num-values
+      :num-values @num-values
       :compressed-data-length (.estimatedLength data-encoder)
       :uncompressed-data-length (.estimatedLength data-encoder)}))
   (header [_]
     (map->DictionaryPageHeader
      {:encoded-page-type (encode-page-type :dictionary)
-      :num-values num-values
+      :num-values @num-values
       :compressed-data-length (if data-compressor
                                    (.compressedLength data-compressor)
                                    (.length data-encoder))
       :uncompressed-data-length (.length data-encoder)}))
   BufferedByteArrayWriter
   (reset [_]
-    (set! num-values 0)
-    (set! finished? false)
+    (reset! num-values 0)
+    (reset! finished? false)
     (.reset data-encoder)
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (when-not finished?
+    (when-not @finished?
       (let [estimated-body-length (-> this provisional-header body-length)]
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
         (estimation/update! body-length-estimator
                             (-> this header body-length) estimated-body-length))
-      (set! finished? true)))
+      (reset! finished? true)))
   (length [this]
     (let [h (header this)]
       (+ (header-length h) (body-length h))))
@@ -288,10 +290,12 @@
                                 ^ByteArrayWritable data-encoder))))
 
 (defn dictionary-page-writer [value-type encoding compression]
-  (DictionaryPageWriter. 0 (estimation/ratio-estimator)
-                         (encoder value-type encoding)
-                         (compressor compression)
-                         false))
+  (map->DictionaryPageWriter
+   {:num-values (atom 0)
+    :body-length-estimator (estimation/ratio-estimator)
+    :data-encoder (encoder value-type encoding)
+    :data-compressor (compressor compression)
+    :finished? (atom false)}))
 
 (defprotocol IPageReader
   (read [_]))

@@ -6,19 +6,20 @@
   (correct [_ estimate])
   (update! [_ observed estimated]))
 
-(deftype RatioEstimateCorrector
-    [^:unsynchronized-mutable total-estimated
-     ^:unsynchronized-mutable total-observed]
+(defrecord RatioEstimateCorrector [total-estimated total-observed]
   IEstimateCorrector
   (correct [_ estimate]
-    (if (zero? total-estimated)
+    (if (zero? @total-estimated)
       estimate
-      (* estimate (/ total-observed total-estimated))))
+      (* estimate (/ @total-observed @total-estimated))))
   (update! [_ observed estimated]
-    (set! total-observed (+ total-observed observed))
-    (set! total-estimated (+ total-estimated estimated))))
+    (swap! total-observed + observed)
+    (swap! total-estimated + estimated)))
 
-(defn ratio-estimator [] (RatioEstimateCorrector. 0 0))
+(defn ratio-estimator []
+  (map->RatioEstimateCorrector
+   {:total-estimated (atom 0)
+    :total-observed (atom 0)}))
 
 (defn next-threshold-check [idx value target]
   (if (zero? value)
