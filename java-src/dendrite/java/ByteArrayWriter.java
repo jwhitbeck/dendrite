@@ -322,6 +322,10 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Lengthable
     baw.writeByteArray(buffer, position);
   }
 
+  public void writeTo(final ByteBuffer bb) {
+    bb.put(buffer, 0, position);
+  }
+
   public void write(final ByteArrayWritable writable) {
     writable.writeTo(this);
   }

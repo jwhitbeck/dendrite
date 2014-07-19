@@ -90,5 +90,6 @@
 (defn read [^ByteBuffer byte-buffer]
   (fressian/read byte-buffer :handlers read-handlers))
 
-(defn write [metadata]
+(defn write
+  ^ByteBuffer [metadata]
   (fressian/write metadata :handlers write-handlers))

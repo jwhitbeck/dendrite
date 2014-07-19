@@ -18,8 +18,14 @@ public class ByteArrayReader {
   }
 
   public ByteArrayReader(final ByteBuffer byte_buffer) {
-    buffer = byte_buffer.array();
-    position = byte_buffer.arrayOffset();
+    if (byte_buffer.hasArray()) {
+      buffer = byte_buffer.array();
+      position = byte_buffer.arrayOffset();
+    } else {
+      buffer = new byte[byte_buffer.limit()];
+      byte_buffer.rewind();
+      byte_buffer.get(buffer);
+    }
   }
 
   public byte readByte() {

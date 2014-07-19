@@ -1,5 +1,6 @@
 (ns dendrite.core-test
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as io]
             [dendrite.core :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as schema]
@@ -23,13 +24,23 @@
                  (byte-buffer-reader :query {:docid '_ :name [{:language [{:country '_}]}]})
                  read))))))
 
-(deftest random-records-write-read
+(deftest byte-buffer-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
         writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string))
                  (#(reduce write! % records)))
         byte-buffer (byte-buffer! writer)]
     (testing "full schema"
       (is (= records (read (byte-buffer-reader byte-buffer)))))))
+
+(deftest file-random-records-write-read
+  (let [tmp-filename "target/foo.dend"
+        records (take 100 (helpers/rand-test-records))]
+    (with-open [w (file-writer tmp-filename (-> helpers/test-schema-str schema/read-string))]
+      (reduce write! w records))
+    (testing "full schema"
+      (is (= records (with-open [r (file-reader tmp-filename)]
+                       (doall (read r))))))
+    (io/delete-file tmp-filename)))
 
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}
