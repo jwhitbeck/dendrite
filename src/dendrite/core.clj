@@ -12,7 +12,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def magic-bytes (->> [\d \e \n \1] (map byte) byte-array))
+(def magic-str "den1")
+
+(def magic-bytes (into-array Byte/TYPE magic-str))
 
 (def default-options
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
@@ -81,10 +83,9 @@
       :stripe-fn (striping/stripe-fn parsed-schema)})))
 
 (defn- valid-magic-bytes? [^ByteBuffer bb]
-  (and (= (.get bb) (byte \d))
-       (= (.get bb) (byte \e))
-       (= (.get bb) (byte \n))
-       (= (.get bb) (byte \1))))
+  (->> (repeatedly 4 #(char (.get bb)))
+       (apply str)
+       (= magic-str)))
 
 (defn- record-group-readers [^ByteArrayReader byte-array-reader record-groups-metadata queried-schema]
   (->> record-groups-metadata
