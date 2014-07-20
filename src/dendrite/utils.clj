@@ -77,3 +77,12 @@
          (step (cons (future (f (first coll))) (rest coll))))))
   ([f coll & colls]
      (pmap-next (partial apply f) (apply map vector coll colls))))
+
+(defn chunked-pmap
+  ([f coll]
+     (chunked-pmap f 255 coll))
+  ([f chunk-size coll]
+     (->> coll
+          (partition-all chunk-size)
+          (pmap (comp doall (partial map f)))
+          (apply concat))))
