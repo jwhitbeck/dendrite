@@ -174,6 +174,17 @@
     (update-in field [:sub-fields] (partial map with-map-fns))
     (assoc-in field [:column-spec :map-fn] (:reader-fn field))))
 
+(defn- with-optimal-column-specs* [field optimal-column-specs-map]
+  (if (record? field)
+    (update-in field [:sub-fields] (partial map #(with-optimal-column-specs* % optimal-column-specs-map)))
+    (assoc field :column-spec (->> (get-in field [:column-spec :column-index])
+                                   (get optimal-column-specs-map)))))
+
+(defn with-optimal-column-specs [schema optimal-column-specs]
+  (with-optimal-column-specs* schema (->> optimal-column-specs
+                                          (map (juxt :column-index identity))
+                                          (into {}))))
+
 (defn- annotate [schema]
   (-> schema
       (with-column-indices :column-index)
