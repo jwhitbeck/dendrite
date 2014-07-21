@@ -3,7 +3,7 @@
             [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.compression :as compression]
-            [dendrite.metadata :refer [map->column-spec-with-defaults map->Field]]
+            [dendrite.metadata :refer [map->column-spec-with-defaults map->Field] :as metadata]
             [dendrite.utils :refer [format-ks]])
   (:import [dendrite.metadata ColumnSpec Field]
            [java.io Writer])
@@ -67,7 +67,7 @@
       (throw (IllegalArgumentException.
               (format "Mismatched type '%s' and encoding '%s' for column %s"
                       (:type cs) (:encoding cs) (format-ks parents)))))
-    (when-not (compression/valid-compression-type? (:compression cs))
+    (when-not (metadata/is-compression-type? (:compression cs))
       (throw (IllegalArgumentException.
               (format "Unsupported compression type '%s' for column" (:compression cs) (format-ks parents)))))
     cs))

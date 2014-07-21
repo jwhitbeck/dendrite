@@ -2,11 +2,6 @@
   (:import [dendrite.java Compressor Decompressor LZ4Compressor LZ4Decompressor
             DeflateCompressor DeflateDecompressor]))
 
-(def supported-compression-types #{:none :lz4 :deflate})
-
-(defn valid-compression-type? [compression-type]
-  (contains? supported-compression-types compression-type))
-
 (defn compressor [compression-type]
   (case compression-type
     :none nil
