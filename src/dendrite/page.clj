@@ -4,24 +4,18 @@
                                        decoder-ctor]]
             [dendrite.estimation :as estimation]
             [dendrite.leveled-value :refer [->LeveledValue]]
-            [dendrite.stats :as stats])
+            [dendrite.stats :as stats]
+            [dendrite.utils :refer [defenum]])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
             Compressor Decompressor])
   (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private page-types [:data :dictionary])
-
-(def ^:private page-type-encodings
-  (reduce-kv (fn [m data-page-idx data-page-kw] (assoc m data-page-kw data-page-idx)) {} page-types))
-
-(defn- encode-page-type [page-type] (get page-type-encodings page-type))
-
-(defn- decode-page-type [encoded-page-type] (get page-types encoded-page-type))
+(defenum page-type [:data :dictionary])
 
 (defn- read-next-page-type [^ByteArrayReader bar]
-  (-> bar .readUInt decode-page-type))
+  (-> bar .readUInt int->page-type))
 
 (defn- read-next-data-page-type [^ByteArrayReader bar]
   (let [data-page-type (read-next-page-type bar)]
@@ -65,7 +59,7 @@
                            uncompressed-data-length]
   IPageHeader
   (type [this]
-    (decode-page-type encoded-page-type))
+    (int->page-type encoded-page-type))
   (header-length [this]
     (uints32-encoded-length (vals this)))
   (body-length [_]
@@ -95,7 +89,7 @@
 
 (defn- read-data-page-header [^ByteArrayReader bar data-page-type]
   (map->DataPageHeader
-   {:encoded-page-type (encode-page-type data-page-type)
+   {:encoded-page-type (page-type->int data-page-type)
     :num-values (.readUInt bar)
     :repetition-levels-length (.readUInt bar)
     :definition-levels-length (.readUInt bar)
@@ -108,7 +102,7 @@
                                  uncompressed-data-length]
   IPageHeader
   (type [this]
-    (decode-page-type encoded-page-type))
+    (int->page-type encoded-page-type))
   (header-length [this]
     (uints32-encoded-length (vals this)))
   (body-length [_]
@@ -126,7 +120,7 @@
 
 (defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
   (map->DictionaryPageHeader
-   {:encoded-page-type (encode-page-type dictionary-page-type)
+   {:encoded-page-type (int->page-type dictionary-page-type)
     :num-values (.readUInt bar)
     :compressed-data-length (.readUInt bar)
     :uncompressed-data-length (.readUInt bar)}))
@@ -165,7 +159,7 @@
   IPageWriterImpl
   (provisional-header [_]
     (map->DataPageHeader
-     {:encoded-page-type (encode-page-type :data)
+     {:encoded-page-type (page-type->int :data)
       :num-values @num-values
       :repetition-levels-length (if repetition-level-encoder (.estimatedLength repetition-level-encoder) 0)
       :definition-levels-length (if definition-level-encoder (.estimatedLength definition-level-encoder) 0)
@@ -173,7 +167,7 @@
       :uncompressed-data-length (.estimatedLength data-encoder)}))
   (header [_]
     (map->DataPageHeader
-     {:encoded-page-type (encode-page-type :data)
+     {:encoded-page-type (page-type->int :data)
       :num-values @num-values
       :repetition-levels-length (if repetition-level-encoder (.length repetition-level-encoder) 0)
       :definition-levels-length (if definition-level-encoder (.length definition-level-encoder) 0)
@@ -247,13 +241,13 @@
   IPageWriterImpl
   (provisional-header [_]
     (map->DictionaryPageHeader
-     {:encoded-page-type (encode-page-type :dictionary)
+     {:encoded-page-type (page-type->int :dictionary)
       :num-values @num-values
       :compressed-data-length (.estimatedLength data-encoder)
       :uncompressed-data-length (.estimatedLength data-encoder)}))
   (header [_]
     (map->DictionaryPageHeader
-     {:encoded-page-type (encode-page-type :dictionary)
+     {:encoded-page-type (page-type->int :dictionary)
       :num-values @num-values
       :compressed-data-length (if data-compressor
                                    (.compressedLength data-compressor)
