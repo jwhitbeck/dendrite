@@ -26,7 +26,7 @@
 (defn- flush-column-chunks-to-byte-buffer [^ByteBuffer byte-buffer column-chunk-writers length]
   (.clear byte-buffer)
   (doseq [column-chunk-writer column-chunk-writers]
-    (.writeTo ^ByteArrayWriter (:byte-array-writer column-chunk-writer) ^ByteBuffer byte-buffer))
+    (.writeTo ^ByteArrayWriter (:byte-array-writer column-chunk-writer) byte-buffer))
   (doto byte-buffer
     (.limit length)
     .rewind))
