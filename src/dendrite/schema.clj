@@ -181,11 +181,11 @@
       with-repetition-levels
       with-definition-levels))
 
-(defn parse [human-readable-schema]
+(defn parse [unparsed-schema]
   (try
-    (-> human-readable-schema (parse* []) annotate)
+    (-> unparsed-schema (parse* []) annotate)
     (catch Exception e
-      (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" human-readable-schema) e)))))
+      (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" unparsed-schema) e)))))
 
 (defn- recursive-column-specs [field previous-column-specs]
   (if (record? field)
@@ -199,22 +199,22 @@
   (->> (recursive-column-specs schema [])
        (sort-by :column-index)))
 
-(defmulti human-readable type)
+(defmulti unparse type)
 
-(defmethod human-readable ColumnSpec
+(defmethod unparse ColumnSpec
   [cs]
   (if (and (= (:compression cs) :none) (= (:encoding cs) :plain))
     (-> cs :type name symbol)
     (map->column-spec-with-defaults (select-keys cs [:type :encoding :compression]))))
 
-(defmethod human-readable Field
+(defmethod unparse Field
   [field]
   (let [sub-edn (if (record? field)
                   (->> (:sub-fields field)
                        (map (fn [sub-field]
-                              [(:name sub-field) (human-readable sub-field)]))
+                              [(:name sub-field) (unparse sub-field)]))
                        (into {}))
-                  (cond-> (human-readable (:column-spec field))
+                  (cond-> (unparse (:column-spec field))
                           (= :required (:repetition field)) ->RequiredField))]
     (case (:repetition field)
       :list (list sub-edn)
@@ -346,7 +346,7 @@
         with-map-fns)
     (catch Exception e
       (throw (IllegalArgumentException.
-              (format "Invalid query '%s' for schema '%s'" query (human-readable schema))
+              (format "Invalid query '%s' for schema '%s'" query (unparse schema))
               e)))))
 
 (defn queried-column-indices-set [queried-schema]

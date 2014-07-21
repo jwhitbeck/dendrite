@@ -170,7 +170,7 @@
      (:custom metadata))
    :schema
    (fn [{:keys [metadata]}]
-     (-> metadata :schema schema/human-readable))})
+     (-> metadata :schema schema/unparse))})
 
 (defrecord ByteBufferReader [^ByteBuffer byte-buffer metadata queried-schema])
 

@@ -4,13 +4,13 @@
             [dendrite.test-helpers :refer [test-schema-str]])
   (:refer-clojure :exclude [read-string val record?]))
 
-(deftest parse-human-readable-schema-str
-  (testing "write/read human-readable schema"
+(deftest parse-unparsed-schema-str
+  (testing "write/read unparsed schema"
     (is (= (read-string test-schema-str)
            (-> test-schema-str read-string str read-string))))
-  (testing "parse human-reable schema"
+  (testing "parse unparsed schema"
     (is (= (read-string test-schema-str)
-           (-> test-schema-str read-string parse human-readable)))))
+           (-> test-schema-str read-string parse unparse)))))
 
 (deftest schema-annotation
   (testing "value types are properly annotated"
@@ -48,8 +48,8 @@
       (is (= (read-query-string "{:docid _ :links #foo {:backward (long)}}")
              {:docid '_ :links (tag 'foo {:backward (list 'long)})})))
     (testing "select sub-schema from query"
-      (are [query sub-schema] (= (human-readable (apply-query schema query)) sub-schema)
-           '_ (human-readable schema)
+      (are [query sub-schema] (= (unparse (apply-query schema query)) sub-schema)
+           '_ (unparse schema)
            {:docid '_} {:docid (req (col {:type :long :encoding :delta :compression :lz4}))}
            {:links '_} {:links {:backward (list 'long)
                                 :forward [(col {:type :long :encoding :delta})]}}
