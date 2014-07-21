@@ -28,8 +28,7 @@
 
 (defmethod print-method ColumnSpec
   [v ^Writer w]
-  (.write w (str "#col " (cond-> (dissoc v :column-index :query-column-index
-                                         :max-definition-level :max-repetition-level)
+  (.write w (str "#col " (cond-> (select-keys v [:type :encoding :compression])
                                  (= (:compression v) :none) (dissoc :compression)
                                  (= (:encoding v) :plain) (dissoc :encoding)))))
 
