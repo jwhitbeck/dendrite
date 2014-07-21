@@ -47,11 +47,11 @@
     :num-columns (count column-chunks-stats)
     :byte-stats (reduce add-byte-stats (map :byte-stats column-chunks-stats))}))
 
-(defrecord GlobalStats [num-data-bytes length num-records num-columns byte-stats])
+(defrecord GlobalStats [data-length length num-records num-columns byte-stats])
 
 (defn record-groups->global-stats [length record-groups-stats]
   (map->GlobalStats
-   {:num-data-bytes (reduce + (map :length record-groups-stats))
+   {:data-length (reduce + (map :length record-groups-stats))
     :length length
     :num-records (reduce + (map :num-records record-groups-stats))
     :num-columns (-> record-groups-stats first :num-columns)
