@@ -86,3 +86,15 @@
           (partition-all chunk-size)
           (pmap (comp doall (partial map f)))
           (apply concat))))
+
+(defmacro defenum [s vs]
+  (let [values-symb (symbol (str s "s"))
+        values-set-symb (symbol (str values-symb "-set"))
+        reverse-mapping-symb (symbol (str "reverse-" values-symb))
+        reverse-mapping (reduce-kv (fn [m i v] (assoc m v i)) {} vs)]
+    `(do (def ~values-symb ~vs)
+         (def ^:private ~reverse-mapping-symb ~reverse-mapping)
+         (defn ~(symbol (str "int->" s)) [i#] (get ~values-symb i#))
+         (defn ~(symbol (str s "->int")) [k#] (get ~reverse-mapping-symb k#))
+         (def ^:private ~values-set-symb ~(set vs))
+         (defn ~(symbol (str "is-" s "?")) [k#] (contains? ~values-set-symb k#)))))
