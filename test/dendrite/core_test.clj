@@ -9,8 +9,7 @@
 
 (defn- dremel-paper-writer []
   (doto (byte-buffer-writer (schema/read-string dremel-paper-schema-str))
-    (write! dremel-paper-record1)
-    (write! dremel-paper-record2)))
+    (write! [dremel-paper-record1 dremel-paper-record2])))
 
 (deftest dremel-paper
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
@@ -27,7 +26,7 @@
 (deftest byte-buffer-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
         writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string))
-                 (#(reduce write! % records)))
+                 (write! records))
         byte-buffer (byte-buffer! writer)]
     (testing "full schema"
       (is (= records (read (byte-buffer-reader byte-buffer)))))))
@@ -36,7 +35,7 @@
   (let [tmp-filename "target/foo.dend"
         records (take 100 (helpers/rand-test-records))]
     (with-open [w (file-writer tmp-filename (-> helpers/test-schema-str schema/read-string))]
-      (reduce write! w records))
+      (write! w records))
     (testing "full schema"
       (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))
@@ -70,7 +69,7 @@
           target-record-group-length (* 3 1024)
           writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string)
                                            :target-record-group-length target-record-group-length)
-                   (#(reduce write! % records)))
+                   (write! records))
           byte-buffer (byte-buffer! writer)]
       (is (->> (byte-buffer-reader byte-buffer)
                stats
