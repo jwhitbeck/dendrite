@@ -132,18 +132,8 @@
                                  (:column-chunks-metadata record-group-metadata)
                                  (schema/column-specs queried-schema))})))
 
-(defn- is-default-column-spec? [column-spec]
-  (and (= (:encoding column-spec) :plain)
-       (= (:compression column-spec) :none)))
-
 (defn find-best-column-specs
-  [record-group-reader target-data-page-length compression-candidates-treshold-map optimize-all?]
+  [record-group-reader target-data-page-length compression-threshold-map]
   (->> record-group-reader
        :column-chunk-readers
-       (map (fn [column-chunk-reader]
-              (let [column-spec (:column-spec column-chunk-reader)]
-                (if (or optimize-all? (is-default-column-spec? column-spec))
-                  (column-chunk/find-best-column-spec column-chunk-reader
-                                                      target-data-page-length
-                                                      compression-candidates-treshold-map)
-                  column-spec))))))
+       (map #(column-chunk/find-best-column-spec % target-data-page-length compression-threshold-map))))

@@ -77,25 +77,14 @@
         record-group-metadata (metadata w)
         bar (helpers/get-byte-array-reader w)
         r (byte-array-reader bar record-group-metadata test-schema)]
-    (= [[:long :delta :none]
-        [:long :delta :none]
-        [:long :delta :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]]
-     (->> (find-best-column-specs r target-data-page-length {:lz4 0.8 :deflate 0.5} true)
-          (map (juxt :type :encoding :compression))))
-    (= [[:long :delta :lz4]
-        [:long :delta :none]
-        [:long :delta :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]
-        [:string :dictionary :none]]
-       (->> (find-best-column-specs r target-data-page-length {:lz4 0.8 :deflate 0.5} false)
-            (map (juxt :type :encoding :compression))))))
+    (is (= [[:long :delta :none]
+            [:long :delta :none]
+            [:long :delta :none]
+            [:string :dictionary :none]
+            [:string :dictionary :none]
+            [:string :dictionary :none]
+            [:string :dictionary :none]
+            [:string :dictionary :none]
+            [:string :dictionary :none]]
+           (->> (find-best-column-specs r target-data-page-length {:lz4 0.8 :deflate 0.5})
+                (map (juxt :type :encoding :compression)))))))
