@@ -51,7 +51,7 @@
 
 (deftest data-column-chunk
   (let [cs (column-spec :int :plain :deflate)
-        input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
+        input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1100))
         reader (write-column-chunk-and-get-reader cs input-blocks)
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
         output-blocks (read reader)]
