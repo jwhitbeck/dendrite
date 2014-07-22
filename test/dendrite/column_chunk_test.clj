@@ -49,13 +49,13 @@
 (defn- rand-blocks [column-spec coll]
   (->> coll (helpers/leveled column-spec) partition-by-record))
 
-(deftest data-column
+(deftest data-column-chunk
   (let [cs (column-spec :int :plain :deflate)
         input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
         reader (write-column-chunk-and-get-reader cs input-blocks)
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
         output-blocks (read reader)]
-    (testing "write/read a colum"
+    (testing "write/read a data colum-chunk"
       (is (helpers/roughly num-pages 4))
       (is (= input-blocks output-blocks)))
     (testing "value mapping"
@@ -79,12 +79,12 @@
                helpers/avg
                (helpers/roughly target-data-page-length))))))
 
-(deftest dictionary-column
+(deftest dictionary-column-chunk
   (let [cs (column-spec :int :dictionary :deflate)
         input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 10))
         reader (write-column-chunk-and-get-reader cs input-blocks)
         output-blocks (read reader)]
-    (testing "write/read a dictionary colum"
+    (testing "write/read a dictionary colum-chunk"
       (is (= input-blocks output-blocks)))
     (testing "value mapping"
       (let [map-fn (partial * 2)
