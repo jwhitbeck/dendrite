@@ -85,7 +85,7 @@
       (let [estimated-length (.estimatedLength record-group-writer)]
         (if (>= estimated-length target-record-group-length)
           (let [metadata (complete-record-group! backend-writer record-group-writer)]
-            (recur (int (/ (:num-records metadata) 2)) (conj record-groups-metadata metadata)))
+            (recur (long (/ (:num-records metadata) 2)) (conj record-groups-metadata metadata)))
           (recur (estimation/next-threshold-check (record-group/num-records record-group-writer)
                                                   estimated-length
                                                   target-record-group-length)

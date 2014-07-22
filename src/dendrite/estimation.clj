@@ -21,7 +21,8 @@
    {:total-estimated (atom 0)
     :total-observed (atom 0)}))
 
-(defn next-threshold-check [idx value target]
+(defn next-threshold-check
+  ^long [^long idx value target]
   (if (zero? value)
     (inc idx)
     (let [next-idx (-> (/ target value) (* idx) (- idx) (/ 2) (+ idx) int)]
