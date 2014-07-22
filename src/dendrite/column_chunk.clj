@@ -255,7 +255,7 @@
 
 (defn find-best-encoding [column-chunk-reader target-data-page-length]
   (let [ct (-> column-chunk-reader :column-spec (assoc :compression :none))
-        eligible-encodings (cons :dictionary (encoding/list-encodings-for-type (:type ct)))]
+        eligible-encodings (encoding/list-encodings-for-type (:type ct))]
     (->> eligible-encodings
          (reduce (fn [results encoding]
                    (assoc results encoding

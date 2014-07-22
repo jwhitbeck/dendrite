@@ -61,13 +61,13 @@
   (encode-value! [byte-array-encoder value] (doto byte-array-encoder (.encode value))))
 
 (def ^:private valid-encodings-for-types
-  {:boolean #{:plain}
-   :int #{:plain :packed-run-length :delta}
-   :long #{:plain :delta}
-   :float #{:plain}
-   :double #{:plain}
-   :byte-array #{:plain :incremental :delta-length}
-   :fixed-length-byte-array #{:plain}})
+  {:boolean #{:plain :dictionary}
+   :int #{:plain :packed-run-length :delta :dictionary}
+   :long #{:plain :delta :dictionary}
+   :float #{:plain :dictionary}
+   :double #{:plain :dictionary}
+   :byte-array #{:plain :incremental :delta-length :dictionary}
+   :fixed-length-byte-array #{:plain :dictionary}})
 
 (defn- base-type? [t] (contains? valid-encodings-for-types t))
 
