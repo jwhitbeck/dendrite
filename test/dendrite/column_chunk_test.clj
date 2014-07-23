@@ -294,10 +294,14 @@
     (let [cs (column-spec-no-levels :int :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 5000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= :none (find-best-compression reader test-target-data-page-length {})))
-      (is (= :deflate (find-best-compression reader test-target-data-page-length {:lz4 0.95 :deflate 0.6})))
-      (is (= :lz4 (find-best-compression reader test-target-data-page-length {:lz4 0.95 :deflate 0.2})))
-      (is (= :none (find-best-compression reader test-target-data-page-length {:lz4 0.5 :deflate 0.2}))))))
+      (testing "different compression thresholds"
+        (is (= :none (find-best-compression reader test-target-data-page-length {})))
+        (is (= :deflate (find-best-compression reader test-target-data-page-length {:lz4 0.95 :deflate 0.6})))
+        (is (= :lz4 (find-best-compression reader test-target-data-page-length {:lz4 0.95 :deflate 0.2})))
+        (is (= :none (find-best-compression reader test-target-data-page-length {:lz4 0.5 :deflate 0.2}))))
+      (testing "unsupported compression types throw proper exceptions"
+        (is (thrown-with-msg? IllegalArgumentException #"is not a valid compression-type"
+                              (find-best-compression reader test-target-data-page-length {:lzo 0.8})))))))
 
 (deftest find-best-column-types
   (testing "lorem ispum permutations"
