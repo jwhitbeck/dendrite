@@ -158,13 +158,19 @@
   Closeable
   (close [_]
     (async/close! striped-record-ch)
-    (let [{:keys [record-groups-metadata column-specs] :as success} (<!! write-thread)]
-      (when success
-        (let [metadata (-> @metadata-atom
-                           (assoc :record-groups-metadata record-groups-metadata)
-                           (update-in [:schema] schema/with-optimal-column-specs column-specs))]
-          (finish! backend-writer metadata)))
-      (close! backend-writer))))
+    (let [{:keys [record-groups-metadata column-specs error]} (<!! write-thread)]
+      (if error
+        (try (println (type error))
+             (close! backend-writer)
+             (finally (throw error)))
+        (try (let [metadata (-> @metadata-atom
+                                (assoc :record-groups-metadata record-groups-metadata)
+                                (update-in [:schema] schema/with-optimal-column-specs column-specs))]
+               (finish! backend-writer metadata))
+             (catch Exception e
+                 (throw e))
+             (finally
+               (close! backend-writer)))))))
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
