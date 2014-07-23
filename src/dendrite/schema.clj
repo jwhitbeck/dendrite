@@ -11,7 +11,15 @@
 
 (set! *warn-on-reflection* true)
 
-(def col map->column-spec-with-defaults)
+(defn col
+  ([type]
+     (map->column-spec-with-defaults {:type (keyword type)}))
+  ([type encoding]
+     (map->column-spec-with-defaults {:type (keyword type) :encoding (keyword encoding)}))
+  ([type encoding compression]
+     (map->column-spec-with-defaults {:type (keyword type)
+                                      :encoding (keyword encoding)
+                                      :compression (keyword compression)})))
 
 (defn record? [field] (-> field :sub-fields empty? not))
 
@@ -37,7 +45,7 @@
 
 (defn read-string [s]
   (edn/read-string {:readers {'req ->RequiredField
-                              'col map->column-spec-with-defaults}}
+                              'col metadata/read-column-spec}}
                    s))
 
 (defn- required-field? [elem] (instance? RequiredField elem))

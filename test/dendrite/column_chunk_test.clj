@@ -4,7 +4,7 @@
             [dendrite.column-chunk :refer :all]
             [dendrite.encoding :as encoding]
             [dendrite.page :as page]
-            [dendrite.schema :as schema]
+            [dendrite.metadata :as metadata]
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter]
@@ -39,12 +39,20 @@
       iterate-calendar-by-day))
 
 (defn- column-spec [value-type encoding compression]
-  (schema/col {:type value-type :encoding encoding :compression compression
-               :max-definition-level 3 :max-repetition-level 2}))
+  (metadata/map->ColumnSpec
+   {:type value-type
+    :encoding encoding
+    :compression compression
+    :max-definition-level 3
+    :max-repetition-level 2}))
 
 (defn- column-spec-no-levels [value-type encoding compression]
-  (schema/col {:type value-type :encoding encoding :compression compression
-               :max-definition-level 0 :max-repetition-level 0}))
+  (metadata/map->ColumnSpec
+   {:type value-type
+    :encoding encoding
+    :compression compression
+    :max-definition-level 0
+    :max-repetition-level 0}))
 
 (defn- rand-blocks [column-spec coll]
   (->> coll (helpers/leveled column-spec) partition-by-record))

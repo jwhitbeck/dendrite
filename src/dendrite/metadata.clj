@@ -27,10 +27,16 @@
   (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
 
 (defmethod print-method ColumnSpec
-  [v ^Writer w]
-  (.write w (str "#col " (cond-> (select-keys v [:type :encoding :compression])
-                                 (= (:compression v) :none) (dissoc :compression)
-                                 (= (:encoding v) :plain) (dissoc :encoding)))))
+  [{:keys [type encoding compression]} ^Writer w]
+  (if (and (= compression :none) (= encoding :plain))
+    (.write w (name type))
+    (.write w (str "#col [" (name type) " " (name encoding)
+                   (when-not (= compression :none) (str " " (name compression))) "]"))))
+
+(defn read-column-spec [vs]
+  (let [[type encoding compression] (map keyword vs)]
+    (map->column-spec-with-defaults (cond-> {:type type :encoding encoding}
+                                            compression (assoc :compression compression)))))
 
 (defrecord Field [name repetition repetition-level reader-fn column-spec sub-fields])
 

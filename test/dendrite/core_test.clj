@@ -49,17 +49,18 @@
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (-> helpers/test-schema-str schema/read-string)
-        writer (doto (byte-buffer-writer test-schema :optimize-columns? :all)
+        writer (doto (byte-buffer-writer test-schema
+                                         :optimize-columns? :all
+                                         :compression-thresholds {})
                  (write! records))
         reader (-> writer byte-buffer! byte-buffer-reader)]
-    (is (= (str "{:docid #req #col {:encoding :delta, :type :long},"
+    (is (= (str "{:docid #req #col [long delta],"
                 " :links {:backward (long), :forward [long]},"
-                " :name [{:language [{:code #req #col {:encoding :dictionary, :type :string},"
-                                    " :country #col {:encoding :dictionary, :type :string}}],"
-                " :url #col {:encoding :incremental, :type :string}}],"
-                " :meta {#col {:encoding :dictionary, :type :string}"
-                       " #col {:encoding :dictionary, :type :string}},"
-                " :keywords #{#col {:compression :lz4, :encoding :dictionary, :type :string}}}")
+                " :name [{:language [{:code #req #col [string dictionary],"
+                                    " :country #col [string dictionary]}],"
+                        " :url #col [string incremental]}],"
+                " :meta {#col [string dictionary] #col [string dictionary]},"
+                " :keywords #{#col [string dictionary]}}")
            (str (schema reader))))))
 
 (deftest custom-metadata

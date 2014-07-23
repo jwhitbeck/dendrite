@@ -35,10 +35,10 @@
     (is (thrown? IllegalArgumentException (parse {:foo 'invalid})))
     (is (thrown? IllegalArgumentException (parse {:foo {:bar 'invalid}}))))
   (testing "mismatched type and encodings"
-    (is (thrown? IllegalArgumentException (parse {:foo (col {:type :int :encoding :incremental})})))
-    (is (thrown? IllegalArgumentException (parse {:foo {:var (col {:type :string :encoding :delta})}}))))
+    (is (thrown? IllegalArgumentException (parse {:foo (col 'int 'incremental)})))
+    (is (thrown? IllegalArgumentException (parse {:foo {:var (col 'string 'delta)}}))))
   (testing "unsupported compression types"
-    (is (thrown? IllegalArgumentException (parse {:foo (col {:type :int :compression :snappy})}))))
+    (is (thrown? IllegalArgumentException (parse {:foo (col 'int 'delta 'snappy)}))))
   (testing "marking a field as both reapeated and required"
     (is (thrown? IllegalArgumentException (parse {:foo (req ['int])})))))
 
@@ -50,9 +50,9 @@
     (testing "select sub-schema from query"
       (are [query sub-schema] (= (unparse (apply-query schema query)) sub-schema)
            '_ (unparse schema)
-           {:docid '_} {:docid (req (col {:type :long :encoding :delta :compression :lz4}))}
+           {:docid '_} {:docid (req (col 'long 'delta 'lz4))}
            {:links '_} {:links {:backward (list 'long)
-                                :forward [(col {:type :long :encoding :delta})]}}
+                                :forward [(col 'long 'delta)]}}
            {:links {:backward ['long]}} {:links {:backward ['long]}}
            {:name [{:language [{:country '_}]}]} {:name [{:language [{:country 'string}]}]}
            {:name [{:language (list {:code 'string})}]} {:name [{:language (list {:code (req 'string)})}]}
