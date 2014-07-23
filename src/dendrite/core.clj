@@ -44,7 +44,7 @@
 (defprotocol IBackendWriter
   (flush-record-group! [_ record-group-writer])
   (finish! [_ metadata])
-  (close! [_]))
+  (close-writer! [_]))
 
 (defrecord ByteArrayBackendWriter [^ByteArrayWriter byte-array-writer]
   IBackendWriter
@@ -55,7 +55,7 @@
       (.write byte-array-writer metadata-byte-buffer)
       (.writeFixedInt byte-array-writer (.limit metadata-byte-buffer))
       (.writeByteArray byte-array-writer magic-bytes)))
-  (close! [_]))
+  (close-writer! [_]))
 
 (defn- byte-array-backend-writer []
   (->ByteArrayBackendWriter (doto (ByteArrayWriter.) (.writeByteArray magic-bytes))))
@@ -69,7 +69,7 @@
       (.write file-channel metadata-byte-buffer)
       (.write file-channel (utils/int->byte-buffer (.limit metadata-byte-buffer)))
       (.write file-channel (ByteBuffer/wrap magic-bytes))))
-  (close! [_]
+  (close-writer! [_]
     (.close file-channel)))
 
 (defn- file-channel-backend-writer [filename]
@@ -161,7 +161,7 @@
     (let [{:keys [record-groups-metadata column-specs error]} (<!! write-thread)]
       (if error
         (try (println (type error))
-             (close! backend-writer)
+             (close-writer! backend-writer)
              (finally (throw error)))
         (try (let [metadata (-> @metadata-atom
                                 (assoc :record-groups-metadata record-groups-metadata)
@@ -170,7 +170,7 @@
              (catch Exception e
                  (throw e))
              (finally
-               (close! backend-writer)))))))
+               (close-writer! backend-writer)))))))
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
@@ -198,7 +198,7 @@
   (writer (byte-array-backend-writer) schema options))
 
 (defn byte-buffer! [^Closeable writer]
-  (if-let [byte-array-writer ^ByteArrayWriter (get-in writer [:backend-writer :byte-array-writer])]
+  (if-let [^ByteArrayWriter byte-array-writer (get-in writer [:backend-writer :byte-array-writer])]
     (do (.close writer)
         (ByteBuffer/wrap (.buffer byte-array-writer) 0 (.position byte-array-writer)))
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
@@ -212,7 +212,7 @@
 (defprotocol IBackendReader
   (record-group-readers [_ record-groups-metadata queried-schema])
   (length [_])
-  (close! [_]))
+  (close-reader! [_]))
 
 (defrecord ByteBufferBackendReader [^ByteBuffer byte-buffer]
   IBackendReader
@@ -223,7 +223,7 @@
       (map #(record-group/byte-array-reader (.sliceAhead byte-array-reader %1) %2 queried-schema)
            (record-group-offsets record-groups-metadata magic-bytes-length)
            record-groups-metadata)))
-  (close! [_]))
+  (close-reader! [_]))
 
 (defrecord FileChannelBackendReader [^FileChannel file-channel]
   IBackendReader
@@ -233,7 +233,7 @@
     (utils/pmap-next #(record-group/file-channel-reader file-channel %1 %2 queried-schema)
                      (record-group-offsets record-groups-metadata magic-bytes-length)
                      record-groups-metadata))
-  (close! [_]
+  (close-reader! [_]
     (.close file-channel)))
 
 (let [chs [(async/chan) (async/chan) (async/chan)]]
@@ -279,7 +279,7 @@
   (close [_]
     (doseq [ch @open-channels]
       (async/close! ch))
-    (close! backend-reader)))
+    (close-reader! backend-reader)))
 
 (defn byte-buffer-reader
   [^ByteBuffer byte-buffer & {:as opts :keys [query] :or {query '_}}]
