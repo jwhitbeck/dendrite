@@ -43,7 +43,8 @@
 
 (defprotocol IBackendWriter
   (flush-record-group! [_ record-group-writer])
-  (finish! [_ metadata]))
+  (finish! [_ metadata])
+  (close! [_]))
 
 (defrecord ByteArrayBackendWriter [^ByteArrayWriter byte-array-writer]
   IBackendWriter
@@ -53,7 +54,8 @@
     (let [metadata-byte-buffer (metadata/write metadata)]
       (.write byte-array-writer metadata-byte-buffer)
       (.writeFixedInt byte-array-writer (.limit metadata-byte-buffer))
-      (.writeByteArray byte-array-writer magic-bytes))))
+      (.writeByteArray byte-array-writer magic-bytes)))
+  (close! [_]))
 
 (defn- byte-array-backend-writer []
   (->ByteArrayBackendWriter (doto (ByteArrayWriter.) (.writeByteArray magic-bytes))))
@@ -66,7 +68,8 @@
     (let [metadata-byte-buffer (metadata/write metadata)]
       (.write file-channel metadata-byte-buffer)
       (.write file-channel (utils/int->byte-buffer (.limit metadata-byte-buffer)))
-      (.write file-channel (ByteBuffer/wrap magic-bytes)))
+      (.write file-channel (ByteBuffer/wrap magic-bytes))))
+  (close! [_]
     (.close file-channel)))
 
 (defn- file-channel-backend-writer [filename]
@@ -90,40 +93,44 @@
 (defn- write-loop
   [striped-record-ch ^BufferedByteArrayWriter record-group-writer backend-writer target-record-group-length
    optimize? compression-threshold-map]
-  (loop [next-num-records-for-length-check 10
-         record-groups-metadata []
-         optimized? (not optimize?)
-         rgw record-group-writer]
-    (if (>= (record-group/num-records record-group-writer) next-num-records-for-length-check)
-      (let [estimated-length (.estimatedLength record-group-writer)]
-        (if (>= estimated-length target-record-group-length)
-          (if (and optimize? (not optimized?))
-            (let [optimized-rgw (record-group/optimize! rgw compression-threshold-map)]
-              (recur (estimation/next-threshold-check (record-group/num-records optimized-rgw)
-                                                      (.estimatedLength ^BufferedByteArrayWriter optimized-rgw)
-                                                      target-record-group-length)
-                     record-groups-metadata
-                     true
-                     optimized-rgw ))
-            (let [metadata (complete-record-group! backend-writer rgw)
-                  next-threshold-check (long (/ (:num-records metadata) 2))]
-              (recur next-threshold-check (conj record-groups-metadata metadata) optimized? rgw)))
-          (recur (estimation/next-threshold-check (record-group/num-records rgw)
-                                                  estimated-length
-                                                  target-record-group-length)
-                 record-groups-metadata
-                 optimized?
-                 rgw)))
-      (if-let [striped-record (<!! striped-record-ch)]
-        (do (record-group/write! rgw striped-record)
-            (recur next-num-records-for-length-check record-groups-metadata optimized? rgw))
-        (let [final-rgw (if (and optimize? (not optimized?))
-                          (record-group/optimize! rgw compression-threshold-map)
-                          rgw)
-              metadata (complete-record-group! backend-writer final-rgw)]
-          (record-group/await-io-completion final-rgw)
-          {:record-groups-metadata (conj record-groups-metadata metadata)
-           :column-specs (record-group/column-specs final-rgw)})))))
+  (try
+    (loop [next-num-records-for-length-check 10
+           record-groups-metadata []
+           optimized? (not optimize?)
+           rgw record-group-writer]
+      (if (>= (record-group/num-records record-group-writer) next-num-records-for-length-check)
+        (let [estimated-length (.estimatedLength record-group-writer)]
+          (if (>= estimated-length target-record-group-length)
+            (if (and optimize? (not optimized?))
+              (let [^BufferedByteArrayWriter opt-rgw (record-group/optimize! rgw compression-threshold-map)]
+                (recur (estimation/next-threshold-check (record-group/num-records opt-rgw)
+                                                        (.estimatedLength opt-rgw)
+                                                        target-record-group-length)
+                       record-groups-metadata
+                       true
+                       opt-rgw))
+              (let [metadata (complete-record-group! backend-writer rgw)
+                    next-threshold-check (long (/ (:num-records metadata) 2))]
+                (recur next-threshold-check (conj record-groups-metadata metadata) optimized? rgw)))
+            (recur (estimation/next-threshold-check (record-group/num-records rgw)
+                                                    estimated-length
+                                                    target-record-group-length)
+                   record-groups-metadata
+                   optimized?
+                   rgw)))
+        (if-let [striped-record (<!! striped-record-ch)]
+          (do (record-group/write! rgw striped-record)
+              (recur next-num-records-for-length-check record-groups-metadata optimized? rgw))
+          (let [final-rgw (if (and optimize? (not optimized?))
+                            (record-group/optimize! rgw compression-threshold-map)
+                            rgw)
+                metadata (complete-record-group! backend-writer final-rgw)]
+            (record-group/await-io-completion final-rgw)
+            {:record-groups-metadata (conj record-groups-metadata metadata)
+             :column-specs (record-group/column-specs final-rgw)}))))
+    (catch Exception e
+      (async/close! striped-record-ch)
+      {:error e})))
 
 (defn- <!!-coll [ch]
   (lazy-seq (let [v (<!! ch)]
@@ -132,26 +139,32 @@
 
 (defn- >!!-coll [ch coll]
   (loop [[x & xs] coll]
-    (when (and (>!! ch x) (seq xs))
-      (recur xs))))
+    (if (>!! ch x)
+      (if (seq xs)
+        (recur xs)
+        :end)
+      :error)))
 
 (defrecord Writer [metadata-atom stripe-fn striped-record-ch write-thread backend-writer]
   IWriter
   (write! [this records]
-    (->> records
-         (utils/chunked-pmap stripe-fn)
-         (>!!-coll striped-record-ch))
-    this)
+    (if (= :error (->> records
+                       (utils/chunked-pmap stripe-fn)
+                       (>!!-coll striped-record-ch)))
+      (throw (:error (<!! write-thread)))
+      this))
   (set-metadata! [_ metadata]
     (swap! metadata-atom assoc :custom metadata))
   Closeable
   (close [_]
     (async/close! striped-record-ch)
-    (let [{:keys [record-groups-metadata column-specs]} (<!! write-thread)
-          metadata (-> @metadata-atom
-                       (assoc :record-groups-metadata record-groups-metadata)
-                       (update-in [:schema] schema/with-optimal-column-specs column-specs))]
-      (finish! backend-writer metadata))))
+    (let [{:keys [record-groups-metadata column-specs] :as success} (<!! write-thread)]
+      (when success
+        (let [metadata (-> @metadata-atom
+                           (assoc :record-groups-metadata record-groups-metadata)
+                           (update-in [:schema] schema/with-optimal-column-specs column-specs))]
+          (finish! backend-writer metadata)))
+      (close! backend-writer))))
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
@@ -193,7 +206,7 @@
 (defprotocol IBackendReader
   (record-group-readers [_ record-groups-metadata queried-schema])
   (length [_])
-  (close [_]))
+  (close! [_]))
 
 (defrecord ByteBufferBackendReader [^ByteBuffer byte-buffer]
   IBackendReader
@@ -204,7 +217,7 @@
       (map #(record-group/byte-array-reader (.sliceAhead byte-array-reader %1) %2 queried-schema)
            (record-group-offsets record-groups-metadata magic-bytes-length)
            record-groups-metadata)))
-  (close [_]))
+  (close! [_]))
 
 (defrecord FileChannelBackendReader [^FileChannel file-channel]
   IBackendReader
@@ -214,7 +227,7 @@
     (utils/pmap-next #(record-group/file-channel-reader file-channel %1 %2 queried-schema)
                      (record-group-offsets record-groups-metadata magic-bytes-length)
                      record-groups-metadata))
-  (close [_]
+  (close! [_]
     (.close file-channel)))
 
 (let [chs [(async/chan) (async/chan) (async/chan)]]
@@ -223,16 +236,23 @@
 (defrecord Reader [backend-reader metadata queried-schema open-channels]
   IReader
   (read [_]
-    (let [ch (async/chan 100)]
+    (let [ch (async/chan 100)
+          error-ch (async/chan)]
       (swap! open-channels conj ch)
       (async/thread
-        (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-             (mapcat record-group/read)
-             (>!!-coll ch))
-        (async/close! ch)
-        (swap! open-channels #(remove (partial = ch) %)))
+        (try
+          (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
+               (mapcat record-group/read)
+               (>!!-coll ch))
+          (catch Exception e
+            (>!! ch e))
+          (finally
+            (async/close! ch)
+            (swap! open-channels #(remove (partial = ch) %)))))
       (->> (<!!-coll ch)
-           (utils/chunked-pmap #(assembly/assemble % queried-schema)))))
+           (utils/chunked-pmap #(if (instance? Exception %)
+                                  (throw %)
+                                  (assembly/assemble % queried-schema))))))
   (stats [_]
     (let [all-stats (->> (record-group-readers backend-reader
                                                (:record-groups-metadata metadata)
@@ -253,7 +273,7 @@
   (close [_]
     (doseq [ch @open-channels]
       (async/close! ch))
-    (close backend-reader)))
+    (close! backend-reader)))
 
 (defn byte-buffer-reader
   [^ByteBuffer byte-buffer & {:as opts :keys [query] :or {query '_}}]

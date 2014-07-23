@@ -7,6 +7,8 @@
             [dendrite.test-helpers :as helpers])
   (:refer-clojure :exclude [read]))
 
+(def tmp-filename "target/foo.dend")
+
 (defn- dremel-paper-writer []
   (doto (byte-buffer-writer (schema/read-string dremel-paper-schema-str))
     (write! [dremel-paper-record1 dremel-paper-record2])))
@@ -32,8 +34,7 @@
       (is (= records (read (byte-buffer-reader byte-buffer)))))))
 
 (deftest file-random-records-write-read
-  (let [tmp-filename "target/foo.dend"
-        records (take 100 (helpers/rand-test-records))]
+  (let [records (take 100 (helpers/rand-test-records))]
     (with-open [w (file-writer tmp-filename (-> helpers/test-schema-str schema/read-string))]
       (write! w records))
     (testing "full schema"
@@ -59,7 +60,7 @@
                 " :meta {#col {:encoding :dictionary, :type :string}"
                        " #col {:encoding :dictionary, :type :string}},"
                 " :keywords #{#col {:compression :lz4, :encoding :dictionary, :type :string}}}")
-             (str (schema reader))))))
+           (str (schema reader))))))
 
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}
@@ -99,3 +100,29 @@
                (map :length)
                helpers/avg
                (helpers/roughly target-record-group-length))))))
+
+(deftest errors
+  (testing "exceptions in the writing thread are caught in the main thread"
+    (testing "byte-buffer-writer"
+      (is (thrown? Exception
+                   (with-redefs [flush-record-group! (constantly (throw (Exception. "foo")))]
+                     (dremel-paper-writer)))))
+    (testing "file-writer"
+      (is (thrown? Exception
+                   (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer
+                                   (constantly (throw (Exception. "foo")))]
+                     (with-open [w (file-writer tmp-filename dremel-paper-schema)]
+                       (write! w [dremel-paper-record1])))))))
+  (testing "exceptions in the reading thread are caught in the main thread"
+    (testing "byte-buffer-reader"
+      (is (thrown? Exception
+                   (with-redefs [record-group-readers (constantly (throw (Exception. "foo")))]
+                     (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader read)))))
+    (testing "file-reader"
+      (is (thrown? Exception
+                   (with-redefs [dendrite.record-group/file-channel-reader
+                                 (constantly (throw (Exception. "foo")))]
+                     (with-open [w (file-writer tmp-filename dremel-paper-schema)]
+                       (write! w [dremel-paper-record1]))
+                     (with-open [r (file-reader tmp-filename)]
+                       (read r))))))))

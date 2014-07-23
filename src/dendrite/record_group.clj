@@ -53,7 +53,8 @@
       (send direct-byte-buffer-agent flush-column-chunks-to-byte-buffer column-chunk-writers length)
       (await direct-byte-buffer-agent)
       (send-off direct-byte-buffer-agent #(do (.write ^FileChannel file-channel ^ByteBuffer %) %)))
-    this)
+    (when-let [error (:agent-error direct-byte-buffer-agent)]
+      (throw e)))
   (await-io-completion [_]
     (await direct-byte-buffer-agent))
   (column-specs [_]
