@@ -16,7 +16,8 @@
   (flush-to-file-channel! [_ file-channel])
   (await-io-completion [_])
   (num-records [_])
-  (metadata [_]))
+  (metadata [_])
+  (column-specs [_]))
 
 (defn- ensure-direct-byte-buffer-large-enough [^ByteBuffer byte-buffer length margin]
   (if (and byte-buffer (>= (.capacity byte-buffer) length))
@@ -26,7 +27,7 @@
 (defn- flush-column-chunks-to-byte-buffer [^ByteBuffer byte-buffer column-chunk-writers length]
   (.clear byte-buffer)
   (doseq [column-chunk-writer column-chunk-writers]
-    (.writeTo ^ByteArrayWriter (:byte-array-writer column-chunk-writer) byte-buffer))
+    (column-chunk/flush-to-byte-buffer! column-chunk-writer byte-buffer))
   (doto byte-buffer
     (.limit length)
     .rewind))
@@ -55,6 +56,8 @@
     this)
   (await-io-completion [_]
     (await direct-byte-buffer-agent))
+  (column-specs [_]
+    (map :column-spec column-chunk-writers))
   BufferedByteArrayWriter
   (reset [_]
     (reset! num-records 0)
@@ -113,10 +116,10 @@
                (map #(.sliceAhead byte-array-reader %)))]
     (map->RecordGroupReader
      {:num-records (:num-records record-group-metadata)
-      :column-chunk-readers (map column-chunk/reader
-                                 byte-array-readers
-                                 (:column-chunks-metadata record-group-metadata)
-                                 (schema/column-specs queried-schema))})))
+      :column-chunk-readers (mapv column-chunk/reader
+                                  byte-array-readers
+                                  (:column-chunks-metadata record-group-metadata)
+                                  (schema/column-specs queried-schema))})))
 
 (defn file-channel-reader [^FileChannel file-channel offset record-group-metadata queried-schema]
   (let [byte-array-readers
@@ -127,13 +130,14 @@
                       (ByteArrayReader. (utils/map-bytes file-channel offset length)))))]
     (map->RecordGroupReader
      {:num-records (:num-records record-group-metadata)
-      :column-chunk-readers (map column-chunk/reader
-                                 byte-array-readers
-                                 (:column-chunks-metadata record-group-metadata)
-                                 (schema/column-specs queried-schema))})))
+      :column-chunk-readers (mapv column-chunk/reader
+                                  byte-array-readers
+                                  (:column-chunks-metadata record-group-metadata)
+                                  (schema/column-specs queried-schema))})))
 
-(defn find-best-column-specs
-  [record-group-reader target-data-page-length compression-threshold-map]
-  (->> record-group-reader
-       :column-chunk-readers
-       (map #(column-chunk/find-best-column-spec % target-data-page-length compression-threshold-map))))
+(defn optimize! [record-group-writer compression-threshold-map]
+  (let [optimized-column-chunk-writers (->> record-group-writer
+                                            :column-chunk-writers
+                                            (pmap #(column-chunk/optimize! % compression-threshold-map))
+                                            vec)]
+    (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers)))

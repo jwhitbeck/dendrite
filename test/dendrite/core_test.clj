@@ -39,7 +39,27 @@
     (testing "full schema"
       (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))
+    (testing "one-field"
+      (is (= (map #(select-keys % [:docid]) records)
+             (with-open [r (file-reader tmp-filename :query {:docid '_})]
+               (doall (read r))))))
     (io/delete-file tmp-filename)))
+
+(deftest automatic-schema-optimization
+  (let [records (take 100 (helpers/rand-test-records))
+        test-schema (-> helpers/test-schema-str schema/read-string)
+        writer (doto (byte-buffer-writer test-schema :optimize-columns? :all)
+                 (write! records))
+        reader (-> writer byte-buffer! byte-buffer-reader)]
+    (is (= (str "{:docid #req #col {:encoding :delta, :type :long},"
+                " :links {:backward (long), :forward [long]},"
+                " :name [{:language [{:code #req #col {:encoding :dictionary, :type :string},"
+                                    " :country #col {:encoding :dictionary, :type :string}}],"
+                " :url #col {:encoding :incremental, :type :string}}],"
+                " :meta {#col {:encoding :dictionary, :type :string}"
+                       " #col {:encoding :dictionary, :type :string}},"
+                " :keywords #{#col {:compression :lz4, :encoding :dictionary, :type :string}}}")
+             (str (schema reader))))))
 
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}

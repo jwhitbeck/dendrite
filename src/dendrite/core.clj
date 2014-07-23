@@ -26,7 +26,10 @@
 
 (def default-options
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
-   :target-data-page-length 1024})        ; 1KB
+   :target-data-page-length 1024                  ; 1KB
+   :optimize-columns? :default
+   :compression-thresholds {:lz4 0.9 :deflate 0.5}
+   })
 
 (defprotocol IWriter
   (write! [_ records])
@@ -70,6 +73,13 @@
   (->FileChannelBackendWriter (doto (utils/file-channel filename :write)
                                 (.write (ByteBuffer/wrap magic-bytes)))))
 
+(defn- is-default-column-spec? [column-spec]
+  (and (= (:encoding column-spec) :plain)
+       (= (:compression column-spec) :none)))
+
+(defn- all-default-column-specs? [schema]
+  (every? is-default-column-spec? (schema/column-specs schema)))
+
 (defn- complete-record-group! [backend-writer ^BufferedByteArrayWriter record-group-writer]
   (.finish ^BufferedByteArrayWriter record-group-writer)
   (let [metadata (record-group/metadata record-group-writer)]
@@ -78,24 +88,42 @@
     metadata))
 
 (defn- write-loop
-  [striped-record-ch ^BufferedByteArrayWriter record-group-writer backend-writer target-record-group-length]
+  [striped-record-ch ^BufferedByteArrayWriter record-group-writer backend-writer target-record-group-length
+   optimize? compression-threshold-map]
   (loop [next-num-records-for-length-check 10
-         record-groups-metadata []]
+         record-groups-metadata []
+         optimized? (not optimize?)
+         rgw record-group-writer]
     (if (>= (record-group/num-records record-group-writer) next-num-records-for-length-check)
       (let [estimated-length (.estimatedLength record-group-writer)]
         (if (>= estimated-length target-record-group-length)
-          (let [metadata (complete-record-group! backend-writer record-group-writer)]
-            (recur (long (/ (:num-records metadata) 2)) (conj record-groups-metadata metadata)))
-          (recur (estimation/next-threshold-check (record-group/num-records record-group-writer)
+          (if (and optimize? (not optimized?))
+            (let [optimized-rgw (record-group/optimize! rgw compression-threshold-map)]
+              (recur (estimation/next-threshold-check (record-group/num-records optimized-rgw)
+                                                      (.estimatedLength ^BufferedByteArrayWriter optimized-rgw)
+                                                      target-record-group-length)
+                     record-groups-metadata
+                     true
+                     optimized-rgw ))
+            (let [metadata (complete-record-group! backend-writer rgw)
+                  next-threshold-check (long (/ (:num-records metadata) 2))]
+              (recur next-threshold-check (conj record-groups-metadata metadata) optimized? rgw)))
+          (recur (estimation/next-threshold-check (record-group/num-records rgw)
                                                   estimated-length
                                                   target-record-group-length)
-                 record-groups-metadata)))
+                 record-groups-metadata
+                 optimized?
+                 rgw)))
       (if-let [striped-record (<!! striped-record-ch)]
-        (do (record-group/write! record-group-writer striped-record)
-            (recur next-num-records-for-length-check record-groups-metadata))
-        (let [metadata (complete-record-group! backend-writer record-group-writer)]
-          (record-group/await-io-completion record-group-writer)
-          (conj record-groups-metadata metadata))))))
+        (do (record-group/write! rgw striped-record)
+            (recur next-num-records-for-length-check record-groups-metadata optimized? rgw))
+        (let [final-rgw (if (and optimize? (not optimized?))
+                          (record-group/optimize! rgw compression-threshold-map)
+                          rgw)
+              metadata (complete-record-group! backend-writer final-rgw)]
+          (record-group/await-io-completion final-rgw)
+          {:record-groups-metadata (conj record-groups-metadata metadata)
+           :column-specs (record-group/column-specs final-rgw)})))))
 
 (defn- <!!-coll [ch]
   (lazy-seq (let [v (<!! ch)]
@@ -119,15 +147,22 @@
   Closeable
   (close [_]
     (async/close! striped-record-ch)
-    (let [record-groups-metadata (<!! write-thread)
-          metadata (assoc @metadata-atom :record-groups-metadata record-groups-metadata)]
+    (let [{:keys [record-groups-metadata column-specs]} (<!! write-thread)
+          metadata (-> @metadata-atom
+                       (assoc :record-groups-metadata record-groups-metadata)
+                       (update-in [:schema] schema/with-optimal-column-specs column-specs))]
       (finish! backend-writer metadata))))
 
 (defn- writer [backend-writer schema options]
-  (let [{:keys [target-record-group-length target-data-page-length]} (merge default-options options)
+  (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
+                compression-thresholds]} (merge default-options options)
         parsed-schema (schema/parse schema)
         striped-record-ch (async/chan 100)
-        record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))]
+        record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
+        optimize? (case optimize-columns?
+                    :all true
+                    :default (all-default-column-specs? parsed-schema)
+                    :none false)]
     (map->Writer
      {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
       :stripe-fn (striping/stripe-fn parsed-schema)
@@ -135,7 +170,9 @@
       :write-thread (async/thread (write-loop striped-record-ch
                                               record-group-writer
                                               backend-writer
-                                              target-record-group-length))
+                                              target-record-group-length
+                                              optimize?
+                                              compression-thresholds))
       :backend-writer backend-writer})))
 
 (defn byte-buffer-writer [schema & {:as options}]
@@ -215,7 +252,7 @@
   Closeable
   (close [_]
     (doseq [ch @open-channels]
-      (async/close! open-channels))
+      (async/close! ch))
     (close backend-reader)))
 
 (defn byte-buffer-reader

@@ -66,25 +66,3 @@
                 (read
                  (file-channel-reader f 0 record-group-metadata (schema/apply-query test-schema '_))))))))
     (io/delete-file tmp-file)))
-
-(deftest optimal-column-specs
-  (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
-        records (take 1000 (helpers/rand-test-records))
-        striped-records (map (striping/stripe-fn test-schema) records)
-        w (doto (writer target-data-page-length (schema/column-specs test-schema))
-            (#(reduce write! % striped-records))
-            .finish)
-        record-group-metadata (metadata w)
-        bar (helpers/get-byte-array-reader w)
-        r (byte-array-reader bar record-group-metadata test-schema)]
-    (is (= [[:long :delta :none]
-            [:long :delta :none]
-            [:long :delta :none]
-            [:string :dictionary :none]
-            [:string :dictionary :none]
-            [:string :dictionary :none]
-            [:string :dictionary :none]
-            [:string :dictionary :none]
-            [:string :dictionary :none]]
-           (->> (find-best-column-specs r target-data-page-length {:lz4 0.8 :deflate 0.5})
-                (map (juxt :type :encoding :compression)))))))
