@@ -1,7 +1,7 @@
 (ns dendrite.test-helpers
   (:require [clojure.string :as string]
             [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java ByteArrayReader ByteArrayWriter ByteArrayWritable]
+  (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable]
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))
 
@@ -72,7 +72,7 @@
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
 
-(defn get-byte-array-reader [^ByteArrayWritable byte-array-writable]
+(defn get-byte-array-reader [^Flushable byte-array-writable]
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteArrayReader.)))

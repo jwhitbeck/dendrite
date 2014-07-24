@@ -75,10 +75,10 @@
     (->> column-chunk-writers
          (map #(.estimatedLength ^BufferedByteArrayWriter %))
          (reduce +)))
-  (writeTo [this baw]
+  (flush [this baw]
     (.finish this)
     (doseq [column-chunk-writer column-chunk-writers]
-      (.writeTo ^BufferedByteArrayWriter column-chunk-writer baw))))
+      (.flush ^BufferedByteArrayWriter column-chunk-writer baw))))
 
 (defn writer [target-data-page-length column-specs]
   (map->RecordGroupWriter

@@ -56,11 +56,11 @@ public class ByteArrayIncrementalEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
+  public void flush(final ByteArrayWriter baw) {
     finish();
     baw.writeUInt(prefix_lengths_encoder.length());
-    prefix_lengths_encoder.writeTo(baw);
-    byte_array_encoder.writeTo(baw);
+    prefix_lengths_encoder.flush(baw);
+    byte_array_encoder.flush(baw);
   }
 
 }

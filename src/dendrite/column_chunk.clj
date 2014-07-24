@@ -58,7 +58,7 @@
       (.reset page-writer)))
   (flush-to-byte-buffer! [this byte-buffer]
     (.finish this)
-    (.writeTo byte-array-writer ^ByteBuffer byte-buffer))
+    (.flush byte-array-writer ^ByteBuffer byte-buffer))
   BufferedByteArrayWriter
   (reset [_]
     (reset! num-pages 0)
@@ -73,7 +73,7 @@
     (.length byte-array-writer))
   (estimatedLength [this]
     (estimation/correct length-estimator (+ (.length byte-array-writer) (.estimatedLength page-writer))))
-  (writeTo [this baw]
+  (flush [this baw]
     (.finish this)
     (.write baw byte-array-writer)))
 
@@ -123,7 +123,7 @@
     (target-data-page-length data-column-chunk-writer))
   (flush-to-byte-buffer! [this byte-buffer]
     (.finish this)
-    (.writeTo (doto (ByteArrayWriter. (.length dictionary-writer)) (.write dictionary-writer))
+    (.flush (doto (ByteArrayWriter. (.length dictionary-writer)) (.write dictionary-writer))
               ^ByteBuffer byte-buffer)
     (flush-to-byte-buffer! data-column-chunk-writer ^ByteBuffer byte-buffer))
   IDictionaryColumChunkWriter
@@ -146,7 +146,7 @@
     (+ (.length dictionary-writer) (.length data-column-chunk-writer)))
   (estimatedLength [_]
     (+ (.estimatedLength dictionary-writer) (.estimatedLength data-column-chunk-writer)))
-  (writeTo [this baw]
+  (flush [this baw]
     (.finish this)
     (.write baw dictionary-writer)
     (.write baw data-column-chunk-writer)))

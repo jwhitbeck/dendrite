@@ -27,9 +27,9 @@ public abstract class AbstractEncoder implements BufferedByteArrayWriter {
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
+  public void flush(final ByteArrayWriter baw) {
     finish();
-    byte_array_writer.writeTo(baw);
+    byte_array_writer.flush(baw);
   }
 
 }

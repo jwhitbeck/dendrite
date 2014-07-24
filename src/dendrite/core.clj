@@ -49,7 +49,7 @@
 (defrecord ByteArrayBackendWriter [^ByteArrayWriter byte-array-writer]
   IBackendWriter
   (flush-record-group! [_ record-group-writer]
-    (.writeTo ^BufferedByteArrayWriter record-group-writer byte-array-writer))
+    (.flush ^BufferedByteArrayWriter record-group-writer byte-array-writer))
   (finish! [_ metadata]
     (let [metadata-byte-buffer (metadata/write metadata)]
       (.write byte-array-writer metadata-byte-buffer)

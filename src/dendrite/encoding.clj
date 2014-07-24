@@ -226,7 +226,7 @@
         (finish [_] (.finish ^BufferedByteArrayWriter be))
         (length [_] (.length ^BufferedByteArrayWriter be))
         (estimatedLength [_] (.estimatedLength ^BufferedByteArrayWriter be))
-        (writeTo [_ byte-array-writer] (.writeTo ^BufferedByteArrayWriter be byte-array-writer))))))
+        (flush [_ byte-array-writer] (.flush ^BufferedByteArrayWriter be byte-array-writer))))))
 
 (defn decoder-ctor [t encoding]
   (if (base-type? t)

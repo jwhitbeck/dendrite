@@ -15,8 +15,8 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public void compress(final ByteArrayWritable byte_array_writable) {
-    byte_array_writable.writeTo(input_buffer);
+  public void compress(final Flushable flushable) {
+    flushable.flush(input_buffer);
     deflater.setInput(input_buffer.buffer, 0, input_buffer.length());
     deflater.finish();
     output_buffer.ensureRemainingCapacity(input_buffer.length());
@@ -48,8 +48,8 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
-    output_buffer.writeTo(baw);
+  public void flush(final ByteArrayWriter baw) {
+    output_buffer.flush(baw);
   }
 
 

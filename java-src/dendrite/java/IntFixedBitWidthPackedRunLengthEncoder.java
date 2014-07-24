@@ -116,7 +116,7 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
   }
 
   private void flushBitPackedBuffer() {
-    octuplet_buffer.writeTo(byte_array_writer);
+    octuplet_buffer.flush(byte_array_writer);
     octuplet_buffer.reset();
   }
 

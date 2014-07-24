@@ -39,7 +39,7 @@
     (doseq [x (take 10 input-seq)]
       (.encode encoder x))
     (dotimes [_ n] (.finish encoder))
-    (.writeTo encoder baw)
+    (.flush encoder baw)
     (seq (.buffer baw))))
 
 (defn test-finish-idempotence [encoder-constructor input-seq]

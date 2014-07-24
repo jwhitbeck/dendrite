@@ -3,7 +3,7 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 import java.math.BigInteger;
 
-public class ByteArrayWriter implements ByteArrayWritable, Resetable, Lengthable {
+public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
 
   private static int DEFAULT_BUFFER_LENGTH = 1024;
 
@@ -318,16 +318,16 @@ public class ByteArrayWriter implements ByteArrayWritable, Resetable, Lengthable
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
+  public void flush(final ByteArrayWriter baw) {
     baw.writeByteArray(buffer, position);
   }
 
-  public void writeTo(final ByteBuffer bb) {
+  public void flush(final ByteBuffer bb) {
     bb.put(buffer, 0, position);
   }
 
-  public void write(final ByteArrayWritable writable) {
-    writable.writeTo(this);
+  public void write(final Flushable flushable) {
+    flushable.flush(this);
   }
 
   public void write(final ByteBuffer byte_buffer) {

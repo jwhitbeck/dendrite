@@ -6,7 +6,7 @@
             [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum]])
-  (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter ByteArrayWritable
+  (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Flushable
             Compressor Decompressor])
   (:refer-clojure :exclude [read type]))
 
@@ -83,8 +83,8 @@
     0)
   (byte-offset-definition-levels [_]
     repetition-levels-length)
-  ByteArrayWritable
-  (writeTo [this byte-array-writer]
+  Flushable
+  (flush [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-data-page-header [^ByteArrayReader bar data-page-type]
@@ -114,8 +114,8 @@
      {:length (+ (header-length this) (body-length this))
       :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-length this)
                                          :dictionary-bytes compressed-data-length})}))
-  ByteArrayWritable
-  (writeTo [this byte-array-writer]
+  Flushable
+  (flush [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
 
 (defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
@@ -206,7 +206,7 @@
     (let [provisional-header (provisional-header this)]
       (+ (header-length provisional-header)
          (estimation/correct body-length-estimator (body-length provisional-header)))))
-  (writeTo [this byte-array-writer]
+  (flush [this byte-array-writer]
     (.finish this)
     (.write byte-array-writer ^DataPageHeader (header this))
     (when repetition-level-encoder
@@ -214,8 +214,8 @@
     (when definition-level-encoder
       (.write byte-array-writer definition-level-encoder))
     (.write byte-array-writer (if data-compressor
-                                ^ByteArrayWritable data-compressor
-                                ^ByteArrayWritable data-encoder))))
+                                ^Flushable data-compressor
+                                ^Flushable data-encoder))))
 
 (defn data-page-writer [max-repetition-level max-definition-level value-type encoding compression]
   (map->DataPageWriter
@@ -276,12 +276,12 @@
     (let [provisional-header (provisional-header this)]
       (+ (header-length provisional-header)
          (estimation/correct body-length-estimator (body-length provisional-header)))))
-  (writeTo [this byte-array-writer]
+  (flush [this byte-array-writer]
     (.finish this)
     (.write byte-array-writer ^DataPageHeader (header this))
     (.write byte-array-writer (if data-compressor
-                                ^ByteArrayWritable data-compressor
-                                ^ByteArrayWritable data-encoder))))
+                                ^Flushable data-compressor
+                                ^Flushable data-encoder))))
 
 (defn dictionary-page-writer [value-type encoding compression]
   (map->DictionaryPageWriter

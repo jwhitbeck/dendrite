@@ -45,11 +45,11 @@ public class ByteArrayDeltaLengthEncoder implements ByteArrayEncoder {
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
+  public void flush(final ByteArrayWriter baw) {
     finish();
     baw.writeUInt(lengths_encoder.length());
-    lengths_encoder.writeTo(baw);
-    byte_array_writer.writeTo(baw);
+    lengths_encoder.flush(baw);
+    byte_array_writer.flush(baw);
   }
 
 }

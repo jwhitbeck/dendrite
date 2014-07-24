@@ -61,10 +61,10 @@ public class IntPackedRunLengthEncoder implements IntEncoder {
   }
 
   @Override
-  public void writeTo(final ByteArrayWriter baw) {
+  public void flush(final ByteArrayWriter baw) {
     finish();
     baw.writeByte((byte)max_width);
-    rle_encoder.writeTo(baw);
+    rle_encoder.flush(baw);
   }
 
 }

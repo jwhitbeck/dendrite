@@ -12,7 +12,7 @@
     (.writeByteArray baw (.getBytes lorem-ipsum "UTF-8"))
     (doto compressor
       (.compress baw)
-      (.writeTo compressed-baw))
+      (.flush compressed-baw))
     (let [bar (ByteArrayReader. (.buffer compressed-baw))]
       (-> decompressor
           (.decompress bar (.compressedLength compressor) (.uncompressedLength compressor))

@@ -202,7 +202,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder implements LongEncod
   }
 
   private void flushFirstBlocks() {
-    best_encoding.writeTo(byte_array_writer);
+    best_encoding.flush(byte_array_writer);
     int num_flushed_values = getEndPositionOfLastFullBlock();
     num_encoded_values += num_flushed_values;
     position -= num_flushed_values;
@@ -215,7 +215,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder implements LongEncod
     tryFlushFirstBlocks();
     if (position > 0) {
       ByteArrayWriter full_block_encoding = getBestMiniblockEncodingForBlock(0, position);
-      full_block_encoding.writeTo(byte_array_writer);
+      full_block_encoding.flush(byte_array_writer);
       num_encoded_values += position;
     }
     position = 0;
