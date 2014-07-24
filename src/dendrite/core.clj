@@ -236,9 +236,6 @@
   (close-reader! [_]
     (.close file-channel)))
 
-(let [chs [(async/chan) (async/chan) (async/chan)]]
-  [chs (remove (partial = (second chs)) chs)])
-
 (defrecord Reader [backend-reader metadata queried-schema open-channels]
   IReader
   (read [_]
