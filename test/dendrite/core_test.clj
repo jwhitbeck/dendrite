@@ -75,14 +75,14 @@
     (testing "corrupt magic bytes at file start"
       (let [bad-byte-pos 2
             tmp-byte (.get byte-buffer bad-byte-pos)]
-        (is (thrown? IllegalArgumentException
-                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) '_)))
+        (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
+                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
         (.put byte-buffer bad-byte-pos tmp-byte)))
     (testing "corrupt magic bytes at file end"
       (let [bad-byte-pos (- (.limit byte-buffer) 2)
             tmp-byte (.get byte-buffer bad-byte-pos)]
-        (is (thrown? IllegalArgumentException
-                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) '_)))
+        (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
+                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
         (.put byte-buffer bad-byte-pos tmp-byte)))))
 
 (deftest record-group-lengths
@@ -102,28 +102,43 @@
                helpers/avg
                (helpers/roughly target-record-group-length))))))
 
+(defn- throw-foo-fn [& args] (throw (Exception. "foo")))
+
 (deftest errors
   (testing "exceptions in the writing thread are caught in the main thread"
     (testing "byte-buffer-writer"
-      (is (thrown? Exception
-                   (with-redefs [flush-record-group! (constantly (throw (Exception. "foo")))]
-                     (dremel-paper-writer)))))
+      (is (thrown-with-msg?
+           Exception #"foo"
+           (with-redefs [dendrite.core/complete-record-group! throw-foo-fn]
+             (.close (dremel-paper-writer))))))
     (testing "file-writer"
-      (is (thrown? Exception
-                   (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer
-                                   (constantly (throw (Exception. "foo")))]
-                     (with-open [w (file-writer tmp-filename dremel-paper-schema)]
-                       (write! w [dremel-paper-record1])))))))
+      (is (thrown-with-msg?
+           Exception #"foo"
+           (with-redefs [dendrite.record-group/write-byte-buffer (constantly (Exception. "foo"))]
+             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+               (write! w [dremel-paper-record1])))))
+      (is (thrown-with-msg?
+           Exception #"foo"
+           (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer throw-foo-fn]
+             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+               (write! w [dremel-paper-record1]))))))
+    (io/delete-file tmp-filename))
   (testing "exceptions in the reading thread are caught in the main thread"
     (testing "byte-buffer-reader"
-      (is (thrown? Exception
-                   (with-redefs [record-group-readers (constantly (throw (Exception. "foo")))]
-                     (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader read)))))
+      (is (thrown-with-msg?
+           Exception #"foo"
+           (with-redefs [dendrite.record-group/byte-array-reader throw-foo-fn]
+             (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader read)))))
     (testing "file-reader"
-      (is (thrown? Exception
-                   (with-redefs [dendrite.record-group/file-channel-reader
-                                 (constantly (throw (Exception. "foo")))]
-                     (with-open [w (file-writer tmp-filename dremel-paper-schema)]
-                       (write! w [dremel-paper-record1]))
-                     (with-open [r (file-reader tmp-filename)]
-                       (read r))))))))
+      (is (thrown-with-msg?
+           Exception #"foo"
+           (with-redefs [dendrite.record-group/file-channel-reader throw-foo-fn]
+             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+               (write! w [dremel-paper-record1]))
+             (with-open [r (file-reader tmp-filename)]
+               (read r)))))
+      (io/delete-file tmp-filename)
+      (is (thrown-with-msg?
+           java.nio.file.NoSuchFileException #"target/foo.dend"
+           (with-open [r (file-reader tmp-filename)]
+             (read r)))))))

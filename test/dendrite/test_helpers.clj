@@ -123,3 +123,9 @@
        (seq keywords) (assoc :keywords keywords)))))
 
 (defn rand-test-records [] (map rand-test-record (range)))
+
+(defmacro throw-cause [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       (throw (.getCause e#)))))

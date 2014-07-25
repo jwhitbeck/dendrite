@@ -40,7 +40,7 @@
       (is (every? true? (map = read-ints rand-ints)))))
   (testing "read invalid uint throws exception"
     (let [bar (->> [-1 -1 -1 -1 -1] (map unchecked-byte) byte-array ByteArrayReader.)]
-      (is (thrown? IllegalStateException (.readUInt bar))))))
+      (is (thrown-with-msg? IllegalStateException #"Failed to parse UInt" (.readUInt bar))))))
 
 (deftest read-write-packed-int
   (testing "writePackedInt/readPackedInt"
@@ -68,7 +68,7 @@
       (is (every? true? (map = read-longs rand-longs)))))
   (testing "read invalid ulong throws exception"
     (let [bar (->> [-1 -1 -1 -1 -1 -1 -1 -1 -1 -1] (map unchecked-byte) byte-array ByteArrayReader.)]
-      (is (thrown? IllegalStateException (.readULong bar))))))
+      (is (thrown-with-msg? IllegalStateException #"Failed to parse ULong" (.readULong bar))))))
 
 (deftest read-write-slong
   (testing "writeSLong/readSLong"

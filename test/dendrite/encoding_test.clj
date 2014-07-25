@@ -17,7 +17,7 @@
          :bigdec 2.3
          :keyword :foo
          :symbol 'foo)
-    (are [t y] (thrown? IllegalArgumentException ((coercion-fn t) y))
+    (are [t y] (thrown-with-msg? IllegalArgumentException #"Could not coerce" ((coercion-fn t) y))
          :int [1 2]
          :int "foo"
          :long "foo"

@@ -1,7 +1,7 @@
 (ns dendrite.schema-test
   (:require [clojure.test :refer :all]
             [dendrite.schema :refer :all]
-            [dendrite.test-helpers :refer [test-schema-str]])
+            [dendrite.test-helpers :refer [test-schema-str throw-cause]])
   (:refer-clojure :exclude [read-string val record?]))
 
 (deftest parse-unparsed-schema-str
@@ -28,19 +28,31 @@
            [:name :url] {:column-index 5 :max-repetition-level 1 :max-definition-level 2}
            [:meta :key] {:column-index 6 :max-repetition-level 1 :max-definition-level 1}
            [:meta :value] {:column-index 7 :max-repetition-level 1 :max-definition-level 1}
-           [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}))))
+           [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}))))<
 
 (deftest invalid-schemas
   (testing "unsupported types"
-    (is (thrown? IllegalArgumentException (parse {:foo 'invalid})))
-    (is (thrown? IllegalArgumentException (parse {:foo {:bar 'invalid}}))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Unsupported type ':invalid' for column \[:foo\]"
+         (throw-cause (parse {:foo 'invalid}))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Unsupported type ':invalid' for column \[:foo :bar\]"
+         (throw-cause (parse {:foo {:bar 'invalid}})))))
   (testing "mismatched type and encodings"
-    (is (thrown? IllegalArgumentException (parse {:foo (col 'int 'incremental)})))
-    (is (thrown? IllegalArgumentException (parse {:foo {:var (col 'string 'delta)}}))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Mismatched type ':int' and encoding ':incremental' for column \[:foo\]"
+         (throw-cause (parse {:foo (col 'int 'incremental)}))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Mismatched type ':string' and encoding ':delta' for column \[:foo :var\]"
+         (throw-cause (parse {:foo {:var (col 'string 'delta)}})))))
   (testing "unsupported compression types"
-    (is (thrown? IllegalArgumentException (parse {:foo (col 'int 'delta 'snappy)}))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Unsupported compression type ':snappy' for column \[:foo\]"
+         (throw-cause (parse {:foo (col 'int 'delta 'snappy)})))))
   (testing "marking a field as both reapeated and required"
-    (is (thrown? IllegalArgumentException (parse {:foo (req ['int])})))))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Field \[:foo\] is marked both required and repeated"
+         (throw-cause (parse {:foo (req ['int])}))))))
 
 (deftest queries
   (let [schema (-> test-schema-str read-string parse)]
@@ -75,16 +87,23 @@
                       (sub-field :docid)
                       :reader-fn)))))
     (testing "missing fields throw errors if enforced"
-      (is (thrown? IllegalArgumentException (apply-query schema {:docid '_ :missing '_}
-                                                         :missing-fields-as-nil? false))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #"the following sub-fields don't exist: ':missing'"
+           (throw-cause (apply-query schema {:docid '_ :missing '_} :missing-fields-as-nil? false)))))
     (testing "bad queries"
-      (are [query] (thrown? IllegalArgumentException (apply-query schema query))
-           (Object.)
-           {:docid 'int}
-           {:docid '_ :links {:backward ['int]}}
-           {:links 'int}
-           {:docid {:foo '_}}
-           {:docid (list 'long)}
-           {:docid ['long]}
-           {:name #{{:url '_}}}
-           {:name {'string '_}}))))
+      (are [query msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
+                                         (throw-cause (apply-query schema query)))
+           (Object.) "Unable to parse query element"
+           {:docid 'int} (str "Mismatched column types for field \\[:docid\\]. "
+                              "Asked for 'int' but schema defines 'long'")
+           {:docid '_ :links {:backward ['int]}} (str "Mismatched column types for field "
+                                                      "\\[:links :backward\\]. Asked for 'int' but schema "
+                                                      "defines 'long'.")
+           {:links 'int} "Field \\[:links\\] is a record field in schema, not a value"
+           {:docid {:foo '_}} "Field \\[:docid\\] is a value field in schema, not a record."
+           {:docid (list 'long)} (str "Field \\[:docid\\] contains a required in the schema, "
+                                      "cannot be read as a list")
+           {:docid ['long]} "Field \\[:docid\\] contains a required in the schema, cannot be read as a vector"
+           {:name #{{:url '_}}} "Field \\[:name\\] contains a vector in the schema, cannot be read as a set."
+           {:name {'string '_}} (str "Field \\[:name\\] contains a vector in the schema, "
+                                     "cannot be read as a map.")))))

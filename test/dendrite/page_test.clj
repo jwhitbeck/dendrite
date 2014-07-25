@@ -113,7 +113,11 @@
                        (write! (range 100))
                        helpers/get-byte-array-reader)]
       (is (data-page-reader data-bar 1 1 :int :plain :none))
-      (is (thrown? IllegalArgumentException (data-page-reader dict-bar (:max-definition-level spec)
-                                                              :int :plain :none)))
+      (is (thrown-with-msg?
+           IllegalArgumentException #":dictionary is not a supported data page type"
+           (data-page-reader dict-bar (:max-repetition-level spec) (:max-definition-level spec)
+                             :int :plain :none)))
       (is (dictionary-page-reader dict-bar :int :plain :none))
-      (is (thrown? IllegalArgumentException (dictionary-page-reader data-bar :int :plain :none))))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #":data is not a supported dictionary page type"
+           (dictionary-page-reader data-bar :int :plain :none))))))

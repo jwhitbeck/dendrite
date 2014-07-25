@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as s]
-            [dendrite.striping :refer :all]))
+            [dendrite.striping :refer :all]
+            [dendrite.test-helpers :refer [throw-cause]]))
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
@@ -20,11 +21,13 @@
            {:docid 10 :name []}
            {:docid 10 :name [{}]}
            {:docid 10 :name [{:language {:code "en-us"}}]})
-      (are [x] (thrown? IllegalArgumentException (stripe-record x schema))
-           {}
-           {:docid 10 :name [{:url "http://A"}]}
-           (:docid 10 :name [{:language {}}])
-           {:docid 10 :name [{:language {:country "us"}}]})))
+      (are [x msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
+                                     (throw-cause (stripe-record x schema)))
+           {} "Empty record!"
+           {:docid 10 :name [{:url "http://A"}]} "Required field \\[:name :language\\] is missing"
+           {:docid 10 :name [{:language {}}]} "Required field \\[:name :language\\] is missing"
+           {:docid 10 :name [{:language {:country "us"}}]}
+           "Required field \\[:name :language :code\\] is missing")))
   (testing "incompatible value types"
     (let [schema (s/parse {:boolean 'boolean
                            :int 'int
@@ -53,7 +56,8 @@
            {:bigint 2}
            {:keyword :foo}
            {:symbol 'foo})
-      (are [x] (thrown? IllegalArgumentException (stripe-record x schema))
+      (are [x] (thrown-with-msg? IllegalArgumentException #"Could not coerce value"
+                                 (throw-cause (stripe-record x schema)))
            {:int [1 2]}
            {:int "2"}
            {:long "2"}
