@@ -160,8 +160,7 @@
     (async/close! striped-record-ch)
     (let [{:keys [record-groups-metadata column-specs error]} (<!! write-thread)]
       (if error
-        (try (println (type error))
-             (close-writer! backend-writer)
+        (try (close-writer! backend-writer)
              (finally (throw error)))
         (try (let [metadata (-> @metadata-atom
                                 (assoc :record-groups-metadata record-groups-metadata)
