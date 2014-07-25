@@ -1,5 +1,6 @@
 (ns dendrite.record-group
-  (:require [dendrite.column-chunk :as column-chunk]
+  (:require [clojure.core.async :as async :refer [<! >! <!! >!!]]
+            [dendrite.column-chunk :as column-chunk]
             [dendrite.metadata :as metadata]
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
@@ -32,7 +33,13 @@
     (.limit length)
     .rewind))
 
-(defrecord RecordGroupWriter [num-records column-chunk-writers direct-byte-buffer-agent]
+(defn- write-byte-buffer [^FileChannel file-channel ^ByteBuffer byte-buffer]
+  (try (.write file-channel byte-buffer)
+       :success
+       (catch Exception e
+         e)))
+
+(defrecord RecordGroupWriter [num-records column-chunk-writers direct-byte-buffer io-thread]
   IRecordGroupWriter
   (write! [this striped-record]
     (dorun (map column-chunk/write! column-chunk-writers striped-record))
@@ -47,16 +54,16 @@
       :column-chunks-metadata (mapv column-chunk/metadata column-chunk-writers)}))
   (flush-to-file-channel! [this file-channel]
     (.finish this)
-    (await direct-byte-buffer-agent)
+    (await-io-completion this)
     (let [length (.length this)]
-      (send direct-byte-buffer-agent ensure-direct-byte-buffer-large-enough length 0.2)
-      (send direct-byte-buffer-agent flush-column-chunks-to-byte-buffer column-chunk-writers length)
-      (await direct-byte-buffer-agent)
-      (send-off direct-byte-buffer-agent #(do (.write ^FileChannel file-channel ^ByteBuffer %) %)))
-    (when-let [error (:agent-error direct-byte-buffer-agent)]
-      (throw e)))
+      (swap! direct-byte-buffer ensure-direct-byte-buffer-large-enough length 0.2)
+      (swap! direct-byte-buffer flush-column-chunks-to-byte-buffer column-chunk-writers length)
+      (reset! io-thread (async/thread (write-byte-buffer file-channel @direct-byte-buffer)))))
   (await-io-completion [_]
-    (await direct-byte-buffer-agent))
+    (when @io-thread
+      (let [res (<!! @io-thread)]
+        (when (instance? Throwable res)
+          (throw res)))))
   (column-specs [_]
     (map :column-spec column-chunk-writers))
   BufferedByteArrayWriter
@@ -84,7 +91,8 @@
   (map->RecordGroupWriter
    {:num-records (atom 0)
     :column-chunk-writers (mapv (partial column-chunk/writer target-data-page-length) column-specs)
-    :direct-byte-buffer-agent (agent nil)}))
+    :direct-byte-buffer (atom nil)
+    :io-thread (atom nil)}))
 
 (defprotocol IRecordGroupReader
   (read [_])
