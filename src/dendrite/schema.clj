@@ -77,7 +77,9 @@
                       (:type cs) (:encoding cs) (format-ks parents)))))
     (when-not (metadata/is-compression-type? (:compression cs))
       (throw (IllegalArgumentException.
-              (format "Unsupported compression type '%s' for column" (:compression cs) (format-ks parents)))))
+              (format "Unsupported compression type '%s' for column %s"
+                      (:compression cs)
+                      (format-ks parents)))))
     cs))
 
 (defmethod parse* :list
@@ -113,7 +115,7 @@
                                 (assoc parsed-v :name k))]
                     (when (and mark-required? (repeated? field))
                       (throw (IllegalArgumentException.
-                              (format "Field '%s' is marked both required and repeated"
+                              (format "Field %s is marked both required and repeated"
                                       (format-ks (conj parents k))))))
                     (cond-> field
                             mark-required? (assoc :repetition :required))))}))
@@ -279,12 +281,12 @@
     sub-schema
     (if (record? sub-schema)
       (throw (IllegalArgumentException.
-              (format "Field '%s' is a record field in schema, not a value" (format-ks parents))))
+              (format "Field %s is a record field in schema, not a value" (format-ks parents))))
       (let [queried-type (keyword query-symbol)
             schema-type (-> sub-schema :column-spec :type)]
         (if-not (= queried-type schema-type)
           (throw (IllegalArgumentException.
-                  (format "Mismatched column types for field '%s'. Asked for '%s' but schema defines '%s'."
+                  (format "Mismatched column types for field %s. Asked for '%s' but schema defines '%s'."
                           (format-ks parents) (name queried-type) (name schema-type))))
           sub-schema)))))
 
@@ -292,13 +294,13 @@
   [sub-schema query-record readers missing-fields-as-nil? parents]
   (if-not (record? sub-schema)
     (throw (IllegalArgumentException.
-            (format "Field '%s' is a value field in schema, not a record." (format-ks parents))))
+            (format "Field %s is a value field in schema, not a record." (format-ks parents))))
     (do
       (when-not missing-fields-as-nil?
         (let [missing-fields (remove (->> sub-schema :sub-fields (map :name) set) (keys query-record))]
           (when-not (empty? missing-fields)
             (throw (IllegalArgumentException.
-                    (format "In field '%s', the following sub-fields don't exist: '%s'"
+                    (format "In field %s, the following sub-fields don't exist: '%s'"
                             (format-ks parents) (string/join ", " missing-fields)))))))
       (let [sub-fields (->> (:sub-fields sub-schema)
                             (filter (comp query-record :name))
@@ -313,7 +315,7 @@
   (let [compatible-repetition-types #{:list :vector :set :map}]
     (if-not (compatible-repetition-types (:repetition sub-schema))
       (throw (IllegalArgumentException.
-              (format "Field '%s' contains a %s in the schema, cannot be read as a list."
+              (format "Field %s contains a %s in the schema, cannot be read as a list."
                       (format-ks parents) (-> sub-schema :repetition name))))
       (-> (apply-query* sub-schema (first query-list) readers missing-fields-as-nil? parents)
           (assoc :repetition :list)))))
@@ -323,7 +325,7 @@
   (let [compatible-repetition-types #{:list :vector :set :map}]
     (if-not (compatible-repetition-types (:repetition sub-schema))
       (throw (IllegalArgumentException.
-              (format "Field '%s' contains a %s in the schema, cannot be read as a vector."
+              (format "Field %s contains a %s in the schema, cannot be read as a vector."
                       (format-ks parents) (-> sub-schema :repetition name))))
       (-> (apply-query* sub-schema (first query-vec) readers missing-fields-as-nil? parents)
           (assoc :repetition :vector)))))
@@ -332,7 +334,7 @@
   [sub-schema query-set readers missing-fields-as-nil? parents]
   (if-not (= :set (:repetition sub-schema))
     (throw (IllegalArgumentException.
-            (format "Field '%s' contains a %s in the schema, cannot be read as a set."
+            (format "Field %s contains a %s in the schema, cannot be read as a set."
                     (format-ks parents) (-> sub-schema :repetition name))))
     (apply-query* sub-schema (first query-set) readers missing-fields-as-nil? parents)))
 
@@ -340,7 +342,7 @@
   [sub-schema query-map readers missing-fields-as-nil? parents]
   (if-not (= :map (:repetition sub-schema))
     (throw (IllegalArgumentException.
-            (format "Field '%s' contains a %s in the schema, cannot be read as a map."
+            (format "Field %s contains a %s in the schema, cannot be read as a map."
                     (format-ks parents) (-> sub-schema :repetition name))))
     (let [[key-query value-query] (-> query-map first ((juxt key val)))
           key-sub-schema (apply-query* (sub-field sub-schema :key)

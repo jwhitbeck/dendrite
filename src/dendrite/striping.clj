@@ -48,7 +48,9 @@
 (defmethod stripe :required
   [striped-record record schema parents nil-parent? coercion-fns repetition-level definition-level]
   (when (and (empty? record) (not nil-parent?))
-    (throw (IllegalArgumentException. (format "Required field %s is missing" (format-ks parents)))))
+    (throw (IllegalArgumentException. (if (empty? parents)
+                                        "Empty record!"
+                                        (format "Required field %s is missing" (format-ks parents))))))
   (reduce (fn [striped-record field]
             (let [v (get record (:name field))]
               (stripe striped-record v field (conj parents (:name field)) (empty? record)
