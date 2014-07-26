@@ -32,7 +32,9 @@
    :invalid-input-handler nil})
 
 (def default-read-options
-  {:query '_})
+  {:query '_
+   :missing-fields-as-nil? true
+   :readers nil})
 
 (defprotocol IWriter
   (write! [_ records])
@@ -318,12 +320,12 @@
             metadata/read)))))
 
 (defn- reader [backend-reader metadata options]
-  (let [{:keys [query] :as opts} (merge default-read-options options)]
+  (let [{:keys [query missing-fields-as-nil? readers] :as opts} (merge default-read-options options)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
       :open-channels (atom [])
-      :queried-schema (schema/apply-query (:schema metadata) query)})))
+      :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
 (defn byte-buffer-reader [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) (byte-buffer->metadata byte-buffer) options))

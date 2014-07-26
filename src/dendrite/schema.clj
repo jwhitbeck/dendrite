@@ -300,8 +300,8 @@
         (let [missing-fields (remove (->> sub-schema :sub-fields (map :name) set) (keys query-record))]
           (when-not (empty? missing-fields)
             (throw (IllegalArgumentException.
-                    (format "In field %s, the following sub-fields don't exist: '%s'"
-                            (format-ks parents) (string/join ", " missing-fields)))))))
+                    (format "The following fields don't exist: %s"
+                            (string/join ", " (map #(format-ks (conj parents %)) missing-fields))))))))
       (let [sub-fields (->> (:sub-fields sub-schema)
                             (filter (comp query-record :name))
                             (mapv #(apply-query* % (get query-record (:name %))

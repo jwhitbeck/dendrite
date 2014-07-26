@@ -88,7 +88,7 @@
                       :reader-fn)))))
     (testing "missing fields throw errors if enforced"
       (is (thrown-with-msg?
-           IllegalArgumentException #"the following sub-fields don't exist: ':missing'"
+           IllegalArgumentException #"The following fields don't exist: \[:missing\]"
            (throw-cause (apply-query schema {:docid '_ :missing '_} false nil)))))
     (testing "bad queries"
       (are [query msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)

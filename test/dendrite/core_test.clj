@@ -164,3 +164,12 @@
         (is (= @error-atom bad-record))
         (is (= [dremel-paper-record1 dremel-paper-record2]
                (read (-> w byte-buffer! byte-buffer-reader))))))))
+
+(deftest strict-queries
+  (testing "queries fail when missing-fields-as-nil? is false and we query a missing fields"
+    (let [bb (byte-buffer! (dremel-paper-writer))]
+      (is (= [nil nil] (read (byte-buffer-reader bb :query {:foo '_}))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #"The following fields don't exist: \[:foo\]"
+           (helpers/throw-cause (read (byte-buffer-reader bb :query {:foo '_}
+                                                          :missing-fields-as-nil? false))))))))
