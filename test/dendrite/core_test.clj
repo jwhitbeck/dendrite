@@ -148,3 +148,19 @@
            java.nio.file.NoSuchFileException #"target/foo.dend"
            (with-open [r (file-reader tmp-filename)]
              (read r)))))))
+
+(deftest invalid-records
+  (let [bad-record {:docid "not-a-number"}]
+    (testing "invalid records trigger an exception while writing"
+      (is (thrown-with-msg?
+           IllegalArgumentException #"Failed to stripe record '\{:docid \"not-a-number\"\}"
+           (helpers/throw-cause (doto (dremel-paper-writer)
+                                  (write! [bad-record]))))))
+    (testing "invalid-input-handler can process exceptions"
+      (let [error-atom (atom nil)
+            w (doto (byte-buffer-writer (schema/read-string dremel-paper-schema-str)
+                                        :invalid-input-handler (fn [record e] (reset! error-atom record)))
+                (write! [bad-record dremel-paper-record1 dremel-paper-record2]))]
+        (is (= @error-atom bad-record))
+        (is (= [dremel-paper-record1 dremel-paper-record2]
+               (read (-> w byte-buffer! byte-buffer-reader))))))))

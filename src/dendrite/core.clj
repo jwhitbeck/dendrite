@@ -24,12 +24,12 @@
 (defn- valid-magic-bytes? [^ByteBuffer bb]
   (= magic-str (utils/byte-buffer->str bb)))
 
-(def default-options
+(def default-write-options
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
    :target-data-page-length 1024                  ; 1KB
    :optimize-columns? :default
    :compression-thresholds {:lz4 0.9 :deflate 0.5}
-   })
+   :invalid-input-handler nil})
 
 (defprotocol IWriter
   (write! [_ records])
@@ -150,6 +150,7 @@
   (write! [this records]
     (if (= :error (->> records
                        (utils/chunked-pmap stripe-fn)
+                       (remove nil?)
                        (>!!-coll striped-record-ch)))
       (throw (:error (<!! write-thread)))
       this))
@@ -173,7 +174,7 @@
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
-                compression-thresholds]} (merge default-options options)
+                compression-thresholds invalid-input-handler]} (merge default-write-options options)
         parsed-schema (schema/parse schema)
         striped-record-ch (async/chan 100)
         record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
@@ -183,7 +184,7 @@
                     :none false)]
     (map->Writer
      {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
-      :stripe-fn (striping/stripe-fn parsed-schema)
+      :stripe-fn (striping/stripe-fn parsed-schema invalid-input-handler)
       :striped-record-ch striped-record-ch
       :write-thread (async/thread (write-loop striped-record-ch
                                               record-group-writer

@@ -80,7 +80,7 @@
       (stripe striped-record (map (fn [[k v]] {:key k :value v}) record) schema-as-list
               parents false coercion-fns repetition-level definition-level))))
 
-(defn stripe-fn [schema]
+(defn- stripe-fn* [schema]
   (let [column-specs (schema/column-specs schema)
         coercion-fns (coercion-fns-vec column-specs)
         num-cols (count column-specs)]
@@ -90,5 +90,15 @@
         (catch Exception e
           (throw (IllegalArgumentException. (format "Failed to stripe record '%s'" record) e)))))))
 
+(defn stripe-fn [schema error-handler]
+  (let [sf (stripe-fn* schema)]
+    (if error-handler
+      (fn [record]
+        (try (sf record)
+             (catch Exception e
+               (error-handler record e)
+               nil)))
+      sf)))
+
 (defn stripe-record [record schema]
-  ((stripe-fn schema) record))
+  ((stripe-fn* schema) record))

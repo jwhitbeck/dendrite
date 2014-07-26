@@ -37,7 +37,7 @@
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
         records (take 1000 (helpers/rand-test-records))
-        striped-records (map (striping/stripe-fn test-schema) records)
+        striped-records (map (striping/stripe-fn test-schema nil) records)
         w (doto (writer target-data-page-length (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
@@ -50,7 +50,7 @@
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
         records (take 1000 (helpers/rand-test-records))
-        striped-records (map (striping/stripe-fn test-schema) records)
+        striped-records (map (striping/stripe-fn test-schema nil) records)
         w (doto (writer target-data-page-length (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
