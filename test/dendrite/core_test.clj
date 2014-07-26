@@ -72,18 +72,24 @@
 
 (deftest corrupt-data
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
-    (testing "corrupt magic bytes at file start"
+    (testing "corrupt magic bytes at start"
       (let [bad-byte-pos 2
             tmp-byte (.get byte-buffer bad-byte-pos)]
         (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
                      (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
         (.put byte-buffer bad-byte-pos tmp-byte)))
-    (testing "corrupt magic bytes at file end"
+    (testing "corrupt magic bytes at end"
       (let [bad-byte-pos (- (.limit byte-buffer) 2)
             tmp-byte (.get byte-buffer bad-byte-pos)]
         (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
                      (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
-        (.put byte-buffer bad-byte-pos tmp-byte)))))
+        (.put byte-buffer bad-byte-pos tmp-byte))))
+  (testing "corrupt file"
+    (spit tmp-filename "random junk")
+    (is (thrown-with-msg? IllegalArgumentException #"File is not a valid dendrite file."
+                          (with-open [f (file-reader tmp-filename)]
+                            (metadata f))))
+    (io/delete-file tmp-filename)))
 
 (deftest record-group-lengths
   (testing "record-group lengths are approximately equal to target-record-group-length"
