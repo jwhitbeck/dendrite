@@ -323,7 +323,7 @@
      {:backend-reader backend-reader
       :metadata metadata
       :open-channels (atom [])
-      :queried-schema (schema/apply-query (:schema metadata) query options)})))
+      :queried-schema (schema/apply-query (:schema metadata) query)})))
 
 (defn byte-buffer-reader [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) (byte-buffer->metadata byte-buffer) options))

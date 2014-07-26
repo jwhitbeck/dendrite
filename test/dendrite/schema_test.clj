@@ -73,14 +73,14 @@
            {:meta ['_]} {:meta [{:key (req 'string) :value (req 'string)}]}))
     (testing "tagging"
       (let [bogus-fn (fn [])]
-        (is (= bogus-fn (-> (apply-query schema {:docid (tag 'foo '_)} {:readers {'foo bogus-fn}})
+        (is (= bogus-fn (-> (apply-query schema {:docid (tag 'foo '_)} true {'foo bogus-fn})
                             (sub-field :docid)
                             :reader-fn)))
         (is (= bogus-fn (-> (apply-query schema {:name [{:language [{:code (tag 'foo '_)}]}]}
-                                         {:readers {'foo bogus-fn}})
+                                         true {'foo bogus-fn})
                             (sub-field-in [:name :language :code])
                             :reader-fn)))
-        (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} {:readers {'foo bogus-fn}})
+        (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} true {'foo bogus-fn})
                             (sub-field :name)
                             :reader-fn)))
         (is (nil? (-> (apply-query schema {:docid (tag 'foo '_)})
@@ -89,7 +89,7 @@
     (testing "missing fields throw errors if enforced"
       (is (thrown-with-msg?
            IllegalArgumentException #"the following sub-fields don't exist: ':missing'"
-           (throw-cause (apply-query schema {:docid '_ :missing '_} {:missing-fields-as-nil? false})))))
+           (throw-cause (apply-query schema {:docid '_ :missing '_} false nil)))))
     (testing "bad queries"
       (are [query msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                          (throw-cause (apply-query schema query)))

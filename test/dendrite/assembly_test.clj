@@ -54,6 +54,6 @@
   (let [query {:meta (schema/tag 'foo '_)}
         stripes (mapv (partial get test-record-striped) [6 7])]
     (are [answer reader-fn]
-      (= answer (assemble stripes (schema/apply-query test-schema query {:readers {'foo reader-fn}})))
+      (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
       {:meta 2} count
       {:meta ["key2" "key1"]} keys)))

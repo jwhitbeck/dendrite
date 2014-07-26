@@ -358,8 +358,8 @@
       (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema]))))
 
 (defn apply-query
-  ([schema query] (apply-query schema query {}))
-  ([schema query {:keys [missing-fields-as-nil? readers] :or {missing-fields-as-nil? true}}]
+  ([schema query] (apply-query schema query true {}))
+  ([schema query missing-fields-as-nil? readers]
      (try
        (-> schema
            (apply-query* query readers missing-fields-as-nil? [])
