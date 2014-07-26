@@ -31,6 +31,9 @@
    :compression-thresholds {:lz4 0.9 :deflate 0.5}
    :invalid-input-handler nil})
 
+(def default-read-options
+  {:query '_})
+
 (defprotocol IWriter
   (write! [_ records])
   (set-metadata! [_ metadata]))
@@ -278,8 +281,7 @@
       (async/close! ch))
     (close-reader! backend-reader)))
 
-(defn byte-buffer-reader
-  [^ByteBuffer byte-buffer & {:as opts :keys [query] :or {query '_}}]
+(defn- byte-buffer->metadata [^ByteBuffer byte-buffer]
   (let [length (.limit byte-buffer)
         last-magic-bytes-pos (- length magic-bytes-length)
         metadata-length-pos (- last-magic-bytes-pos int-length)]
@@ -290,19 +292,13 @@
               "Provided byte buffer does not contain a valid dendrite serialization."))
       (let [metadata-length (-> byte-buffer
                                 (utils/sub-byte-buffer metadata-length-pos int-length)
-                                utils/byte-buffer->int)
-            metadata (-> byte-buffer
-                         (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
-                         metadata/read)]
-        (map->Reader
-         {:backend-reader (->ByteBufferBackendReader byte-buffer)
-          :metadata metadata
-          :open-channels (atom [])
-          :queried-schema (schema/apply-query (:schema metadata) query opts)})))))
+                                utils/byte-buffer->int)]
+        (-> byte-buffer
+            (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
+            metadata/read)))))
 
-(defn file-reader [filename & {:as opts :keys [query] :or {query '_}}]
-  (let [file-channel (utils/file-channel filename :read)
-        length (.size file-channel)
+(defn- file-channel->metadata [^FileChannel file-channel]
+  (let [length (.size file-channel)
         last-magic-bytes-pos (- length magic-bytes-length)
         metadata-length-pos (- last-magic-bytes-pos int-length)]
     (if-not
@@ -312,12 +308,22 @@
               "File is not a valid dendrite file."))
       (let [metadata-length (-> file-channel
                                 (utils/map-bytes metadata-length-pos int-length)
-                                utils/byte-buffer->int)
-            metadata (-> file-channel
-                         (utils/map-bytes (- metadata-length-pos metadata-length) metadata-length)
-                         metadata/read)]
-        (map->Reader
-         {:backend-reader (->FileChannelBackendReader file-channel)
-          :metadata metadata
-          :open-channels (atom [])
-          :queried-schema (schema/apply-query (:schema metadata) query opts)})))))
+                                utils/byte-buffer->int)]
+        (-> file-channel
+            (utils/map-bytes (- metadata-length-pos metadata-length) metadata-length)
+            metadata/read)))))
+
+(defn- reader [backend-reader metadata options]
+  (let [{:keys [query] :as opts} (merge default-read-options options)]
+    (map->Reader
+     {:backend-reader backend-reader
+      :metadata metadata
+      :open-channels (atom [])
+      :queried-schema (schema/apply-query (:schema metadata) query options)})))
+
+(defn byte-buffer-reader [^ByteBuffer byte-buffer & {:as options}]
+  (reader (->ByteBufferBackendReader byte-buffer) (byte-buffer->metadata byte-buffer) options))
+
+(defn file-reader [f & {:as options}]
+  (let [file-channel (utils/file-channel f :read)]
+    (reader (->FileChannelBackendReader file-channel) (file-channel->metadata file-channel) options)))

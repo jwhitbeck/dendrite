@@ -26,8 +26,8 @@
   (filter-indices* indices-set 0 coll))
 
 (defn file-channel
-  ^FileChannel [filename mode]
-  (let [path (-> filename io/as-file .toPath)
+  ^FileChannel [f mode]
+  (let [path (-> f io/as-file .toPath)
         opts (case mode
                :write (into-array OpenOption [StandardOpenOption/WRITE
                                               StandardOpenOption/CREATE
