@@ -358,17 +358,18 @@
       (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema]))))
 
 (defn apply-query
-  [schema query & {:keys [missing-fields-as-nil? readers] :or {missing-fields-as-nil? true}}]
-  (try
-    (-> schema
-        (apply-query* query readers missing-fields-as-nil? [])
-        (with-column-indices :query-column-index)
-        with-column-spec-paths
-        with-map-fns)
-    (catch Exception e
-      (throw (IllegalArgumentException.
-              (format "Invalid query '%s' for schema '%s'" query (unparse schema))
-              e)))))
+  ([schema query] (apply-query schema query {}))
+  ([schema query {:keys [missing-fields-as-nil? readers] :or {missing-fields-as-nil? true}}]
+     (try
+       (-> schema
+           (apply-query* query readers missing-fields-as-nil? [])
+           (with-column-indices :query-column-index)
+           with-column-spec-paths
+           with-map-fns)
+       (catch Exception e
+         (throw (IllegalArgumentException.
+                 (format "Invalid query '%s' for schema '%s'" query (unparse schema))
+                 e))))))
 
 (defn queried-column-indices-set [queried-schema]
   (->> queried-schema column-specs (map :column-index) set))

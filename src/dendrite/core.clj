@@ -298,7 +298,7 @@
          {:backend-reader (->ByteBufferBackendReader byte-buffer)
           :metadata metadata
           :open-channels (atom [])
-          :queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))})))))
+          :queried-schema (schema/apply-query (:schema metadata) query opts)})))))
 
 (defn file-reader [filename & {:as opts :keys [query] :or {query '_}}]
   (let [file-channel (utils/file-channel filename :read)
@@ -320,4 +320,4 @@
          {:backend-reader (->FileChannelBackendReader file-channel)
           :metadata metadata
           :open-channels (atom [])
-          :queried-schema (apply schema/apply-query (:schema metadata) query (-> opts seq flatten))})))))
+          :queried-schema (schema/apply-query (:schema metadata) query opts)})))))
