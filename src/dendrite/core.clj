@@ -100,37 +100,41 @@
     (loop [next-num-records-for-length-check 10
            record-groups-metadata []
            optimized? (not optimize?)
-           rgw record-group-writer]
+           rg-writer record-group-writer]
       (if (>= (record-group/num-records record-group-writer) next-num-records-for-length-check)
         (let [estimated-length (.estimatedLength record-group-writer)]
           (if (>= estimated-length target-record-group-length)
             (if (and optimize? (not optimized?))
-              (let [^BufferedByteArrayWriter opt-rgw (record-group/optimize! rgw compression-threshold-map)]
-                (recur (estimation/next-threshold-check (record-group/num-records opt-rgw)
-                                                        (.estimatedLength opt-rgw)
+              (let [^BufferedByteArrayWriter optimized-rg-writer
+                      (record-group/optimize! rg-writer compression-threshold-map)]
+                (recur (estimation/next-threshold-check (record-group/num-records optimized-rg-writer)
+                                                        (.estimatedLength optimized-rg-writer)
                                                         target-record-group-length)
                        record-groups-metadata
                        true
-                       opt-rgw))
-              (let [metadata (complete-record-group! backend-writer rgw)
+                       optimized-rg-writer))
+              (let [metadata (complete-record-group! backend-writer rg-writer)
                     next-threshold-check (long (/ (:num-records metadata) 2))]
-                (recur next-threshold-check (conj record-groups-metadata metadata) optimized? rgw)))
-            (recur (estimation/next-threshold-check (record-group/num-records rgw)
+                (recur next-threshold-check (conj record-groups-metadata metadata) optimized? rg-writer)))
+            (recur (estimation/next-threshold-check (record-group/num-records rg-writer)
                                                     estimated-length
                                                     target-record-group-length)
                    record-groups-metadata
                    optimized?
-                   rgw)))
+                   rg-writer)))
         (if-let [striped-record (<!! striped-record-ch)]
-          (do (record-group/write! rgw striped-record)
-              (recur next-num-records-for-length-check record-groups-metadata optimized? rgw))
-          (let [final-rgw (if (and optimize? (not optimized?))
-                            (record-group/optimize! rgw compression-threshold-map)
-                            rgw)
-                metadata (complete-record-group! backend-writer final-rgw)]
-            (record-group/await-io-completion final-rgw)
-            {:record-groups-metadata (conj record-groups-metadata metadata)
-             :column-specs (record-group/column-specs final-rgw)}))))
+          (do (record-group/write! rg-writer striped-record)
+              (recur next-num-records-for-length-check record-groups-metadata optimized? rg-writer))
+          (let [final-rg-writer (if (and optimize? (not optimized?))
+                                  (record-group/optimize! rg-writer compression-threshold-map)
+                                  rg-writer)
+                final-rg-metadata (if (pos? (record-group/num-records final-rg-writer))
+                                    (->> (complete-record-group! backend-writer final-rg-writer)
+                                         (conj record-groups-metadata))
+                                    record-groups-metadata)]
+            (record-group/await-io-completion final-rg-writer)
+            {:record-groups-metadata final-rg-metadata
+             :column-specs (record-group/column-specs final-rg-writer)}))))
     (catch Exception e
       (async/close! striped-record-ch)
       {:error e})))
