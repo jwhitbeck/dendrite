@@ -180,16 +180,28 @@
             :to-base-type-fn (comp str->utf8-bytes name)
             :from-base-type-fn (comp symbol utf8-bytes->str)}})
 
-(def ^:dynamic *custom-types* {})
+(defn- build-type-hierarchy [t all-derived-types]
+  (if (base-type? t)
+    [t]
+    (when-let [next-type (get-in all-derived-types [t :base-type])]
+      (cons t (build-type-hierarchy next-type all-derived-types)))))
 
-(defn- all-derived-types [] (merge *custom-types* derived-types))
+(defn- build-type-hierarchy-map [all-types]
+  (reduce-kv (fn [m t _] (assoc m t (build-type-hierarchy t all-types))) {} all-types))
+
+(def ^:dynamic *derived-type-hierarchies* (build-type-hierarchy-map derived-types))
+(def ^:dynamic *derived-types* derived-types)
+
+(defmacro with-custom-types [custom-derived-types & body]
+  `(let [all-derived-types# (merge ~custom-derived-types @#'derived-types)]
+     (binding [*derived-types* all-derived-types#
+               *derived-type-hierarchies* (#'build-type-hierarchy-map all-derived-types#)]
+       ~@body)))
 
 (defn- type-hierarchy [t]
-  (lazy-seq
-   (if (base-type? t)
-     [t]
-     (when-let [next-type (get-in (all-derived-types) [t :base-type])]
-       (cons t (type-hierarchy next-type))))))
+  (if (base-type? t)
+    [t]
+    (get *derived-type-hierarchies* t)))
 
 (defn- base-type [t] (last (type-hierarchy t)))
 
@@ -203,13 +215,13 @@
   (list-encodings-for-base-type (base-type t)))
 
 (defn- derived->base-type-fn [t]
-  (->> (map #(get-in (all-derived-types) [% :to-base-type-fn]) (type-hierarchy t))
+  (->> (map #(get-in *derived-types* [% :to-base-type-fn]) (type-hierarchy t))
        butlast
        reverse
        (apply comp)))
 
 (defn- base->derived-type-fn [t]
-  (->> (map #(get-in (all-derived-types) [% :from-base-type-fn]) (type-hierarchy t))
+  (->> (map #(get-in *derived-types* [% :from-base-type-fn]) (type-hierarchy t))
        butlast
        (apply comp)))
 
@@ -240,7 +252,7 @@
 
 (defn coercion-fn [t]
   (let [coerce (if-not (base-type? t)
-                 (get-in (all-derived-types) [t :coercion-fn] identity)
+                 (get-in *derived-types* [t :coercion-fn] identity)
                  (case t
                    :boolean boolean
                    :int int

@@ -189,9 +189,9 @@
   (testing "incrementing dates as a custom-type"
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
-      (binding [encoding/*custom-types* {:date {:base-type :long
-                                                :to-base-type-fn #(.getTime %)
-                                                :from-base-type-fn #(Date. %)}}]
+      (encoding/with-custom-types {:date {:base-type :long
+                                          :to-base-type-fn #(.getTime %)
+                                          :from-base-type-fn #(Date. %)}}
         (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
           (is (= (read reader) input-blocks))
           (is (= :delta (find-best-encoding reader test-target-data-page-length)))))))
@@ -257,9 +257,9 @@
   (testing "incrementing dates"
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
-      (binding [encoding/*custom-types* {:date {:base-type :string
-                                                :to-base-type-fn #(.format simple-date-format %)
-                                                :from-base-type-fn #(.parse simple-date-format %)}}]
+      (encoding/with-custom-types {:date {:base-type :string
+                                          :to-base-type-fn #(.format simple-date-format %)
+                                          :from-base-type-fn #(.parse simple-date-format %)}}
         (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
           (is (= (read reader) input-blocks))
           (is (= :incremental (find-best-encoding reader test-target-data-page-length)))))))
