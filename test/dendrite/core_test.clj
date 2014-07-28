@@ -173,3 +173,14 @@
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
            (helpers/throw-cause (read (byte-buffer-reader bb :query {:foo '_}
                                                           :missing-fields-as-nil? false))))))))
+
+(deftest readers
+  (testing "readers functions transform output"
+    (let [bb (byte-buffer! (dremel-paper-writer))]
+      (is (= [{:name 3, :docid 10} {:name 1, :docid 20}]
+             (read (byte-buffer-reader bb :query {:docid '_ :name (schema/tag 'foo '_)}
+                                       :readers {'foo count}))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #"No reader function was provided for tag 'foo'"
+           (helpers/throw-cause
+            (read (byte-buffer-reader bb :query {:docid '_ :name (schema/tag 'foo '_)}))))))))

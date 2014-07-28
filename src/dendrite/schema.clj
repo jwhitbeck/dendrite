@@ -272,8 +272,11 @@
 
 (defmethod apply-query* :tagged
   [sub-schema tagged-query readers missing-fields-as-nil? parents]
-  (-> (apply-query* sub-schema (:field tagged-query) readers missing-fields-as-nil? parents)
-      (assoc :reader-fn (get readers (:tag tagged-query)))))
+  (if-let [reader-fn (get readers (:tag tagged-query))]
+    (-> (apply-query* sub-schema (:field tagged-query) readers missing-fields-as-nil? parents)
+        (assoc :reader-fn reader-fn))
+    (throw (IllegalArgumentException.
+            (format "No reader function was provided for tag '%s'" (:tag tagged-query))))))
 
 (defmethod apply-query* :symbol
   [sub-schema query-symbol readers missing-fields-as-nil? parents]

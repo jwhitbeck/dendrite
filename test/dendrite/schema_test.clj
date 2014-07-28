@@ -83,9 +83,10 @@
         (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} true {'foo bogus-fn})
                             (sub-field :name)
                             :reader-fn)))
-        (is (nil? (-> (apply-query schema {:docid (tag 'foo '_)})
-                      (sub-field :docid)
-                      :reader-fn)))))
+        (is (thrown-with-msg? IllegalArgumentException #"No reader function was provided for tag 'foo'"
+                              (throw-cause (-> (apply-query schema {:docid (tag 'foo '_)})
+                                               (sub-field :docid)
+                                               :reader-fn))))))
     (testing "missing fields throw errors if enforced"
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:missing\]"
