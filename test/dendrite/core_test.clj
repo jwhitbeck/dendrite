@@ -92,21 +92,22 @@
     (io/delete-file tmp-filename)))
 
 (deftest record-group-lengths
-  (testing "record-group lengths are approximately equal to target-record-group-length"
-    (let [records (take 1000 (helpers/rand-test-records))
-          target-record-group-length (* 3 1024)
-          writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string)
-                                           :target-record-group-length target-record-group-length)
-                   (write! records))
-          byte-buffer (byte-buffer! writer)]
-      (is (->> (byte-buffer-reader byte-buffer)
-               stats
-               :record-groups
-               rest
-               butlast
-               (map :length)
-               helpers/avg
-               (helpers/roughly target-record-group-length))))))
+  (letfn [(avg-record-group-length [target-length]
+            (let [records (take 1000 (helpers/rand-test-records))
+                  writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string)
+                                                   :target-record-group-length target-length)
+                           (write! records))
+                  byte-buffer (byte-buffer! writer)]
+              (->> (byte-buffer-reader byte-buffer)
+                   stats
+                   :record-groups
+                   rest
+                   butlast
+                   (map :length)
+                   helpers/avg)))]
+    (testing "record-group lengths are approximately equal to target-record-group-length"
+      (is (helpers/roughly (* 3 1024) (avg-record-group-length (* 3 1024))))
+      (is (helpers/roughly 1024 (avg-record-group-length 1024))))))
 
 (defn- throw-foo-fn [& args] (throw (Exception. "foo")))
 

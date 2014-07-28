@@ -18,14 +18,16 @@
   (reduce write! column-chunk-writer blocks))
 
 (defn write-column-chunk-and-get-reader
-  [column-spec input-blocks]
-  (let [w (doto (writer test-target-data-page-length column-spec)
-            (write-blocks input-blocks)
-            .finish)
-        column-chunk-metadata (metadata w)]
-    (-> w
-        helpers/get-byte-array-reader
-        (reader column-chunk-metadata column-spec))))
+  ([column-spec input-blocks]
+     (write-column-chunk-and-get-reader column-spec test-target-data-page-length input-blocks))
+  ([column-spec target-data-page-length input-blocks]
+     (let [w (doto (writer target-data-page-length column-spec)
+               (write-blocks input-blocks)
+               .finish)
+           column-chunk-metadata (metadata w)]
+       (-> w
+           helpers/get-byte-array-reader
+           (reader column-chunk-metadata column-spec)))))
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -80,12 +82,16 @@
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))
     (testing "Page length estimation converges"
-      (is (->> (page/read-data-page-headers (:byte-array-reader reader) num-pages)
-               rest                      ; the first page is always inaccurate
-               butlast                   ; the last page can have any length
-               (map (comp :length page/stats))
-               helpers/avg
-               (helpers/roughly test-target-data-page-length))))))
+      (letfn [(avg-page-length [target-length]
+                (let [reader (write-column-chunk-and-get-reader cs target-length input-blocks)
+                      num-data-pages (-> reader :column-chunk-metadata :num-data-pages)]
+                  (->> (page/read-data-page-headers (:byte-array-reader reader) num-data-pages)
+                       rest                      ; the first page is always inaccurate
+                       butlast                   ; the last page can have any length
+                       (map (comp :length page/stats))
+                       helpers/avg)))]
+        (is (helpers/roughly 1024 (avg-page-length 1024)))
+        (is (helpers/roughly 256 (avg-page-length 256)))))))
 
 (deftest dictionary-column-chunk
   (let [cs (column-spec :int :dictionary :deflate)
