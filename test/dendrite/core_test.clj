@@ -5,6 +5,7 @@
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as schema]
             [dendrite.test-helpers :as helpers])
+  (:import [java.util Date Calendar])
   (:refer-clojure :exclude [read]))
 
 (def tmp-filename "target/foo.dend")
@@ -185,3 +186,15 @@
            IllegalArgumentException #"No reader function was provided for tag 'foo'"
            (helpers/throw-cause
             (read (byte-buffer-reader bb :query {:docid '_ :name (schema/tag 'foo '_)}))))))))
+
+(deftest custom-types
+  (testing "write/read custom types"
+    (let [t1 (.getTime (Calendar/getInstance))
+          t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
+          records [{:docid 1 :at t1} {:docid 2 :at t1}]
+          custom-types {:date {:base-type :long
+                               :to-base-type-fn #(.getTime %)
+                               :from-base-type-fn #(Date. %)}}
+          w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
+              (write! records))]
+      (is (= records (-> w byte-buffer! (byte-buffer-reader :custom-types custom-types) read))))))

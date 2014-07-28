@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async :refer [<! >! <!! >!!]]
             [dendrite.assembly :as assembly]
             [dendrite.striping :as striping]
+            [dendrite.encoding :as encoding]
             [dendrite.estimation :as estimation]
             [dendrite.metadata :as metadata]
             [dendrite.record-group :as record-group]
@@ -29,12 +30,14 @@
    :target-data-page-length 1024                  ; 1KB
    :optimize-columns? :default
    :compression-thresholds {:lz4 0.9 :deflate 0.5}
-   :invalid-input-handler nil})
+   :invalid-input-handler nil
+   :custom-types nil})
 
 (def default-read-options
   {:query '_
    :missing-fields-as-nil? true
-   :readers nil})
+   :readers nil
+   :custom-types nil})
 
 (defprotocol IWriter
   (write! [_ records])
@@ -182,26 +185,27 @@
                (close-writer! backend-writer)))))))
 
 (defn- writer [backend-writer schema options]
-  (let [{:keys [target-record-group-length target-data-page-length optimize-columns?
-                compression-thresholds invalid-input-handler]} (merge default-write-options options)
-        parsed-schema (schema/parse schema)
-        striped-record-ch (async/chan 100)
-        record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
-        optimize? (case optimize-columns?
-                    :all true
-                    :default (all-default-column-specs? parsed-schema)
-                    :none false)]
-    (map->Writer
-     {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
-      :stripe-fn (striping/stripe-fn parsed-schema invalid-input-handler)
-      :striped-record-ch striped-record-ch
-      :write-thread (async/thread (write-loop striped-record-ch
-                                              record-group-writer
-                                              backend-writer
-                                              target-record-group-length
-                                              optimize?
-                                              compression-thresholds))
-      :backend-writer backend-writer})))
+  (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
+                compression-thresholds invalid-input-handler]} (merge default-write-options options)]
+    (encoding/with-custom-types custom-types
+      (let [parsed-schema (schema/parse schema)
+            striped-record-ch (async/chan 100)
+            record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
+            optimize? (case optimize-columns?
+                        :all true
+                        :default (all-default-column-specs? parsed-schema)
+                        :none false)]
+        (map->Writer
+         {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
+          :stripe-fn (striping/stripe-fn parsed-schema invalid-input-handler)
+          :striped-record-ch striped-record-ch
+          :write-thread (async/thread (write-loop striped-record-ch
+                                                  record-group-writer
+                                                  backend-writer
+                                                  target-record-group-length
+                                                  optimize?
+                                                  compression-thresholds))
+          :backend-writer backend-writer})))))
 
 (defn byte-buffer-writer [schema & {:as options}]
   (writer (byte-array-backend-writer) schema options))
@@ -245,26 +249,27 @@
   (close-reader! [_]
     (.close file-channel)))
 
-(defrecord Reader [backend-reader metadata queried-schema open-channels]
+(defrecord Reader [backend-reader metadata queried-schema open-channels custom-types]
   IReader
   (read [_]
-    (let [ch (async/chan 100)
-          error-ch (async/chan)]
-      (swap! open-channels conj ch)
-      (async/thread
-        (try
-          (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-               (mapcat record-group/read)
-               (>!!-coll ch))
-          (catch Exception e
-            (>!! ch e))
-          (finally
-            (async/close! ch)
-            (swap! open-channels #(remove (partial = ch) %)))))
-      (->> (<!!-coll ch)
-           (utils/chunked-pmap #(if (instance? Exception %)
-                                  (throw %)
-                                  (assembly/assemble % queried-schema))))))
+    (encoding/with-custom-types custom-types
+      (let [ch (async/chan 100)
+            error-ch (async/chan)]
+        (swap! open-channels conj ch)
+        (async/thread
+          (try
+            (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
+                 (mapcat record-group/read)
+                 (>!!-coll ch))
+            (catch Exception e
+              (>!! ch e))
+            (finally
+              (async/close! ch)
+              (swap! open-channels #(remove (partial = ch) %)))))
+        (->> (<!!-coll ch)
+             (utils/chunked-pmap #(if (instance? Exception %)
+                                    (throw %)
+                                    (assembly/assemble % queried-schema)))))))
   (stats [_]
     (let [all-stats (->> (record-group-readers backend-reader
                                                (:record-groups-metadata metadata)
@@ -320,10 +325,11 @@
             metadata/read)))))
 
 (defn- reader [backend-reader metadata options]
-  (let [{:keys [query missing-fields-as-nil? readers] :as opts} (merge default-read-options options)]
+  (let [{:keys [query missing-fields-as-nil? readers custom-types]} (merge default-read-options options)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
+      :custom-types custom-types
       :open-channels (atom [])
       :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
