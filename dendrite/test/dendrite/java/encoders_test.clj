@@ -25,15 +25,6 @@
          (->> (repeatedly #(.decode decoder))
               (take n))))))
 
-(let [enc (BooleanPackedEncoder.)
-      baw (ByteArrayWriter. 10)]
-  (.encode enc false)
-  (.encode enc true)
-  (.finish enc)
-  (println (.length enc))
-  (.write baw enc)
-  (-> baw .buffer seq))
-
 (defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
   (let [output-seq (write-read n encoder-constructor decoder-constructor input-seq)]
     (is (every? true? (map = output-seq input-seq)))))
