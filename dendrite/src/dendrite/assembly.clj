@@ -16,7 +16,7 @@
             (reduce (fn [[record next-repetition-level leveled-values-vec] sub-schema]
                       (let [[value next-repetition-level next-leveled-values-vec]
                               (assemble* leveled-values-vec sub-schema)]
-                        [(if value (assoc record (:name sub-schema) value) record)
+                        [(if (nil? value) record (assoc record (:name sub-schema) value))
                          next-repetition-level
                          next-leveled-values-vec]))
                     [{} 0 leveled-values-vec]
@@ -39,7 +39,7 @@
   (let [non-repeated-schema (assoc schema :repetition :optional)
         [value next-repetition-level next-leveled-values-vec]
           (assemble* leveled-values-vec non-repeated-schema)]
-    (if (and (not value) (> (:repetition-level schema) next-repetition-level))
+    (if (and (nil? value) (> (:repetition-level schema) next-repetition-level))
       [nil next-repetition-level next-leveled-values-vec]
       (let [init-coll (case (:repetition schema)
                         :list (list value)

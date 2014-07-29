@@ -85,7 +85,8 @@
                         :country string}]
            :url string}]
     :meta {string string}
-    :keywords #{string}}")
+    :keywords #{string}
+    :is-active #req boolean}")
 
 (defn- rand-test-record [docid]
   (letfn [(rand-language []
@@ -116,7 +117,8 @@
           links (cond-> {}
                         (seq backward) (assoc :backward backward)
                         (seq forward) (assoc :forward forward))]
-      (cond-> {:docid docid}
+      (cond-> {:docid docid
+               :is-active (rand-bool)}
        (seq links) (assoc :links links)
        (seq names) (assoc :name names)
        (seq meta-map) (assoc :meta meta-map)

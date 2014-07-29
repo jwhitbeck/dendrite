@@ -145,8 +145,10 @@
                                   (schema/column-specs queried-schema))})))
 
 (defn optimize! [record-group-writer compression-threshold-map]
-  (let [optimized-column-chunk-writers (->> record-group-writer
-                                            :column-chunk-writers
-                                            (pmap #(column-chunk/optimize! % compression-threshold-map))
-                                            vec)]
-    (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers)))
+  (if-not (pos? (num-records record-group-writer))
+    record-group-writer
+    (let [optimized-column-chunk-writers (->> record-group-writer
+                                              :column-chunk-writers
+                                              (pmap #(column-chunk/optimize! % compression-threshold-map))
+                                              vec)]
+      (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers))))

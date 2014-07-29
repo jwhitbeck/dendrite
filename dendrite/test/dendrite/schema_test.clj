@@ -28,7 +28,8 @@
            [:name :url] {:column-index 5 :max-repetition-level 1 :max-definition-level 2}
            [:meta :key] {:column-index 6 :max-repetition-level 1 :max-definition-level 1}
            [:meta :value] {:column-index 7 :max-repetition-level 1 :max-definition-level 1}
-           [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}))))<
+           [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}
+           [:is-active] {:column-index 9 :max-repetition-level 0 :max-definition-level 0}))))
 
 (deftest invalid-schemas
   (testing "unsupported types"

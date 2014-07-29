@@ -22,7 +22,7 @@
   (when (and (= :required (:repetition schema)) (nil? record) (not nil-parent?))
     (throw (IllegalArgumentException. (format "Required field %s is missing" (format-ks parents)))))
   (let [column-spec (:column-spec schema)
-        value (when record
+        value (when-not (nil? record)
                 (let [coercion-fn (get coercion-fns (:column-index column-spec))]
                   (try
                     (coercion-fn record)
@@ -30,7 +30,9 @@
                       (throw (IllegalArgumentException.
                               (format "Could not coerce value in %s" (format-ks parents)) e))))))
         value-with-level (->LeveledValue repetition-level
-                                         (if value (:max-definition-level column-spec) definition-level)
+                                         (if (nil? value)
+                                           definition-level
+                                           (:max-definition-level column-spec))
                                          value)]
     (update-in striped-record
                [(:column-index column-spec)] #(conj (or % []) value-with-level))))

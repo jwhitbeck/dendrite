@@ -27,6 +27,7 @@
 (def test-schema (-> test-schema-str schema/read-string schema/parse))
 
 (def test-record {:docid 10
+                  :is-active false
                   :links {:backward (list 1 2 3)
                           :forward [4 5]}
                   :name [nil {:language [{:code "us" :country "USA"}]
