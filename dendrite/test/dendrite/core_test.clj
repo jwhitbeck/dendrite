@@ -61,7 +61,8 @@
                                     " :country #col [string dictionary]}],"
                         " :url #col [string incremental]}],"
                 " :meta {#col [string dictionary] #col [string dictionary]},"
-                " :keywords #{#col [string dictionary]}}")
+                " :keywords #{#col [string dictionary]},"
+                " :is-active #req boolean}")
            (str (schema reader))))))
 
 (deftest custom-metadata
