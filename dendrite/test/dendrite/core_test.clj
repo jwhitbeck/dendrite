@@ -32,7 +32,11 @@
                  (write! records))
         byte-buffer (byte-buffer! writer)]
     (testing "full schema"
-      (is (= records (read (byte-buffer-reader byte-buffer)))))))
+      (is (= records (read (byte-buffer-reader byte-buffer)))))
+    (testing "schema"
+      (is (not (nil? (schema (byte-buffer-reader byte-buffer))))))
+    (testing "stats"
+      (is (not (nil? (stats (byte-buffer-reader byte-buffer))))))))
 
 (deftest file-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))]
@@ -55,15 +59,18 @@
                                          :compression-thresholds {})
                  (write! records))
         reader (-> writer byte-buffer! byte-buffer-reader)]
-    (is (= (str "{:docid #req #col [long delta],"
-                " :links {:backward (long), :forward [long]},"
-                " :name [{:language [{:code #req #col [string dictionary],"
-                                    " :country #col [string dictionary]}],"
-                        " :url #col [string incremental]}],"
-                " :meta {#col [string dictionary] #col [string dictionary]},"
-                " :keywords #{#col [string dictionary]},"
-                " :is-active #req boolean}")
-           (str (schema reader))))))
+    (testing "schema is indeed optimize"
+      (is (= (str "{:docid #req #col [long delta],"
+                  " :links {:backward (long), :forward [long]},"
+                  " :name [{:language [{:code #req #col [string dictionary],"
+                  " :country #col [string dictionary]}],"
+                  " :url #col [string incremental]}],"
+                  " :meta {#col [string dictionary] #col [string dictionary]},"
+                  " :keywords #{#col [string dictionary]},"
+                  " :is-active #req boolean}")
+             (str (schema reader)))))
+    (testing "stats"
+      (is (not (nil? (stats reader)))))))
 
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}

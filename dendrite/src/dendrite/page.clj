@@ -111,7 +111,8 @@
     0)
   (stats [this]
     (stats/map->PageStats
-     {:length (+ (header-length this) (body-length this))
+     {:num-values num-values
+      :length (+ (header-length this) (body-length this))
       :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-length this)
                                          :dictionary-bytes compressed-data-length})}))
   Flushable
@@ -120,7 +121,7 @@
 
 (defn- read-dictionary-page-header [^ByteArrayReader bar dictionary-page-type]
   (map->DictionaryPageHeader
-   {:encoded-page-type (int->page-type dictionary-page-type)
+   {:encoded-page-type (page-type->int dictionary-page-type)
     :num-values (.readUInt bar)
     :compressed-data-length (.readUInt bar)
     :uncompressed-data-length (.readUInt bar)}))
