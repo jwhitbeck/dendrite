@@ -119,29 +119,37 @@
   (->> record-group-metadata column-chunk-lengths butlast (reductions + offset)))
 
 (defn byte-array-reader [^ByteArrayReader byte-array-reader record-group-metadata queried-schema]
-  (let [byte-array-readers
+  (let [queried-indices (schema/queried-column-indices-set queried-schema)
+        byte-array-readers
           (->> (column-chunk-byte-offsets record-group-metadata 0)
-               (utils/filter-indices (schema/queried-column-indices-set queried-schema))
-               (map #(.sliceAhead byte-array-reader %)))]
+               (utils/filter-indices queried-indices)
+               (map #(.sliceAhead byte-array-reader %)))
+        column-chunks-metadata (->> record-group-metadata
+                                    :column-chunks-metadata
+                                    (utils/filter-indices queried-indices))]
     (map->RecordGroupReader
      {:num-records (:num-records record-group-metadata)
       :column-chunk-readers (mapv column-chunk/reader
                                   byte-array-readers
-                                  (:column-chunks-metadata record-group-metadata)
+                                  column-chunks-metadata
                                   (schema/column-specs queried-schema))})))
 
 (defn file-channel-reader [^FileChannel file-channel offset record-group-metadata queried-schema]
-  (let [byte-array-readers
+  (let [queried-indices (schema/queried-column-indices-set queried-schema)
+        byte-array-readers
           (->> (column-chunk-lengths record-group-metadata)
                (map vector (column-chunk-byte-offsets record-group-metadata offset))
                (utils/filter-indices (schema/queried-column-indices-set queried-schema))
                (map (fn [[offset length]]
-                      (ByteArrayReader. (utils/map-bytes file-channel offset length)))))]
+                      (ByteArrayReader. (utils/map-bytes file-channel offset length)))))
+        column-chunks-metadata (->> record-group-metadata
+                                    :column-chunks-metadata
+                                    (utils/filter-indices queried-indices))]
     (map->RecordGroupReader
      {:num-records (:num-records record-group-metadata)
       :column-chunk-readers (mapv column-chunk/reader
                                   byte-array-readers
-                                  (:column-chunks-metadata record-group-metadata)
+                                  column-chunks-metadata
                                   (schema/column-specs queried-schema))})))
 
 (defn optimize! [record-group-writer compression-threshold-map]

@@ -45,7 +45,7 @@
     (testing "full schema"
       (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))
-    (testing "one-field"
+    (testing "one field"
       (is (= (map #(select-keys % [:docid]) records)
              (with-open [r (file-reader tmp-filename :query {:docid '_})]
                (doall (read r))))))
@@ -53,13 +53,13 @@
 
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
-        test-schema (-> helpers/test-schema-str schema/read-string)
-        writer (doto (byte-buffer-writer test-schema
-                                         :optimize-columns? :all
-                                         :compression-thresholds {})
-                 (write! records))
-        reader (-> writer byte-buffer! byte-buffer-reader)]
-    (testing "schema is indeed optimize"
+        test-schema (-> helpers/test-schema-str schema/read-string)]
+    (with-open [w (file-writer tmp-filename
+                               test-schema
+                               :optimize-columns? :all
+                               :compression-thresholds {})]
+      (write! w records))
+    (testing "schema is indeed optimized"
       (is (= (str "{:docid #req #col [long delta],"
                   " :links {:backward (long), :forward [long]},"
                   " :name [{:language [{:code #req #col [string dictionary],"
@@ -68,9 +68,15 @@
                   " :meta {#col [string dictionary] #col [string dictionary]},"
                   " :keywords #{#col [string dictionary]},"
                   " :is-active #req boolean}")
-             (str (schema reader)))))
+             (str (schema (file-reader tmp-filename))))))
     (testing "stats"
-      (is (not (nil? (stats reader)))))))
+      (is (not (nil? (stats (file-reader tmp-filename))))))
+    (testing "full schema"
+      (is (= records (read (file-reader tmp-filename)))))
+    (testing "one field"
+      (is (= (map #(select-keys % [:is-active]) records)
+             (read (file-reader tmp-filename :query {:is-active '_})))))
+    (io/delete-file tmp-filename)))
 
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}
