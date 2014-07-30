@@ -1,6 +1,7 @@
 (ns dendrite.column-chunk
   (:require [dendrite.estimation :as estimation]
             [dendrite.encoding :as encoding]
+            [dendrite.leveled-value :as lv]
             [dendrite.metadata :as metadata]
             [dendrite.page :as page]
             [dendrite.stats :as stats])
@@ -195,12 +196,6 @@
                        partition-by-record)]
     (-> column-chunk-reader stream partition-fn doall)))
 
-(defn- apply-to-leveled-value [f ^LeveledValue leveled-value]
-  (let [v (.value leveled-value)]
-    (if (nil? v)
-      leveled-value
-      (.apply leveled-value f))))
-
 (defrecord DataColumnChunkReader [^ByteArrayReader byte-array-reader
                                   column-chunk-metadata
                                   column-spec]
@@ -217,7 +212,7 @@
                            encoding
                            compression)]
       (cond->> leveled-values
-               map-fn (map (partial apply-to-leveled-value map-fn)))))
+               map-fn (map #(lv/apply-fn % map-fn)))))
   (page-headers [_]
     (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                                  (:num-data-pages column-chunk-metadata))))
