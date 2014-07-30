@@ -87,6 +87,22 @@
           (pmap (comp doall (partial map f)))
           (apply concat))))
 
+(defn multiplex [seqs]
+  (letfn [(all-first [^objects seq-array]
+            (persistent! (areduce seq-array idx ret (transient [])
+                                  (conj! ret (first (aget seq-array idx))))))
+          (rest! [^objects seq-array]
+            (loop [i (int 0)]
+              (if (< i (alength seq-array))
+                (do (aset seq-array i (rest (aget seq-array i)))
+                    (recur (unchecked-inc i)))
+                seq-array)))
+          (step [^objects seq-array]
+            (lazy-seq
+             (when (seq (aget seq-array 0))
+               (cons (all-first seq-array) (step (rest! seq-array))))))]
+    (step (into-array Object seqs))))
+
 (defmacro defenum [s vs]
   (let [values-symb (symbol (str s "s"))
         values-set-symb (symbol (str values-symb "-set"))

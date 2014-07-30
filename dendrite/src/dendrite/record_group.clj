@@ -104,7 +104,7 @@
     (if-not (seq column-chunk-readers)
       (repeat num-records [])
       (->> (pmap column-chunk/read column-chunk-readers)
-           (apply map vector))))
+           utils/multiplex)))
   (stats [_]
     (let [column-chunks-stats (map column-chunk/stats column-chunk-readers)]
       {:record-group (stats/column-chunks->record-group-stats num-records column-chunks-stats)
