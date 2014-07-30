@@ -1,5 +1,7 @@
-(ns dendrite.leveled-value)
+(ns dendrite.leveled-value
+  (:import [dendrite.java LeveledValue]))
 
 (set! *warn-on-reflection* true)
 
-(defrecord LeveledValue [repetition-level definition-level value])
+(defmacro ->LeveledValue [repetition-level definition-level value]
+  `(LeveledValue. (int ~repetition-level) (int ~definition-level) ~value))

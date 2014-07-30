@@ -7,7 +7,7 @@
             [dendrite.metadata :as metadata]
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ByteArrayWriter]
+  (:import [dendrite.java ByteArrayWriter LeveledValue]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
   (:refer-clojure :exclude [read]))
@@ -71,8 +71,8 @@
     (testing "value mapping"
         (let [map-fn (partial * 2)
               mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
-          (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
-                 (->> mapped-reader read flatten (map :value))))))
+          (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
+                 (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
       (let [w (doto (writer test-target-data-page-length cs)
                 (write-blocks input-blocks))
@@ -103,8 +103,8 @@
     (testing "value mapping"
       (let [map-fn (partial * 2)
             mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
-        (is (= (->> input-blocks flatten (map #(some-> % :value map-fn)))
-               (->> mapped-reader read flatten (map :value))))))
+        (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
+               (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
       (let [w (doto (writer test-target-data-page-length cs)
                 (write-blocks input-blocks))
@@ -239,8 +239,8 @@
           input-blocks (->> #(helpers/rand-byte-array) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (every? true? (map helpers/array=
-                             (->> reader read flatten (map :value))
-                             (->> input-blocks flatten (map :value)))))
+                             (->> reader read flatten (map #(.value ^LeveledValue %)))
+                             (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :delta-length (find-best-encoding reader test-target-data-page-length)))))
   (testing "random big ints"
     (let [cs (column-spec-no-levels :bigint :plain :none)
@@ -282,8 +282,8 @@
           input-blocks (->> #(helpers/rand-byte-array 16) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (every? true? (map helpers/array=
-                             (->> reader read flatten (map :value))
-                             (->> input-blocks flatten (map :value)))))
+                             (->> reader read flatten (map #(.value ^LeveledValue %)))
+                             (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :plain (find-best-encoding reader test-target-data-page-length)))))
   (testing "small selection of random byte arrays"
     (let [cs (column-spec-no-levels :fixed-length-byte-array :plain :none)
@@ -291,8 +291,8 @@
           input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (every? true? (map helpers/array=
-                             (->> reader read flatten (map :value))
-                             (->> input-blocks flatten (map :value)))))
+                             (->> reader read flatten (map #(.value ^LeveledValue %)))
+                             (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :dictionary (find-best-encoding reader test-target-data-page-length))))))
 
 (deftest find-best-compression-types

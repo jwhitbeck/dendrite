@@ -4,7 +4,7 @@
             [dendrite.metadata :as metadata]
             [dendrite.page :as page]
             [dendrite.stats :as stats])
-  (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
+  (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader LeveledValue]
            [dendrite.page DataPageWriter DictionaryPageWriter]
            [java.nio ByteBuffer]
            [java.util HashMap])
@@ -106,11 +106,11 @@
   IColumnChunkWriter
   (write! [this leveled-values]
     (->> leveled-values
-         (map (fn [leveled-value]
-                (let [v (:value leveled-value)]
+         (map (fn [^LeveledValue leveled-value]
+                (let [v (.value leveled-value)]
                   (if (nil? v)
                     leveled-value
-                    (assoc leveled-value :value (value-index this v))))))
+                    (.assoc leveled-value (value-index this v))))))
          (write! data-column-chunk-writer))
     this)
   (metadata [this]
@@ -185,17 +185,21 @@
   (lazy-seq
    (when-let [coll (seq leveled-values)]
      (let [fst (first coll)
-           run (cons fst (take-while (comp not zero? :repetition-level) (next coll)))]
-       (cons run (partition-by-record (drop (count run) coll)))))))
+           [keep remaining] (split-with #(-> ^LeveledValue % .repetitionLevel pos?) (next coll))]
+       (cons (cons fst keep) (partition-by-record remaining))))))
 
 (defn read [column-chunk-reader]
-  (-> column-chunk-reader stream partition-by-record))
+  ;(println (into {} (:column-spec column-chunk-reader)))
+  (let [partition-fn (if (zero? (-> column-chunk-reader :column-spec :max-repetition-level))
+                       (partial map vector)
+                       partition-by-record)]
+    (-> column-chunk-reader stream partition-fn doall)))
 
-(defn- apply-to-leveled-value [f leveled-value]
-  (let [v (:value leveled-value)]
+(defn- apply-to-leveled-value [f ^LeveledValue leveled-value]
+  (let [v (.value leveled-value)]
     (if (nil? v)
       leveled-value
-      (assoc leveled-value :value (f v)))))
+      (.apply leveled-value f))))
 
 (defrecord DataColumnChunkReader [^ByteArrayReader byte-array-reader
                                   column-chunk-metadata
@@ -236,11 +240,11 @@
           dictionary-array (into-array (cond->> (read-dictionary this)
                                                 map-fn (map map-fn)))]
       (->> (stream-indices this)
-           (map (fn [leveled-value]
-                  (let [i (:value leveled-value)]
+           (map (fn [^LeveledValue leveled-value]
+                  (let [i (.value leveled-value)]
                     (if (nil? i)
                       leveled-value
-                      (assoc leveled-value :value (aget ^objects dictionary-array (int i))))))))))
+                      (.assoc leveled-value (aget ^objects dictionary-array (int i))))))))))
   (page-headers [this]
     (let [dictionary-page-header (->> column-chunk-metadata
                                       :dictionary-page-offset

@@ -6,7 +6,7 @@
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum]])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Flushable
-            Compressor Decompressor Encoder Decoder])
+            Compressor Decompressor Encoder Decoder LeveledValue LeveledValues])
   (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
@@ -146,13 +146,13 @@
      finished?]
   IPageWriter
   (write-value! [this leveled-value]
-    (let [v (:value leveled-value)]
+    (let [v (.value ^LeveledValue leveled-value)]
       (when-not (nil? v)
         (.encode data-encoder v)))
     (when repetition-level-encoder
-      (.encode repetition-level-encoder (int (:repetition-level leveled-value))))
+      (.encode repetition-level-encoder (.repetitionLevel ^LeveledValue leveled-value)))
     (when definition-level-encoder
-      (.encode definition-level-encoder (int (:definition-level leveled-value))))
+      (.encode definition-level-encoder (.definitionLevel ^LeveledValue leveled-value)))
     (swap! num-values inc)
     this)
   (num-values [_] @num-values)
@@ -295,9 +295,6 @@
   (read [_]))
 
 (defprotocol IDataPageReader
-  (read-repetition-levels [_])
-  (read-definition-levels [_])
-  (read-data [_])
   (skip [_]))
 
 (defrecord DataPageReader [^ByteArrayReader byte-array-reader
@@ -308,44 +305,27 @@
                            header]
   IPageReader
   (read [this]
-    (letfn [(lazy-read-values [repetition-levels-seq definition-levels-seq values-seq]
-              (lazy-seq
-               (let [nil-value? (< (first definition-levels-seq) max-definition-level)]
-                 (cons (->LeveledValue (first repetition-levels-seq)
-                                       (first definition-levels-seq)
-                                       (if nil-value? nil (first values-seq)))
-                       (lazy-read-values (rest repetition-levels-seq)
-                                         (rest definition-levels-seq)
-                                         (if nil-value? values-seq (rest values-seq)))))))]
-      (take (:num-values header)
-            (lazy-read-values (read-repetition-levels this)
-                              (read-definition-levels this)
-                              (read-data this)))))
-  IDataPageReader
-  (read-repetition-levels [_]
-    (if (has-repetition-levels? header)
-      (-> byte-array-reader
-          (.sliceAhead (byte-offset-repetition-levels header))
-          (levels-decoder max-repetition-level)
-          seq)
-      (repeat 0)))
-  (read-definition-levels [_]
-    (if (has-definition-levels? header)
-      (-> byte-array-reader
-          (.sliceAhead (byte-offset-definition-levels header))
-          (levels-decoder max-definition-level)
-          seq)
-      (repeat max-definition-level)))
-  (read-data [_]
-    (let [data-bytes-reader (-> byte-array-reader
-                                (.sliceAhead (byte-offset-body header)))
+    (let [repetition-levels-decoder (when (has-definition-levels? header)
+                                      (-> byte-array-reader
+                                          (.sliceAhead (byte-offset-repetition-levels header))
+                                          (levels-decoder max-repetition-level)))
+          definition-levels-decoder (when (has-definition-levels? header)
+                                      (-> byte-array-reader
+                                          (.sliceAhead (byte-offset-definition-levels header))
+                                          (levels-decoder max-definition-level)))
+          data-bytes-reader (.sliceAhead byte-array-reader (byte-offset-body header))
           data-bytes-reader (if-let [decompressor (decompressor-ctor)]
                               (.decompress ^Decompressor decompressor
                                            data-bytes-reader
                                            (:compressed-data-length header)
                                            (:uncompressed-data-length header))
-                              data-bytes-reader)]
-      (seq (data-decoder-ctor data-bytes-reader))))
+                              data-bytes-reader)
+          data-decoder (data-decoder-ctor data-bytes-reader)]
+      (LeveledValues/assemble repetition-levels-decoder
+                              definition-levels-decoder
+                              data-decoder
+                              max-definition-level)))
+  IDataPageReader
   (skip [_]
     (.sliceAhead byte-array-reader (body-length header))))
 

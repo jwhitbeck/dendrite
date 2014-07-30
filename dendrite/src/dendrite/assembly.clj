@@ -1,6 +1,9 @@
 (ns dendrite.assembly
   (:require [dendrite.leveled-value :refer [->LeveledValue]]
-            [dendrite.schema :as schema]))
+            [dendrite.schema :as schema])
+  (:import [dendrite.java LeveledValue]))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private assemble*
   (fn [leveled-values-vec schema]
@@ -29,8 +32,10 @@
        next-leveled-values-vec])
     (let [column-index (-> schema :column-spec :query-column-index)
           leveled-values (get leveled-values-vec column-index)
-          value (-> leveled-values first :value)
-          next-repetition-level (or (some-> leveled-values second :repetition-level) 0)]
+          value (when-let [v (first leveled-values)] (.value ^LeveledValue v))
+          next-repetition-level (if-let [next-value (second leveled-values)]
+                                  (.repetitionLevel ^LeveledValue next-value)
+                                  0)]
       ; TODO explain why we don't call reader-fn here
       [value next-repetition-level (assoc leveled-values-vec column-index (rest leveled-values))])))
 
