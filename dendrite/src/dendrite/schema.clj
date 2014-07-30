@@ -220,6 +220,8 @@
   (->> (recursive-column-specs schema [])
        (sort-by :column-index)))
 
+(defn- root? [field] (nil? (:name field)))
+
 (defmulti unparse type)
 
 (defmethod unparse ColumnSpec
@@ -235,13 +237,13 @@
                        (map (fn [sub-field]
                               [(:name sub-field) (unparse sub-field)]))
                        (into {}))
-                  (cond-> (unparse (:column-spec field))
-                          (= :required (:repetition field)) ->RequiredField))]
+                  (unparse (:column-spec field)))]
     (case (:repetition field)
       :list (list sub-edn)
       :vector [sub-edn]
       :set #{sub-edn}
       :map {(-> sub-edn :key :field) (-> sub-edn :value :field)}
+      :required (if (root? field) sub-edn (->RequiredField sub-edn))
       sub-edn)))
 
 (defrecord TaggedField [tag field])
