@@ -190,7 +190,6 @@
        (cons (cons fst keep) (partition-by-record remaining))))))
 
 (defn read [column-chunk-reader]
-  ;(println (into {} (:column-spec column-chunk-reader)))
   (let [partition-fn (if (zero? (-> column-chunk-reader :column-spec :max-repetition-level))
                        (partial map vector)
                        partition-by-record)]
