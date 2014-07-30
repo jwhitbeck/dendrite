@@ -1,7 +1,13 @@
 (ns dendrite.leveled-value
-  (:import [dendrite.java LeveledValue]))
+  (:import [dendrite.java LeveledValue]
+           [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 
 (defmacro ->LeveledValue [repetition-level definition-level value]
   `(LeveledValue. (int ~repetition-level) (int ~definition-level) ~value))
+
+(defmethod print-method LeveledValue
+  [^LeveledValue lv ^Writer w]
+  (.write w (format "#<LeveledValue[r:%d, d:%d, v:%s]>"
+                    (.repetitionLevel lv) (.definitionLevel lv) (.value lv))))
