@@ -192,6 +192,7 @@
       (reify
         Encoder
         (encode [_ v] (.encode be (derived->base-type v)))
+        (numEncodedValues [_] (.numEncodedValues be))
         (reset [_] (.reset be))
         (finish [_] (.finish be))
         (length [_] (.length be))

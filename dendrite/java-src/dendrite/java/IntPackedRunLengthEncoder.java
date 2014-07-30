@@ -68,4 +68,9 @@ public class IntPackedRunLengthEncoder extends AbstractEncoder {
     rle_encoder.flush(baw);
   }
 
+  @Override
+  public int numEncodedValues() {
+    return num_buffered_values;
+  }
+
 }

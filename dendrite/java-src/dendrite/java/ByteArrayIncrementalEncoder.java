@@ -70,4 +70,9 @@ public class ByteArrayIncrementalEncoder implements Encoder {
     byte_array_encoder.flush(baw);
   }
 
+  @Override
+  public int numEncodedValues() {
+    return num_values;
+  }
+
 }

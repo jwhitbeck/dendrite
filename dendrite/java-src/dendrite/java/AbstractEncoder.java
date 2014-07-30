@@ -35,4 +35,9 @@ public abstract class AbstractEncoder implements Encoder {
     byte_array_writer.flush(baw);
   }
 
+  @Override
+  public int numEncodedValues() {
+    return num_values;
+  }
+
 }
