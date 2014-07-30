@@ -23,10 +23,12 @@ public final class LeveledValue {
 
   @Override
   public boolean equals(final Object o){
-    LeveledValue lv = (LeveledValue)o;
-    return lv.repetitionLevel == repetitionLevel && lv.definitionLevel == definitionLevel
-      && ((value == null && lv.value == null)
-          || (value != null && lv.value !=null && lv.value.equals(value)));
+    if (o instanceof LeveledValue) {
+      LeveledValue lv = (LeveledValue)o;
+      return lv.repetitionLevel == repetitionLevel && lv.definitionLevel == definitionLevel
+        && ((value == null && lv.value == null)
+            || (value != null && lv.value !=null && lv.value.equals(value)));
+    }
+    return false;
   }
-
 }
