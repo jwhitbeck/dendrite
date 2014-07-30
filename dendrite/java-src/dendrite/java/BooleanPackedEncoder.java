@@ -25,8 +25,9 @@ public class BooleanPackedEncoder extends AbstractEncoder {
 
   @Override
   public void finish() {
-    while (position > 0) {
-      encode(false);
+    if (position > 0){
+      byte_array_writer.writePackedBooleans(octuplet);
+      position = 0;
     }
   }
 
