@@ -1,15 +1,13 @@
 package dendrite.java;
 
-public class LongPlainDecoder implements LongDecoder {
-
-  private final ByteArrayReader byte_array_reader;
+public class LongPlainDecoder extends AbstractDecoder {
 
   public LongPlainDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
+    super(baw);
   }
 
   @Override
-  public long decode() {
+  public Object decode() {
     return byte_array_reader.readFixedLong();
   }
 

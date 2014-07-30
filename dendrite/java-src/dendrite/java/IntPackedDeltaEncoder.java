@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder {
+public class IntPackedDeltaEncoder extends AbstractEncoder {
 
   private static final int MIN_BLOCK_LENGTH = 128;
   private static final int MIN_MINIBLOCK_LENGTH = 8;
@@ -16,11 +16,12 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
   private ByteArrayWriter current_encoding = new ByteArrayWriter(128);
 
   @Override
-  public void encode(final int i) {
+  public void encode(final Object o) {
+    num_values += 1;
     if (position % MIN_BLOCK_LENGTH == 1 && position > 2 * MIN_BLOCK_LENGTH) {
       tryFlushFirstBlocks();
     }
-    encodeAndGrowIfNecessary(i);
+    encodeAndGrowIfNecessary((int)o);
   }
 
   private void growValueBuffer() {
@@ -236,7 +237,7 @@ public class IntPackedDeltaEncoder extends AbstractEncoder implements IntEncoder
     if (num_encoded_values == 0) {
       return position; // very rough estimate when we haven't flushed anything yet
     }
-    return byte_array_writer.length() * (int)(1 + (double)position / (double)num_encoded_values);
+    return super.estimatedLength() * (int)(1 + (double)position / (double)num_encoded_values);
   }
 
 }

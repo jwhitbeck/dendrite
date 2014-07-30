@@ -2,9 +2,8 @@ package dendrite.java;
 
 import java.math.BigInteger;
 
-public class LongPackedDeltaDecoder implements LongDecoder {
+public class LongPackedDeltaDecoder extends AbstractDecoder {
 
-  private final ByteArrayReader byte_array_reader;
   private long[] miniblock_buffer = new long[128];
   private int miniblock_position = 0;
   private int miniblock_length = 0;
@@ -17,11 +16,11 @@ public class LongPackedDeltaDecoder implements LongDecoder {
   private BigInteger block_current_value;
 
   public LongPackedDeltaDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
+    super(baw);
   }
 
   @Override
-  public long decode() {
+  public Object decode() {
     if (remaining_values_in_block > 0) {
       if (miniblock_position == -1) { // read from first value
         miniblock_position = 0;

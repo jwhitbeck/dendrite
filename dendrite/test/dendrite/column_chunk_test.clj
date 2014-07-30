@@ -143,7 +143,7 @@
       (is (= :packed-run-length (find-best-encoding reader test-target-data-page-length)))))
   (testing "increasing ints"
     (let [cs (column-spec-no-levels :int :plain :none)
-          input-blocks (->> (range) (rand-blocks cs) (take 1000))
+          input-blocks (->> (range) (map int) (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :delta (find-best-encoding reader test-target-data-page-length)))))
@@ -170,7 +170,7 @@
       (is (= :plain (find-best-encoding reader test-target-data-page-length)))))
   (testing "random small longs"
     (let [cs (column-spec-no-levels :long :plain :none)
-          input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
+          input-blocks (->> #(helpers/rand-long-bits 10) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :delta (find-best-encoding reader test-target-data-page-length)))))

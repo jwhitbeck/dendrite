@@ -1,15 +1,13 @@
 package dendrite.java;
 
-public class IntPlainDecoder implements IntDecoder {
-
-  private final ByteArrayReader byte_array_reader;
+public class IntPlainDecoder extends AbstractDecoder {
 
   public IntPlainDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
+    super(baw);
   }
 
   @Override
-  public int decode() {
+  public Object decode() {
     return byte_array_reader.readFixedInt();
   }
 

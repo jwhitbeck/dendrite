@@ -1,12 +1,14 @@
 package dendrite.java;
 
-public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEncoder {
+public class BooleanPackedEncoder extends AbstractEncoder {
 
   private boolean[] octuplet = new boolean[8];
   private int position = 0;
 
   @Override
-  public void encode(final boolean b) {
+  public void encode(final Object o) {
+    final boolean b = (boolean) o;
+    num_values += 1;
     octuplet[position] = b;
     position += 1;
     if (position == 8) {
@@ -30,6 +32,6 @@ public class BooleanPackedEncoder extends AbstractEncoder implements BooleanEnco
 
   @Override
   public int estimatedLength() {
-    return byte_array_writer.length() + (position == 0? 0 : 1);
+    return super.estimatedLength() + (position == 0? 0 : 1);
   }
 }

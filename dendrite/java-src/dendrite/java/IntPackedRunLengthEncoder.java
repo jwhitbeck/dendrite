@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class IntPackedRunLengthEncoder implements IntEncoder {
+public class IntPackedRunLengthEncoder extends AbstractEncoder {
 
   private final ByteArrayWriter int_buffer;
   private final IntFixedBitWidthPackedRunLengthEncoder rle_encoder;
@@ -17,8 +17,9 @@ public class IntPackedRunLengthEncoder implements IntEncoder {
   }
 
   @Override
-  public void encode(final int i) {
-    int width = ByteArrayWriter.getBitWidth(i);
+  public void encode(final Object o) {
+    final int i = (int) o;
+    final int width = ByteArrayWriter.getBitWidth(i);
     if (width > max_width) {
       max_width = width;
     }
@@ -57,7 +58,7 @@ public class IntPackedRunLengthEncoder implements IntEncoder {
   public int estimatedLength() {
     int estimated_num_octoplets = (num_buffered_values / 8) + 1;
     return 1 + ByteArrayWriter.getNumUIntBytes(estimated_num_octoplets << 1)
-      + (8 * estimated_num_octoplets * max_width);
+      + (8 * estimated_num_octoplets * max_width) + ByteArrayWriter.getNumUIntBytes(num_buffered_values);
   }
 
   @Override

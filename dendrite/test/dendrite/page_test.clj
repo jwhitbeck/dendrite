@@ -85,7 +85,7 @@
     (testing "empty page"
       (let [input-values []
             output-values (write-read-single-dictionary-page :int :plain :none input-values)]
-        (is (= output-values input-values))))
+        (is (nil? output-values))))
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
             page-writer (-> (dictionary-page-writer :int :plain :none)
@@ -110,7 +110,7 @@
                        (write! (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100)))
                        helpers/get-byte-array-reader)
           dict-bar (-> (dictionary-page-writer :int :plain :none)
-                       (write! (range 100))
+                       (write! (map int (range 100)))
                        helpers/get-byte-array-reader)]
       (is (data-page-reader data-bar 1 1 :int :plain :none))
       (is (thrown-with-msg?

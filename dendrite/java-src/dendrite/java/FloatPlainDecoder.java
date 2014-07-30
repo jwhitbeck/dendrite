@@ -1,15 +1,13 @@
 package dendrite.java;
 
-public class FloatPlainDecoder implements FloatDecoder {
-
-  private final ByteArrayReader byte_array_reader;
+public class FloatPlainDecoder extends AbstractDecoder {
 
   public FloatPlainDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
+    super(baw);
   }
 
   @Override
-  public float decode() {
+  public Object decode() {
     return byte_array_reader.readFloat();
   }
 

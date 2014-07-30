@@ -1,10 +1,11 @@
 package dendrite.java;
 
-public class IntPlainEncoder extends AbstractEncoder implements IntEncoder {
+public class IntPlainEncoder extends AbstractEncoder {
 
   @Override
-  public void encode(int i) {
-    byte_array_writer.writeFixedInt(i);
+  public void encode(final Object o) {
+    num_values += 1;
+    byte_array_writer.writeFixedInt((int) o);
   }
 
 }

@@ -1,8 +1,7 @@
 package dendrite.java;
 
-public class IntPackedDeltaDecoder implements IntDecoder {
+public class IntPackedDeltaDecoder extends AbstractDecoder {
 
-  private final ByteArrayReader byte_array_reader;
   private int[] miniblock_buffer = new int[128];
   private int miniblock_position = 0;
   private int miniblock_length = 0;
@@ -15,11 +14,11 @@ public class IntPackedDeltaDecoder implements IntDecoder {
   private long block_current_value = 0;
 
   public IntPackedDeltaDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
+    super(baw);
   }
 
   @Override
-  public int decode() {
+  public Object decode() {
     if (remaining_values_in_block > 0) {
       if (miniblock_position == -1) { // read from first value
         miniblock_position = 0;

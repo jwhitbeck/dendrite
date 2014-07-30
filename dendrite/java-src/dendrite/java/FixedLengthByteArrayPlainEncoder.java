@@ -1,11 +1,13 @@
 package dendrite.java;
 
-public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder implements FixedLengthByteArrayEncoder {
+public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder {
 
   private int length = -1;
 
   @Override
-  public void encode(final byte[] bs) {
+  public void encode(final Object o) {
+    final byte[] bs = (byte[]) o;
+    num_values += 1;
     if (length != bs.length) {
       if (length == -1) {
         length = bs.length;

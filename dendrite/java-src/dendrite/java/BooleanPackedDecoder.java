@@ -1,19 +1,17 @@
 package dendrite.java;
 
-public class BooleanPackedDecoder implements BooleanDecoder {
+public class BooleanPackedDecoder extends AbstractDecoder {
 
-  private final ByteArrayReader byte_array_reader;
   private final boolean[] octuplet = new boolean[8];
   private int position = 0;
 
-  public BooleanPackedDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw;
-    byte_array_reader.readPackedBooleans(octuplet);
+  public BooleanPackedDecoder(final ByteArrayReader baw){
+    super(baw);
   }
 
   @Override
-  public boolean decode() {
-    if (position == 8) {
+  public Object decode() {
+    if ((position % 8) == 0) {
       byte_array_reader.readPackedBooleans(octuplet);
       position = 0;
     }

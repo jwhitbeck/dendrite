@@ -1,64 +1,23 @@
 (ns dendrite.encoding
   (:import [dendrite.java
-            BooleanEncoder BooleanDecoder BooleanPackedEncoder BooleanPackedDecoder
-            IntEncoder IntDecoder IntPlainEncoder IntPlainDecoder
+            Encoder Decoder
+            BooleanPackedEncoder BooleanPackedDecoder
+            IntPlainEncoder IntPlainDecoder
             IntPackedDeltaEncoder IntPackedDeltaDecoder
             IntFixedBitWidthPackedRunLengthEncoder IntFixedBitWidthPackedRunLengthDecoder
             IntPackedRunLengthEncoder IntPackedRunLengthDecoder
-            LongEncoder LongDecoder LongPlainEncoder LongPlainDecoder
+            LongPlainEncoder LongPlainDecoder
             LongPackedDeltaEncoder LongPackedDeltaDecoder
-            FloatEncoder FloatDecoder FloatPlainEncoder FloatPlainDecoder
-            DoubleEncoder DoubleDecoder DoublePlainEncoder DoublePlainDecoder
-            FixedLengthByteArrayEncoder FixedLengthByteArrayDecoder
+            FloatPlainEncoder FloatPlainDecoder
+            DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
-            ByteArrayEncoder ByteArrayDecoder ByteArrayPlainEncoder ByteArrayPlainDecoder
+            ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
             ByteArrayReader BufferedByteArrayWriter]
            [java.nio.charset Charset]))
 
 (set! *warn-on-reflection* true)
-
-(defprotocol Decoder (decode-value [decoder]))
-
-(extend-protocol Decoder
-  BooleanDecoder
-  (decode-value [boolean-decoder] (.decode boolean-decoder))
-  IntDecoder
-  (decode-value [int-decoder] (.decode int-decoder))
-  LongDecoder
-  (decode-value [long-decoder] (.decode long-decoder))
-  FloatDecoder
-  (decode-value [float-decoder] (.decode float-decoder))
-  DoubleDecoder
-  (decode-value [double-decoder] (.decode double-decoder))
-  FixedLengthByteArrayDecoder
-  (decode-value [fixed-length-byte-array-decoder] (.decode fixed-length-byte-array-decoder))
-  ByteArrayDecoder
-  (decode-value [byte-array-decoder] (.decode byte-array-decoder)))
-
-(defn decode [decoder]
-  (lazy-seq
-   (cons (decode-value decoder) (decode decoder))))
-
-(defprotocol Encoder (encode-value! [encoder value]))
-
-(extend-protocol Encoder
-  BooleanEncoder
-  (encode-value! [boolean-encoder value] (doto boolean-encoder (.encode value)))
-  IntEncoder
-  (encode-value! [int-encoder value] (doto int-encoder (.encode value)))
-  LongEncoder
-  (encode-value! [long-encoder value] (doto long-encoder (.encode value)))
-  FloatEncoder
-  (encode-value! [float-encoder value] (doto float-encoder (.encode value)))
-  DoubleEncoder
-  (encode-value! [double-encoder value] (doto double-encoder (.encode value)))
-  FixedLengthByteArrayEncoder
-  (encode-value! [fixed-length-byte-array-encoder value]
-    (doto fixed-length-byte-array-encoder (.encode value)))
-  ByteArrayEncoder
-  (encode-value! [byte-array-encoder value] (doto byte-array-encoder (.encode value))))
 
 (def ^:private valid-encodings-for-types
   {:boolean #{:plain :dictionary}
@@ -228,27 +187,32 @@
 (defn encoder [t encoding]
   (if (base-type? t)
     (base-encoder t encoding)
-    (let [be (base-encoder (base-type t) encoding)
+    (let [^Encoder be (base-encoder (base-type t) encoding)
           derived->base-type (derived->base-type-fn t)]
       (reify
         Encoder
-        (encode-value! [this v] (encode-value! be (derived->base-type v)) this)
-        BufferedByteArrayWriter
-        (reset [_] (.reset ^BufferedByteArrayWriter be))
-        (finish [_] (.finish ^BufferedByteArrayWriter be))
-        (length [_] (.length ^BufferedByteArrayWriter be))
-        (estimatedLength [_] (.estimatedLength ^BufferedByteArrayWriter be))
-        (flush [_ byte-array-writer] (.flush ^BufferedByteArrayWriter be byte-array-writer))))))
+        (encode [_ v] (.encode be (derived->base-type v)))
+        (reset [_] (.reset be))
+        (finish [_] (.finish be))
+        (length [_] (.length be))
+        (estimatedLength [_] (.estimatedLength be))
+        (flush [_ byte-array-writer] (.flush be byte-array-writer))))))
 
 (defn decoder-ctor [t encoding]
   (if (base-type? t)
     (base-decoder-ctor t encoding)
     (let [bdc (base-decoder-ctor (base-type t) encoding)
           base->derived-type (base->derived-type-fn t)]
-      #(let [bd (bdc %)]
+      #(let [^Decoder bd (bdc %)]
          (reify
            Decoder
-           (decode-value [_] (-> (decode-value bd) base->derived-type)))))))
+           (decode [_] (base->derived-type (.decode bd)))
+           (numEncodedValues [_] (.numEncodedValues bd))
+           (iterator [_] (let [i (.iterator bd)]
+                           (reify java.util.Iterator
+                             (hasNext [_] (.hasNext i))
+                             (next [_] (base->derived-type (.next i)))
+                             (remove [_] (.remove i))))))))))
 
 (defn coercion-fn [t]
   (let [coerce (if-not (base-type? t)

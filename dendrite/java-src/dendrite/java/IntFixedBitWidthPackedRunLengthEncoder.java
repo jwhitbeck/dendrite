@@ -1,6 +1,6 @@
 package dendrite.java;
 
-public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder implements IntEncoder {
+public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
 
   private int rle_value = 0;
   private int num_occurences_rle_value = 0;
@@ -26,8 +26,7 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
     return (int)(rle_run_num_bytes * num_packed_values_per_byte) + 1;
   }
 
-  @Override
-  public void encode(final int i) {
+  private void encodeInt(final int i) {
     if (current_octuplet_position == 0) {
       if (num_occurences_rle_value == 0) {
         startRLERun(i);
@@ -35,14 +34,20 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
         num_occurences_rle_value += 1;
       } else if (num_occurences_rle_value >= rle_threshold) {
         flushRLE();
-        encode(i);
+        encodeInt(i);
       } else {
         packRLERun();
-        encode(i);
+        encodeInt(i);
       }
     } else {
       bufferPackedInt(i);
     }
+  }
+
+  @Override
+  public void encode(final Object o) {
+    num_values += 1;
+    encodeInt((int)o);
   }
 
   @Override
@@ -75,10 +80,10 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder impl
   @Override
   public int estimatedLength() {
     if (num_occurences_rle_value > 0) {
-      return byte_array_writer.length() + ByteArrayWriter.getNumUIntBytes(rle_value)
+      return super.estimatedLength() + ByteArrayWriter.getNumUIntBytes(rle_value)
         + ByteArrayWriter.getBitWidth(num_occurences_rle_value << 1);
     } else {
-      return byte_array_writer.length() + ByteArrayWriter.getNumUIntBytes(num_buffered_octuplets << 1)
+      return super.estimatedLength() + ByteArrayWriter.getNumUIntBytes(num_buffered_octuplets << 1)
         + (8 * width * num_buffered_octuplets) + current_octuplet_position > 0? (8 * width) : 0;
     }
   }

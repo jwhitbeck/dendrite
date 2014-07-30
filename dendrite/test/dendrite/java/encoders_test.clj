@@ -21,9 +21,7 @@
      (let [encoder (encoder-constructor)]
        (doseq [x (take n input-seq)]
          (.encode encoder x))
-       (let [decoder (-> encoder helpers/get-byte-array-reader decoder-constructor)]
-         (->> (repeatedly #(.decode decoder))
-              (take n))))))
+       (->> encoder helpers/get-byte-array-reader decoder-constructor (take n)))))
 
 (defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
   (let [output-seq (write-read n encoder-constructor decoder-constructor input-seq)]
@@ -57,7 +55,7 @@
     (test-encoder #(IntPlainEncoder.) #(IntPlainDecoder. %) (repeatedly helpers/rand-int)))
   (testing "fixed-bit-width packed run-length encoder/decoder"
     (testing "sparse input"
-      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))]
+      (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (int (rand-int 8)) (int 0))))]
         (test-encoder #(IntFixedBitWidthPackedRunLengthEncoder. 3)
                       #(IntFixedBitWidthPackedRunLengthDecoder. % 3)
                       rand-ints)))
@@ -71,7 +69,7 @@
     (testing "sparse input"
       (test-encoder #(IntPackedRunLengthEncoder.)
                     #(IntPackedRunLengthDecoder. %)
-                    (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (rand-int 8) 0)))))
+                    (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (int (rand-int 8)) (int 0))))))
     (testing "random input"
       (test-encoder #(IntPackedRunLengthEncoder.)
                     #(IntPackedRunLengthDecoder. %)
