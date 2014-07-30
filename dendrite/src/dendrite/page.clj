@@ -113,8 +113,8 @@
     (stats/map->PageStats
      {:num-values num-values
       :length (+ (header-length this) (body-length this))
-      :byte-stats (stats/map->ByteStats {:dictionary-header-bytes (header-length this)
-                                         :dictionary-bytes compressed-data-length})}))
+      :byte-stats (stats/map->ByteStats {:dictionary-header-length (header-length this)
+                                         :dictionary-length compressed-data-length})}))
   Flushable
   (flush [this byte-array-writer]
     (encode-uints32 byte-array-writer (vals this))))
