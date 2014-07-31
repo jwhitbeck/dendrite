@@ -174,15 +174,25 @@
   (list-encodings-for-base-type (base-type t)))
 
 (defn- derived->base-type-fn [t]
-  (->> (map #(get-in *derived-types* [% :to-base-type-fn]) (type-hierarchy t))
-       butlast
-       reverse
-       (apply comp)))
+  (let [f (->> (map #(get-in *derived-types* [% :to-base-type-fn]) (type-hierarchy t))
+               butlast
+               reverse
+               (apply comp))]
+    (fn [x] (try (f x)
+                 (catch Exception e
+                   (throw (IllegalArgumentException.
+                           (format "Error while converting value '%s' from type '%s' to type '%s'"
+                                   x (name t) (name (base-type t))) e)))))))
 
 (defn- base->derived-type-fn [t]
-  (->> (map #(get-in *derived-types* [% :from-base-type-fn]) (type-hierarchy t))
-       butlast
-       (apply comp)))
+  (let [f (->> (map #(get-in *derived-types* [% :from-base-type-fn]) (type-hierarchy t))
+               butlast
+               (apply comp))]
+    (fn [x] (try (f x)
+                 (catch Exception e
+                   (throw (IllegalArgumentException.
+                           (format "Error while converting value '%s' from type '%s' to type '%s'"
+                                   x (name (base-type t)) (name t)) e)))))))
 
 (defn encoder [t encoding]
   (if (base-type? t)
