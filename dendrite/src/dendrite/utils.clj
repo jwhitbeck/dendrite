@@ -1,7 +1,8 @@
 (ns dendrite.utils
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
-  (:import [java.nio ByteBuffer ByteOrder]
+  (:import [dendrite.java Singleton]
+           [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
            [java.nio.channels FileChannel FileChannel$MapMode]))
 
@@ -114,3 +115,5 @@
          (defn ~(symbol (str s "->int")) [k#] (get ~reverse-mapping-symb k#))
          (def ^:private ~values-set-symb ~(set vs))
          (defn ~(symbol (str "is-" s "?")) [k#] (contains? ~values-set-symb k#)))))
+
+(definline single [x] `(Singleton. ~x))
