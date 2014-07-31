@@ -1,6 +1,5 @@
 (ns dendrite.record-group
-  (:require [clojure.core.async :as async :refer [<! >! <!! >!!]]
-            [dendrite.column-chunk :as column-chunk]
+  (:require [dendrite.column-chunk :as column-chunk]
             [dendrite.metadata :as metadata]
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
@@ -58,12 +57,12 @@
     (let [length (.length this)]
       (swap! direct-byte-buffer ensure-direct-byte-buffer-large-enough length 0.2)
       (swap! direct-byte-buffer flush-column-chunks-to-byte-buffer column-chunk-writers length)
-      (reset! io-thread (async/thread (write-byte-buffer file-channel @direct-byte-buffer)))))
+      (reset! io-thread (future (write-byte-buffer file-channel @direct-byte-buffer)))))
   (await-io-completion [_]
     (when @io-thread
-      (let [res (<!! @io-thread)]
-        (when (instance? Throwable res)
-          (throw res)))))
+      (let [ret @@io-thread]
+        (if (instance? Exception ret)
+          (throw ret)))))
   (column-specs [_]
     (map :column-spec column-chunk-writers))
   BufferedByteArrayWriter
