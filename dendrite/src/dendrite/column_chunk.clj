@@ -174,7 +174,7 @@
     (data-column-chunk-writer target-data-page-length column-spec)))
 
 (defprotocol IColumnChunkReader
-  (stream [_])
+  (read [_])
   (page-headers [_]))
 
 (defn stats [column-chunk-reader]
@@ -182,36 +182,22 @@
        (map page/stats)
        (stats/pages->column-chunk-stats (:column-spec column-chunk-reader))))
 
-(defn partition-by-record [leveled-values]
-  (lazy-seq
-   (when-let [coll (seq leveled-values)]
-     (let [fst (first coll)
-           [keep remaining] (split-with #(-> ^LeveledValue % .repetitionLevel pos?) (next coll))]
-       (cons (cons fst keep) (partition-by-record remaining))))))
-
-(defn read [column-chunk-reader]
-  (let [partition-fn (if (zero? (-> column-chunk-reader :column-spec :max-repetition-level))
-                       (partial map vector)
-                       partition-by-record)]
-    (-> column-chunk-reader stream partition-fn doall)))
-
 (defrecord DataColumnChunkReader [^ByteArrayReader byte-array-reader
                                   column-chunk-metadata
                                   column-spec]
   IColumnChunkReader
-  (stream [this]
+  (read [this]
     (let [map-fn (:map-fn column-spec)
-          {:keys [type encoding compression max-repetition-level max-definition-level]} column-spec
-          leveled-values (page/read-data-pages
-                           (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
-                           (:num-data-pages column-chunk-metadata)
-                           max-repetition-level
-                           max-definition-level
-                           type
-                           encoding
-                           compression)]
-      (cond->> leveled-values
-               map-fn (map #(lv/apply-fn % map-fn)))))
+          {:keys [type encoding compression max-repetition-level max-definition-level]} column-spec]
+      (page/read-data-pages
+       (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
+       (:num-data-pages column-chunk-metadata)
+       max-repetition-level
+       max-definition-level
+       type
+       encoding
+       compression
+       map-fn)))
   (page-headers [_]
     (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
                                  (:num-data-pages column-chunk-metadata))))
@@ -221,7 +207,6 @@
   (->DataColumnChunkReader byte-array-reader column-chunk-metadata column-spec))
 
 (defprotocol IDictionaryColumnChunkReader
-  (stream-indices [_])
   (indices-page-headers [_])
   (read-dictionary [_]))
 
@@ -229,16 +214,12 @@
                                         column-chunk-metadata
                                         column-spec]
   IColumnChunkReader
-  (stream [this]
-    (let [map-fn (:map-fn column-spec)
-          dictionary-array (into-array (cond->> (read-dictionary this)
-                                                map-fn (map map-fn)))]
-      (->> (stream-indices this)
-           (map (fn [^LeveledValue leveled-value]
-                  (let [i (.value leveled-value)]
-                    (if (nil? i)
-                      leveled-value
-                      (.assoc leveled-value (aget ^objects dictionary-array (int i))))))))))
+  (read [this]
+    (let [ ^objects dict-array (read-dictionary this)]
+      (read (data-column-chunk-reader byte-array-reader
+                                      column-chunk-metadata
+                                      (-> (dictionary-indices-column-spec column-spec)
+                                          (assoc :map-fn #(aget dict-array (int %))))))))
   (page-headers [this]
     (let [dictionary-page-header (->> column-chunk-metadata
                                       :dictionary-page-offset
@@ -250,11 +231,8 @@
     (page/read-dictionary (.sliceAhead byte-array-reader (:dictionary-page-offset column-chunk-metadata))
                           (:type column-spec)
                           :plain
-                          (:compression column-spec)))
-  (stream-indices [_]
-    (stream (data-column-chunk-reader byte-array-reader
-                                      column-chunk-metadata
-                                      (dictionary-indices-column-spec column-spec))))
+                          (:compression column-spec)
+                          (:map-fn column-spec)))
   (indices-page-headers [_]
     (page-headers (data-column-chunk-reader byte-array-reader
                                             column-chunk-metadata

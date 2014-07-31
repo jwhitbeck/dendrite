@@ -1,23 +1,35 @@
 (ns dendrite.page-test
   (:require [clojure.test :refer :all]
             [dendrite.page :refer :all]
+            [dendrite.leveled-value :as lv]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read type]))
 
 (defn- write-read-single-data-page
-  [{:keys [max-definition-level max-repetition-level]} value-type encoding compression input-values]
+  [{:keys [max-definition-level max-repetition-level]} value-type encoding compression
+   input-values & {:keys [map-fn]}]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
                                       value-type encoding compression)
         page-reader-ctor #(data-page-reader % max-repetition-level max-definition-level value-type
                                             encoding compression)]
-    (-> page-writer (write! input-values) helpers/get-byte-array-reader page-reader-ctor read)))
+    (-> page-writer
+        (write! input-values)
+        helpers/get-byte-array-reader
+        page-reader-ctor
+        (read map-fn)
+        flatten)))
 
 (defn- write-read-single-dictionary-page
-  [value-type encoding compression input-values]
+  [value-type encoding compression input-values & {:keys [map-fn]}]
   (let [page-writer (dictionary-page-writer value-type encoding compression)
         page-reader-ctor #(dictionary-page-reader % value-type encoding compression)]
-    (-> page-writer (write! input-values) helpers/get-byte-array-reader page-reader-ctor read)))
+    (-> page-writer
+        (write! input-values)
+        helpers/get-byte-array-reader
+        page-reader-ctor
+        (read-array map-fn)
+        seq)))
 
 (deftest data-page
   (testing "write/read a data page"
@@ -26,6 +38,13 @@
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
             output-values (write-read-single-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
+    (testing "with a mapping function"
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            map-fn (partial * 2)
+            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values
+                                                       :map-fn map-fn)]
+        (is (= output-values (map #(lv/apply-fn % map-fn) input-values)))))
     (testing "all nils"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeat nil) (helpers/leveled spec) (take 1000))
@@ -78,6 +97,11 @@
       (let [input-values (repeatedly 1000 helpers/rand-int)
             output-values (write-read-single-dictionary-page :int :plain :none input-values)]
         (is (= output-values input-values))))
+    (testing "with a mapping function"
+      (let [map-fn (partial * 3)
+            input-values (repeatedly 10 helpers/rand-int)
+            output-values (write-read-single-dictionary-page :int :plain :none input-values :map-fn map-fn)]
+        (is (= output-values (map map-fn input-values)))))
     (testing "compressed"
       (let [input-values (repeatedly 1000 helpers/rand-int)
             output-values (write-read-single-dictionary-page :int :plain :lz4 input-values)]
@@ -100,7 +124,7 @@
             page-reader (-> page-writer
                             helpers/get-byte-array-reader
                             (dictionary-page-reader :int :plain :none))]
-        (is (= (read page-reader) (read page-reader)))))))
+        (is (helpers/array= (read-array page-reader) (read-array page-reader)))))))
 
 (deftest incompatible-pages
   (testing "read incompatible page types throws an exception"

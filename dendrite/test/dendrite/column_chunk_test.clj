@@ -56,6 +56,13 @@
     :max-definition-level 0
     :max-repetition-level 0}))
 
+(defn partition-by-record [leveled-values]
+  (lazy-seq
+   (when-let [coll (seq leveled-values)]
+     (let [fst (first coll)
+           [keep remaining] (split-with #(-> ^LeveledValue % .repetitionLevel pos?) (next coll))]
+       (cons (cons fst keep) (partition-by-record remaining))))))
+
 (defn- rand-blocks [column-spec coll]
   (->> coll (helpers/leveled column-spec) partition-by-record))
 
