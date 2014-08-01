@@ -212,3 +212,7 @@
           w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
               (write! records))]
       (is (= records (-> w byte-buffer! (byte-buffer-reader :custom-types custom-types) read))))))
+
+(deftest pmap-records-convenience-function
+  (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
+    (is (= [3 1] (pmap-records (comp count :name) rdr)))))

@@ -2,7 +2,7 @@
   (:require [dendrite.core :as core]
             [dendrite.schema :as s]
             [dendrite.utils :refer [defalias]])
-  (:refer-clojure :exclude [read]))
+  (:refer-clojure :exclude [read pmap]))
 
 (defalias byte-buffer-writer core/byte-buffer-writer)
 (defalias byte-buffer-reader core/byte-buffer-reader)
@@ -15,6 +15,7 @@
 (defalias byte-buffer! core/byte-buffer!)
 
 (defalias read core/read)
+(defalias pmap core/pmap-records)
 (defalias stats core/stats)
 (defalias metadata core/metadata)
 (defalias schema core/schema)

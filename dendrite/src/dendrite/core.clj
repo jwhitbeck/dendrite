@@ -339,3 +339,6 @@
 (defn file-reader [f & {:as options}]
   (let [file-channel (utils/file-channel f :read)]
     (reader (->FileChannelBackendReader file-channel) (file-channel->metadata file-channel) options)))
+
+(defn pmap-records [f reader]
+  (read (update-in reader [:queried-schema :reader-fn] #(if % (comp f %) f))))
