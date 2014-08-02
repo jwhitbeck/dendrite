@@ -162,7 +162,7 @@
     [t]
     (get *derived-type-hierarchies* t)))
 
-(defn- base-type [t] (last (type-hierarchy t)))
+(defn base-type [t] (last (type-hierarchy t)))
 
 (defn valid-value-type? [t]
   (valid-base-value-type? (base-type t)))

@@ -307,9 +307,14 @@
         (reader metadata (:column-spec column-chunk-writer)))))
 
 (defn optimize! [column-chunk-writer compression-candidates-treshold-map]
-  (let [column-chunk-reader (writer->reader! column-chunk-writer)
+  (let [column-type (get-in column-chunk-writer [:column-spec :type])
+        base-type-rdr (-> column-chunk-writer
+                          writer->reader!
+                          (update-in [:column-spec :type] encoding/base-type))
         target-data-page-length (target-data-page-length column-chunk-writer)
-        optimal-column-spec (find-best-column-spec column-chunk-reader
-                                                   target-data-page-length
-                                                   compression-candidates-treshold-map)]
-    (reduce write! (writer target-data-page-length optimal-column-spec) (read column-chunk-reader))))
+        optimal-column-spec (-> (find-best-column-spec base-type-rdr
+                                                       target-data-page-length
+                                                       compression-candidates-treshold-map)
+                                (assoc :type column-type))
+        derived-type-rdr (assoc-in base-type-rdr [:column-spec :type] column-type)]
+    (reduce write! (writer target-data-page-length optimal-column-spec) (read derived-type-rdr))))
