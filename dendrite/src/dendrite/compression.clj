@@ -2,6 +2,8 @@
   (:import [dendrite.java Compressor Decompressor LZ4Compressor LZ4Decompressor
             DeflateCompressor DeflateDecompressor]))
 
+(set! *warn-on-reflection* true)
+
 (defn- invalid-compression-type-exception [x]
   (IllegalArgumentException. (str x " is not a valid compression-type. "
                                   "Supported types are: :none, :lz4, :deflate.")))

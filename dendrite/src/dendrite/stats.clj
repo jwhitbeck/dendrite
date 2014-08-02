@@ -1,5 +1,7 @@
 (ns dendrite.stats)
 
+(set! *warn-on-reflection* true)
+
 (defrecord ByteStats [header-length repetition-levels-length definition-levels-length data-length
                       dictionary-header-length dictionary-length])
 

@@ -4,6 +4,8 @@
             [dendrite.schema :as schema]
             [dendrite.utils :refer [format-ks]]))
 
+(set! *warn-on-reflection* true)
+
 (defn- new-striped-record [n] (vec (repeat n nil)))
 
 (defn- coercion-fns-vec [value-types] (mapv (comp encoding/coercion-fn :type) value-types))
