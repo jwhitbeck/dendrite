@@ -207,16 +207,16 @@
                                                   compression-thresholds))
           :backend-writer backend-writer})))))
 
-(defn byte-buffer-writer [schema & {:as options}]
+(defn byte-buffer-writer ^java.io.Closeable [schema & {:as options}]
   (writer (byte-array-backend-writer) schema options))
 
-(defn byte-buffer! [^Closeable writer]
+(defn byte-buffer! ^java.nio.ByteBuffer [^Closeable writer]
   (if-let [^ByteArrayWriter byte-array-writer (get-in writer [:backend-writer :byte-array-writer])]
     (do (.close writer)
         (ByteBuffer/wrap (.buffer byte-array-writer) 0 (.position byte-array-writer)))
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
 
-(defn file-writer [filename schema & {:as options}]
+(defn file-writer ^java.io.Closeable [filename schema & {:as options}]
   (writer (file-channel-backend-writer filename) schema options))
 
 (defn- record-group-offsets [record-groups-metadata offset]
@@ -333,10 +333,10 @@
       :open-channels (atom [])
       :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
-(defn byte-buffer-reader [^ByteBuffer byte-buffer & {:as options}]
+(defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) (byte-buffer->metadata byte-buffer) options))
 
-(defn file-reader [f & {:as options}]
+(defn file-reader ^java.io.Closeable [f & {:as options}]
   (let [file-channel (utils/file-channel f :read)]
     (reader (->FileChannelBackendReader file-channel) (file-channel->metadata file-channel) options)))
 

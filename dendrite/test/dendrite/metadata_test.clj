@@ -6,6 +6,8 @@
             [dendrite.test-helpers :refer [test-schema-str]])
   (:refer-clojure :exclude [read]))
 
+(set! *warn-on-reflection* true)
+
 (deftest schema-serialization
   (testing "fressian schema serialization"
     (let [s (-> test-schema-str schema/read-string schema/parse)]

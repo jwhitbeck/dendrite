@@ -2,6 +2,8 @@
   (:require [clojure.test :refer :all]
             [dendrite.encoding :refer :all]))
 
+(set! *warn-on-reflection* true)
+
 (deftest coercions
   (testing "coercions throw exceptions on bad input"
     (are [t y] ((coercion-fn t) y)

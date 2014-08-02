@@ -8,14 +8,16 @@
             [dendrite.striping :as striping]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java ByteArrayWriter]
+  (:import [dendrite.java ByteArrayWriter Finishable]
            [java.nio.channels FileChannel])
   (:refer-clojure :exclude [read]))
+
+(set! *warn-on-reflection* true)
 
 (def target-data-page-length 1024)
 
 (deftest dremel-write-read
-  (let [w (doto (writer target-data-page-length (schema/column-specs dremel-paper-schema))
+  (let [w (doto ^Finishable (writer target-data-page-length (schema/column-specs dremel-paper-schema))
             (write! dremel-paper-record1-striped)
             (write! dremel-paper-record2-striped)
             .finish)
@@ -38,7 +40,7 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema nil) records)
-        w (doto (writer target-data-page-length (schema/column-specs test-schema))
+        w (doto ^Finishable (writer target-data-page-length (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)
@@ -51,7 +53,7 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema nil) records)
-        w (doto (writer target-data-page-length (schema/column-specs test-schema))
+        w (doto ^Finishable (writer target-data-page-length (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)

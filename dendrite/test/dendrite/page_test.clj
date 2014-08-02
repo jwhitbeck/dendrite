@@ -6,6 +6,8 @@
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read type]))
 
+(set! *warn-on-reflection* true)
+
 (defn- write-read-single-data-page
   [{:keys [max-definition-level max-repetition-level]} value-type encoding compression
    input-values & {:keys [map-fn]}]
@@ -73,9 +75,9 @@
     (testing "repeatable writes"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
-            page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
-                                              :int :plain :none)
-                            (write! input-values))
+            ^ByteArrayWriter page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
+                                                               :int :plain :none)
+                                             (write! input-values))
             baw1 (doto (ByteArrayWriter. 10) (.write page-writer))
             baw2 (doto (ByteArrayWriter. 10) (.write page-writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
@@ -112,8 +114,8 @@
         (is (nil? output-values))))
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            page-writer (-> (dictionary-page-writer :int :plain :none)
-                            (write! input-values))
+            ^ByteArrayWriter page-writer (-> (dictionary-page-writer :int :plain :none)
+                                             (write! input-values))
             baw1 (doto (ByteArrayWriter. 10) (.write page-writer))
             baw2 (doto (ByteArrayWriter. 10) (.write page-writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
@@ -124,7 +126,7 @@
             page-reader (-> page-writer
                             helpers/get-byte-array-reader
                             (dictionary-page-reader :int :plain :none))]
-        (is (helpers/array= (read-array page-reader) (read-array page-reader)))))))
+        (is (every? true? (map = (read-array page-reader) (read-array page-reader))))))))
 
 (deftest incompatible-pages
   (testing "read incompatible page types throws an exception"

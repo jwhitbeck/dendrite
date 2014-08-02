@@ -4,6 +4,8 @@
             [dendrite.test-helpers :refer [test-schema-str throw-cause]])
   (:refer-clojure :exclude [read-string val record?]))
 
+(set! *warn-on-reflection* true)
+
 (deftest parse-unparsed-schema-str
   (testing "write/read unparsed schema"
     (is (= (read-string test-schema-str)

@@ -6,10 +6,12 @@
             DeflateCompressor DeflateDecompressor
             LZ4Compressor LZ4Decompressor]))
 
-(defn compress-decompress-lorum-ipsum [compressor decompressor]
+(set! *warn-on-reflection* true)
+
+(defn compress-decompress-lorum-ipsum [^Compressor compressor ^Decompressor decompressor]
   (let [baw (ByteArrayWriter. 10)
         compressed-baw (ByteArrayWriter. 10)]
-    (.writeByteArray baw (.getBytes lorem-ipsum "UTF-8"))
+    (.writeByteArray baw (.getBytes (str lorem-ipsum) "UTF-8"))
     (doto compressor
       (.compress baw)
       (.flush compressed-baw))

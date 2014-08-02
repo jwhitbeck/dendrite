@@ -7,6 +7,8 @@
             [dendrite.striping :refer [stripe-record]]
             [dendrite.test-helpers :refer [test-schema-str]]))
 
+(set! *warn-on-reflection* true)
+
 (deftest dremel-paper
   (testing "full schema"
     (is (= dremel-paper-record1 (assemble dremel-paper-record1-striped dremel-paper-full-query-schema)))

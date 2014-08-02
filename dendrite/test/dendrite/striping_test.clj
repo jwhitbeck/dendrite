@@ -6,6 +6,8 @@
             [dendrite.striping :refer :all]
             [dendrite.test-helpers :as helpers]))
 
+(set! *warn-on-reflection* true)
+
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
     (is (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema)))

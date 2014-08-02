@@ -5,9 +5,23 @@
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))
 
-(def ^:private rng (Random.))
+(set! *warn-on-reflection* true)
 
-(defn array= [aa ab]
+(def ^:private ^Random rng (Random.))
+
+(defn byte-array= [^bytes aa ^bytes ab]
+  (and (= (alength aa) (alength ab))
+       (every? true? (map = aa ab))))
+
+(defn int-array= [^ints aa ^ints ab]
+  (and (= (alength aa) (alength ab))
+       (every? true? (map = aa ab))))
+
+(defn bool-array= [^booleans aa ^booleans ab]
+  (and (= (alength aa) (alength ab))
+       (every? true? (map = aa ab))))
+
+(defn long-array= [^longs aa ^longs ab]
   (and (= (alength aa) (alength ab))
        (every? true? (map = aa ab))))
 
@@ -19,9 +33,9 @@
 
 (defn rand-byte [] (unchecked-byte (clojure.core/rand-int 256)))
 
-(defn rand-int-bits [n] (-> (BigInteger. n rng) unchecked-int))
+(defn rand-int-bits [n] (-> (BigInteger. (int n) rng) unchecked-int))
 
-(defn rand-long-bits [n] (-> (BigInteger. n rng) unchecked-long))
+(defn rand-long-bits [n] (-> (BigInteger. (int n) rng) unchecked-long))
 
 (defn rand-int [] (rand-int-bits 32))
 
@@ -31,14 +45,14 @@
 
 (defn rand-double [] (-> (rand Double/MAX_VALUE) (* (rand-sign)) unchecked-double))
 
-(defn rand-biginteger [n] (BigInteger. n rng))
+(defn rand-biginteger [n] (BigInteger. (int n) rng))
 
 (defn rand-bigint [n] (bigint (rand-biginteger n)))
 
-(defn rand-bigdec [n] (BigDecimal. (rand-biginteger n) (rand-int-bits 2)))
+(defn rand-bigdec [n] (BigDecimal. ^BigInteger (rand-biginteger n) (int (rand-int-bits 2))))
 
 (defn rand-biginteger-signed [n]
-  (cond-> (rand-biginteger n)
+  (cond-> ^BigInteger (rand-biginteger n)
           (= (rand-sign) 1) .negate))
 
 (defn rand-byte-array

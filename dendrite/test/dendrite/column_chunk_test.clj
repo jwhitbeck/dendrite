@@ -7,10 +7,12 @@
             [dendrite.metadata :as metadata]
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ByteArrayWriter LeveledValue]
+  (:import [dendrite.java ByteArrayWriter BufferedByteArrayWriter LeveledValue]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
   (:refer-clojure :exclude [read]))
+
+(set! *warn-on-reflection* true)
 
 (def test-target-data-page-length 1000)
 
@@ -21,7 +23,7 @@
   ([column-spec input-blocks]
      (write-column-chunk-and-get-reader column-spec test-target-data-page-length input-blocks))
   ([column-spec target-data-page-length input-blocks]
-     (let [w (doto (writer target-data-page-length column-spec)
+     (let [w (doto ^BufferedByteArrayWriter (writer target-data-page-length column-spec)
                (write-blocks input-blocks)
                .finish)
            column-chunk-metadata (metadata w)]
@@ -31,13 +33,13 @@
 
 (def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
-(defn- iterate-calendar-by-day [calendar]
+(defn- iterate-calendar-by-day [^Calendar calendar]
   (lazy-seq (cons (.getTime calendar)
                   (iterate-calendar-by-day (doto calendar (.add Calendar/DATE 1))))))
 
 (defn- days-seq [start-date-str]
   (-> (doto (Calendar/getInstance)
-        (.setTime (.parse simple-date-format start-date-str)))
+        (.setTime (.parse ^SimpleDateFormat simple-date-format start-date-str)))
       iterate-calendar-by-day))
 
 (defn- column-spec [value-type encoding compression]
@@ -81,7 +83,7 @@
           (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                  (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [w (doto (writer test-target-data-page-length cs)
+      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length cs)
                 (write-blocks input-blocks))
             baw1 (doto (ByteArrayWriter. 10) (.write w))
             baw2 (doto (ByteArrayWriter. 10) (.write w))]
@@ -113,7 +115,7 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [w (doto (writer test-target-data-page-length cs)
+      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length cs)
                 (write-blocks input-blocks))
             baw1 (doto (ByteArrayWriter. 10) (.write w))
             baw2 (doto (ByteArrayWriter. 10) (.write w))]
@@ -197,8 +199,8 @@
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
       (encoding/with-custom-types {:date {:base-type :long
-                                          :to-base-type-fn #(.getTime %)
-                                          :from-base-type-fn #(Date. %)}}
+                                          :to-base-type-fn #(.getTime ^Date %)
+                                          :from-base-type-fn #(Date. (long %))}}
         (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
           (is (= (read reader) input-blocks))
           (is (= :delta (find-best-encoding reader test-target-data-page-length)))))))
@@ -245,7 +247,7 @@
     (let [cs (column-spec-no-levels :byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/array=
+      (is (every? true? (map helpers/byte-array=
                              (->> reader read flatten (map #(.value ^LeveledValue %)))
                              (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :delta-length (find-best-encoding reader test-target-data-page-length)))))
@@ -265,8 +267,8 @@
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
       (encoding/with-custom-types {:date {:base-type :string
-                                          :to-base-type-fn #(.format simple-date-format %)
-                                          :from-base-type-fn #(.parse simple-date-format %)}}
+                                          :to-base-type-fn #(.format ^SimpleDateFormat simple-date-format %)
+                                          :from-base-type-fn #(.parse ^SimpleDateFormat simple-date-format %)}}
         (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
           (is (= (read reader) input-blocks))
           (is (= :incremental (find-best-encoding reader test-target-data-page-length)))))))
@@ -288,7 +290,7 @@
     (let [cs (column-spec-no-levels :fixed-length-byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array 16) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/array=
+      (is (every? true? (map helpers/byte-array=
                              (->> reader read flatten (map #(.value ^LeveledValue %)))
                              (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :plain (find-best-encoding reader test-target-data-page-length)))))
@@ -297,7 +299,7 @@
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
           input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/array=
+      (is (every? true? (map helpers/byte-array=
                              (->> reader read flatten (map #(.value ^LeveledValue %)))
                              (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :dictionary (find-best-encoding reader test-target-data-page-length))))))
