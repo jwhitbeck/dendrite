@@ -208,7 +208,7 @@
     (let [t1 (.getTime (Calendar/getInstance))
           t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
           records [{:docid 1 :at t1} {:docid 2 :at t1}]
-          custom-types {:date {:base-type :long
+          custom-types {'date {:base-type 'long
                                :to-base-type-fn #(.getTime ^Date %)
                                :from-base-type-fn #(Date. (long %))}}
           w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)

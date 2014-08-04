@@ -39,6 +39,9 @@
    :readers nil
    :custom-types nil})
 
+(defn- parse-custom-types [custom-types]
+  (reduce-kv (fn [m k v] (assoc m (keyword k) (update-in v [:base-type] keyword))) {} custom-types))
+
 (defprotocol IWriter
   (write! [_ records])
   (set-metadata! [_ metadata]))
@@ -187,7 +190,7 @@
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
                 compression-thresholds invalid-input-handler]} (merge default-write-options options)]
-    (encoding/with-custom-types custom-types
+    (encoding/with-custom-types (parse-custom-types custom-types)
       (let [parsed-schema (schema/parse schema)
             striped-record-ch (async/chan 100)
             record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
@@ -329,7 +332,7 @@
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
-      :custom-types custom-types
+      :custom-types (parse-custom-types custom-types)
       :open-channels (atom [])
       :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
