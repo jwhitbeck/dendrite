@@ -4,7 +4,8 @@
   (:import [dendrite.java Singleton]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
-           [java.nio.channels FileChannel FileChannel$MapMode]))
+           [java.nio.channels FileChannel FileChannel$MapMode]
+           [java.util.concurrent Callable Executors LinkedBlockingQueue ThreadPoolExecutor]))
 
 (set! *warn-on-reflection* true)
 
@@ -117,3 +118,34 @@
          (defn ~(symbol (str "is-" s "?")) [k#] (contains? ~values-set-symb k#)))))
 
 (definline single [x] `(Singleton. ~x))
+
+(defn thread-pool ^ThreadPoolExecutor
+  ([] (thread-pool (.. Runtime getRuntime availableProcessors)))
+  ([n] (Executors/newFixedThreadPool (int n))))
+
+(def ^{:dynamic :true :tag ThreadPoolExecutor} *thread-pool* (thread-pool))
+
+(defn- binding-conveyor-fn ^Callable [f]
+  (let [frame (clojure.lang.Var/cloneThreadBindingFrame)]
+    (fn []
+      (clojure.lang.Var/resetThreadBindingFrame frame)
+      (f))))
+
+(defn future-call* [f]
+  (.submit *thread-pool* (binding-conveyor-fn f)))
+
+(defmacro future* [& body]
+  `(future-call* #(do ~@body)))
+
+(defn upmap*
+  ([f coll]
+     (upmap f (.getMaximumPoolSize *thread-pool*) coll))
+  ([f n coll]
+     (let [queue (LinkedBlockingQueue.)
+           rets (map #(future* (.put queue {:result (f %)})) coll)
+           step (fn step [[x & xs :as vs] fs]
+                  (lazy-seq
+                   (if-let [s (seq fs)]
+                     (cons (:result (.take queue)) (step xs (rest s)))
+                     (repeatedly (count vs) #(:result (.take queue))))))]
+       (step rets (drop n rets)))))
