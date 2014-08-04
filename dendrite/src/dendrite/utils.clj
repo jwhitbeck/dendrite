@@ -151,7 +151,7 @@
 
 (defn upmap*
   ([f coll]
-     (upmap f (.getMaximumPoolSize *thread-pool*) coll))
+     (upmap* f (.getMaximumPoolSize *thread-pool*) coll))
   ([f n coll]
      (let [queue (LinkedBlockingQueue.)
            rets (map #(future* (.put queue {:result (f %)})) coll)
