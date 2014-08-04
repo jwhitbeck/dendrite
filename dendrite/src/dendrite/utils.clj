@@ -119,6 +119,18 @@
 
 (definline single [x] `(Singleton. ~x))
 
+(defn flatten-1 [seqs]
+  (letfn [(step [cs rs]
+            (lazy-seq
+             (when-let [s (seq cs)]
+               (if (chunked-seq? s)
+                 (let [cf (chunk-first s)
+                       cr (chunk-rest s)]
+                   (chunk-cons cf (if (seq cr) (step cr rs) (step (first rs) (rest rs)))))
+                 (let [r (rest s)]
+                   (cons (first s) (if (seq r) (step r rs) (step (first rs) (rest rs)))))))))]
+    (step (first seqs) (rest seqs))))
+
 (defn thread-pool ^ThreadPoolExecutor
   ([] (thread-pool (.. Runtime getRuntime availableProcessors)))
   ([n] (Executors/newFixedThreadPool (int n))))
