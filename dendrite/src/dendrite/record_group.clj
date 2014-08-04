@@ -153,8 +153,11 @@
 (defn optimize! [record-group-writer compression-threshold-map]
   (if-not (pos? (num-records record-group-writer))
     record-group-writer
-    (let [optimized-column-chunk-writers (->> record-group-writer
-                                              :column-chunk-writers
-                                              (pmap #(column-chunk/optimize! % compression-threshold-map))
-                                              vec)]
+    (let [optimized-column-chunk-writers
+            (->> record-group-writer
+                 :column-chunk-writers
+                 (sort-by #(.estimatedLength ^BufferedByteArrayWriter %))
+                 reverse
+                 (utils/upmap* #(column-chunk/optimize! % compression-threshold-map))
+                 (sort-by (comp :column-index :column-spec)))]
       (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers))))
