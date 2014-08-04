@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [dendrite.page :refer :all]
             [dendrite.leveled-value :as lv]
-            [dendrite.test-helpers :as helpers])
+            [dendrite.test-helpers :as helpers]
+            [dendrite.utils :as utils])
   (:import [dendrite.java ByteArrayWriter])
   (:refer-clojure :exclude [read type]))
 
@@ -20,7 +21,7 @@
         helpers/get-byte-array-reader
         page-reader-ctor
         (read map-fn)
-        flatten)))
+        utils/flatten-1)))
 
 (defn- write-read-single-dictionary-page
   [value-type encoding compression input-values & {:keys [map-fn]}]
@@ -91,7 +92,12 @@
                             helpers/get-byte-array-reader
                             (data-page-reader (:max-repetition-level spec) (:max-definition-level spec)
                                               :int :plain :none))]
-        (is (= (read page-reader) (read page-reader)))))))
+        (is (= (read page-reader) (read page-reader)))))
+    (testing "read seq is chunked"
+      (let [spec {:max-definition-level 3 :max-repetition-level 2}
+            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
+            output-values (write-read-single-data-page spec :int :plain :none input-values)]
+        (is (chunked-seq? (seq output-values)))))))
 
 (deftest dictionary-page
   (testing "write/read a dictionary page"

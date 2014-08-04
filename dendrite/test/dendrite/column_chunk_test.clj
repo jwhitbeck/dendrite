@@ -100,7 +100,9 @@
                        (map (comp :length page/stats))
                        helpers/avg)))]
         (is (helpers/roughly 1024 (avg-page-length 1024)))
-        (is (helpers/roughly 256 (avg-page-length 256)))))))
+        (is (helpers/roughly 256 (avg-page-length 256)))))
+    (testing "read seq is chunked"
+      (is (chunked-seq? (seq (read reader)))))))
 
 (deftest dictionary-column-chunk
   (let [cs (column-spec :int :dictionary :deflate)

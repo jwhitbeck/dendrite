@@ -4,7 +4,7 @@
             [dendrite.estimation :as estimation]
             [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.stats :as stats]
-            [dendrite.utils :refer [defenum]])
+            [dendrite.utils :refer [defenum] :as utils])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Flushable
             Compressor Decompressor Encoder Decoder LeveledValue LeveledValues Dictionary])
   (:refer-clojure :exclude [read type]))
@@ -355,7 +355,8 @@
    value-type encoding compression map-fn]
   (->> (data-page-readers byte-array-reader num-data-pages max-repetition-level max-definition-level
                           value-type encoding compression)
-       (mapcat #(read % map-fn))))
+       (map #(read % map-fn))
+       utils/flatten-1))
 
 (defn read-data-page-headers
   [^ByteArrayReader byte-array-reader num-data-pages]

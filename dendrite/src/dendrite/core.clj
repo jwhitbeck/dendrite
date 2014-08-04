@@ -262,7 +262,8 @@
         (async/thread
           (try
             (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-                 (mapcat record-group/read)
+                 (map record-group/read)
+                 utils/flatten-1
                  (>!!-coll ch))
             (catch Exception e
               (>!! ch e))
