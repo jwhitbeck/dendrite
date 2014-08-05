@@ -355,7 +355,7 @@
    value-type encoding compression map-fn]
   (->> (data-page-readers byte-array-reader num-data-pages max-repetition-level max-definition-level
                           value-type encoding compression)
-       (map #(read % map-fn))
+       (utils/pmap-1 #(read % map-fn))
        utils/flatten-1))
 
 (defn read-data-page-headers
