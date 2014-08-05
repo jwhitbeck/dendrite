@@ -31,7 +31,7 @@
            helpers/get-byte-array-reader
            (reader column-chunk-metadata column-spec)))))
 
-(def simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
+(def ^SimpleDateFormat simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
 (defn- iterate-calendar-by-day [^Calendar calendar]
   (lazy-seq (cons (.getTime calendar)
@@ -269,8 +269,10 @@
     (let [cs (column-spec-no-levels :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
       (encoding/with-custom-types {:date {:base-type :string
-                                          :to-base-type-fn #(.format ^SimpleDateFormat simple-date-format %)
-                                          :from-base-type-fn #(.parse ^SimpleDateFormat simple-date-format %)}}
+                                          :to-base-type-fn #(locking simple-date-format
+                                                              (.format simple-date-format %))
+                                          :from-base-type-fn #(locking simple-date-format
+                                                                (.parse simple-date-format %))}}
         (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
           (is (= (read reader) input-blocks))
           (is (= :incremental (find-best-encoding reader test-target-data-page-length)))))))
