@@ -246,9 +246,9 @@
   (length [_]
     (.size file-channel))
   (record-group-readers [_ record-groups-metadata queried-schema]
-    (utils/pmap-next #(record-group/file-channel-reader file-channel %1 %2 queried-schema)
-                     (record-group-offsets record-groups-metadata magic-bytes-length)
-                     record-groups-metadata))
+    (utils/pmap-1 #(record-group/file-channel-reader file-channel %1 %2 queried-schema)
+                  (record-group-offsets record-groups-metadata magic-bytes-length)
+                  record-groups-metadata))
   (close-reader! [_]
     (.close file-channel)))
 

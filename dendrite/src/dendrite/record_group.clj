@@ -158,6 +158,6 @@
                  :column-chunk-writers
                  (sort-by #(.estimatedLength ^BufferedByteArrayWriter %))
                  reverse
-                 (utils/upmap* #(column-chunk/optimize! % compression-threshold-map))
+                 (utils/upmap #(column-chunk/optimize! % compression-threshold-map))
                  (sort-by (comp :column-index :column-spec)))]
       (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers))))
