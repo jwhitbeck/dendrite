@@ -259,7 +259,7 @@
       (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
            (map record-group/read)
            utils/flatten-1
-           (utils/chunk-pmap #(assembly/assemble % queried-schema)))))
+           (utils/chunked-pmap #(assembly/assemble % queried-schema)))))
   (stats [_]
     (let [all-stats (->> (record-group-readers backend-reader
                                                (:record-groups-metadata metadata)

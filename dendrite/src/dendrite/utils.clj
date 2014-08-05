@@ -139,27 +139,6 @@
   ([f c1 c2]
      (pmap-1 (partial apply f) (multiplex [c1 c2]))))
 
-(defn chunk-pmap [f chunked-coll]
-  (let [n (+ 2 (.. Runtime getRuntime availableProcessors))
-        map-chunk (fn [f ^clojure.lang.IChunk c]
-                    (let [size (count c)
-                          b (chunk-buffer size)]
-                      (dotimes [i size]
-                        (chunk-append b (f (.nth c i))))
-                      (chunk b)))
-        chunk-futs (fn chunks [coll]
-                     (lazy-seq
-                      (when-let [s (seq coll)]
-                        (let [c (chunk-first s)]
-                          (cons (future (map-chunk f c)) (chunks (chunk-rest s)))))))
-        rets (chunk-futs chunked-coll)
-        step (fn step [[x & xs :as vs] fs]
-               (lazy-seq
-                (if-let [s (seq fs)]
-                  (chunk-cons (deref x) (step xs (rest s)))
-                  (->> vs (map deref) reverse (reduce #(chunk-cons %2 %1) (list))))))]
-    (step rets (drop n rets))))
-
 (defn chunked-pmap
   ([f coll]
      (chunked-pmap f 255 coll))
