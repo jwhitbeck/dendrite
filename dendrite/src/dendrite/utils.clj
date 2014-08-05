@@ -30,14 +30,14 @@
 
 (defn format-ks [ks] (format "[%s]" (string/join " " ks)))
 
-(defn- filter-indices* [indices-set ^long next-index coll]
-  (lazy-seq (when (seq coll)
-              (if (indices-set next-index)
-                (cons (first coll) (filter-indices* indices-set (inc next-index) (rest coll)))
-                (filter-indices* indices-set (inc next-index) (rest coll))))))
-
 (defn filter-indices [indices-set coll]
-  (filter-indices* indices-set 0 coll))
+  (letfn [(fi [indices-set ^long next-index coll]
+            (lazy-seq
+             (when (seq coll)
+               (if (indices-set next-index)
+                 (cons (first coll) (fi indices-set (inc next-index) (rest coll)))
+                 (fi indices-set (inc next-index) (rest coll))))))]
+    (fi indices-set 0 coll)))
 
 (defn file-channel
   ^FileChannel [f mode]
