@@ -47,7 +47,11 @@
         bar (helpers/get-byte-array-reader w)]
     (testing "full schema"
       (is (= striped-records
-             (read (byte-array-reader bar record-group-metadata (schema/apply-query test-schema '_))))))))
+             (read (byte-array-reader bar record-group-metadata (schema/apply-query test-schema '_))))))
+    (testing "read seq is chunked"
+      (is (chunked-seq? (seq (read (byte-array-reader bar
+                                                      record-group-metadata
+                                                      (schema/apply-query test-schema '_)))))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)

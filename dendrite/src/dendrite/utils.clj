@@ -102,7 +102,14 @@
           (step [^objects seq-array]
             (lazy-seq
              (when (seq (aget seq-array 0))
-               (cons (all-first seq-array) (step (rest! seq-array))))))]
+               (let [size 32
+                     b (chunk-buffer size)]
+                 (loop [i 0]
+                   (when (and (< i size) (seq (aget seq-array 0)))
+                     (chunk-append b (all-first seq-array))
+                     (rest! seq-array)
+                     (recur (inc i))))
+                 (chunk-cons (chunk b) (step seq-array))))))]
     (step (into-array Object seqs))))
 
 (defmacro defenum [s vs]
