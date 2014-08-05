@@ -252,28 +252,14 @@
   (close-reader! [_]
     (.close file-channel)))
 
-(defrecord Reader [backend-reader metadata queried-schema open-channels custom-types]
+(defrecord Reader [backend-reader metadata queried-schema custom-types]
   IReader
   (read [_]
     (encoding/with-custom-types custom-types
-      (let [ch (async/chan 100)
-            error-ch (async/chan)]
-        (swap! open-channels conj ch)
-        (async/thread
-          (try
-            (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-                 (map record-group/read)
-                 utils/flatten-1
-                 (>!!-coll ch))
-            (catch Exception e
-              (>!! ch e))
-            (finally
-              (async/close! ch)
-              (swap! open-channels #(remove (partial = ch) %)))))
-        (->> (<!!-coll ch)
-             (utils/chunked-pmap #(if (instance? Exception %)
-                                    (throw %)
-                                    (assembly/assemble % queried-schema)))))))
+      (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
+           (map record-group/read)
+           utils/flatten-1
+           (utils/chunk-pmap #(assembly/assemble % queried-schema)))))
   (stats [_]
     (let [all-stats (->> (record-group-readers backend-reader
                                                (:record-groups-metadata metadata)
@@ -292,8 +278,6 @@
     (-> metadata :schema schema/unparse))
   Closeable
   (close [_]
-    (doseq [ch @open-channels]
-      (async/close! ch))
     (close-reader! backend-reader)))
 
 (defn- byte-buffer->metadata [^ByteBuffer byte-buffer]
@@ -334,7 +318,6 @@
      {:backend-reader backend-reader
       :metadata metadata
       :custom-types (parse-custom-types custom-types)
-      :open-channels (atom [])
       :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
