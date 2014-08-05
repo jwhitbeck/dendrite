@@ -120,12 +120,22 @@
   [f coll]
   (let [n (+ 2 (.. Runtime getRuntime availableProcessors))
         queue (LinkedBlockingQueue.)
-        rets (map #(future (.put queue {:result (f %)})) coll)
+        rets (map #(future
+                     (try (let [r (f %)]
+                            (.put queue (if (nil? r) ::nil r)))
+                          (catch Exception e
+                            (.put queue e))))
+                  coll)
+        qget (fn []
+               (let [r (.take queue)]
+                 (if (instance? Exception r)
+                   (throw r)
+                   (when-not (= r ::nil) r))))
         step (fn step [[x & xs :as vs] fs]
                (lazy-seq
                 (if-let [s (seq fs)]
-                  (cons (:result (.take queue)) (step xs (rest s)))
-                  (repeatedly (count vs) #(:result (.take queue))))))]
+                  (cons (qget) (step xs (rest s)))
+                  (repeatedly (count vs) qget))))]
     (step rets (drop n rets))))
 
 (defn pmap-1
