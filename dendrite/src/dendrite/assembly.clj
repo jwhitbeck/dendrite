@@ -5,75 +5,116 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private assemble*
-  (fn [leveled-values-vec schema]
-    (case (:repetition schema)
-      (:optional :required) :field
-      (:list :vector :set) :repeated
-      :map :map)))
+(defn- comp-some [f g]
+  (fn [x]
+    (when-let [v (g x)]
+      (f v))))
 
-(defmethod assemble* :field
-  [leveled-values-vec schema]
-  (if (schema/record? schema)
-    (let [[record next-repetition-level next-leveled-values-vec]
-            (reduce (fn [[record next-repetition-level leveled-values-vec] sub-schema]
-                      (let [[value next-repetition-level next-leveled-values-vec]
-                              (assemble* leveled-values-vec sub-schema)]
-                        [(if (nil? value) record (assoc record (:name sub-schema) value))
-                         next-repetition-level
-                         next-leveled-values-vec]))
-                    [{} 0 leveled-values-vec]
-                    (:sub-fields schema))]
-      [(when-not (empty? record)
-         (if-let [reader-fn (:reader-fn schema)]
-           (reader-fn record)
-           record))
-       next-repetition-level
-       next-leveled-values-vec])
-    (let [column-index (-> schema :column-spec :query-column-index)
-          leveled-values (get leveled-values-vec column-index)
-          value (when-let [v (first leveled-values)] (.value ^LeveledValue v))
-          next-repetition-level (if-let [next-value (second leveled-values)]
-                                  (.repetitionLevel ^LeveledValue next-value)
-                                  0)]
-      ; TODO explain why we don't call reader-fn here
-      [value next-repetition-level (assoc leveled-values-vec column-index (rest leveled-values))])))
+(defmulti ^:private assemble-fn*
+  (fn [field]
+    (if (schema/record? field)
+      (case (:repetition field)
+        :map :map
+        (:list :vector :set) :repeated-record
+        (:optional :required) :non-repeated-record)
+      (case (:repetition field)
+        (:list :vector :set) :repeated-value
+        (:optional :required) :non-repeated-value))))
 
-(defmethod assemble* :repeated
-  [leveled-values-vec schema]
-  (let [non-repeated-schema (assoc schema :repetition :optional)
-        [value next-repetition-level next-leveled-values-vec]
-          (assemble* leveled-values-vec non-repeated-schema)]
-    (if (and (nil? value) (> (:repetition-level schema) next-repetition-level))
-      [nil next-repetition-level next-leveled-values-vec]
-      (let [init-coll (case (:repetition schema)
-                        :list (list value)
-                        :vector [value]
-                        :set #{value})
-            [record next-repetition-level next-leveled-values-vec]
-              (loop [coll init-coll next-rl next-repetition-level next-lvv next-leveled-values-vec]
-                (if (> (:repetition-level schema) next-rl)
-                  [coll next-rl next-lvv]
-                  (let [[value rl lvv] (assemble* next-lvv non-repeated-schema)]
-                    (recur (conj coll value) rl lvv))))
-            record (if (= :list (:repetition schema)) (doall (reverse record)) record)]
-        [(if-let [reader-fn (:reader-fn schema)]
-           (reader-fn record)
-           record)
-         next-repetition-level
-         next-leveled-values-vec]))))
+(defmethod assemble-fn* :non-repeated-value
+  [field]
+  (let [col-idx (-> field :column-spec :query-column-index)]
+    (fn [leveled-values-vec]
+      (let [lvls (get leveled-values-vec col-idx)
+            ^LeveledValue lv (first lvls)]
+        (assoc! leveled-values-vec col-idx (rest lvls))
+        (when lv
+          (.value lv))))))
 
-(defmethod assemble* :map
-  [leveled-values-vec schema]
-  (let [[key-value-pairs next-repetition-level next-leveled-values-vec]
-          (assemble* leveled-values-vec (assoc schema :repetition :list :reader-fn nil))
-        record (some->> key-value-pairs (map (juxt :key :value)) (into {}))]
-    [(when-not (empty? record)
-       (if-let [reader-fn (:reader-fn schema)]
-         (reader-fn record)
-         record))
-     next-repetition-level
-     next-leveled-values-vec]))
+(defmethod assemble-fn* :repeated-value
+  [field]
+  (let [cs (:column-spec field)
+        col-idx (:query-column-index cs)
+        max-rl (:max-repetition-level cs)
+        max-dl (:max-definition-level cs)
+        rep-type (:repetition field)
+        empty-coll (if (= :set rep-type) #{} [])
+        ass-fn (fn [leveled-values-vec]
+                 (let [lvs (get leveled-values-vec col-idx)
+                       ^LeveledValue flv (first lvs)
+                       next-rl (if-let [^LeveledValue n (second lvs)] (.repetitionLevel n) 0)]
+                   (when-not (and (nil? (.value flv)) (> max-dl (.definitionLevel flv)) (> max-rl next-rl))
+                     (let [ret (loop [rlvs (rest lvs)
+                                      tr (conj! (transient empty-coll) (.value flv))]
+                                 (let [^LeveledValue lv (first rlvs)]
+                                   (if (and lv (= max-rl (.repetitionLevel lv)))
+                                     (recur (rest rlvs) (conj! tr (.value lv)))
+                                     (do (assoc! leveled-values-vec col-idx rlvs)
+                                         (persistent! tr)))))]
+                       (when-not (empty? ret)
+                         ret)))))]
+    (if (= rep-type :list)
+      (comp seq ass-fn)
+      ass-fn)))
 
-(defn assemble [leveled-values-vec schema]
-  (first (assemble* leveled-values-vec schema)))
+(defmethod assemble-fn* :non-repeated-record
+  [field]
+  (let [name-fn-map (reduce (fn [m fld] (assoc m (:name fld) (assemble-fn* fld))) {} (:sub-fields field))
+        ass-fn (fn [leveled-values-vec]
+                 (let [rec (->> name-fn-map
+                                (reduce-kv (fn [m n f] (let [v (f leveled-values-vec)]
+                                                         (if (nil? v) m (assoc! m n v))))
+                                           (transient {}))
+                                persistent!)]
+                   (when-not (empty? rec)
+                     rec)))]
+    (if-let [reader-fn (:reader-fn field)]
+      (comp-some reader-fn ass-fn)
+      ass-fn)))
+
+(defmethod assemble-fn* :repeated-record
+  [field]
+  (let [next-rl-col-idx (-> field schema/column-specs last :query-column-index)
+        next-rl-fn (fn [lvv] (if-let [^LeveledValue lv (first (get lvv next-rl-col-idx))]
+                               (.repetitionLevel lv)
+                               0))
+        rep-lvl (:repetition-level field)
+        rep-type (:repetition field)
+        non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional))
+        empty-coll (if (= :set rep-type) #{} [])
+        ass-fn (fn [leveled-values-vec]
+                 (let [fr (non-repeated-ass-fn leveled-values-vec)
+                       next-rl (next-rl-fn leveled-values-vec)]
+                   (when-not (and (nil? fr) (> rep-lvl next-rl))
+                     (let [ret (loop [trvs (conj! (transient empty-coll) fr)
+                                      nrl next-rl]
+                                 (if (> rep-lvl nrl)
+                                   (persistent! trvs)
+                                   (let [nr (non-repeated-ass-fn leveled-values-vec)]
+                                     (recur (conj! trvs nr) (next-rl-fn leveled-values-vec)))))]
+                       (when-not (empty? ret)
+                         ret)))))
+        reader-fn (:reader-fn field)]
+    (cond->> ass-fn
+             (= :list rep-type) (comp-some seq)
+             reader-fn (comp-some reader-fn))))
+
+(defmethod assemble-fn* :map
+  [field]
+  (let [as-list-ass-fn (assemble-fn* (assoc field :repetition :list :reader-fn nil))
+        ass-fn (fn [leveled-values-vec]
+                 (some->> (as-list-ass-fn leveled-values-vec)
+                          (map (juxt :key :value))
+                          (into {})))]
+    (if-let [reader-fn (:reader-fn field)]
+      (comp-some reader-fn ass-fn)
+      ass-fn)))
+
+(defn assemble-fn [parsed-query]
+  (let [ass-fn (assemble-fn* parsed-query)]
+    (fn [leveled-values-vec]
+      (let [tr (transient leveled-values-vec)]
+        (ass-fn tr)))))
+
+(defn assemble [leveled-values-vec query]
+  ((assemble-fn query) leveled-values-vec))

@@ -256,10 +256,11 @@
   IReader
   (read [_]
     (encoding/with-custom-types custom-types
-      (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-           (map record-group/read)
-           utils/flatten-1
-           (utils/chunked-pmap #(assembly/assemble % queried-schema)))))
+      (let [assemble (assembly/assemble-fn queried-schema)]
+        (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
+             (map record-group/read)
+             utils/flatten-1
+             (utils/chunked-pmap assemble)))))
   (stats [_]
     (let [all-stats (->> (record-group-readers backend-reader
                                                (:record-groups-metadata metadata)
