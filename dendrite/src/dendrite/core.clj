@@ -301,7 +301,8 @@
         last-magic-bytes-pos (- length magic-bytes-length)
         metadata-length-pos (- last-magic-bytes-pos int-length)]
     (if-not
-        (and (valid-magic-bytes? (utils/map-bytes file-channel 0 magic-bytes-length))
+        (and (pos? metadata-length-pos)
+             (valid-magic-bytes? (utils/map-bytes file-channel 0 magic-bytes-length))
              (valid-magic-bytes? (utils/map-bytes file-channel last-magic-bytes-pos magic-bytes-length)))
       (throw (IllegalArgumentException.
               "File is not a valid dendrite file."))
