@@ -179,11 +179,6 @@
 (defn- with-column-spec-paths [schema]
   (with-column-spec-paths* schema []))
 
-(defn- with-map-fns [field]
-  (if (record? field)
-    (update-in field [:sub-fields] (partial map with-map-fns))
-    (assoc-in field [:column-spec :map-fn] (:reader-fn field))))
-
 (defn- with-optimal-column-specs* [field optimal-column-specs-map]
   (if (record? field)
     (update-in field [:sub-fields] (partial map #(with-optimal-column-specs* % optimal-column-specs-map)))
@@ -275,8 +270,10 @@
 (defmethod apply-query* :tagged
   [sub-schema tagged-query readers missing-fields-as-nil? parents]
   (if-let [reader-fn (get readers (:tag tagged-query))]
-    (-> (apply-query* sub-schema (:field tagged-query) readers missing-fields-as-nil? parents)
-        (assoc :reader-fn reader-fn))
+    (let [sub-query (apply-query* sub-schema (:field tagged-query) readers missing-fields-as-nil? parents)]
+      (if (or (repeated? sub-query) (record? sub-query))
+        (assoc sub-query :reader-fn reader-fn)
+        (assoc-in sub-query [:column-spec :map-fn] reader-fn)))
     (throw (IllegalArgumentException.
             (format "No reader function was provided for tag '%s'" (:tag tagged-query))))))
 
@@ -322,7 +319,9 @@
       (throw (IllegalArgumentException.
               (format "Field %s contains a %s in the schema, cannot be read as a list."
                       (format-ks parents) (-> sub-schema :repetition name))))
-      (-> (apply-query* sub-schema (first query-list) readers missing-fields-as-nil? parents)
+      (-> sub-schema
+          (assoc :repetition :optional)
+          (apply-query* (first query-list) readers missing-fields-as-nil? parents)
           (assoc :repetition :list)))))
 
 (defmethod apply-query* :vector
@@ -332,7 +331,9 @@
       (throw (IllegalArgumentException.
               (format "Field %s contains a %s in the schema, cannot be read as a vector."
                       (format-ks parents) (-> sub-schema :repetition name))))
-      (-> (apply-query* sub-schema (first query-vec) readers missing-fields-as-nil? parents)
+      (-> sub-schema
+          (assoc :repetition :optional)
+          (apply-query* (first query-vec) readers missing-fields-as-nil? parents)
           (assoc :repetition :vector)))))
 
 (defmethod apply-query* :set
@@ -341,7 +342,10 @@
     (throw (IllegalArgumentException.
             (format "Field %s contains a %s in the schema, cannot be read as a set."
                     (format-ks parents) (-> sub-schema :repetition name))))
-    (apply-query* sub-schema (first query-set) readers missing-fields-as-nil? parents)))
+    (-> sub-schema
+        (assoc :repetition :optional)
+        (apply-query* (first query-set) readers missing-fields-as-nil? parents)
+        (assoc :repetition :set))))
 
 (defmethod apply-query* :map
   [sub-schema query-map readers missing-fields-as-nil? parents]
@@ -369,8 +373,7 @@
        (-> schema
            (apply-query* query readers missing-fields-as-nil? [])
            (with-column-indices :query-column-index)
-           with-column-spec-paths
-           with-map-fns)
+           with-column-spec-paths)
        (catch Exception e
          (throw (IllegalArgumentException.
                  (format "Invalid query '%s' for schema '%s'" query (unparse schema))

@@ -78,11 +78,20 @@
       (let [bogus-fn (fn [])]
         (is (= bogus-fn (-> (apply-query schema {:docid (tag 'foo '_)} true {'foo bogus-fn})
                             (sub-field :docid)
-                            :reader-fn)))
+                            :column-spec
+                            :map-fn)))
         (is (= bogus-fn (-> (apply-query schema {:name [{:language [{:code (tag 'foo '_)}]}]}
                                          true {'foo bogus-fn})
                             (sub-field-in [:name :language :code])
+                            :column-spec
+                            :map-fn)))
+        (is (= bogus-fn (-> (apply-query schema {:links {:backward (tag 'foo '_)}} true {'foo bogus-fn})
+                            (sub-field-in [:links :backward])
                             :reader-fn)))
+        (is (= bogus-fn (-> (apply-query schema {:links {:backward [(tag 'foo '_)]}} true {'foo bogus-fn})
+                            (sub-field-in [:links :backward])
+                            :column-spec
+                            :map-fn)))
         (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} true {'foo bogus-fn})
                             (sub-field :name)
                             :reader-fn)))

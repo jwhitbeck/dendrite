@@ -52,10 +52,11 @@
                                      (do (assoc! leveled-values-vec col-idx rlvs)
                                          (persistent! tr)))))]
                        (when-not (empty? ret)
-                         ret)))))]
-    (if (= rep-type :list)
-      (comp seq ass-fn)
-      ass-fn)))
+                         ret)))))
+        reader-fn (:reader-fn field)]
+    (cond->> ass-fn
+             (= rep-type :list) (comp seq)
+             reader-fn (comp-some reader-fn))))
 
 (defmethod assemble-fn* :non-repeated-record
   [field]
@@ -80,7 +81,7 @@
                                0))
         rep-lvl (:repetition-level field)
         rep-type (:repetition field)
-        non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional))
+        non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional :reader-fn nil))
         empty-coll (if (= :set rep-type) #{} [])
         ass-fn (fn [leveled-values-vec]
                  (let [fr (non-repeated-ass-fn leveled-values-vec)

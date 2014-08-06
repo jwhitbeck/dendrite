@@ -54,9 +54,31 @@
       {:keywords #{"lorem" "ipsum"}} {:keywords '_} [8])))
 
 (deftest tagging
-  (let [query {:meta (schema/tag 'foo '_)}
-        stripes (mapv (partial get test-record-striped) [6 7])]
-    (are [answer reader-fn]
-      (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
-      {:meta 2} count
-      {:meta ["key2" "key1"]} keys)))
+  (testing "repeated value"
+    (let [query {:links {:backward (schema/tag 'foo '_)}}
+          stripes (mapv (partial get test-record-striped) [1])]
+      (are [answer reader-fn]
+        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        {:links {:backward 6}} (partial reduce +)
+        {:links {:backward ["1" "2" "3"]}} (partial map str))))
+  (testing "non-repeated record"
+    (let [query {:links (schema/tag 'foo '_)}
+          stripes (mapv (partial get test-record-striped) [1 2])]
+      (are [answer reader-fn]
+        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        {:links [1 2 3]} :backward
+        {:links 2} (comp count keys))))
+  (testing "repeated record"
+    (let [query {:name (schema/tag 'foo '_)}
+          stripes (mapv (partial get test-record-striped) [3 4 5])]
+      (are [answer reader-fn]
+        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        {:name 2} count
+        {:name [nil]} (partial take 1))))
+  (testing "map"
+    (let [query {:meta (schema/tag 'foo '_)}
+          stripes (mapv (partial get test-record-striped) [6 7])]
+      (are [answer reader-fn]
+        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        {:meta 2} count
+        {:meta ["key2" "key1"]} keys))))
