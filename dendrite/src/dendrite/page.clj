@@ -301,7 +301,7 @@
   (read [this]
     (read this nil))
   (read [this map-fn]
-    (let [repetition-levels-decoder (when (has-definition-levels? header)
+    (let [repetition-levels-decoder (when (has-repetition-levels? header)
                                       (-> byte-array-reader
                                           (.sliceAhead (byte-offset-repetition-levels header))
                                           (levels-decoder max-repetition-level)))
