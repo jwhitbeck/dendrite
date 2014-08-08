@@ -127,7 +127,7 @@
                         set)
           backward (take (clojure.core/rand-int 3) (repeatedly rand-long))
           forward (take (clojure.core/rand-int 3) (repeatedly rand-long))
-          names (take (clojure.core/rand-int 3) (remove nil? (repeatedly rand-name)))
+          names (take (clojure.core/rand-int 3) (repeatedly rand-name))
           links (cond-> {}
                         (seq backward) (assoc :backward backward)
                         (seq forward) (assoc :forward forward))]

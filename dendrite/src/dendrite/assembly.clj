@@ -79,16 +79,20 @@
         next-rl-fn (fn [lvv] (if-let [^LeveledValue lv (first (get lvv next-rl-col-idx))]
                                (.repetitionLevel lv)
                                0))
+        next-dl-fn (fn [lvv] (if-let [^LeveledValue lv (first (get lvv next-rl-col-idx))]
+                               (.definitionLevel lv)
+                               0))
         rep-lvl (:repetition-level field)
+        def-lvl (:definition-level field)
         rep-type (:repetition field)
         non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional :reader-fn nil))
         empty-coll (if (= :set rep-type) #{} [])
         ass-fn (fn [leveled-values-vec]
-                 (let [fr (non-repeated-ass-fn leveled-values-vec)
-                       next-rl (next-rl-fn leveled-values-vec)]
-                   (when-not (and (nil? fr) (> rep-lvl next-rl))
+                 (let [dl (next-dl-fn leveled-values-vec)
+                       fr (non-repeated-ass-fn leveled-values-vec)]
+                   (when-not (and (nil? fr) (> def-lvl dl))
                      (let [ret (loop [trvs (conj! (transient empty-coll) fr)
-                                      nrl next-rl]
+                                      nrl (next-rl-fn leveled-values-vec)]
                                  (if (> rep-lvl nrl)
                                    (persistent! trvs)
                                    (let [nr (non-repeated-ass-fn leveled-values-vec)]

@@ -23,7 +23,7 @@
     (testing "two fields example"
       (is (= [{:docid 10
                :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
-              {:docid 20}]
+              {:docid 20 :name [nil]}]
              (-> byte-buffer
                  (byte-buffer-reader :query {:docid '_ :name [{:language [{:country '_}]}]})
                  read))))))

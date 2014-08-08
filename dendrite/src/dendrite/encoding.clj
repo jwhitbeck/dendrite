@@ -236,6 +236,10 @@
                    :double double
                    :byte-array byte-array
                    :fixed-length-byte-array byte-array))]
+    (when-not coerce
+      (throw
+       (IllegalArgumentException.
+        (format "Could not find coercion-fn for type '%s'. Perhaps :custom-types is misconfigured." t))))
     (fn [v]
       (try
         (coerce v)

@@ -38,7 +38,7 @@
     (map->column-spec-with-defaults (cond-> {:type type :encoding encoding}
                                             compression (assoc :compression compression)))))
 
-(defrecord Field [name repetition repetition-level reader-fn column-spec sub-fields])
+(defrecord Field [name repetition repetition-level definition-level reader-fn column-spec sub-fields])
 
 (def ^:private column-spec-tag "dendrite/column-spec")
 
@@ -60,10 +60,11 @@
   (reify WriteHandler
     (write [_ writer field]
       (doto writer
-        (.writeTag field-tag 5)
+        (.writeTag field-tag 6)
         (.writeString (some-> field :name name))
         (.writeInt (-> field :repetition repetition-type->int))
         (.writeInt (:repetition-level field))
+        (.writeInt (:definition-level field))
         (.writeObject (:column-spec field))
         (.writeObject (:sub-fields field))))))
 
@@ -127,6 +128,7 @@
       (map->Field {:name (-> reader .readObject keyword)
                    :repetition (-> reader .readInt int->repetition-type)
                    :repetition-level (.readInt reader)
+                   :definition-level (.readInt reader)
                    :column-spec (.readObject reader)
                    :sub-fields (.readObject reader)}))))
 

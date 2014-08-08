@@ -33,6 +33,19 @@
               [(->LeveledValue 0 1 "adipisicing") (->LeveledValue 1 1 "commodo")]
               [(->LeveledValue 0 1 "laboris") (->LeveledValue 1 1 "elit")]
               [(->LeveledValue 0 1 "commodo")]
+              [(->LeveledValue 0 0 false)]]))))
+  (testing "nil values in repeated records are preserved"
+    (let [test-schema (-> helpers/test-schema-str s/read-string s/parse)]
+      (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema)
+             [[(->LeveledValue 0 0 0)]
+              [(->LeveledValue 0 0 nil)]
+              [(->LeveledValue 0 0 nil)]
+              [(->LeveledValue 0 1 nil)]
+              [(->LeveledValue 0 1 nil)]
+              [(->LeveledValue 0 1 nil)]
+              [(->LeveledValue 0 0 nil)]
+              [(->LeveledValue 0 0 nil)]
+              [(->LeveledValue 0 0 nil)]
               [(->LeveledValue 0 0 false)]])))))
 
 (deftest invalid-records
@@ -65,7 +78,8 @@
                            :char 'char
                            :bigint 'bigint
                            :keyword 'keyword
-                           :symbol 'symbol})]
+                           :symbol 'symbol
+                           :repeated-int ['int]})]
       (are [x] (stripe-record x schema)
            {:boolean true}
            {:boolean nil}
@@ -80,7 +94,9 @@
            {:char \c}
            {:bigint 2}
            {:keyword :foo}
-           {:symbol 'foo})
+           {:symbol 'foo}
+           {:repeated-int [1 2]}
+           {:repeated-int []})
       (are [x] (thrown-with-msg? IllegalArgumentException #"Could not coerce value"
                                  (helpers/throw-cause (stripe-record x schema)))
            {:int [1 2]}
@@ -92,4 +108,5 @@
            {:byte-array ["a" 2 3]}
            {:char "f"}
            {:bigint "foo"}
-           {:symbol 2}))))
+           {:symbol 2}
+           {:repeated-int [nil]}))))

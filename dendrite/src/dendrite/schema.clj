@@ -160,7 +160,9 @@
     (assoc-in field ks current-level)))
 
 (defn- with-definition-levels [schema]
-  (schema-with-level schema 0 (complement required?) [:column-spec :max-definition-level] false))
+  (-> schema
+      (schema-with-level 0 (complement required?) [:column-spec :max-definition-level] false)
+      (schema-with-level 0 (complement required?) [:definition-level] true)))
 
 (defn- with-repetition-levels [schema]
   (-> schema
