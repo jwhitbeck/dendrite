@@ -36,21 +36,21 @@
 (deftest invalid-schemas
   (testing "unsupported types"
     (is (thrown-with-msg?
-         IllegalArgumentException #"Unsupported type ':invalid' for column \[:foo\]"
+         IllegalArgumentException #"Unsupported type 'invalid' for column \[:foo\]"
          (throw-cause (parse {:foo 'invalid}))))
     (is (thrown-with-msg?
-         IllegalArgumentException #"Unsupported type ':invalid' for column \[:foo :bar\]"
+         IllegalArgumentException #"Unsupported type 'invalid' for column \[:foo :bar\]"
          (throw-cause (parse {:foo {:bar 'invalid}})))))
   (testing "mismatched type and encodings"
     (is (thrown-with-msg?
-         IllegalArgumentException #"Mismatched type ':int' and encoding ':incremental' for column \[:foo\]"
+         IllegalArgumentException #"Mismatched type 'int' and encoding 'incremental' for column \[:foo\]"
          (throw-cause (parse {:foo (col 'int 'incremental)}))))
     (is (thrown-with-msg?
-         IllegalArgumentException #"Mismatched type ':string' and encoding ':delta' for column \[:foo :var\]"
+         IllegalArgumentException #"Mismatched type 'string' and encoding 'delta' for column \[:foo :var\]"
          (throw-cause (parse {:foo {:var (col 'string 'delta)}})))))
   (testing "unsupported compression types"
     (is (thrown-with-msg?
-         IllegalArgumentException #"Unsupported compression type ':snappy' for column \[:foo\]"
+         IllegalArgumentException #"Unsupported compression type 'snappy' for column \[:foo\]"
          (throw-cause (parse {:foo (col 'int 'delta 'snappy)})))))
   (testing "marking a field as both reapeated and required"
     (is (thrown-with-msg?

@@ -70,15 +70,15 @@
              column-spec)]
     (when-not (encoding/valid-value-type? (:type cs))
       (throw (IllegalArgumentException.
-              (format "Unsupported type '%s' for column %s" (:type cs) (format-ks parents)))))
+              (format "Unsupported type '%s' for column %s" (name (:type cs)) (format-ks parents)))))
     (when-not (encoding/valid-encoding-for-type? (:type cs) (:encoding cs))
       (throw (IllegalArgumentException.
               (format "Mismatched type '%s' and encoding '%s' for column %s"
-                      (:type cs) (:encoding cs) (format-ks parents)))))
+                      (name (:type cs)) (name (:encoding cs)) (format-ks parents)))))
     (when-not (metadata/is-compression-type? (:compression cs))
       (throw (IllegalArgumentException.
               (format "Unsupported compression type '%s' for column %s"
-                      (:compression cs)
+                      (name (:compression cs))
                       (format-ks parents)))))
     cs))
 
