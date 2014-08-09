@@ -29,14 +29,14 @@
     :length (+ (:length column-chunk-stats-a) (:length column-chunk-stats-b))
     :byte-stats (add-byte-stats (:byte-stats column-chunk-stats-a) (:byte-stats column-chunk-stats-b))}))
 
-(defrecord ColumnStats [spec length num-chunks num-pages num-values byte-stats])
+(defrecord ColumnStats [spec length num-column-chunks num-pages num-values byte-stats])
 
 (defn column-chunks->column-stats [column-chunks-stats]
   (map->ColumnStats
    {:spec (-> column-chunks-stats first :spec)
     :length (reduce + (map :length column-chunks-stats))
     :num-values (reduce + (map :num-values column-chunks-stats))
-    :num-chunks (count column-chunks-stats)
+    :num-column-chunks (count column-chunks-stats)
     :num-pages (reduce + (map :num-pages column-chunks-stats))
     :byte-stats (reduce add-byte-stats (map :byte-stats column-chunks-stats))}))
 
