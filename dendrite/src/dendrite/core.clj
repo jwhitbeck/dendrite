@@ -112,8 +112,8 @@
            record-groups-metadata []
            optimized? (not optimize?)
            rg-writer record-group-writer]
-      (if (>= (record-group/num-records record-group-writer) next-num-records-for-length-check)
-        (let [estimated-length (.estimatedLength record-group-writer)]
+      (if (>= (record-group/num-records rg-writer) next-num-records-for-length-check)
+        (let [estimated-length (.estimatedLength rg-writer)]
           (if (>= estimated-length target-record-group-length)
             (if (and optimize? (not optimized?))
               (let [^BufferedByteArrayWriter optimized-rg-writer
