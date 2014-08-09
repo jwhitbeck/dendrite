@@ -20,11 +20,11 @@ public class ByteArrayReader {
   public ByteArrayReader(final ByteBuffer byte_buffer) {
     if (byte_buffer.hasArray()) {
       buffer = byte_buffer.array();
-      position = byte_buffer.arrayOffset();
+      position = byte_buffer.position();
     } else {
-      buffer = new byte[byte_buffer.limit()];
-      byte_buffer.rewind();
-      byte_buffer.get(buffer);
+      int length = byte_buffer.limit() - byte_buffer.position();
+      buffer = new byte[length];
+      byte_buffer.slice().get(buffer);
     }
   }
 

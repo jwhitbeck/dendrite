@@ -225,32 +225,40 @@
 (defn- record-group-offsets [record-groups-metadata offset]
   (->> record-groups-metadata (map :length) butlast (reductions + offset)))
 
+(defn- byte-buffer->metadata [^ByteBuffer byte-buffer]
+  (let [length (.limit byte-buffer)
+        last-magic-bytes-pos (- length magic-bytes-length)
+        metadata-length-pos (- last-magic-bytes-pos int-length)]
+    (if-not
+        (and (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer 0 magic-bytes-length))
+             (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer last-magic-bytes-pos magic-bytes-length)))
+      (throw (IllegalArgumentException.
+              (if (.hasArray byte-buffer)
+                "Provided byte buffer does not contain a valid dendrite serialization."
+                "File is not a valid dendrite file.")))
+      (let [metadata-length (-> byte-buffer
+                                (utils/sub-byte-buffer metadata-length-pos int-length)
+                                utils/byte-buffer->int)]
+        (-> byte-buffer
+            (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
+            metadata/read)))))
+
 (defprotocol IBackendReader
-  (record-group-readers [_ record-groups-metadata queried-schema])
-  (length [_])
   (close-reader! [_]))
 
 (defrecord ByteBufferBackendReader [^ByteBuffer byte-buffer]
   IBackendReader
-  (length [_]
-    (.limit byte-buffer))
-  (record-group-readers [_ record-groups-metadata queried-schema]
-    (let [byte-array-reader (ByteArrayReader. byte-buffer)]
-      (map #(record-group/byte-array-reader (.sliceAhead byte-array-reader %1) %2 queried-schema)
-           (record-group-offsets record-groups-metadata magic-bytes-length)
-           record-groups-metadata)))
   (close-reader! [_]))
 
-(defrecord FileChannelBackendReader [^FileChannel file-channel]
+(defrecord FileChannelBackendReader [^FileChannel file-channel ^ByteBuffer byte-buffer]
   IBackendReader
-  (length [_]
-    (.size file-channel))
-  (record-group-readers [_ record-groups-metadata queried-schema]
-    (utils/pmap-1 #(record-group/file-channel-reader file-channel %1 %2 queried-schema)
-                  (record-group-offsets record-groups-metadata magic-bytes-length)
-                  record-groups-metadata))
   (close-reader! [_]
     (.close file-channel)))
+
+(defn- record-group-readers [backend-reader record-groups-metadata queried-schema]
+  (utils/pmap-1 #(record-group/byte-buffer-reader (:byte-buffer backend-reader) %1 %2 queried-schema)
+                (record-group-offsets record-groups-metadata magic-bytes-length)
+                record-groups-metadata))
 
 (defrecord Reader [backend-reader metadata queried-schema custom-types]
   IReader
@@ -262,9 +270,7 @@
              utils/flatten-1
              (utils/chunked-pmap assemble)))))
   (stats [_]
-    (let [all-stats (->> (record-group-readers backend-reader
-                                               (:record-groups-metadata metadata)
-                                               queried-schema)
+    (let [all-stats (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
                          (map record-group/stats))
           record-groups-stats (map :record-group all-stats)
           columns-stats (->> (map :column-chunks all-stats)
@@ -272,7 +278,8 @@
                              (map stats/column-chunks->column-stats))]
       {:record-groups record-groups-stats
        :columns columns-stats
-       :global (stats/record-groups->global-stats (length backend-reader) record-groups-stats)}))
+       :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
+                                                  record-groups-stats)}))
   (metadata [_]
     (:custom metadata))
   (schema [_]
@@ -281,41 +288,9 @@
   (close [_]
     (close-reader! backend-reader)))
 
-(defn- byte-buffer->metadata [^ByteBuffer byte-buffer]
-  (let [length (.limit byte-buffer)
-        last-magic-bytes-pos (- length magic-bytes-length)
-        metadata-length-pos (- last-magic-bytes-pos int-length)]
-    (if-not
-        (and (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer 0 magic-bytes-length))
-             (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer last-magic-bytes-pos magic-bytes-length)))
-      (throw (IllegalArgumentException.
-              "Provided byte buffer does not contain a valid dendrite serialization."))
-      (let [metadata-length (-> byte-buffer
-                                (utils/sub-byte-buffer metadata-length-pos int-length)
-                                utils/byte-buffer->int)]
-        (-> byte-buffer
-            (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
-            metadata/read)))))
-
-(defn- file-channel->metadata [^FileChannel file-channel]
-  (let [length (.size file-channel)
-        last-magic-bytes-pos (- length magic-bytes-length)
-        metadata-length-pos (- last-magic-bytes-pos int-length)]
-    (if-not
-        (and (pos? metadata-length-pos)
-             (valid-magic-bytes? (utils/map-bytes file-channel 0 magic-bytes-length))
-             (valid-magic-bytes? (utils/map-bytes file-channel last-magic-bytes-pos magic-bytes-length)))
-      (throw (IllegalArgumentException.
-              "File is not a valid dendrite file."))
-      (let [metadata-length (-> file-channel
-                                (utils/map-bytes metadata-length-pos int-length)
-                                utils/byte-buffer->int)]
-        (-> file-channel
-            (utils/map-bytes (- metadata-length-pos metadata-length) metadata-length)
-            metadata/read)))))
-
-(defn- reader [backend-reader metadata options]
-  (let [{:keys [query missing-fields-as-nil? readers custom-types]} (merge default-read-options options)]
+(defn- reader [backend-reader options]
+  (let [{:keys [query missing-fields-as-nil? readers custom-types]} (merge default-read-options options)
+        metadata (-> backend-reader :byte-buffer byte-buffer->metadata)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
@@ -323,11 +298,12 @@
       :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
-  (reader (->ByteBufferBackendReader byte-buffer) (byte-buffer->metadata byte-buffer) options))
+  (reader (->ByteBufferBackendReader byte-buffer) options))
 
 (defn file-reader ^java.io.Closeable [f & {:as options}]
-  (let [file-channel (utils/file-channel f :read)]
-    (reader (->FileChannelBackendReader file-channel) (file-channel->metadata file-channel) options)))
+  (let [file-channel (utils/file-channel f :read)
+        mapped-byte-buffer (utils/map-file-channel file-channel)]
+    (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options)))
 
 (defn pmap-records [f reader]
   (read (update-in reader [:queried-schema :reader-fn] #(if % (comp f %) f))))

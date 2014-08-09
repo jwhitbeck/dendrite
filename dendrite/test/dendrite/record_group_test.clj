@@ -9,6 +9,7 @@
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
   (:import [dendrite.java ByteArrayWriter Finishable]
+           [java.nio ByteBuffer]
            [java.nio.channels FileChannel])
   (:refer-clojure :exclude [read]))
 
@@ -22,10 +23,10 @@
             (write! dremel-paper-record2-striped)
             .finish)
         record-group-metadata (metadata w)
-        bar (helpers/get-byte-array-reader w)]
+        bb (helpers/get-byte-buffer w)]
     (testing "full schema"
       (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
-             (read (byte-array-reader bar record-group-metadata dremel-paper-full-query-schema)))))
+             (read (byte-buffer-reader bb 0 record-group-metadata dremel-paper-full-query-schema)))))
     (testing "two fields example"
       (let [two-fields-schema (schema/apply-query dremel-paper-schema
                                                   {:docid '_ :name [{:language [{:country '_}]}]})]
@@ -34,7 +35,7 @@
                   (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
                 [[(->LeveledValue 0 0 20)]
                  [(->LeveledValue 0 1 nil)]]]
-               (read (byte-array-reader bar record-group-metadata two-fields-schema))))))))
+               (read (byte-buffer-reader bb 0 record-group-metadata two-fields-schema))))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
@@ -44,14 +45,14 @@
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)
-        bar (helpers/get-byte-array-reader w)]
+        bb (helpers/get-byte-buffer w)]
     (testing "full schema"
       (is (= striped-records
-             (read (byte-array-reader bar record-group-metadata (schema/apply-query test-schema '_))))))
+             (read (byte-buffer-reader bb 0 record-group-metadata (schema/apply-query test-schema '_))))))
     (testing "read seq is chunked"
-      (is (chunked-seq? (seq (read (byte-array-reader bar
-                                                      record-group-metadata
-                                                      (schema/apply-query test-schema '_)))))))))
+      (is (chunked-seq? (seq (read (byte-buffer-reader bb 0
+                                                       record-group-metadata
+                                                       (schema/apply-query test-schema '_)))))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
@@ -70,5 +71,8 @@
              (with-open [f (utils/file-channel tmp-file :read)]
                (doall
                 (read
-                 (file-channel-reader f 0 record-group-metadata (schema/apply-query test-schema '_))))))))
+                 (byte-buffer-reader (utils/map-file-channel f)
+                                     0
+                                     record-group-metadata
+                                     (schema/apply-query test-schema '_))))))))
     (io/delete-file tmp-file)))

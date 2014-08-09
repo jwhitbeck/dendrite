@@ -49,9 +49,9 @@
                :read (into-array OpenOption [StandardOpenOption/READ]))]
     (FileChannel/open path opts)))
 
-(defn map-bytes
-  ^ByteBuffer [^FileChannel file-channel offset length]
-  (.map file-channel FileChannel$MapMode/READ_ONLY (long offset) (long length)))
+(defn map-file-channel
+  ^ByteBuffer [^FileChannel file-channel]
+  (.map file-channel FileChannel$MapMode/READ_ONLY 0 (.size file-channel)))
 
 (defn sub-byte-buffer
   ^ByteBuffer [^ByteBuffer bb offset length]

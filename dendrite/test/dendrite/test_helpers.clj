@@ -2,6 +2,7 @@
   (:require [clojure.string :as string]
             [dendrite.leveled-value :refer [->LeveledValue]])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable]
+           [java.nio ByteBuffer]
            [java.util Random])
   (:refer-clojure :exclude [rand-int]))
 
@@ -86,10 +87,15 @@
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
 
-(defn get-byte-array-reader [^Flushable byte-array-writable]
+(defn get-byte-array-reader ^ByteArrayReader [^Flushable byte-array-writable]
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteArrayReader.)))
+
+(defn get-byte-buffer ^ByteBuffer [^Flushable byte-array-writable]
+  (let [baw (ByteArrayWriter.)]
+    (.write baw byte-array-writable)
+    (-> baw .buffer ByteBuffer/wrap)))
 
 (def test-schema-str
   "{:docid #req #col [long delta lz4]

@@ -151,12 +151,12 @@
     (testing "byte-buffer-reader"
       (is (thrown-with-msg?
            Exception #"foo"
-           (with-redefs [dendrite.record-group/byte-array-reader throw-foo-fn]
+           (with-redefs [dendrite.record-group/byte-buffer-reader throw-foo-fn]
              (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader read)))))
     (testing "file-reader"
       (is (thrown-with-msg?
            Exception #"foo"
-           (with-redefs [dendrite.record-group/file-channel-reader throw-foo-fn]
+           (with-redefs [dendrite.record-group/byte-buffer-reader throw-foo-fn]
              (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
                (write! w [dremel-paper-record1]))
              (with-open [r (file-reader tmp-filename)]
