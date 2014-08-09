@@ -33,11 +33,14 @@
    :invalid-input-handler nil
    :custom-types nil})
 
+(def default-reader-options
+  {:custom-types nil})
+
 (def default-read-options
   {:query '_
    :missing-fields-as-nil? true
    :readers nil
-   :custom-types nil})
+   :pmap-fn nil})
 
 (defn- parse-custom-types [custom-types]
   (reduce-kv (fn [m k v] (assoc m (keyword k) (update-in v [:base-type] keyword))) {} custom-types))
@@ -47,7 +50,7 @@
   (set-metadata! [_ metadata]))
 
 (defprotocol IReader
-  (read [_])
+  (read-with-opts [_ opts])
   (stats [_])
   (metadata [_])
   (schema [_]))
@@ -260,26 +263,34 @@
                 (record-group-offsets record-groups-metadata magic-bytes-length)
                 record-groups-metadata))
 
-(defrecord Reader [backend-reader metadata queried-schema custom-types]
+(defrecord Reader [backend-reader metadata custom-types]
   IReader
-  (read [_]
+  (read-with-opts [_ opts]
     (encoding/with-custom-types custom-types
-      (let [assemble (assembly/assemble-fn queried-schema)]
+      (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (merge default-read-options opts)
+            queried-schema (cond-> (schema/apply-query (:schema metadata)
+                                                       query
+                                                       missing-fields-as-nil?
+                                                       readers)
+                                   pmap-fn (update-in [:reader-fn] #(if % (comp pmap-fn %) pmap-fn)))
+            assemble (assembly/assemble-fn queried-schema)]
         (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
              (map record-group/read)
              utils/flatten-1
              (utils/chunked-pmap assemble)))))
   (stats [_]
-    (let [all-stats (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-                         (map record-group/stats))
-          record-groups-stats (map :record-group all-stats)
-          columns-stats (->> (map :column-chunks all-stats)
-                             (apply map vector)
-                             (map stats/column-chunks->column-stats))]
-      {:record-groups record-groups-stats
-       :columns columns-stats
-       :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
-                                                  record-groups-stats)}))
+    (encoding/with-custom-types custom-types
+      (let [full-query (schema/apply-query (:schema metadata) '_ true nil)
+            all-stats (->> (record-group-readers backend-reader (:record-groups-metadata metadata) full-query)
+                           (map record-group/stats))
+            record-groups-stats (map :record-group all-stats)
+            columns-stats (->> (map :column-chunks all-stats)
+                               (apply map vector)
+                               (map stats/column-chunks->column-stats))]
+        {:record-groups record-groups-stats
+         :columns columns-stats
+         :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
+                                                    record-groups-stats)})))
   (metadata [_]
     (:custom metadata))
   (schema [_]
@@ -289,13 +300,12 @@
     (close-reader! backend-reader)))
 
 (defn- reader [backend-reader options]
-  (let [{:keys [query missing-fields-as-nil? readers custom-types]} (merge default-read-options options)
+  (let [{:keys [custom-types]} (merge default-reader-options options)
         metadata (-> backend-reader :byte-buffer byte-buffer->metadata)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
-      :custom-types (parse-custom-types custom-types)
-      :queried-schema (schema/apply-query (:schema metadata) query missing-fields-as-nil? readers)})))
+      :custom-types (parse-custom-types custom-types)})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) options))
@@ -305,5 +315,8 @@
         mapped-byte-buffer (utils/map-file-channel file-channel)]
     (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options)))
 
-(defn pmap-records [f reader]
-  (read (update-in reader [:queried-schema :reader-fn] #(if % (comp f %) f))))
+(defn read [reader & {:as opts}]
+  (read-with-opts reader opts))
+
+(defn pmap-records [f reader & {:as opts}]
+  (read-with-opts reader (assoc opts :pmap-fn f)))

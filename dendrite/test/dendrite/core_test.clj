@@ -25,8 +25,8 @@
                :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
               {:docid 20 :name [nil]}]
              (-> byte-buffer
-                 (byte-buffer-reader :query {:docid '_ :name [{:language [{:country '_}]}]})
-                 read))))))
+                 byte-buffer-reader
+                 (read :query {:docid '_ :name [{:language [{:country '_}]}]})))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
@@ -49,8 +49,8 @@
                        (doall (read r))))))
     (testing "one field"
       (is (= (map #(select-keys % [:docid]) records)
-             (with-open [r (file-reader tmp-filename :query {:docid '_})]
-               (doall (read r))))))
+             (with-open [r (file-reader tmp-filename)]
+               (doall (read r :query {:docid '_}))))))
     (io/delete-file tmp-filename)))
 
 (deftest automatic-schema-optimization
@@ -77,7 +77,7 @@
       (is (= records (read (file-reader tmp-filename)))))
     (testing "one field"
       (is (= (map #(select-keys % [:is-active]) records)
-             (read (file-reader tmp-filename :query {:is-active '_})))))
+             (read (file-reader tmp-filename) :query {:is-active '_}))))
     (io/delete-file tmp-filename)))
 
 (deftest custom-metadata
@@ -186,22 +186,24 @@
 (deftest strict-queries
   (testing "queries fail when missing-fields-as-nil? is false and we query a missing fields"
     (let [bb (byte-buffer! (dremel-paper-writer))]
-      (is (= [nil nil] (read (byte-buffer-reader bb :query {:foo '_}))))
+      (is (= [nil nil] (read (byte-buffer-reader bb) :query {:foo '_})))
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
-           (helpers/throw-cause (read (byte-buffer-reader bb :query {:foo '_}
-                                                          :missing-fields-as-nil? false))))))))
+           (helpers/throw-cause (read (byte-buffer-reader bb)
+                                      :query {:foo '_}
+                                      :missing-fields-as-nil? false)))))))
 
 (deftest readers
   (testing "readers functions transform output"
     (let [bb (byte-buffer! (dremel-paper-writer))]
       (is (= [{:name 3, :docid 10} {:name 1, :docid 20}]
-             (read (byte-buffer-reader bb :query {:docid '_ :name (schema/tag 'foo '_)}
-                                       :readers {'foo count}))))
+             (read (byte-buffer-reader bb)
+                   :query {:docid '_ :name (schema/tag 'foo '_)}
+                   :readers {'foo count})))
       (is (thrown-with-msg?
            IllegalArgumentException #"No reader function was provided for tag 'foo'"
            (helpers/throw-cause
-            (read (byte-buffer-reader bb :query {:docid '_ :name (schema/tag 'foo '_)}))))))))
+            (read (byte-buffer-reader bb) :query {:docid '_ :name (schema/tag 'foo '_)})))))))
 
 (deftest custom-types
   (testing "write/read custom types"
