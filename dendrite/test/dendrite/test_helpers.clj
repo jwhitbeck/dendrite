@@ -104,7 +104,7 @@
     :name [{:language [{:code #req string
                         :country string}]
            :url string}]
-    :meta {string string}
+    :meta {#req string #req string}
     :keywords #{string}
     :is-active #req boolean}")
 

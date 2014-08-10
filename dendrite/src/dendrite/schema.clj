@@ -56,8 +56,8 @@
   (fn [elem parents]
     (cond
      (or (symbol? elem) (column-spec? elem)) :column-spec
-     (and (map? elem) ((some-fn column-spec? symbol?) (-> elem first key))) :map
      (and (map? elem) (keyword? (-> elem first key))) :record
+     (map? elem) :map
      (set? elem) :set
      (vector? elem) :vector
      (list? elem) :list
@@ -122,15 +122,25 @@
 
 (defmethod parse* :map
   [coll parents]
-  (let [[key-tree val-tree] (map #(parse* % parents) (first coll))]
+  (letfn [(parse-map-tree [key-or-val name-kw]
+            (let [path (conj parents name-kw)
+                  mark-required? (required-field? key-or-val)
+                  parsed-tree (if mark-required?
+                                (parse* (:field key-or-val) parents)
+                                (parse* key-or-val path))]
+              (if (column-spec? parsed-tree)
+                (-> {:name name-kw :column-spec parsed-tree}
+                    (assoc :repetition (if mark-required? :required :optional))
+                    map->Field)
+                (if (and mark-required? (repeated? parsed-tree))
+                  (throw (IllegalArgumentException.
+                          (format "Field %s is marked both required and repeated" (format-ks path))))
+                  (map->Field (cond-> (assoc parsed-tree :name name-kw)
+                                      mark-required? (assoc :repetition :required)))))))]
     (map->Field
      {:repetition :map
-      :sub-fields [(-> {:name :key :repetition :required}
-                       (assoc (if (column-spec? key-tree) :column-spec :sub-fields) key-tree)
-                       map->Field)
-                   (-> {:name :value :repetition :required}
-                       (assoc (if (column-spec? key-tree) :column-spec :sub-fields) val-tree)
-                       map->Field)]})))
+      :sub-fields [(parse-map-tree (key (first coll)) :key)
+                   (parse-map-tree (val (first coll)) :value)]})))
 
 (defn- column-indexed-schema [field current-column-index index-keyword]
   (if (record? field)
@@ -239,7 +249,7 @@
       :list (list sub-edn)
       :vector [sub-edn]
       :set #{sub-edn}
-      :map {(-> sub-edn :key :field) (-> sub-edn :value :field)}
+      :map {(-> sub-edn :key) (-> sub-edn :value)}
       :required (if (root? field) sub-edn (->RequiredField sub-edn))
       sub-edn)))
 

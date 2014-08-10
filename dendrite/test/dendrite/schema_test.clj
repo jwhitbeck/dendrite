@@ -33,6 +33,20 @@
            [:keywords] {:column-index 8 :max-repetition-level 1 :max-definition-level 1}
            [:is-active] {:column-index 9 :max-repetition-level 0 :max-definition-level 0}))))
 
+(deftest nested-map-schemas
+  (are [unparsed-schema key-rep val-rep]
+    (let [s (parse unparsed-schema)]
+      (and (= (-> s :sub-fields first :repetition) key-rep)
+           (= (-> s :sub-fields second :repetition) val-rep)))
+    {'string 'int} :optional :optional
+    {'string (req 'int)} :optional :required
+    {(req 'string) 'int} :required :optional
+    {(req 'string) (req 'int)} :required :required
+    {'string ['int]} :optional :vector
+    {'string {:foo 'int}} :optional :optional
+    {'string (req {:foo 'int})} :optional :required
+    {'string #{{:foo 'int}}} :optional :set))
+
 (deftest invalid-schemas
   (testing "unsupported types"
     (is (thrown-with-msg?
@@ -52,10 +66,14 @@
     (is (thrown-with-msg?
          IllegalArgumentException #"Unsupported compression type 'snappy' for column \[:foo\]"
          (throw-cause (parse {:foo (col 'int 'delta 'snappy)})))))
-  (testing "marking a field as both reapeated and required"
+  (testing "marking a field as both repeated and required"
     (is (thrown-with-msg?
          IllegalArgumentException #"Field \[:foo\] is marked both required and repeated"
-         (throw-cause (parse {:foo (req ['int])}))))))
+         (throw-cause (parse {:foo (req ['int])})))))
+  (testing "marking a field as both repeated and required in a map"
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Field \[:value\] is marked both required and repeated"
+         (throw-cause (parse {'string (req ['int])}))))))
 
 (deftest queries
   (let [schema (-> test-schema-str read-string parse)]
@@ -71,7 +89,7 @@
            {:links {:backward ['long]}} {:links {:backward ['long]}}
            {:name [{:language [{:country '_}]}]} {:name [{:language [{:country 'string}]}]}
            {:name [{:language (list {:code 'string})}]} {:name [{:language (list {:code (req 'string)})}]}
-           {:meta '_ :name [{:url '_}]} {:name [{:url 'string}] :meta {'string 'string}}
+           {:meta '_ :name [{:url '_}]} {:name [{:url 'string}] :meta {(req 'string) (req 'string)}}
            {:keywords ['_]} {:keywords ['string]}
            {:meta ['_]} {:meta [{:key (req 'string) :value (req 'string)}]}))
     (testing "tagging"

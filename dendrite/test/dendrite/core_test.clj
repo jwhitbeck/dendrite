@@ -67,7 +67,7 @@
                   " :name [{:language [{:code #req #col [string dictionary],"
                   " :country #col [string dictionary]}],"
                   " :url #col [string incremental]}],"
-                  " :meta {#col [string dictionary] #col [string dictionary]},"
+                  " :meta {#req #col [string dictionary] #req #col [string dictionary]},"
                   " :keywords #{#col [string dictionary]},"
                   " :is-active #req boolean}")
              (str (schema (file-reader tmp-filename))))))
