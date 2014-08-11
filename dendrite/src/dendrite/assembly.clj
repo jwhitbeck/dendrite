@@ -12,14 +12,18 @@
 
 (defmulti ^:private assemble-fn*
   (fn [field]
-    (if (schema/record? field)
-      (case (:repetition field)
-        :map :map
-        (:list :vector :set) :repeated-record
-        (:optional :required) :non-repeated-record)
-      (case (:repetition field)
-        (:list :vector :set) :repeated-value
-        (:optional :required) :non-repeated-value))))
+    (if (nil? field)
+      :nil
+      (if (schema/record? field)
+        (case (:repetition field)
+          :map :map
+          (:list :vector :set) :repeated-record
+          (:optional :required) :non-repeated-record)
+        (case (:repetition field)
+          (:list :vector :set) :repeated-value
+          (:optional :required) :non-repeated-value)))))
+
+(defmethod assemble-fn* :nil [field] (constantly nil))
 
 (defmethod assemble-fn* :non-repeated-value
   [field]

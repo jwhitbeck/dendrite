@@ -322,7 +322,8 @@
                                                  readers
                                                  missing-fields-as-nil?
                                                  (conj parents (:name %)))))]
-        (assoc sub-schema :sub-fields sub-fields)))))
+        (when (seq sub-fields)
+          (assoc sub-schema :sub-fields sub-fields))))))
 
 (defmethod apply-query* :list
   [sub-schema query-list readers missing-fields-as-nil? parents]
