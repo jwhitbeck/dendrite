@@ -214,8 +214,12 @@
                                :to-base-type-fn #(.getTime ^Date %)
                                :from-base-type-fn #(Date. (long %))}}
           w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
-              (write! records))]
-      (is (= records (-> w byte-buffer! (byte-buffer-reader :custom-types custom-types) read))))))
+              (write! records))
+          bb (byte-buffer! w)]
+      (is (= records (-> bb (byte-buffer-reader :custom-types custom-types) read)))
+      (is (thrown-with-msg?
+           IllegalArgumentException #"Unkown type 'date' for column \[:at\]"
+           (helpers/throw-cause (-> bb byte-buffer-reader read)))))))
 
 (deftest pmap-records-convenience-function
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
