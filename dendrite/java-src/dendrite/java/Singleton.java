@@ -1,7 +1,6 @@
 package dendrite.java;
 
 import clojure.lang.Cons;
-import clojure.lang.Indexed;
 import clojure.lang.IHashEq;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ISeq;
@@ -13,7 +12,7 @@ import clojure.lang.Util;
 import java.util.List;
 import java.io.Serializable;
 
-public final class Singleton implements ISeq, Indexed, Sequential, Serializable, IHashEq {
+public final class Singleton implements ISeq, Sequential, Serializable, IHashEq {
 
   private final Object obj;
 
@@ -76,21 +75,5 @@ public final class Singleton implements ISeq, Indexed, Sequential, Serializable,
   @Override
   public ISeq seq() {
     return this;
-  }
-
-  @Override
-  public Object nth(final int i) {
-    if (i != 0) {
-      throw new IndexOutOfBoundsException();
-    }
-    return obj;
-  }
-
-  @Override
-  public Object nth(final int i, final Object notFound) {
-    if (i != 0) {
-      return notFound;
-    }
-    return obj;
   }
 }
