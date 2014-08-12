@@ -1,7 +1,8 @@
 (ns dendrite.assembly
   (:require [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema])
-  (:import [dendrite.java LeveledValue]))
+  (:import [clojure.lang ArraySeq]
+           [dendrite.java LeveledValue]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,10 +29,10 @@
 (defmethod assemble-fn* :non-repeated-value
   [field]
   (let [col-idx (-> field :column-spec :query-column-index)]
-    (fn [leveled-values-vec]
-      (let [lvls (get leveled-values-vec col-idx)
+    (fn [^objects leveled-values-array]
+      (let [lvls (aget leveled-values-array col-idx)
             ^LeveledValue lv (first lvls)]
-        (assoc! leveled-values-vec col-idx (rest lvls))
+        (aset leveled-values-array col-idx (rest lvls))
         (when lv
           (.value lv))))))
 
@@ -43,8 +44,8 @@
         max-dl (:max-definition-level cs)
         rep-type (:repetition field)
         empty-coll (if (= :set rep-type) #{} [])
-        ass-fn (fn [leveled-values-vec]
-                 (let [lvs (get leveled-values-vec col-idx)
+        ass-fn (fn [^objects leveled-values-array]
+                 (let [lvs (aget leveled-values-array col-idx)
                        ^LeveledValue flv (first lvs)
                        next-rl (if-let [^LeveledValue n (second lvs)] (.repetitionLevel n) 0)]
                    (when-not (and (nil? (.value flv)) (> max-dl (.definitionLevel flv)) (> max-rl next-rl))
@@ -53,7 +54,7 @@
                                  (let [^LeveledValue lv (first rlvs)]
                                    (if (and lv (= max-rl (.repetitionLevel lv)))
                                      (recur (rest rlvs) (conj! tr (.value lv)))
-                                     (do (assoc! leveled-values-vec col-idx rlvs)
+                                     (do (aset leveled-values-array col-idx rlvs)
                                          (persistent! tr)))))]
                        (when-not (empty? ret)
                          ret)))))
@@ -65,9 +66,9 @@
 (defmethod assemble-fn* :non-repeated-record
   [field]
   (let [name-fn-map (reduce (fn [m fld] (assoc m (:name fld) (assemble-fn* fld))) {} (:sub-fields field))
-        ass-fn (fn [leveled-values-vec]
+        ass-fn (fn [^objects leveled-values-array]
                  (let [rec (->> name-fn-map
-                                (reduce-kv (fn [m n f] (let [v (f leveled-values-vec)]
+                                (reduce-kv (fn [m n f] (let [v (f leveled-values-array)]
                                                          (if (nil? v) m (assoc! m n v))))
                                            (transient {}))
                                 persistent!)]
@@ -80,27 +81,27 @@
 (defmethod assemble-fn* :repeated-record
   [field]
   (let [next-rl-col-idx (-> field schema/column-specs last :query-column-index)
-        next-rl-fn (fn [lvv] (if-let [^LeveledValue lv (first (get lvv next-rl-col-idx))]
-                               (.repetitionLevel lv)
-                               0))
-        next-dl-fn (fn [lvv] (if-let [^LeveledValue lv (first (get lvv next-rl-col-idx))]
-                               (.definitionLevel lv)
-                               0))
+        next-rl-fn (fn [^objects lva] (if-let [^LeveledValue lv (first (aget lva next-rl-col-idx))]
+                                        (.repetitionLevel lv)
+                                        0))
+        next-dl-fn (fn [^objects lva] (if-let [^LeveledValue lv (first (aget lva next-rl-col-idx))]
+                                        (.definitionLevel lv)
+                                        0))
         rep-lvl (:repetition-level field)
         def-lvl (:definition-level field)
         rep-type (:repetition field)
         non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional :reader-fn nil))
         empty-coll (if (= :set rep-type) #{} [])
-        ass-fn (fn [leveled-values-vec]
-                 (let [dl (next-dl-fn leveled-values-vec)
-                       fr (non-repeated-ass-fn leveled-values-vec)]
+        ass-fn (fn [^objects leveled-values-array]
+                 (let [dl (next-dl-fn leveled-values-array)
+                       fr (non-repeated-ass-fn leveled-values-array)]
                    (when-not (and (nil? fr) (> def-lvl dl))
                      (let [ret (loop [trvs (conj! (transient empty-coll) fr)
-                                      nrl (next-rl-fn leveled-values-vec)]
+                                      nrl (next-rl-fn leveled-values-array)]
                                  (if (> rep-lvl nrl)
                                    (persistent! trvs)
-                                   (let [nr (non-repeated-ass-fn leveled-values-vec)]
-                                     (recur (conj! trvs nr) (next-rl-fn leveled-values-vec)))))]
+                                   (let [nr (non-repeated-ass-fn leveled-values-array)]
+                                     (recur (conj! trvs nr) (next-rl-fn leveled-values-array)))))]
                        (when-not (empty? ret)
                          ret)))))
         reader-fn (:reader-fn field)]
@@ -111,8 +112,8 @@
 (defmethod assemble-fn* :map
   [field]
   (let [as-list-ass-fn (assemble-fn* (assoc field :repetition :list :reader-fn nil))
-        ass-fn (fn [leveled-values-vec]
-                 (some->> (as-list-ass-fn leveled-values-vec)
+        ass-fn (fn [^objects leveled-values-array]
+                 (some->> (as-list-ass-fn leveled-values-array)
                           (map (juxt :key :value))
                           (into {})))]
     (if-let [reader-fn (:reader-fn field)]
@@ -121,9 +122,10 @@
 
 (defn assemble-fn [parsed-query]
   (let [ass-fn (assemble-fn* parsed-query)]
-    (fn [leveled-values-vec]
-      (let [tr (transient leveled-values-vec)]
-        (ass-fn tr)))))
+    (fn [^ArraySeq leveled-values]
+      (when leveled-values
+        (let [lva (.array leveled-values)]
+          (ass-fn lva))))))
 
-(defn assemble [leveled-values-vec query]
-  ((assemble-fn query) leveled-values-vec))
+(defn assemble [leveled-values query]
+  ((assemble-fn query) (seq (into-array Object leveled-values))))

@@ -101,7 +101,7 @@
   IRecordGroupReader
   (read [_]
     (if-not (seq column-chunk-readers)
-      (repeat num-records [])
+      (repeat num-records nil)
       (->> (pmap column-chunk/read column-chunk-readers)
            utils/multiplex)))
   (stats [_]

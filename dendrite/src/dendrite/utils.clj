@@ -81,8 +81,12 @@
 
 (defn multiplex [seqs]
   (letfn [(all-first [^objects seq-array]
-            (persistent! (areduce seq-array idx ret (transient [])
-                                  (conj! ret (first (aget seq-array idx))))))
+            (let [^objects af (make-array Object (alength seq-array))]
+              (loop [i (int 0)]
+                (if (< i (alength seq-array))
+                  (do (aset af i (first (aget seq-array i)))
+                      (recur (unchecked-inc i)))
+                  (seq af)))))
           (rest! [^objects seq-array]
             (loop [i (int 0)]
               (if (< i (alength seq-array))
