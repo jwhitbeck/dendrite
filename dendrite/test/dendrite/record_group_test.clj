@@ -52,7 +52,11 @@
     (testing "read seq is chunked"
       (is (chunked-seq? (seq (read (byte-buffer-reader bb 0
                                                        record-group-metadata
-                                                       (schema/apply-query test-schema '_)))))))))
+                                                       (schema/apply-query test-schema '_)))))))
+    (testing "read seq is composed of ArraySeqs"
+      (is (every? (partial instance? clojure.lang.ArraySeq)
+                  (read (byte-buffer-reader bb 0 record-group-metadata
+                                            (schema/apply-query test-schema '_))))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string schema/parse)
