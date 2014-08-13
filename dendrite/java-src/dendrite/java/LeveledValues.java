@@ -1,9 +1,7 @@
 package dendrite.java;
 
 import clojure.lang.IPersistentCollection;
-import clojure.lang.IPersistentVector;
-import clojure.lang.PersistentVector;
-import clojure.lang.ITransientVector;
+import clojure.lang.ITransientCollection;
 import clojure.lang.IFn;
 
 import java.util.Iterator;
@@ -36,7 +34,7 @@ public final class LeveledValues {
   }
 
   private static IPersistentCollection assembleRequired(final Decoder dataDecoder) {
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     for (Object o : dataDecoder) {
       vs.conj(new Singleton(new LeveledValue(0, 0, o)));
     }
@@ -44,7 +42,7 @@ public final class LeveledValues {
   }
 
   private static IPersistentCollection assembleRequiredFn(final Decoder dataDecoder, final IFn fn) {
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     for (Object o : dataDecoder) {
       vs.conj(new Singleton(new LeveledValue(0, 0, fn.invoke(o))));
     }
@@ -54,7 +52,7 @@ public final class LeveledValues {
   private static IPersistentCollection assembleNonRepeatedValue(final Decoder definitionLevelsDecoder,
                                                                 final Decoder dataDecoder,
                                                                 final int maxDefinitionLevel) {
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
     final Iterator data_i = dataDecoder.iterator();
     while (def_lvl_i.hasNext()){
@@ -72,7 +70,7 @@ public final class LeveledValues {
                                                                   final Decoder dataDecoder,
                                                                   final int maxDefinitionLevel,
                                                                   final IFn fn) {
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
     final Iterator data_i = dataDecoder.iterator();
     while (def_lvl_i.hasNext()){
@@ -93,14 +91,14 @@ public final class LeveledValues {
     final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
     final Iterator rep_lvl_i = repetitionLevelsDecoder.iterator();
     final Iterator data_i = dataDecoder.iterator();
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
-    ITransientVector rv = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
     boolean seen_first_value = false;
     while (rep_lvl_i.hasNext()){
       int rep_lvl = (int)rep_lvl_i.next();
       if (rep_lvl == 0 && seen_first_value){
         vs.conj(rv.persistent());
-        rv = PersistentVector.EMPTY.asTransient();
+        rv = PersistentLinkedSeq.newEmptyTransient();
       }
       seen_first_value = true;
       int def_lvl = (int)def_lvl_i.next();
@@ -124,14 +122,14 @@ public final class LeveledValues {
     final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
     final Iterator rep_lvl_i = repetitionLevelsDecoder.iterator();
     final Iterator data_i = dataDecoder.iterator();
-    ITransientVector vs = PersistentVector.EMPTY.asTransient();
-    ITransientVector rv = PersistentVector.EMPTY.asTransient();
+    ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
     boolean seen_first_value = false;
     while (rep_lvl_i.hasNext()){
       int rep_lvl = (int)rep_lvl_i.next();
       if (rep_lvl == 0 && seen_first_value){
         vs.conj(rv.persistent());
-        rv = PersistentVector.EMPTY.asTransient();
+        rv = PersistentLinkedSeq.newEmptyTransient();
       }
       seen_first_value = true;
       int def_lvl = (int)def_lvl_i.next();
