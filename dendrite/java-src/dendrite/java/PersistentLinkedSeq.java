@@ -3,7 +3,6 @@ package dendrite.java;
 import clojure.lang.ASeq;
 import clojure.lang.ArrayChunk;
 import clojure.lang.Counted;
-import clojure.lang.Cons;
 import clojure.lang.IChunk;
 import clojure.lang.IChunkedSeq;
 import clojure.lang.IHashEq;
@@ -12,10 +11,7 @@ import clojure.lang.IPersistentMap;
 import clojure.lang.ITransientCollection;
 import clojure.lang.ISeq;
 import clojure.lang.PersistentList;
-import clojure.lang.Util;
 
-import java.util.List;
-import java.util.Iterator;
 import java.io.Serializable;
 
 public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
