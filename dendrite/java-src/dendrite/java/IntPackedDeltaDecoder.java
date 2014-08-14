@@ -7,7 +7,7 @@ public class IntPackedDeltaDecoder extends AbstractDecoder {
   private int miniblock_length = 0;
   private int current_miniblock_index = 0;
   private int num_miniblocks = 0;
-  private int[] miniblock_bit_widths = new int[32];
+  private int[] miniblock_bit_widths = new int[16];
   private int remaining_values_in_block = 0;
   private int block_length = 0;
   private long block_min_delta = 0;
@@ -54,24 +54,10 @@ public class IntPackedDeltaDecoder extends AbstractDecoder {
     miniblock_position = 0;
   }
 
-  private void ensureMiniBlocksLengthInSufficient(final int miniblock_length) {
-    if (miniblock_buffer.length < miniblock_length) {
-      miniblock_buffer = new int[miniblock_length];
-    }
-  }
-
-  private void ensureMiniBlocksBitWidthsLengthIsSufficient(final int num_miniblocks) {
-    if (miniblock_bit_widths.length < num_miniblocks) {
-      miniblock_bit_widths = new int[num_miniblocks];
-    }
-  }
-
   private void initNextBlock() {
     block_length = byte_array_reader.readUInt();
     num_miniblocks = byte_array_reader.readUInt();
     miniblock_length = num_miniblocks > 0? block_length / num_miniblocks : 0;
-    ensureMiniBlocksLengthInSufficient(miniblock_length);
-    ensureMiniBlocksBitWidthsLengthIsSufficient(num_miniblocks);
     remaining_values_in_block = byte_array_reader.readUInt();
     miniblock_position = -1;
     current_miniblock_index = -1;
