@@ -90,11 +90,13 @@
       :page-writer (page/data-page-writer max-repetition-level max-definition-level type
                                           encoding compression)})))
 
-(defn- bytes? [x] (instance? (Class/forName "[B") x))
+(def ^:private array-of-bytes-type (Class/forName "[B"))
+
+(defn- bytes? [x] (instance? array-of-bytes-type x))
 
 (defn- keyable [x]
   (if (bytes? x)
-    (vec x)
+    (seq x)
     x))
 
 (defprotocol IDictionaryColumChunkWriter
