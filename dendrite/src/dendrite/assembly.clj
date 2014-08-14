@@ -2,7 +2,7 @@
   (:require [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema])
   (:import [clojure.lang ArraySeq]
-           [dendrite.java LeveledValue]))
+           [dendrite.java LeveledValue PersistentFixedKeysHashMap]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,15 +63,29 @@
              (= rep-type :list) (comp seq)
              reader-fn (comp-some reader-fn))))
 
+(def ^:private undefined PersistentFixedKeysHashMap/UNDEFINED)
+
+(defn- record-ctor-fn [field-names field-ass-fns]
+  (let [fact (PersistentFixedKeysHashMap/factory field-names)
+        ^objects field-ass-fn-array (into-array clojure.lang.IFn field-ass-fns)
+        n (count field-names)]
+    (fn [^objects leveled-values-array]
+      (let [^objects vals (make-array Object n)]
+        (loop [i (int 0)]
+          (if (= i n)
+            (.create fact vals)
+            (let [v ((aget field-ass-fn-array i) leveled-values-array)]
+              (if (nil? v)
+                (aset vals i undefined)
+                (aset vals i v))
+              (recur (inc i)))))))))
+
 (defmethod assemble-fn* :non-repeated-record
   [field]
   (let [name-fn-map (reduce (fn [m fld] (assoc m (:name fld) (assemble-fn* fld))) {} (:sub-fields field))
+        record-ctor (record-ctor-fn (map :name (:sub-fields field)) (map assemble-fn* (:sub-fields field)))
         ass-fn (fn [^objects leveled-values-array]
-                 (let [rec (->> name-fn-map
-                                (reduce-kv (fn [m n f] (let [v (f leveled-values-array)]
-                                                         (if (nil? v) m (assoc! m n v))))
-                                           (transient {}))
-                                persistent!)]
+                 (let [rec (record-ctor leveled-values-array)]
                    (when-not (empty? rec)
                      rec)))]
     (if-let [reader-fn (:reader-fn field)]
