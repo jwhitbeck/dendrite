@@ -126,15 +126,17 @@
     :uncompressed-data-length (.readUInt bar)}))
 
 (defprotocol IPageWriter
-  (write-value! [this value])
   (num-values [this]))
+
+(defprotocol IDataPageWriter
+  (write! [this values]))
+
+(defprotocol IDictionaryPageWriter
+  (write-entry! [this entry]))
 
 (defprotocol IPageWriterImpl
   (provisional-header [this])
   (header [this]))
-
-(defn write! [page-writer values]
-  (reduce write-value! page-writer values))
 
 (defrecord DataPageWriter
     [body-length-estimator
@@ -143,16 +145,18 @@
      ^Encoder data-encoder
      ^Compressor data-compressor
      finished?]
-  IPageWriter
-  (write-value! [this leveled-value]
-    (let [v (.value ^LeveledValue leveled-value)]
-      (when-not (nil? v)
-        (.encode data-encoder v)))
-    (when repetition-level-encoder
-      (.encode repetition-level-encoder (.repetitionLevel ^LeveledValue leveled-value)))
-    (when definition-level-encoder
-      (.encode definition-level-encoder (.definitionLevel ^LeveledValue leveled-value)))
+  IDataPageWriter
+  (write! [this leveled-values]
+    (doseq [^LeveledValue lv leveled-values]
+      (let [v (.value lv)]
+        (when-not (nil? v)
+          (.encode data-encoder v)))
+      (when repetition-level-encoder
+        (.encode repetition-level-encoder (.repetitionLevel lv)))
+      (when definition-level-encoder
+        (.encode definition-level-encoder (.definitionLevel lv))))
     this)
+  IPageWriter
   (num-values [_]
     (if definition-level-encoder
       (.numEncodedValues definition-level-encoder)
@@ -230,10 +234,11 @@
                                  ^Encoder data-encoder
                                  ^Compressor data-compressor
                                  finished?]
-  IPageWriter
-  (write-value! [this value]
-    (.encode data-encoder value)
+  IDictionaryPageWriter
+  (write-entry! [this v]
+    (.encode data-encoder v)
     this)
+  IPageWriter
   (num-values [_] (.numEncodedValues data-encoder))
   IPageWriterImpl
   (provisional-header [this]

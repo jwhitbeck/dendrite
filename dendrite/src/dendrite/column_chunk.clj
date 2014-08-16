@@ -135,7 +135,7 @@
       (or (.get reverse-dictionary k)
           (do (let [idx (.size reverse-dictionary)]
                 (.put reverse-dictionary k idx)
-                (page/write-value! dictionary-writer v)
+                (page/write-entry! dictionary-writer v)
                 idx)))))
   BufferedByteArrayWriter
   (reset [_]

@@ -23,12 +23,17 @@
         (read map-fn)
         utils/flatten-1)))
 
+(defn- write-entries! [dictionary-page-writer entries]
+  (doseq [entry entries]
+    (write-entry! dictionary-page-writer entry))
+  dictionary-page-writer)
+
 (defn- write-read-single-dictionary-page
   [value-type encoding compression input-values & {:keys [map-fn]}]
   (let [page-writer (dictionary-page-writer value-type encoding compression)
         page-reader-ctor #(dictionary-page-reader % value-type encoding compression)]
     (-> page-writer
-        (write! input-values)
+        (write-entries! input-values)
         helpers/get-byte-array-reader
         page-reader-ctor
         (read-array map-fn)
@@ -121,14 +126,14 @@
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
             ^ByteArrayWriter page-writer (-> (dictionary-page-writer :int :plain :none)
-                                             (write! input-values))
+                                             (write-entries! input-values))
             baw1 (doto (ByteArrayWriter. 10) (.write page-writer))
             baw2 (doto (ByteArrayWriter. 10) (.write page-writer))]
         (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
     (testing "repeatable reads"
       (let [input-values (repeatedly 1000 helpers/rand-int)
             page-writer (-> (dictionary-page-writer :int :plain :none)
-                            (write! input-values))
+                            (write-entries! input-values))
             page-reader (-> page-writer
                             helpers/get-byte-array-reader
                             (dictionary-page-reader :int :plain :none))]
@@ -142,7 +147,7 @@
                        (write! (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100)))
                        helpers/get-byte-array-reader)
           dict-bar (-> (dictionary-page-writer :int :plain :none)
-                       (write! (map int (range 100)))
+                       (write-entries! (map int (range 100)))
                        helpers/get-byte-array-reader)]
       (is (data-page-reader data-bar 1 1 :int :plain :none))
       (is (thrown-with-msg?
