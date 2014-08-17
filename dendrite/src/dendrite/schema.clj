@@ -271,8 +271,8 @@
   (fn [sub-schema query readers missing-fields-as-nil? parents]
     (cond
      (instance? TaggedField query) :tagged
-     (and (map? query) (keyword? (-> query first key))) :record
-     (map? query) :map
+     (and (map? query) (keyword? (some-> query first key))) :record
+     (and (map? query) (pos? (count query))) :map
      (set? query) :set
      (vector? query) :vector
      (list? query) :list
