@@ -38,7 +38,7 @@
        (catch Exception e
          e)))
 
-(defrecord RecordGroupWriter [num-records column-chunk-writers direct-byte-buffer io-thread]
+(defrecord RecordGroupWriter [num-records column-chunk-writers direct-byte-buffer io-thread type-store]
   IRecordGroupWriter
   (write! [this striped-record]
     (dorun (map column-chunk/write! column-chunk-writers striped-record))
@@ -86,12 +86,13 @@
     (doseq [column-chunk-writer column-chunk-writers]
       (.flush ^BufferedByteArrayWriter column-chunk-writer baw))))
 
-(defn writer [target-data-page-length column-specs]
+(defn writer [target-data-page-length type-store column-specs]
   (map->RecordGroupWriter
    {:num-records (atom 0)
-    :column-chunk-writers (mapv (partial column-chunk/writer target-data-page-length) column-specs)
+    :column-chunk-writers (mapv (partial column-chunk/writer target-data-page-length type-store) column-specs)
     :direct-byte-buffer (atom nil)
-    :io-thread (atom nil)}))
+    :io-thread (atom nil)
+    :type-store type-store}))
 
 (defprotocol IRecordGroupReader
   (read [_])
@@ -116,7 +117,7 @@
   [record-group-metadata offset]
   (->> record-group-metadata column-chunk-lengths butlast (reductions + offset)))
 
-(defn byte-buffer-reader [^ByteBuffer byte-buffer offset record-group-metadata queried-schema]
+(defn byte-buffer-reader [^ByteBuffer byte-buffer offset record-group-metadata type-store queried-schema]
   (let [queried-indices (schema/queried-column-indices-set queried-schema)
         byte-array-readers
         (->> (column-chunk-lengths record-group-metadata)
@@ -132,16 +133,18 @@
       :column-chunk-readers (mapv column-chunk/reader
                                   byte-array-readers
                                   column-chunks-metadata
+                                  (repeat type-store)
                                   (schema/column-specs queried-schema))})))
 
 (defn optimize! [record-group-writer compression-threshold-map]
   (if-not (pos? (num-records record-group-writer))
     record-group-writer
-    (let [optimized-column-chunk-writers
+    (let [type-store (:type-store record-group-writer)
+          optimized-column-chunk-writers
             (->> record-group-writer
                  :column-chunk-writers
                  (sort-by #(.estimatedLength ^BufferedByteArrayWriter %))
                  reverse
-                 (utils/upmap #(column-chunk/optimize! % compression-threshold-map))
+                 (utils/upmap #(column-chunk/optimize! % type-store compression-threshold-map))
                  (sort-by (comp :column-index :column-spec)))]
       (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers))))

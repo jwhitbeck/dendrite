@@ -140,6 +140,3 @@
       (when leveled-values
         (let [lva (.array leveled-values)]
           (ass-fn lva))))))
-
-(defn assemble [leveled-values query]
-  ((assemble-fn query) (seq (into-array Object leveled-values))))

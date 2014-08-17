@@ -4,10 +4,13 @@
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]
-            [dendrite.striping :refer [stripe-record]]
-            [dendrite.test-helpers :refer [test-schema-str]]))
+            [dendrite.striping :refer [stripe-fn]]
+            [dendrite.test-helpers :refer [default-type-store test-schema-str]]))
 
 (set! *warn-on-reflection* true)
+
+(defn assemble [leveled-values query]
+  ((assemble-fn query) (seq (into-array Object leveled-values))))
 
 (deftest dremel-paper
   (testing "full schema"
@@ -15,7 +18,10 @@
     (is (= dremel-paper-record2 (assemble dremel-paper-record2-striped dremel-paper-full-query-schema))))
   (testing "two fields example"
     (let [sub-schema (schema/apply-query dremel-paper-schema
-                                         {:docid '_ :name [{:language [{:country '_}]}]})]
+                                         {:docid '_ :name [{:language [{:country '_}]}]}
+                                         default-type-store
+                                         true
+                                         {})]
       (is (= {:docid 10
               :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
              (assemble [[(->LeveledValue 0 0 10)]
@@ -26,7 +32,7 @@
                                              [(->LeveledValue 0 1 nil)]]
                                    sub-schema))))))
 
-(def test-schema (-> test-schema-str schema/read-string schema/parse))
+(def test-schema (-> test-schema-str schema/read-string (schema/parse default-type-store)))
 
 (def test-record {:docid 10
                   :is-active false
@@ -38,15 +44,17 @@
                          "key2" "value2"}
                   :keywords #{"lorem" "ipsum"}})
 
-(def test-record-striped (stripe-record test-record test-schema))
+(def test-record-striped ((stripe-fn test-schema default-type-store nil) test-record))
+
 
 (deftest repetition-types
   (testing "full schema"
-    (is (= test-record (assemble test-record-striped (schema/apply-query test-schema '_)))))
+    (is (= test-record (assemble test-record-striped
+                                 (schema/apply-query test-schema '_ default-type-store true {})))))
   (testing "queries"
     (are [answer query column-indices]
       (let [stripes (mapv (partial get test-record-striped) column-indices)]
-        (= answer (assemble stripes (schema/apply-query test-schema query))))
+        (= answer (assemble stripes (schema/apply-query test-schema query default-type-store true {}))))
       {:docid 10} {:docid '_} [0]
       {:links {:backward (list 1 2 3) :forward [4 5]}} {:links '_} [1 2]
       {:name [nil {:language [{:code "us" :country "USA"}] :url "http://A"}]} {:name '_} [3 4 5]
@@ -58,27 +66,31 @@
     (let [query {:links {:backward (schema/tag 'foo '_)}}
           stripes (mapv (partial get test-record-striped) [1])]
       (are [answer reader-fn]
-        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
         {:links {:backward 6}} (partial reduce +)
         {:links {:backward ["1" "2" "3"]}} (partial map str))))
   (testing "non-repeated record"
     (let [query {:links (schema/tag 'foo '_)}
           stripes (mapv (partial get test-record-striped) [1 2])]
       (are [answer reader-fn]
-        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
         {:links [1 2 3]} :backward
         {:links 2} (comp count keys))))
   (testing "repeated record"
     (let [query {:name (schema/tag 'foo '_)}
           stripes (mapv (partial get test-record-striped) [3 4 5])]
       (are [answer reader-fn]
-        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
         {:name 2} count
         {:name [nil]} (partial take 1))))
   (testing "map"
     (let [query {:meta (schema/tag 'foo '_)}
           stripes (mapv (partial get test-record-striped) [6 7])]
       (are [answer reader-fn]
-        (= answer (assemble stripes (schema/apply-query test-schema query true {'foo reader-fn})))
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
         {:meta 2} count
         {:meta ["key2" "key1"]} keys))))

@@ -1,6 +1,7 @@
 (ns dendrite.dremel-paper-examples
   (:require [dendrite.leveled-value :refer [->LeveledValue]]
-            [dendrite.schema :as schema]))
+            [dendrite.schema :as schema]
+            [dendrite.test-helpers :as helpers]))
 
 (def dremel-paper-schema-str
   "{:docid #req long
@@ -10,9 +11,11 @@
                         :country string}]
             :url string}]}")
 
-(def dremel-paper-schema (-> dremel-paper-schema-str schema/read-string schema/parse))
+(def dremel-paper-schema
+  (-> dremel-paper-schema-str schema/read-string (schema/parse helpers/default-type-store)))
 
-(def dremel-paper-full-query-schema (schema/apply-query dremel-paper-schema '_))
+(def dremel-paper-full-query-schema
+  (schema/apply-query dremel-paper-schema '_ helpers/default-type-store true {}))
 
 (def dremel-paper-record1
   {:docid 10

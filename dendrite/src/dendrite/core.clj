@@ -193,25 +193,27 @@
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
                 compression-thresholds invalid-input-handler]} (merge default-write-options options)]
-    (encoding/with-custom-types (parse-custom-types custom-types)
-      (let [parsed-schema (schema/parse schema)
-            striped-record-ch (async/chan 100)
-            record-group-writer (record-group/writer target-data-page-length (schema/column-specs parsed-schema))
-            optimize? (case optimize-columns?
-                        :all true
-                        :default (all-default-column-specs? parsed-schema)
-                        :none false)]
-        (map->Writer
-         {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
-          :stripe-fn (striping/stripe-fn parsed-schema invalid-input-handler)
-          :striped-record-ch striped-record-ch
-          :write-thread (async/thread (write-loop striped-record-ch
-                                                  record-group-writer
-                                                  backend-writer
-                                                  target-record-group-length
-                                                  optimize?
-                                                  compression-thresholds))
-          :backend-writer backend-writer})))))
+    (let [type-store (encoding/type-store (parse-custom-types custom-types))
+          parsed-schema (schema/parse schema type-store)
+          striped-record-ch (async/chan 100)
+          record-group-writer (record-group/writer target-data-page-length
+                                                   type-store
+                                                   (schema/column-specs parsed-schema))
+          optimize? (case optimize-columns?
+                      :all true
+                      :default (all-default-column-specs? parsed-schema)
+                      :none false)]
+      (map->Writer
+       {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
+        :stripe-fn (striping/stripe-fn parsed-schema type-store invalid-input-handler)
+        :striped-record-ch striped-record-ch
+        :write-thread (async/thread (write-loop striped-record-ch
+                                                record-group-writer
+                                                backend-writer
+                                                target-record-group-length
+                                                optimize?
+                                                compression-thresholds))
+        :backend-writer backend-writer}))))
 
 (defn byte-buffer-writer ^java.io.Closeable [schema & {:as options}]
   (writer (byte-array-backend-writer) schema options))
@@ -258,39 +260,42 @@
   (close-reader! [_]
     (.close file-channel)))
 
-(defn- record-group-readers [backend-reader record-groups-metadata queried-schema]
-  (utils/pmap-1 #(record-group/byte-buffer-reader (:byte-buffer backend-reader) %1 %2 queried-schema)
+(defn- record-group-readers [backend-reader record-groups-metadata type-store queried-schema]
+  (utils/pmap-1 #(record-group/byte-buffer-reader (:byte-buffer backend-reader) %1 %2
+                                                  type-store queried-schema)
                 (record-group-offsets record-groups-metadata magic-bytes-length)
                 record-groups-metadata))
 
-(defrecord Reader [backend-reader metadata custom-types]
+(defrecord Reader [backend-reader metadata type-store]
   IReader
   (read-with-opts [_ opts]
-    (encoding/with-custom-types custom-types
-      (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (merge default-read-options opts)
-            queried-schema (cond-> (schema/apply-query (:schema metadata)
-                                                       query
-                                                       missing-fields-as-nil?
-                                                       readers)
-                                   pmap-fn (update-in [:reader-fn] #(if % (comp pmap-fn %) pmap-fn)))
-            assemble (assembly/assemble-fn queried-schema)]
-        (->> (record-group-readers backend-reader (:record-groups-metadata metadata) queried-schema)
-             (map record-group/read)
-             utils/flatten-1
-             (utils/chunked-pmap assemble)))))
+    (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (merge default-read-options opts)
+          queried-schema (cond-> (schema/apply-query (:schema metadata)
+                                                     query
+                                                     type-store
+                                                     missing-fields-as-nil?
+                                                     readers)
+                                 pmap-fn (update-in [:reader-fn] #(if % (comp pmap-fn %) pmap-fn)))
+          assemble (assembly/assemble-fn queried-schema)]
+      (->> (record-group-readers backend-reader (:record-groups-metadata metadata) type-store queried-schema)
+           (map record-group/read)
+           utils/flatten-1
+           (utils/chunked-pmap assemble))))
   (stats [_]
-    (encoding/with-custom-types custom-types
-      (let [full-query (schema/apply-query (:schema metadata) '_ true nil)
-            all-stats (->> (record-group-readers backend-reader (:record-groups-metadata metadata) full-query)
-                           (map record-group/stats))
-            record-groups-stats (map :record-group all-stats)
-            columns-stats (->> (map :column-chunks all-stats)
-                               (apply map vector)
-                               (map stats/column-chunks->column-stats))]
-        {:record-groups record-groups-stats
-         :columns columns-stats
-         :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
-                                                    record-groups-stats)})))
+    (let [full-query (schema/apply-query (:schema metadata) '_ type-store true nil)
+          all-stats (->> (record-group-readers backend-reader
+                                               (:record-groups-metadata metadata)
+                                               type-store
+                                               full-query)
+                         (map record-group/stats))
+          record-groups-stats (map :record-group all-stats)
+          columns-stats (->> (map :column-chunks all-stats)
+                             (apply map vector)
+                             (map stats/column-chunks->column-stats))]
+      {:record-groups record-groups-stats
+       :columns columns-stats
+       :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
+                                                  record-groups-stats)}))
   (metadata [_]
     (:custom metadata))
   (schema [_]
@@ -305,7 +310,7 @@
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
-      :custom-types (parse-custom-types custom-types)})))
+      :type-store (encoding/type-store (parse-custom-types custom-types))})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) options))

@@ -1,7 +1,7 @@
 (ns dendrite.schema-test
   (:require [clojure.test :refer :all]
             [dendrite.schema :refer :all]
-            [dendrite.test-helpers :refer [test-schema-str throw-cause]])
+            [dendrite.test-helpers :refer [default-type-store test-schema-str throw-cause]])
   (:refer-clojure :exclude [read-string val record?]))
 
 (set! *warn-on-reflection* true)
@@ -12,11 +12,11 @@
            (-> test-schema-str read-string str read-string))))
   (testing "parse unparsed schema"
     (is (= (read-string test-schema-str)
-           (-> test-schema-str read-string parse unparse)))))
+           (-> test-schema-str read-string (parse default-type-store) unparse)))))
 
 (deftest schema-annotation
   (testing "value types are properly annotated"
-    (let [schema (-> test-schema-str read-string parse)]
+    (let [schema (-> test-schema-str read-string (parse default-type-store))]
       (is (= :required (:repetition schema)))
       (are [ks m] (let [cs  (-> schema (sub-field-in ks) :column-spec)]
                     (and (= (:column-index cs) (:column-index m))
@@ -35,7 +35,7 @@
 
 (deftest nested-map-schemas
   (are [unparsed-schema key-rep val-rep]
-    (let [s (parse unparsed-schema)]
+    (let [s (parse unparsed-schema default-type-store)]
       (and (= (-> s :sub-fields first :repetition) key-rep)
            (= (-> s :sub-fields second :repetition) val-rep)))
     {'string 'int} :optional :optional
@@ -51,37 +51,37 @@
   (testing "unsupported types"
     (is (thrown-with-msg?
          IllegalArgumentException #"Unsupported type 'invalid' for column \[:foo\]"
-         (throw-cause (parse {:foo 'invalid}))))
+         (throw-cause (parse {:foo 'invalid} default-type-store))))
     (is (thrown-with-msg?
          IllegalArgumentException #"Unsupported type 'invalid' for column \[:foo :bar\]"
-         (throw-cause (parse {:foo {:bar 'invalid}})))))
+         (throw-cause (parse {:foo {:bar 'invalid}} default-type-store)))))
   (testing "mismatched type and encodings"
     (is (thrown-with-msg?
          IllegalArgumentException #"Mismatched type 'int' and encoding 'incremental' for column \[:foo\]"
-         (throw-cause (parse {:foo (col 'int 'incremental)}))))
+         (throw-cause (parse {:foo (col 'int 'incremental)} default-type-store))))
     (is (thrown-with-msg?
          IllegalArgumentException #"Mismatched type 'string' and encoding 'delta' for column \[:foo :var\]"
-         (throw-cause (parse {:foo {:var (col 'string 'delta)}})))))
+         (throw-cause (parse {:foo {:var (col 'string 'delta)}} default-type-store)))))
   (testing "unsupported compression types"
     (is (thrown-with-msg?
          IllegalArgumentException #"Unsupported compression type 'snappy' for column \[:foo\]"
-         (throw-cause (parse {:foo (col 'int 'delta 'snappy)})))))
+         (throw-cause (parse {:foo (col 'int 'delta 'snappy)} default-type-store)))))
   (testing "marking a field as both repeated and required"
     (is (thrown-with-msg?
          IllegalArgumentException #"Field \[:foo\] is marked both required and repeated"
-         (throw-cause (parse {:foo (req ['int])})))))
+         (throw-cause (parse {:foo (req ['int])} default-type-store)))))
   (testing "marking a field as both repeated and required in a map"
     (is (thrown-with-msg?
          IllegalArgumentException #"Field \[:value\] is marked both required and repeated"
-         (throw-cause (parse {'string (req ['int])}))))))
+         (throw-cause (parse {'string (req ['int])} default-type-store))))))
 
 (deftest queries
-  (let [schema (-> test-schema-str read-string parse)]
+  (let [schema (-> test-schema-str read-string (parse default-type-store))]
     (testing "read from string"
       (is (= (read-query-string "{:docid _ :links #foo {:backward (long)}}")
              {:docid '_ :links (tag 'foo {:backward (list 'long)})})))
     (testing "select sub-schema from query"
-      (are [query sub-schema] (= (unparse (apply-query schema query)) sub-schema)
+      (are [query sub-schema] (= (unparse (apply-query schema query default-type-store true {})) sub-schema)
            '_ (unparse schema)
            {:docid '_} {:docid (req (col 'long 'delta 'lz4))}
            {:links '_} {:links {:backward (list 'long)
@@ -94,36 +94,40 @@
            {:meta ['_]} {:meta [{:key (req 'string) :value (req 'string)}]}))
     (testing "tagging"
       (let [bogus-fn (fn [])]
-        (is (= bogus-fn (-> (apply-query schema {:docid (tag 'foo '_)} true {'foo bogus-fn})
+        (is (= bogus-fn (-> (apply-query schema {:docid (tag 'foo '_)}
+                                         default-type-store true {'foo bogus-fn})
                             (sub-field :docid)
                             :column-spec
                             :map-fn)))
         (is (= bogus-fn (-> (apply-query schema {:name [{:language [{:code (tag 'foo '_)}]}]}
-                                         true {'foo bogus-fn})
+                                         default-type-store true {'foo bogus-fn})
                             (sub-field-in [:name :language :code])
                             :column-spec
                             :map-fn)))
-        (is (= bogus-fn (-> (apply-query schema {:links {:backward (tag 'foo '_)}} true {'foo bogus-fn})
+        (is (= bogus-fn (-> (apply-query schema {:links {:backward (tag 'foo '_)}}
+                                         default-type-store true {'foo bogus-fn})
                             (sub-field-in [:links :backward])
                             :reader-fn)))
-        (is (= bogus-fn (-> (apply-query schema {:links {:backward [(tag 'foo '_)]}} true {'foo bogus-fn})
+        (is (= bogus-fn (-> (apply-query schema {:links {:backward [(tag 'foo '_)]}}
+                                         default-type-store true {'foo bogus-fn})
                             (sub-field-in [:links :backward])
                             :column-spec
                             :map-fn)))
-        (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} true {'foo bogus-fn})
+        (is (= bogus-fn (-> (apply-query schema {:name (tag 'foo '_)} default-type-store true {'foo bogus-fn})
                             (sub-field :name)
                             :reader-fn)))
         (is (thrown-with-msg? IllegalArgumentException #"No reader function was provided for tag 'foo'"
-                              (throw-cause (-> (apply-query schema {:docid (tag 'foo '_)})
+                              (throw-cause (-> (apply-query schema {:docid (tag 'foo '_)}
+                                                            default-type-store true {})
                                                (sub-field :docid)
                                                :reader-fn))))))
     (testing "missing fields throw errors if enforced"
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:missing\]"
-           (throw-cause (apply-query schema {:docid '_ :missing '_} false nil)))))
+           (throw-cause (apply-query schema {:docid '_ :missing '_} default-type-store false nil)))))
     (testing "bad queries"
       (are [query msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
-                                         (throw-cause (apply-query schema query)))
+                                         (throw-cause (apply-query schema query default-type-store true {})))
            (Object.) "Unable to parse query element"
            {:docid 'int} (str "Mismatched column types for field \\[:docid\\]. "
                               "Asked for 'int' but schema defines 'long'")

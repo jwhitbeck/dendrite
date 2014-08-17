@@ -4,9 +4,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ts (type-store nil))
+
 (deftest coercions
   (testing "coercions throw exceptions on bad input"
-    (are [t y] ((coercion-fn t) y)
+    (are [t y] ((coercion-fn ts t) y)
          :int 2
          :long 2
          :float 2
@@ -19,7 +21,7 @@
          :bigdec 2.3
          :keyword :foo
          :symbol 'foo)
-    (are [t y] (thrown-with-msg? IllegalArgumentException #"Could not coerce" ((coercion-fn t) y))
+    (are [t y] (thrown-with-msg? IllegalArgumentException #"Could not coerce" ((coercion-fn ts t) y))
          :int [1 2]
          :int "foo"
          :long "foo"
@@ -34,19 +36,15 @@
 
 (deftest validity-checks
   (testing "valid-value-type?"
-    (is (valid-value-type? :int))
-    (is (not (valid-value-type? :in)))
-    (is (valid-value-type? :string))
-    (is (with-custom-types {:custom {:base-type :string}}
-          (valid-value-type? :custom)))
-    (is (not (with-custom-types {:custom {:base-type :non-existing-type}}
-               (valid-value-type? :custom)))))
+    (is (valid-value-type? ts :int))
+    (is (not (valid-value-type? ts :in)))
+    (is (valid-value-type? ts :string))
+    (is (valid-value-type? (type-store {:custom {:base-type :string}}) :custom))
+    (is (not (valid-value-type? {:custom {:base-type :non-existing-type}} :custom))))
   (testing "valid-encoding-for-type?"
-    (is (valid-encoding-for-type? :int :plain))
-    (is (not (valid-encoding-for-type? :int :incremental)))
-    (is (valid-encoding-for-type? :string :incremental))
-    (is (not (valid-encoding-for-type? :string :delta)))
-    (is (with-custom-types {:custom {:base-type :string}}
-          (valid-encoding-for-type? :custom :incremental)))
-    (is (not (with-custom-types {:custom {:base-type :string}}
-               (valid-encoding-for-type? :custom :delta))))))
+    (is (valid-encoding-for-type? ts :int :plain))
+    (is (not (valid-encoding-for-type? ts :int :incremental)))
+    (is (valid-encoding-for-type? ts :string :incremental))
+    (is (not (valid-encoding-for-type? ts :string :delta)))
+    (is (valid-encoding-for-type? (type-store {:custom {:base-type :string}}) :custom :incremental))
+    (is (not (valid-encoding-for-type? (type-store {:custom {:base-type :string}}) :custom :delta)))))

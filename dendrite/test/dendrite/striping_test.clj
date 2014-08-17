@@ -8,6 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
+(defn stripe-record [record schema]
+  ((stripe-fn schema helpers/default-type-store nil) record))
+
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
     (is (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema)))
@@ -15,7 +18,7 @@
 
 (deftest test-schema
   (testing "record striping works on test-schema"
-    (let [test-schema (-> helpers/test-schema-str s/read-string s/parse)
+    (let [test-schema (-> helpers/test-schema-str s/read-string (s/parse helpers/default-type-store))
           test-record {:docid 0
                        :is-active false
                        :links {:forward [1 2] :backward [3]}
@@ -35,7 +38,7 @@
               [(->LeveledValue 0 1 "commodo")]
               [(->LeveledValue 0 0 false)]]))))
   (testing "nil values in repeated records are preserved"
-    (let [test-schema (-> helpers/test-schema-str s/read-string s/parse)]
+    (let [test-schema (-> helpers/test-schema-str s/read-string (s/parse helpers/default-type-store))]
       (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema)
              [[(->LeveledValue 0 0 0)]
               [(->LeveledValue 0 0 nil)]
@@ -53,7 +56,8 @@
     (let [schema (s/parse {:docid (s/req 'long)
                            :name [{:language (s/req {:country 'string
                                                      :code (s/req 'string)})
-                                   :url 'string}]})]
+                                   :url 'string}]}
+                          helpers/default-type-store)]
       (are [x] (stripe-record x schema)
            {:docid 10}
            {:docid 10 :name []}
@@ -79,7 +83,8 @@
                            :bigint 'bigint
                            :keyword 'keyword
                            :symbol 'symbol
-                           :repeated-int ['int]})]
+                           :repeated-int ['int]}
+                          helpers/default-type-store)]
       (are [x] (stripe-record x schema)
            {:boolean true}
            {:boolean nil}

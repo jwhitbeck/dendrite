@@ -146,35 +146,32 @@
       (cons t (build-type-hierarchy next-type all-derived-types)))))
 
 (defn- build-type-hierarchy-map [all-types]
-  (reduce-kv (fn [m t _] (assoc m t (build-type-hierarchy t all-types))) {} all-types))
+  (reduce-kv (fn [m t _] (assoc m t (vec (build-type-hierarchy t all-types)))) {} all-types))
 
-(def ^:dynamic *derived-type-hierarchies* (build-type-hierarchy-map derived-types))
-(def ^:dynamic *derived-types* derived-types)
+(defrecord TypeStore [derived-types derived-type-hierarchies])
 
-(defmacro with-custom-types [custom-derived-types & body]
-  `(let [all-derived-types# (merge ~custom-derived-types @#'derived-types)]
-     (binding [*derived-types* all-derived-types#
-               *derived-type-hierarchies* (#'build-type-hierarchy-map all-derived-types#)]
-       ~@body)))
+(defn type-store [custom-derived-types]
+  (let [all-derived-types (merge custom-derived-types derived-types)]
+    (->TypeStore all-derived-types (build-type-hierarchy-map all-derived-types))))
 
-(defn- type-hierarchy [t]
+(defn- type-hierarchy [ts t]
   (if (base-type? t)
     [t]
-    (get *derived-type-hierarchies* t)))
+    (get-in ts [:derived-type-hierarchies t])))
 
-(defn base-type [t] (last (type-hierarchy t)))
+(defn base-type [ts t] (last (type-hierarchy ts t)))
 
-(defn valid-value-type? [t]
-  (valid-base-value-type? (base-type t)))
+(defn valid-value-type? [ts t]
+  (valid-base-value-type? (base-type ts t)))
 
-(defn valid-encoding-for-type? [t encoding]
-  (valid-encoding-for-base-type? (base-type t) encoding))
+(defn valid-encoding-for-type? [ts t encoding]
+  (valid-encoding-for-base-type? (base-type ts t) encoding))
 
-(defn list-encodings-for-type [t]
-  (list-encodings-for-base-type (base-type t)))
+(defn list-encodings-for-type [ts t]
+  (list-encodings-for-base-type (base-type ts t)))
 
-(defn- derived->base-type-fn [t]
-  (let [f (->> (map #(get-in *derived-types* [% :to-base-type-fn]) (type-hierarchy t))
+(defn- derived->base-type-fn [ts t]
+  (let [f (->> (map #(get-in ts [:derived-types % :to-base-type-fn]) (type-hierarchy ts t))
                butlast
                reverse
                (apply comp))]
@@ -184,8 +181,8 @@
                            (format "Error while converting value '%s' from type '%s' to type '%s'"
                                    x (name t) (name (base-type t))) e)))))))
 
-(defn- base->derived-type-fn [t]
-  (let [f (->> (map #(get-in *derived-types* [% :from-base-type-fn]) (type-hierarchy t))
+(defn- base->derived-type-fn [ts t]
+  (let [f (->> (map #(get-in ts [:derived-types % :from-base-type-fn]) (type-hierarchy ts t))
                butlast
                (apply comp))]
     (fn [x] (try (f x)
@@ -194,11 +191,11 @@
                            (format "Error while converting value '%s' from type '%s' to type '%s'"
                                    x (name (base-type t)) (name t)) e)))))))
 
-(defn encoder [t encoding]
+(defn encoder [ts t encoding]
   (if (base-type? t)
     (base-encoder t encoding)
-    (let [^Encoder be (base-encoder (base-type t) encoding)
-          derived->base-type (derived->base-type-fn t)]
+    (let [^Encoder be (base-encoder (base-type ts t) encoding)
+          derived->base-type (derived->base-type-fn ts t)]
       (reify
         Encoder
         (encode [_ v] (.encode be (derived->base-type v)))
@@ -209,11 +206,11 @@
         (estimatedLength [_] (.estimatedLength be))
         (flush [_ byte-array-writer] (.flush be byte-array-writer))))))
 
-(defn decoder-ctor [t encoding]
+(defn decoder-ctor [ts t encoding]
   (if (base-type? t)
     (base-decoder-ctor t encoding)
-    (let [bdc (base-decoder-ctor (base-type t) encoding)
-          base->derived-type (base->derived-type-fn t)]
+    (let [bdc (base-decoder-ctor (base-type ts t) encoding)
+          base->derived-type (base->derived-type-fn ts t)]
       #(let [^Decoder bd (bdc %)]
          (reify
            Decoder
@@ -225,9 +222,9 @@
                              (next [_] (base->derived-type (.next i)))
                              (remove [_] (.remove i))))))))))
 
-(defn coercion-fn [t]
+(defn coercion-fn [ts t]
   (let [coerce (if-not (base-type? t)
-                 (get-in *derived-types* [t :coercion-fn] identity)
+                 (get-in ts [:derived-types t :coercion-fn] identity)
                  (case t
                    :boolean boolean
                    :int int

@@ -1,5 +1,6 @@
 (ns dendrite.test-helpers
   (:require [clojure.string :as string]
+            [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable]
            [java.nio ByteBuffer]
@@ -9,6 +10,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ^Random rng (Random.))
+
+(def default-type-store (encoding/type-store nil))
 
 (defn byte-array= [^bytes aa ^bytes ab]
   (and (= (alength aa) (alength ab))

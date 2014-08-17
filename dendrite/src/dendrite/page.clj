@@ -221,12 +221,12 @@
                                 ^Flushable data-compressor
                                 ^Flushable data-encoder))))
 
-(defn data-page-writer [max-repetition-level max-definition-level value-type encoding compression]
+(defn data-page-writer [max-repetition-level max-definition-level type-store value-type encoding compression]
   (map->DataPageWriter
      {:body-length-estimator (estimation/ratio-estimator)
       :repetition-level-encoder (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
       :definition-level-encoder (when (pos? max-definition-level) (levels-encoder max-definition-level))
-      :data-encoder (encoder value-type encoding)
+      :data-encoder (encoder type-store value-type encoding)
       :data-compressor (compressor compression)
       :finished? (atom false)}))
 
@@ -284,10 +284,10 @@
                                 ^Flushable data-compressor
                                 ^Flushable data-encoder))))
 
-(defn dictionary-page-writer [value-type encoding compression]
+(defn dictionary-page-writer [type-store value-type encoding compression]
   (map->DictionaryPageWriter
    {:body-length-estimator (estimation/ratio-estimator)
-    :data-encoder (encoder value-type encoding)
+    :data-encoder (encoder type-store value-type encoding)
     :data-compressor (compressor compression)
     :finished? (atom false)}))
 
@@ -331,7 +331,7 @@
     (.sliceAhead byte-array-reader (body-length header))))
 
 (defn data-page-reader
-  [^ByteArrayReader byte-array-reader max-repetition-level max-definition-level value-type encoding
+  [^ByteArrayReader byte-array-reader max-repetition-level max-definition-level type-store value-type encoding
    compression]
   (let [bar (.slice byte-array-reader)
         page-type (read-next-data-page-type bar)]
@@ -339,27 +339,28 @@
      {:byte-array-reader bar
       :max-repetition-level max-repetition-level
       :max-definition-level max-definition-level
-      :data-decoder-ctor (decoder-ctor value-type encoding)
+      :data-decoder-ctor (decoder-ctor type-store value-type encoding)
       :decompressor-ctor (decompressor-ctor compression)
       :header (read-data-page-header bar page-type)})))
 
-(defn data-page-readers
+(defn- data-page-readers
   [^ByteArrayReader byte-array-reader num-data-pages max-repetition-level max-definition-level
-   value-type encoding compression]
+   type-store value-type encoding compression]
   (let [num-data-pages (int num-data-pages)]
     (lazy-seq
      (when (pos? num-data-pages)
        (let [next-data-page-reader (data-page-reader byte-array-reader max-repetition-level
-                                                     max-definition-level value-type encoding compression)]
+                                                     max-definition-level type-store value-type
+                                                     encoding compression)]
          (cons next-data-page-reader
                (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-repetition-level
-                                  max-definition-level value-type encoding compression)))))))
+                                  max-definition-level type-store value-type encoding compression)))))))
 
 (defn read-data-pages
   [^ByteArrayReader byte-array-reader num-data-pages max-repetition-level max-definition-level
-   value-type encoding compression map-fn]
+   type-store value-type encoding compression map-fn]
   (->> (data-page-readers byte-array-reader num-data-pages max-repetition-level max-definition-level
-                          value-type encoding compression)
+                          type-store value-type encoding compression)
        (utils/pmap-1 #(read % map-fn))
        utils/flatten-1))
 
@@ -396,17 +397,17 @@
       (Dictionary/read (data-decoder-ctor data-bytes-reader) map-fn))))
 
 (defn dictionary-page-reader
-  [^ByteArrayReader byte-array-reader value-type encoding compression]
+  [^ByteArrayReader byte-array-reader type-store value-type encoding compression]
   (let [bar (.slice byte-array-reader)
         page-type (read-next-dictionary-page-type bar)]
     (map->DictionaryPageReader
      {:byte-array-reader bar
-      :data-decoder-ctor (decoder-ctor value-type encoding)
+      :data-decoder-ctor (decoder-ctor type-store value-type encoding)
       :decompressor-ctor (decompressor-ctor compression)
       :header (read-dictionary-page-header bar page-type)})))
 
-(defn read-dictionary [^ByteArrayReader byte-array-reader value-type encoding compression map-fn]
-  (read-array (dictionary-page-reader byte-array-reader value-type encoding compression) map-fn))
+(defn read-dictionary [^ByteArrayReader byte-array-reader type-store value-type encoding compression map-fn]
+  (read-array (dictionary-page-reader byte-array-reader type-store value-type encoding compression) map-fn))
 
 (defn read-dictionary-header [^ByteArrayReader byte-array-reader]
   (let [bar (.slice byte-array-reader)

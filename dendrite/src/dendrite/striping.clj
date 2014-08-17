@@ -6,11 +6,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- coercion-fns-map [column-specs]
+(defn- coercion-fns-map [type-store column-specs]
   (->> column-specs
        (map :type)
        set
-       (map #(vector % (encoding/coercion-fn %)))
+       (map #(vector % (encoding/coercion-fn type-store %)))
        (into {})))
 
 (defmulti ^:private stripe-fn*
@@ -139,10 +139,10 @@
         (list-stripe-fn striped-record (map (fn [[k v]] {:key k :value v}) map-record)
                         false repetition-level definition-level)))))
 
-(defn stripe-fn [schema error-handler]
+(defn stripe-fn [schema type-store error-handler]
   (let [column-specs (schema/column-specs schema)
         empty-striped-record (vec (repeat (count column-specs) nil))
-        sf (let [sf* (stripe-fn* schema [] (coercion-fns-map column-specs))]
+        sf (let [sf* (stripe-fn* schema [] (coercion-fns-map type-store column-specs))]
              (fn [record]
                (let [tsr (transient empty-striped-record)]
                  (try
@@ -158,6 +158,3 @@
                (error-handler record e)
                nil)))
       sf)))
-
-(defn stripe-record [record schema]
-  ((stripe-fn schema nil) record))

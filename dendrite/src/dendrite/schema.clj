@@ -53,7 +53,7 @@
 (defn- column-spec? [elem] (instance? ColumnSpec elem))
 
 (defmulti ^:private parse*
-  (fn [elem parents]
+  (fn [elem parents type-store]
     (cond
      (or (symbol? elem) (column-spec? elem)) :column-spec
      (and (map? elem) (keyword? (-> elem first key))) :record
@@ -64,14 +64,14 @@
      :else (throw (IllegalArgumentException. (format "Unable to parse schema element %s" elem))))))
 
 (defmethod parse* :column-spec
-  [column-spec parents]
+  [column-spec parents type-store]
   (let [cs (if (symbol? column-spec)
              (map->column-spec-with-defaults {:type (keyword column-spec)})
              column-spec)]
-    (when-not (encoding/valid-value-type? (:type cs))
+    (when-not (encoding/valid-value-type? type-store (:type cs))
       (throw (IllegalArgumentException.
               (format "Unsupported type '%s' for column %s" (name (:type cs)) (format-ks parents)))))
-    (when-not (encoding/valid-encoding-for-type? (:type cs) (:encoding cs))
+    (when-not (encoding/valid-encoding-for-type? type-store (:type cs) (:encoding cs))
       (throw (IllegalArgumentException.
               (format "Mismatched type '%s' and encoding '%s' for column %s"
                       (name (:type cs)) (name (:encoding cs)) (format-ks parents)))))
@@ -83,33 +83,33 @@
     cs))
 
 (defmethod parse* :list
-  [coll parents]
-  (let [sub-schema (parse* (first coll) parents)]
+  [coll parents type-store]
+  (let [sub-schema (parse* (first coll) parents type-store)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :list :column-spec sub-schema})
       (assoc sub-schema :repetition :list))))
 
 (defmethod parse* :vector
-  [coll parents]
-  (let [sub-schema (parse* (first coll) parents)]
+  [coll parents type-store]
+  (let [sub-schema (parse* (first coll) parents type-store)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :vector :column-spec sub-schema})
       (assoc sub-schema :repetition :vector))))
 
 (defmethod parse* :set
-  [coll parents]
-  (let [sub-schema (parse* (first coll) parents)]
+  [coll parents type-store]
+  (let [sub-schema (parse* (first coll) parents type-store)]
     (if (column-spec? sub-schema)
       (map->Field {:repetition :set :column-spec sub-schema})
       (assoc sub-schema :repetition :set))))
 
 (defmethod parse* :record
-  [coll parents]
+  [coll parents type-store]
   (map->Field
    {:repetition :optional
     :sub-fields (for [[k v] coll :let [mark-required? (required-field? v)
                                        v (if mark-required? (:field v) v)]]
-                  (let [parsed-v (parse* v (conj parents k))
+                  (let [parsed-v (parse* v (conj parents k) type-store)
                         field (if (column-spec? parsed-v)
                                 (map->Field {:name k :repetition :optional :column-spec parsed-v})
                                 (assoc parsed-v :name k))]
@@ -121,13 +121,13 @@
                             mark-required? (assoc :repetition :required))))}))
 
 (defmethod parse* :map
-  [coll parents]
+  [coll parents type-store]
   (letfn [(parse-map-tree [key-or-val name-kw]
             (let [path (conj parents name-kw)
                   mark-required? (required-field? key-or-val)
                   parsed-tree (if mark-required?
-                                (parse* (:field key-or-val) parents)
-                                (parse* key-or-val path))]
+                                (parse* (:field key-or-val) parents type-store)
+                                (parse* key-or-val path type-store))]
               (if (column-spec? parsed-tree)
                 (-> {:name name-kw :column-spec parsed-tree}
                     (assoc :repetition (if mark-required? :required :optional))
@@ -209,9 +209,9 @@
       with-repetition-levels
       with-definition-levels))
 
-(defn parse [unparsed-schema]
+(defn parse [unparsed-schema type-store]
   (try
-    (-> unparsed-schema (parse* []) annotate)
+    (-> unparsed-schema (parse* [] type-store) annotate)
     (catch Exception e
       (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" unparsed-schema) e)))))
 
@@ -379,26 +379,25 @@
                                          parents)]
       (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema]))))
 
-(defn- check-value-types [query]
+(defn- check-value-types [query type-store]
   (doseq [cs (column-specs query)]
-    (when (not (encoding/valid-value-type? (:type cs)))
+    (when (not (encoding/valid-value-type? type-store (:type cs)))
       (throw (IllegalArgumentException.
               (format "Unkown type '%s' for column %s" (some-> cs :type name) (format-ks (:path cs)))))))
   query)
 
 (defn apply-query
-  ([schema query] (apply-query schema query true {}))
-  ([schema query missing-fields-as-nil? readers]
-     (try
-       (some-> schema
-               (apply-query* query readers missing-fields-as-nil? [])
-               (with-column-indices :query-column-index)
-               with-column-spec-paths
-               check-value-types)
-       (catch Exception e
-         (throw (IllegalArgumentException.
-                 (format "Invalid query '%s' for schema '%s'" query (unparse schema))
-                 e))))))
+  [schema query type-store missing-fields-as-nil? readers]
+  (try
+    (some-> schema
+            (apply-query* query readers missing-fields-as-nil? [])
+            (with-column-indices :query-column-index)
+            with-column-spec-paths
+            (check-value-types type-store))
+    (catch Exception e
+      (throw (IllegalArgumentException.
+              (format "Invalid query '%s' for schema '%s'" query (unparse schema))
+              e)))))
 
 (defn queried-column-indices-set [queried-schema]
   (->> queried-schema column-specs (map :column-index) set))
