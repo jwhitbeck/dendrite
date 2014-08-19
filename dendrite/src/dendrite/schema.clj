@@ -381,7 +381,7 @@
 
 (defn- check-value-types [query type-store]
   (doseq [cs (column-specs query)]
-    (when (not (encoding/valid-value-type? type-store (:type cs)))
+    (when-not (encoding/valid-value-type? type-store (:type cs))
       (throw (IllegalArgumentException.
               (format "Unkown type '%s' for column %s" (some-> cs :type name) (format-ks (:path cs)))))))
   query)
