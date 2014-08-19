@@ -179,7 +179,7 @@
                  (catch Exception e
                    (throw (IllegalArgumentException.
                            (format "Error while converting value '%s' from type '%s' to type '%s'"
-                                   x (name t) (name (base-type t))) e)))))))
+                                   x (name t) (name (base-type ts t))) e)))))))
 
 (defn- base->derived-type-fn [ts t]
   (let [f (->> (map #(get-in ts [:derived-types % :from-base-type-fn]) (type-hierarchy ts t))
@@ -189,7 +189,7 @@
                  (catch Exception e
                    (throw (IllegalArgumentException.
                            (format "Error while converting value '%s' from type '%s' to type '%s'"
-                                   x (name (base-type t)) (name t)) e)))))))
+                                   x (name (base-type ts t)) (name t)) e)))))))
 
 (defn encoder [ts t encoding]
   (if (base-type? t)
