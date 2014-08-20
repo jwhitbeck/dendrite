@@ -5,7 +5,8 @@
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as schema]
             [dendrite.test-helpers :as helpers])
-  (:import [java.util Date Calendar])
+  (:import [java.io StringWriter]
+           [java.util Date Calendar])
   (:refer-clojure :exclude [read]))
 
 (set! *warn-on-reflection* true)
@@ -209,17 +210,35 @@
   (testing "write/read custom types"
     (let [t1 (.getTime (Calendar/getInstance))
           t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
-          records [{:docid 1 :at t1} {:docid 2 :at t1}]
+          records [{:docid 1 :at t1} {:docid 2 :at t2}]
+          records-with-timestamps [{:docid 1 :at (.getTime t1)} {:docid 2 :at (.getTime t2)}]
           custom-types {'date {:base-type 'long
+                               :coercion-fn identity
                                :to-base-type-fn #(.getTime ^Date %)
-                               :from-base-type-fn #(Date. (long %))}}
-          w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
-              (write! records))
-          bb (byte-buffer! w)]
-      (is (= records (-> bb (byte-buffer-reader :custom-types custom-types) read)))
-      (is (thrown-with-msg?
-           IllegalArgumentException #"Unkown type 'date' for column \[:at\]"
-           (helpers/throw-cause (-> bb byte-buffer-reader read)))))))
+                               :from-base-type-fn #(Date. (long %))}}]
+      (testing "throw error when the writer is not passed the :custom types option"
+        (is (thrown-with-msg?
+             IllegalArgumentException #"Unsupported type 'date' for column \[:at\]"
+             (helpers/throw-cause (doto (byte-buffer-writer {:docid 'long :at 'date})
+                                    (write! records))))))
+      (testing "throw error when invalid field is defined in custom-types"
+        (is (thrown-with-msg?
+             IllegalArgumentException #"Key :invalid is not a valid derived-type key. "
+             (byte-buffer-writer {:docid 'long :at 'date}
+                                 :custom-types {'date {:invalid 'bar}}))))
+      (let [w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
+                (write! records))
+            bb (byte-buffer! w)]
+        (testing "read as derived type when :custom-types option is passed"
+          (is (= records (-> bb (byte-buffer-reader :custom-types custom-types) read))))
+        (testing "read as base type and warn when :custom-types option is not passed"
+          (binding [*err* (StringWriter.)]
+            (let [records-read (-> bb byte-buffer-reader read)]
+              (is (= records-with-timestamps records-read))
+              (is (every? #(re-find (re-pattern (str % " is not defined for type 'date', "
+                                                     "defaulting to clojure.core/identity."))
+                                    (str *err*))
+                          [:coercion-fn :to-base-type-fn :from-base-type-fn])))))))))
 
 (deftest pmap-records-convenience-function
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]

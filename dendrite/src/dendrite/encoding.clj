@@ -1,4 +1,5 @@
 (ns dendrite.encoding
+  (:require [dendrite.utils :refer [warn]])
   (:import [dendrite.java
             Encoder Decoder
             BooleanPackedEncoder BooleanPackedDecoder
@@ -113,31 +114,60 @@
     (System/arraycopy bs 4 unscaled-bigint-bytes 0 unscaled-length)
     (BigDecimal. (BigInteger. unscaled-bigint-bytes) scale)))
 
+(defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
+
+(defn derived-type [derived-type-name derived-type-map]
+  (doseq [k (keys derived-type-map)]
+    (when-not (#{:base-type :coercion-fn :to-base-type-fn :from-base-type-fn} k)
+      (throw (IllegalArgumentException.
+              (format (str "Key %s is not a valid derived-type key. Valid keys are "
+                           ":base-type, :coercion-fn, :to-base-type-fn, and :from-base-type-fn") k)))))
+  (map->DerivedType
+   {:base-type (or (:base-type derived-type-map)
+                   (throw (IllegalArgumentException.
+                           (format "required field :base-type is missing for type '%s'."
+                                   (name derived-type-name)))))
+    :coercion-fn (or (:coercion-fn derived-type-map)
+                     (do (warn (format (str ":coercion-fn is not defined for type '%s', "
+                                            "defaulting to clojure.core/identity.")
+                                       (name derived-type-name)))
+                         identity))
+    :to-base-type-fn (or (:to-base-type-fn derived-type-map)
+                         (do (warn (format (str ":to-base-type-fn is not defined for type '%s', "
+                                                "defaulting to clojure.core/identity.")
+                                           (name derived-type-name)))
+                             identity))
+    :from-base-type-fn (or (:from-base-type-fn derived-type-map)
+                           (do (warn (format (str ":from-base-type-fn is not defined for type '%s', "
+                                                  "defaulting to clojure.core/identity.")
+                                             (name derived-type-name)))
+                               identity))}))
+
 (def ^:private derived-types
-  {:string {:base-type :byte-array
-            :coercion-fn str
-            :to-base-type-fn str->utf8-bytes
-            :from-base-type-fn utf8-bytes->str}
-   :char {:base-type :int
-          :coercion-fn char
-          :to-base-type-fn int
-          :from-base-type-fn char}
-   :bigint {:base-type :byte-array
-            :coercion-fn bigint
-            :to-base-type-fn bigint->bytes
-            :from-base-type-fn bytes->bigint}
-   :bigdec {:base-type :byte-array
-            :coercion-fn bigdec
-            :to-base-type-fn bigdec->bytes
-            :from-base-type-fn bytes->bigdec}
-   :keyword {:base-type :byte-array
-             :coercion-fn keyword
-             :to-base-type-fn (comp str->utf8-bytes name)
-             :from-base-type-fn (comp keyword utf8-bytes->str)}
-   :symbol {:base-type :byte-array
-            :coercion-fn symbol
-            :to-base-type-fn (comp str->utf8-bytes name)
-            :from-base-type-fn (comp symbol utf8-bytes->str)}})
+  {:string (map->DerivedType {:base-type :byte-array
+                              :coercion-fn str
+                              :to-base-type-fn str->utf8-bytes
+                              :from-base-type-fn utf8-bytes->str})
+   :char (map->DerivedType {:base-type :int
+                            :coercion-fn char
+                            :to-base-type-fn int
+                            :from-base-type-fn char})
+   :bigint (map->DerivedType {:base-type :byte-array
+                              :coercion-fn bigint
+                              :to-base-type-fn bigint->bytes
+                              :from-base-type-fn bytes->bigint})
+   :bigdec (map->DerivedType {:base-type :byte-array
+                              :coercion-fn bigdec
+                              :to-base-type-fn bigdec->bytes
+                              :from-base-type-fn bytes->bigdec})
+   :keyword (map->DerivedType {:base-type :byte-array
+                               :coercion-fn keyword
+                               :to-base-type-fn (comp str->utf8-bytes name)
+                               :from-base-type-fn (comp keyword utf8-bytes->str)})
+   :symbol (map->DerivedType {:base-type :byte-array
+                              :coercion-fn symbol
+                              :to-base-type-fn (comp str->utf8-bytes name)
+                              :from-base-type-fn (comp symbol utf8-bytes->str)})})
 
 (defn- build-type-hierarchy [t all-derived-types]
   (if (base-type? t)
@@ -150,8 +180,11 @@
 
 (defrecord TypeStore [derived-types derived-type-hierarchies])
 
+(defn- parse-custom-derived-types [custom-derived-types]
+  (reduce-kv (fn [m t ct] (assoc m t (derived-type t ct))) {} custom-derived-types))
+
 (defn type-store [custom-derived-types]
-  (let [all-derived-types (merge custom-derived-types derived-types)]
+  (let [all-derived-types (-> custom-derived-types parse-custom-derived-types (merge derived-types))]
     (->TypeStore all-derived-types (build-type-hierarchy-map all-derived-types))))
 
 (defn- type-hierarchy [ts t]

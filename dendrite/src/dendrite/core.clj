@@ -42,8 +42,14 @@
    :readers nil
    :pmap-fn nil})
 
-(defn- parse-custom-types [custom-types]
+(defn- keywordize-custom-types [custom-types]
   (reduce-kv (fn [m k v] (assoc m (keyword k) (update-in v [:base-type] keyword))) {} custom-types))
+
+(defn- custom->base-types [parsed-custom-types]
+  (reduce-kv (fn [m t ct] (assoc m t (:base-type ct))) {} parsed-custom-types))
+
+(defn- as-custom-types [custom->base-types]
+  (reduce-kv (fn [m k v] (assoc m k {:base-type v})) {} custom->base-types))
 
 (defprotocol IWriter
   (write! [_ records])
@@ -163,7 +169,7 @@
         :end)
       :error)))
 
-(defrecord Writer [metadata-atom stripe-fn striped-record-ch write-thread backend-writer]
+(defrecord Writer [metadata-atom stripe-fn striped-record-ch write-thread backend-writer custom-types]
   IWriter
   (write! [this records]
     (if (= :error (->> records
@@ -182,7 +188,8 @@
         (try (close-writer! backend-writer)
              (finally (throw error)))
         (try (let [metadata (-> @metadata-atom
-                                (assoc :record-groups-metadata record-groups-metadata)
+                                (assoc :record-groups-metadata record-groups-metadata
+                                       :custom->base-types (custom-base->types custom-types))
                                 (update-in [:schema] schema/with-optimal-column-specs column-specs))]
                (finish! backend-writer metadata))
              (catch Exception e
@@ -193,7 +200,8 @@
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
                 compression-thresholds invalid-input-handler]} (merge default-write-options options)]
-    (let [type-store (encoding/type-store (parse-custom-types custom-types))
+    (let [parsed-custom-types (keywordize-custom-types custom-types)
+          type-store (encoding/type-store parsed-custom-types)
           parsed-schema (schema/parse schema type-store)
           striped-record-ch (async/chan 100)
           record-group-writer (record-group/writer target-data-page-length
@@ -213,7 +221,8 @@
                                                 target-record-group-length
                                                 optimize?
                                                 compression-thresholds))
-        :backend-writer backend-writer}))))
+        :backend-writer backend-writer
+        :custom-types parsed-custom-types}))))
 
 (defn byte-buffer-writer ^java.io.Closeable [schema & {:as options}]
   (writer (byte-array-backend-writer) schema options))
@@ -305,12 +314,14 @@
     (close-reader! backend-reader)))
 
 (defn- reader [backend-reader options]
-  (let [{:keys [custom-types]} (merge default-reader-options options)
-        metadata (-> backend-reader :byte-buffer byte-buffer->metadata)]
+  (let [metadata (-> backend-reader :byte-buffer byte-buffer->metadata)
+        {:keys [custom-types]} (merge default-reader-options options)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
-      :type-store (encoding/type-store (parse-custom-types custom-types))})))
+      :type-store (->> (keywordize-custom-types custom-types)
+                       (merge (as-custom-types (:custom->base-types metadata)))
+                       encoding/type-store)})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
   (reader (->ByteBufferBackendReader byte-buffer) options))

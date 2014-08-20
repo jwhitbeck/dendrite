@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [dendrite.java Singleton]
+           [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
            [java.nio.channels FileChannel FileChannel$MapMode]
@@ -29,6 +30,11 @@
          (defn ~(symbol (str "is-" s "?")) [k#] (contains? ~values-set-symb k#)))))
 
 (defn format-ks [ks] (format "[%s]" (string/join " " ks)))
+
+(defn warn [^String msg]
+  (doto ^BufferedWriter *err*
+    (.write msg)
+    (.write "\n")))
 
 (defn filter-indices [indices-set coll]
   (letfn [(fi [indices-set ^long next-index coll]

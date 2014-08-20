@@ -1,6 +1,7 @@
 (ns dendrite.encoding-test
   (:require [clojure.test :refer :all]
-            [dendrite.encoding :refer :all]))
+            [dendrite.encoding :refer :all])
+  (:import [java.io StringWriter]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,3 +49,15 @@
     (is (not (valid-encoding-for-type? ts :string :delta)))
     (is (valid-encoding-for-type? (type-store {:custom {:base-type :string}}) :custom :incremental))
     (is (not (valid-encoding-for-type? (type-store {:custom {:base-type :string}}) :custom :delta)))))
+
+(deftest derived-types
+  (testing "derived-type"
+    (testing "throws exception on invalid keys"
+      (is (thrown-with-msg?
+           IllegalArgumentException #"Key :invalid-key is not a valid derived-type key."
+           (derived-type :my-type {:base-type :int :invalid-key :bar}))))
+    (testing "warns on missing keys"
+      (binding [*err* (StringWriter.)]
+        (derived-type :my-type {:base-type :int})
+        (is (re-find #":coercion-fn is not defined for type 'my-type', defaulting to clojure.core/identity."
+                     (str *err*)))))))

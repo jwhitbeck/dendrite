@@ -379,21 +379,13 @@
                                          parents)]
       (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema]))))
 
-(defn- check-value-types [query type-store]
-  (doseq [cs (column-specs query)]
-    (when-not (encoding/valid-value-type? type-store (:type cs))
-      (throw (IllegalArgumentException.
-              (format "Unkown type '%s' for column %s" (some-> cs :type name) (format-ks (:path cs)))))))
-  query)
-
 (defn apply-query
   [schema query type-store missing-fields-as-nil? readers]
   (try
     (some-> schema
             (apply-query* query readers missing-fields-as-nil? [])
             (with-column-indices :query-column-index)
-            with-column-spec-paths
-            (check-value-types type-store))
+            with-column-spec-paths)
     (catch Exception e
       (throw (IllegalArgumentException.
               (format "Invalid query '%s' for schema '%s'" query (unparse schema))
