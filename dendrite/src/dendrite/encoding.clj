@@ -178,11 +178,11 @@
 
 (defrecord TypeStore [derived-types derived-type-hierarchies])
 
-(defn- parse-custom-derived-types [custom-derived-types]
+(defn parse-custom-derived-types [custom-derived-types]
   (reduce-kv (fn [m t ct] (assoc m t (derived-type t ct))) {} custom-derived-types))
 
 (defn type-store [custom-derived-types]
-  (let [all-derived-types (-> custom-derived-types parse-custom-derived-types (merge derived-types))]
+  (let [all-derived-types (merge custom-derived-types derived-types)]
     (->TypeStore all-derived-types (build-type-hierarchy-map all-derived-types))))
 
 (defn- type-hierarchy [ts t]

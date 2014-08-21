@@ -169,3 +169,5 @@
           flatten-1)))
 
 (defn callable? [f] (instance? Callable f))
+
+(defn boolean? [b] (or (true? b) (false? b)))

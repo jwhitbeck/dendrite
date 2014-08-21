@@ -59,7 +59,7 @@
         test-schema (-> helpers/test-schema-str schema/read-string)]
     (with-open [w (file-writer tmp-filename
                                test-schema
-                               :optimize-columns? :all
+                               :optimize-columns? true
                                :compression-thresholds {})]
       (write! w records))
     (testing "schema is indeed optimized"

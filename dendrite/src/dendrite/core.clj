@@ -25,10 +25,10 @@
 (defn- valid-magic-bytes? [^ByteBuffer bb]
   (= magic-str (utils/byte-buffer->str bb)))
 
-(def default-write-options
+(def default-writer-options
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
    :target-data-page-length (* 8 1024)            ; 8KB
-   :optimize-columns? :default
+   :optimize-columns? nil
    :compression-thresholds {:lz4 0.9 :deflate 0.5}
    :invalid-input-handler nil
    :custom-types nil})
@@ -44,6 +44,86 @@
 
 (defn- keywordize-custom-types [custom-types]
   (reduce-kv (fn [m k v] (assoc m (keyword k) (update-in v [:base-type] keyword))) {} custom-types))
+
+(defn- parse-writer-option [k v]
+  (case k
+    :target-record-group-length
+    (if-not (and (number? v) (pos? (long v)))
+      (throw (IllegalArgumentException.
+              (format ":target-record-group-length expects a positive integer but got '%s'." v)))
+      (long v))
+    :target-data-page-length
+    (if-not (and (number? v) (pos? v))
+      (throw (IllegalArgumentException.
+              (format ":target-data-page-length expects a positive integer but got '%s'." v)))
+      (long v))
+    :optimize-columns?
+    (if-not ((some-fn utils/boolean? nil?) v)
+      (throw (IllegalArgumentException.
+              (format ":optimize-columns? expects either true, false, or nil but got '%s'" v)))
+      v)
+    :compression-thresholds
+    (if-not (map? v)
+      (throw (IllegalArgumentException. ":compression-thresholds expects a map."))
+      (reduce-kv (fn [m c t]
+                   (if-not (and (#{:lz4 :deflate} c) (number? t) (pos? (double t)))
+                     (throw (IllegalArgumentException.
+                             (str ":compression-thresholds expects compression-type/compression-threshold "
+                                  "map entries, where the compression-type is either :lz4 or :deflate, and "
+                                  " the compression threshold is a double value strictly greater than 0.")))
+                     (assoc m c (double t))))
+                 {}
+                 v))
+    :invalid-input-handler
+    (when v
+      (if-not (utils/callable? v)
+        (throw (IllegalArgumentException. ":invalid-input-handler excepts a function."))
+        v))
+    :custom-types
+    (when v (-> v keywordize-custom-types encoding/parse-custom-derived-types))
+    (throw (IllegalArgumentException. (format "%s is not a supported writer option." k)))))
+
+(defn- parse-reader-option [k v]
+  (case k
+    :custom-types (when v (keywordize-custom-types v))
+    (throw (IllegalArgumentException. (format "%s is not a supported reader option." k)))))
+
+(defn- parse-tag-reader [k v]
+  (if-not (symbol? k)
+    (throw (IllegalArgumentException. (format ":reader key should be a symbol but got '%s'" k)))
+    (if-not (utils/callable? v)
+      (throw (IllegalArgumentException. (format ":reader value for tag '%s' should be a function." k)))
+      v)))
+
+(defn- parse-read-option [k v]
+  (case k
+    :query v
+    :missing-fields-as-nil?
+    (if-not (utils/boolean? v)
+      (throw (IllegalArgumentException. (format ":missing-fields-as-nil? expects a boolean but got '%s'" v)))
+      v)
+    :readers
+    (reduce-kv (fn [m t f] (assoc m t (parse-tag-reader t f))) {} v)
+    :pmap-fn
+    (when v
+      (if-not (utils/callable? v)
+        (throw (IllegalArgumentException. ":pmap-fn excepts a function."))
+        v))
+    (throw (IllegalArgumentException. (format "%s is not a supported read option." k)))))
+
+(defn- parse-options [default-opts parse-opt-fn provided-opts]
+  (->> provided-opts
+       (reduce-kv (fn [m k v] (assoc m k (parse-opt-fn k v))) {})
+       (merge default-opts)))
+
+(defn- parse-writer-options [opts]
+  (parse-options default-writer-options parse-writer-option opts))
+
+(defn- parse-reader-options [opts]
+  (parse-options default-reader-options parse-reader-option opts))
+
+(defn- parse-read-options [opts]
+  (parse-options default-read-options parse-read-option opts))
 
 (defn- custom->base-types [parsed-custom-types]
   (reduce-kv (fn [m t ct] (assoc m t (:base-type ct))) {} parsed-custom-types))
@@ -189,7 +269,7 @@
              (finally (throw error)))
         (try (let [metadata (-> @metadata-atom
                                 (assoc :record-groups-metadata record-groups-metadata
-                                       :custom->base-types (custom-base->types custom-types))
+                                       :custom->base-types (custom->base-types custom-types))
                                 (update-in [:schema] schema/with-optimal-column-specs column-specs))]
                (finish! backend-writer metadata))
              (catch Exception e
@@ -199,7 +279,7 @@
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
-                compression-thresholds invalid-input-handler]} (merge default-write-options options)]
+                compression-thresholds invalid-input-handler]} (parse-writer-options options)]
     (let [parsed-custom-types (keywordize-custom-types custom-types)
           type-store (encoding/type-store parsed-custom-types)
           parsed-schema (schema/parse schema type-store)
@@ -207,10 +287,7 @@
           record-group-writer (record-group/writer target-data-page-length
                                                    type-store
                                                    (schema/column-specs parsed-schema))
-          optimize? (case optimize-columns?
-                      :all true
-                      :default (all-default-column-specs? parsed-schema)
-                      :none false)]
+          optimize? (or optimize-columns? (all-default-column-specs? parsed-schema))]
       (map->Writer
        {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
         :stripe-fn (striping/stripe-fn parsed-schema type-store invalid-input-handler)
@@ -278,7 +355,7 @@
 (defrecord Reader [backend-reader metadata type-store]
   IReader
   (read-with-opts [_ opts]
-    (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (merge default-read-options opts)
+    (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (parse-read-options opts)
           queried-schema (cond-> (schema/apply-query (:schema metadata)
                                                      query
                                                      type-store
@@ -315,12 +392,13 @@
 
 (defn- reader [backend-reader options]
   (let [metadata (-> backend-reader :byte-buffer byte-buffer->metadata)
-        {:keys [custom-types]} (merge default-reader-options options)]
+        {:keys [custom-types]} (parse-reader-options options)]
     (map->Reader
      {:backend-reader backend-reader
       :metadata metadata
-      :type-store (->> (keywordize-custom-types custom-types)
+      :type-store (->> custom-types
                        (merge (as-custom-types (:custom->base-types metadata)))
+                       encoding/parse-custom-derived-types
                        encoding/type-store)})))
 
 (defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
