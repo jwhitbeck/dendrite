@@ -6,7 +6,7 @@
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
            [java.nio.channels FileChannel FileChannel$MapMode]
-           [java.util.concurrent LinkedBlockingQueue]))
+           [java.util.concurrent Callable LinkedBlockingQueue]))
 
 (set! *warn-on-reflection* true)
 
@@ -167,3 +167,5 @@
           (partition-all chunk-size)
           (pmap (comp doall (partial map f)))
           flatten-1)))
+
+(defn callable? [f] (instance? Callable f))

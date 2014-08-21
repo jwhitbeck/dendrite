@@ -56,6 +56,10 @@
       (is (thrown-with-msg?
            IllegalArgumentException #"Key :invalid-key is not a valid derived-type key."
            (derived-type :my-type {:base-type :int :invalid-key :bar}))))
+    (testing "throws exception when function was expected but not passed"
+      (is (thrown-with-msg?
+           IllegalArgumentException #":coercion-fn expects a function for type 'my-type'."
+           (derived-type :my-type {:base-type :int :coercion-fn 2}))))
     (testing "warns on missing keys"
       (binding [*err* (StringWriter.)]
         (derived-type :my-type {:base-type :int})

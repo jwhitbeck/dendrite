@@ -1,5 +1,5 @@
 (ns dendrite.encoding
-  (:require [dendrite.utils :refer [warn]])
+  (:require [dendrite.utils :as utils])
   (:import [dendrite.java
             Encoder Decoder
             BooleanPackedEncoder BooleanPackedDecoder
@@ -116,6 +116,16 @@
 
 (defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
 
+(defn- get-derived-type-fn [derived-type-name derived-type-map fn-keyword]
+  (if-let [f (get derived-type-map fn-keyword)]
+    (if-not (utils/callable? f)
+      (throw (IllegalArgumentException.
+              (format "%s expects a function for type '%s'." fn-keyword (name derived-type-name))))
+      f)
+    (do (utils/warn (format (str "%s is not defined for type '%s', defaulting to clojure.core/identity.")
+                            fn-keyword (name derived-type-name)))
+        identity)))
+
 (defn derived-type [derived-type-name derived-type-map]
   (doseq [k (keys derived-type-map)]
     (when-not (#{:base-type :coercion-fn :to-base-type-fn :from-base-type-fn} k)
@@ -127,21 +137,9 @@
                    (throw (IllegalArgumentException.
                            (format "required field :base-type is missing for type '%s'."
                                    (name derived-type-name)))))
-    :coercion-fn (or (:coercion-fn derived-type-map)
-                     (do (warn (format (str ":coercion-fn is not defined for type '%s', "
-                                            "defaulting to clojure.core/identity.")
-                                       (name derived-type-name)))
-                         identity))
-    :to-base-type-fn (or (:to-base-type-fn derived-type-map)
-                         (do (warn (format (str ":to-base-type-fn is not defined for type '%s', "
-                                                "defaulting to clojure.core/identity.")
-                                           (name derived-type-name)))
-                             identity))
-    :from-base-type-fn (or (:from-base-type-fn derived-type-map)
-                           (do (warn (format (str ":from-base-type-fn is not defined for type '%s', "
-                                                  "defaulting to clojure.core/identity.")
-                                             (name derived-type-name)))
-                               identity))}))
+    :coercion-fn (get-derived-type-fn derived-type-name derived-type-map :coercion-fn)
+    :to-base-type-fn (get-derived-type-fn derived-type-name derived-type-map :to-base-type-fn)
+    :from-base-type-fn (get-derived-type-fn derived-type-name derived-type-map :from-base-type-fn)}))
 
 (def ^:private derived-types
   {:string (map->DerivedType {:base-type :byte-array
