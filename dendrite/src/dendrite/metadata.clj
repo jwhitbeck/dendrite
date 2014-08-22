@@ -14,7 +14,7 @@
 
 (defenum encoding-type [:plain :dictionary :packed-run-length :delta :incremental :delta-length])
 
-(defrecord Metadata [record-groups-metadata schema custom->base-types custom])
+(defrecord Metadata [record-groups-metadata schema custom-types custom])
 
 (defrecord RecordGroupMetadata [length num-records column-chunks-metadata])
 
@@ -93,14 +93,20 @@
 
 (def ^:private metadata-tag "dendrite/metadata")
 
+(defn- pack-custom-types [custom-types]
+  (reduce-kv (fn [m t ct] (assoc m t (:base-type ct))) {} custom-types))
+
+(defn- unpack-custom-types [packed-custom-types]
+  (reduce-kv (fn [m k v] (assoc m k {:base-type v})) {} packed-custom-types))
+
 (def ^:private metadata-writer
   (reify WriteHandler
-    (write [_ writer {:keys [record-groups-metadata schema custom->base-types custom]}]
+    (write [_ writer {:keys [record-groups-metadata schema custom-types custom]}]
       (doto writer
         (.writeTag metadata-tag 4)
         (.writeObject record-groups-metadata)
         (.writeObject schema)
-        (.writeObject custom->base-types)
+        (.writeObject (pack-custom-types custom-types))
         (.writeObject custom)))))
 
 (def ^:private write-handlers
@@ -153,7 +159,7 @@
     (read [_ reader tag component-count]
       (map->Metadata {:record-groups-metadata (.readObject reader)
                       :schema (.readObject reader)
-                      :custom->base-types (.readObject reader)
+                      :custom-types (unpack-custom-types (.readObject reader))
                       :custom (.readObject reader)}))))
 
 (def ^:private read-handlers

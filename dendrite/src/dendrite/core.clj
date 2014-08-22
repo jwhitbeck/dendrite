@@ -125,12 +125,6 @@
 (defn- parse-read-options [opts]
   (parse-options default-read-options parse-read-option opts))
 
-(defn- custom->base-types [parsed-custom-types]
-  (reduce-kv (fn [m t ct] (assoc m t (:base-type ct))) {} parsed-custom-types))
-
-(defn- as-custom-types [custom->base-types]
-  (reduce-kv (fn [m k v] (assoc m k {:base-type v})) {} custom->base-types))
-
 (defprotocol IWriter
   (write! [_ records])
   (set-metadata! [_ metadata]))
@@ -269,7 +263,7 @@
              (finally (throw error)))
         (try (let [metadata (-> @metadata-atom
                                 (assoc :record-groups-metadata record-groups-metadata
-                                       :custom->base-types (custom->base-types custom-types))
+                                       :custom-types custom-types)
                                 (update-in [:schema] schema/with-optimal-column-specs column-specs))]
                (finish! backend-writer metadata))
              (catch Exception e
@@ -397,7 +391,7 @@
      {:backend-reader backend-reader
       :metadata metadata
       :type-store (->> custom-types
-                       (merge (as-custom-types (:custom->base-types metadata)))
+                       (merge (:custom-types metadata))
                        encoding/parse-custom-derived-types
                        encoding/type-store)})))
 
