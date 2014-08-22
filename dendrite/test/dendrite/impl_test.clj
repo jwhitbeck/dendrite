@@ -202,9 +202,17 @@
                     :readers {'foo count}}
                    (byte-buffer-reader bb))))
       (is (thrown-with-msg?
-           IllegalArgumentException #"No reader function was provided for tag 'foo'"
+           IllegalArgumentException #"No reader function was provided for tag 'foo'."
            (helpers/throw-cause
-            (read {:query {:docid '_ :name (schema/tag 'foo '_)}} (byte-buffer-reader bb))))))))
+            (read {:query {:docid '_ :name (schema/tag 'foo '_)}} (byte-buffer-reader bb)))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #":reader key should be a symbol but got ':foo'."
+           (read {:query {:docid '_ :name (schema/tag 'foo '_)} :readers {:foo "foo"}}
+                 (byte-buffer-reader bb))))
+      (is (thrown-with-msg?
+           IllegalArgumentException #":reader value for tag 'foo' should be a function."
+           (read {:query {:docid '_ :name (schema/tag 'foo '_)} :readers {'foo "foo"}}
+                 (byte-buffer-reader bb)))))))
 
 (deftest custom-types
   (testing "write/read custom types"
@@ -243,4 +251,45 @@
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
     (is (= [3 1] (pmap (comp count :name) rdr)))))
 
-(deftest )
+(deftest invalid-options-are-caught
+  (testing "writer options"
+    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
+                                      (#'dendrite.impl/parse-writer-options opts))
+         {:target-record-group-length "foo"}
+         ":target-record-group-length expects a positive integer but got 'foo'."
+         {:target-record-group-length nil}
+         ":target-record-group-length expects a positive integer but got 'null'."
+         {:target-record-group-length -1.5}
+         ":target-record-group-length expects a positive integer but got '-1.5'."
+         {:target-data-page-length "foo"}
+         ":target-data-page-length expects a positive integer but got 'foo'."
+         {:target-data-page-length nil}
+         ":target-data-page-length expects a positive integer but got 'null'."
+         {:target-data-page-length -1.5}
+         ":target-data-page-length expects a positive integer but got '-1.5'."
+         {:optimize-columns? "foo"}
+         ":optimize-columns\\? expects either true, false, or nil but got 'foo'"
+         {:compression-thresholds :lz4}
+         ":compression-thresholds expects a map."
+         {:compression-thresholds {:lz4 -0.2}}
+         ":compression-thresholds expects compression-type/compression-threshold map entries"
+         {:invalid-input-handler "foo"}
+         ":invalid-input-handler expects a function."
+         {:invalid-option "foo"}
+         ":invalid-option is not a supported writer option."))
+  (testing "reader options"
+    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
+                                      (#'dendrite.impl/parse-reader-options opts))
+         {:invalid-option "foo"}
+         ":invalid-option is not a supported reader option."))
+  (testing "read options"
+    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
+                                      (#'dendrite.impl/parse-read-options opts))
+         {:missing-fields-as-nil? nil}
+         ":missing-fields-as-nil\\? expects a boolean but got 'null'"
+         {:missing-fields-as-nil? "foo"}
+         ":missing-fields-as-nil\\? expects a boolean but got 'foo'"
+         {:pmap-fn "foo"}
+         ":pmap-fn expects a function."
+         {:invalid-option "foo"}
+         ":invalid-option is not a supported read option.")))

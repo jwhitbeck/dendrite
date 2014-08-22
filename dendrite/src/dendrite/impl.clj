@@ -60,7 +60,7 @@
     :optimize-columns?
     (if-not ((some-fn utils/boolean? nil?) v)
       (throw (IllegalArgumentException.
-              (format ":optimize-columns? expects either true, false, or nil but got '%s'" v)))
+              (format ":optimize-columns? expects either true, false, or nil but got '%s'." v)))
       v)
     :compression-thresholds
     (if-not (map? v)
@@ -70,14 +70,14 @@
                      (throw (IllegalArgumentException.
                              (str ":compression-thresholds expects compression-type/compression-threshold "
                                   "map entries, where the compression-type is either :lz4 or :deflate, and "
-                                  " the compression threshold is a double value strictly greater than 0.")))
+                                  "the compression threshold is a double value strictly greater than 0.")))
                      (assoc m c (double t))))
                  {}
                  v))
     :invalid-input-handler
     (when v
       (if-not (utils/callable? v)
-        (throw (IllegalArgumentException. ":invalid-input-handler excepts a function."))
+        (throw (IllegalArgumentException. ":invalid-input-handler expects a function."))
         v))
     :custom-types
     (when v (-> v keywordize-custom-types encoding/parse-custom-derived-types))
@@ -90,7 +90,7 @@
 
 (defn- parse-tag-reader [k v]
   (if-not (symbol? k)
-    (throw (IllegalArgumentException. (format ":reader key should be a symbol but got '%s'" k)))
+    (throw (IllegalArgumentException. (format ":reader key should be a symbol but got '%s'." k)))
     (if-not (utils/callable? v)
       (throw (IllegalArgumentException. (format ":reader value for tag '%s' should be a function." k)))
       v)))
@@ -107,7 +107,7 @@
     :pmap-fn
     (when v
       (if-not (utils/callable? v)
-        (throw (IllegalArgumentException. ":pmap-fn excepts a function."))
+        (throw (IllegalArgumentException. ":pmap-fn expects a function."))
         v))
     (throw (IllegalArgumentException. (format "%s is not a supported read option." k)))))
 

@@ -277,7 +277,7 @@
      (vector? query) :vector
      (list? query) :list
      (symbol? query) :symbol
-     :else (throw (IllegalArgumentException. (format "Unable to parse query element %s" query))))))
+     :else (throw (IllegalArgumentException. (format "Unable to parse query element %s." query))))))
 
 (defmethod apply-query* :tagged
   [sub-schema tagged-query readers missing-fields-as-nil? parents]
@@ -287,7 +287,7 @@
         (assoc sub-query :reader-fn reader-fn)
         (assoc-in sub-query [:column-spec :map-fn] reader-fn)))
     (throw (IllegalArgumentException.
-            (format "No reader function was provided for tag '%s'" (:tag tagged-query))))))
+            (format "No reader function was provided for tag '%s'." (:tag tagged-query))))))
 
 (defmethod apply-query* :symbol
   [sub-schema query-symbol readers missing-fields-as-nil? parents]
@@ -295,7 +295,7 @@
     sub-schema
     (if (record? sub-schema)
       (throw (IllegalArgumentException.
-              (format "Field %s is a record field in schema, not a value" (format-ks parents))))
+              (format "Field %s is a record field in schema, not a value." (format-ks parents))))
       (let [queried-type (keyword query-symbol)
             schema-type (-> sub-schema :column-spec :type)]
         (if-not (= queried-type schema-type)
@@ -314,7 +314,7 @@
         (let [missing-fields (remove (->> sub-schema :sub-fields (map :name) set) (keys query-record))]
           (when-not (empty? missing-fields)
             (throw (IllegalArgumentException.
-                    (format "The following fields don't exist: %s"
+                    (format "The following fields don't exist: %s."
                             (string/join ", " (map #(format-ks (conj parents %)) missing-fields))))))))
       (let [sub-fields (->> (:sub-fields sub-schema)
                             (filter (comp query-record :name))
@@ -388,7 +388,7 @@
             with-column-spec-paths)
     (catch Exception e
       (throw (IllegalArgumentException.
-              (format "Invalid query '%s' for schema '%s'" query (unparse schema))
+              (format "Invalid query '%s' for schema '%s'." query (unparse schema))
               e)))))
 
 (defn queried-column-indices-set [queried-schema]
