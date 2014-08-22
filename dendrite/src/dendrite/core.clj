@@ -13,7 +13,7 @@
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel])
-  (:refer-clojure :exclude [read]))
+  (:refer-clojure :exclude [read pmap]))
 
 (set! *warn-on-reflection* true)
 
@@ -130,12 +130,12 @@
   (set-metadata! [_ metadata]))
 
 (defprotocol IReader
-  (read-with-opts [_ opts])
+  (read* [_ opts])
   (stats [_])
   (metadata [_])
   (schema [_]))
 
-(defprotocol IBackendWriter
+(defprotocol ^:private IBackendWriter
   (flush-record-group! [_ record-group-writer])
   (finish! [_ metadata])
   (close-writer! [_]))
@@ -295,8 +295,10 @@
         :backend-writer backend-writer
         :custom-types parsed-custom-types}))))
 
-(defn byte-buffer-writer ^java.io.Closeable [schema & {:as options}]
-  (writer (byte-array-backend-writer) schema options))
+(defn byte-buffer-writer
+  (^java.io.Closeable [schema] (byte-buffer-writer nil schema))
+  (^java.io.Closeable [options schema]
+     (writer (byte-array-backend-writer) schema options)))
 
 (defn byte-buffer! ^java.nio.ByteBuffer [^Closeable writer]
   (if-let [^ByteArrayWriter byte-array-writer (get-in writer [:backend-writer :byte-array-writer])]
@@ -304,8 +306,10 @@
         (ByteBuffer/wrap (.buffer byte-array-writer) 0 (.position byte-array-writer)))
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
 
-(defn file-writer ^java.io.Closeable [filename schema & {:as options}]
-  (writer (file-channel-backend-writer filename) schema options))
+(defn file-writer
+  (^java.io.Closeable [filename schema] (file-writer nil filename schema))
+  (^java.io.Closeable [options filename schema]
+     (writer (file-channel-backend-writer filename) schema options)))
 
 (defn- record-group-offsets [record-groups-metadata offset]
   (->> record-groups-metadata (map :length) butlast (reductions + offset)))
@@ -348,7 +352,7 @@
 
 (defrecord Reader [backend-reader metadata type-store]
   IReader
-  (read-with-opts [_ opts]
+  (read* [_ opts]
     (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (parse-read-options opts)
           queried-schema (cond-> (schema/apply-query (:schema metadata)
                                                      query
@@ -395,16 +399,22 @@
                        encoding/parse-custom-derived-types
                        encoding/type-store)})))
 
-(defn byte-buffer-reader ^java.io.Closeable [^ByteBuffer byte-buffer & {:as options}]
-  (reader (->ByteBufferBackendReader byte-buffer) options))
+(defn byte-buffer-reader
+  (^java.io.Closeable [^ByteBuffer byte-buffer] (byte-buffer-reader nil byte-buffer))
+  (^java.io.Closeable [options ^ByteBuffer byte-buffer]
+     (reader (->ByteBufferBackendReader byte-buffer) options)))
 
-(defn file-reader ^java.io.Closeable [f & {:as options}]
-  (let [file-channel (utils/file-channel f :read)
-        mapped-byte-buffer (utils/map-file-channel file-channel)]
-    (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options)))
+(defn file-reader
+  (^java.io.Closeable [f] (file-reader nil f))
+  (^java.io.Closeable [options f]
+     (let [file-channel (utils/file-channel f :read)
+           mapped-byte-buffer (utils/map-file-channel file-channel)]
+       (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options))))
 
-(defn read [reader & {:as opts}]
-  (read-with-opts reader opts))
+(defn read
+  ([reader] (read nil reader))
+  ([options reader]
+     (read* reader options)))
 
-(defn pmap-records [f reader & {:as opts}]
-  (read-with-opts reader (assoc opts :pmap-fn f)))
+(defn pmap [f reader & {:as opts}]
+  (read* reader (assoc opts :pmap-fn f)))

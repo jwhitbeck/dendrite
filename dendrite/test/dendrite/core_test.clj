@@ -7,7 +7,7 @@
             [dendrite.test-helpers :as helpers])
   (:import [java.io StringWriter]
            [java.util Date Calendar])
-  (:refer-clojure :exclude [read]))
+  (:refer-clojure :exclude [read pmap]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,9 +25,9 @@
       (is (= [{:docid 10
                :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
               {:docid 20 :name [nil]}]
-             (-> byte-buffer
-                 byte-buffer-reader
-                 (read :query {:docid '_ :name [{:language [{:country '_}]}]})))))))
+             (->> byte-buffer
+                  byte-buffer-reader
+                  (read {:query {:docid '_ :name [{:language [{:country '_}]}]}})))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
@@ -51,16 +51,16 @@
     (testing "one field"
       (is (= (map #(select-keys % [:docid]) records)
              (with-open [r (file-reader tmp-filename)]
-               (doall (read r :query {:docid '_}))))))
+               (doall (read {:query {:docid '_}} r))))))
     (io/delete-file tmp-filename)))
 
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (-> helpers/test-schema-str schema/read-string)]
-    (with-open [w (file-writer tmp-filename
-                               test-schema
-                               :optimize-columns? true
-                               :compression-thresholds {})]
+    (with-open [w (file-writer {:optimize-columns? true
+                                :compression-thresholds {}}
+                               tmp-filename
+                               test-schema)]
       (write! w records))
     (testing "schema is indeed optimized"
       (is (= (str "{:docid #req #col [long delta],"
@@ -78,7 +78,7 @@
       (is (= records (read (file-reader tmp-filename)))))
     (testing "one field"
       (is (= (map #(select-keys % [:is-active]) records)
-             (read (file-reader tmp-filename) :query {:is-active '_}))))
+             (read {:query {:is-active '_}} (file-reader tmp-filename)))))
     (io/delete-file tmp-filename)))
 
 (deftest custom-metadata
@@ -94,13 +94,13 @@
       (let [bad-byte-pos 2
             tmp-byte (.get byte-buffer bad-byte-pos)]
         (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
-                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
+                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))))))
         (.put byte-buffer bad-byte-pos tmp-byte)))
     (testing "corrupt magic bytes at end"
       (let [bad-byte-pos (- (.limit byte-buffer) 2)
             tmp-byte (.get byte-buffer bad-byte-pos)]
         (is (thrown-with-msg? IllegalArgumentException #"does not contain a valid dendrite serialization"
-                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))) :query '_)))
+                     (byte-buffer-reader (doto byte-buffer (.put bad-byte-pos (byte 0))))))
         (.put byte-buffer bad-byte-pos tmp-byte))))
   (testing "corrupt file"
     (spit tmp-filename "random junk")
@@ -112,8 +112,8 @@
 (deftest record-group-lengths
   (letfn [(avg-record-group-length [target-length]
             (let [records (take 1000 (helpers/rand-test-records))
-                  writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string)
-                                                   :target-record-group-length target-length)
+                  writer (doto (byte-buffer-writer {:target-record-group-length target-length}
+                                                   (-> helpers/test-schema-str schema/read-string))
                            (write! records))
                   byte-buffer (byte-buffer! writer)]
               (->> (byte-buffer-reader byte-buffer)
@@ -177,8 +177,8 @@
                                   (write! [bad-record]))))))
     (testing "invalid-input-handler can process exceptions"
       (let [error-atom (atom nil)
-            w (doto (byte-buffer-writer (schema/read-string dremel-paper-schema-str)
-                                        :invalid-input-handler (fn [record e] (reset! error-atom record)))
+            w (doto (byte-buffer-writer {:invalid-input-handler (fn [record e] (reset! error-atom record))}
+                                        (schema/read-string dremel-paper-schema-str))
                 (write! [bad-record dremel-paper-record1 dremel-paper-record2]))]
         (is (= @error-atom bad-record))
         (is (= [dremel-paper-record1 dremel-paper-record2]
@@ -187,24 +187,24 @@
 (deftest strict-queries
   (testing "queries fail when missing-fields-as-nil? is false and we query a missing fields"
     (let [bb (byte-buffer! (dremel-paper-writer))]
-      (is (= [nil nil] (read (byte-buffer-reader bb) :query {:foo '_})))
+      (is (= [nil nil] (read {:query {:foo '_}} (byte-buffer-reader bb))))
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
-           (helpers/throw-cause (read (byte-buffer-reader bb)
-                                      :query {:foo '_}
-                                      :missing-fields-as-nil? false)))))))
+           (helpers/throw-cause (read {:query {:foo '_}
+                                       :missing-fields-as-nil? false}
+                                      (byte-buffer-reader bb))))))))
 
 (deftest readers
   (testing "readers functions transform output"
     (let [bb (byte-buffer! (dremel-paper-writer))]
       (is (= [{:name 3, :docid 10} {:name 1, :docid 20}]
-             (read (byte-buffer-reader bb)
-                   :query {:docid '_ :name (schema/tag 'foo '_)}
-                   :readers {'foo count})))
+             (read {:query {:docid '_ :name (schema/tag 'foo '_)}
+                    :readers {'foo count}}
+                   (byte-buffer-reader bb))))
       (is (thrown-with-msg?
            IllegalArgumentException #"No reader function was provided for tag 'foo'"
            (helpers/throw-cause
-            (read (byte-buffer-reader bb) :query {:docid '_ :name (schema/tag 'foo '_)})))))))
+            (read {:query {:docid '_ :name (schema/tag 'foo '_)}} (byte-buffer-reader bb))))))))
 
 (deftest custom-types
   (testing "write/read custom types"
@@ -224,13 +224,12 @@
       (testing "throw error when invalid field is defined in custom-types"
         (is (thrown-with-msg?
              IllegalArgumentException #"Key :invalid is not a valid derived-type key. "
-             (byte-buffer-writer {:docid 'long :at 'date}
-                                 :custom-types {'date {:invalid 'bar}}))))
-      (let [w (doto (byte-buffer-writer {:docid 'long :at 'date} :custom-types custom-types)
+             (byte-buffer-writer {:custom-types {'date {:invalid 'bar}}} {:docid 'long :at 'date}))))
+      (let [w (doto (byte-buffer-writer {:custom-types custom-types} {:docid 'long :at 'date})
                 (write! records))
             bb (byte-buffer! w)]
         (testing "read as derived type when :custom-types option is passed"
-          (is (= records (-> bb (byte-buffer-reader :custom-types custom-types) read))))
+          (is (= records (->> bb (byte-buffer-reader {:custom-types custom-types}) read))))
         (testing "read as base type and warn when :custom-types option is not passed"
           (binding [*err* (StringWriter.)]
             (let [records-read (-> bb byte-buffer-reader read)]
@@ -242,4 +241,4 @@
 
 (deftest pmap-records-convenience-function
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
-    (is (= [3 1] (pmap-records (comp count :name) rdr)))))
+    (is (= [3 1] (pmap (comp count :name) rdr)))))
