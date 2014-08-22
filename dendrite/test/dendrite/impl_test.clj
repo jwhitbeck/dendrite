@@ -1,7 +1,7 @@
-(ns dendrite.core-test
+(ns dendrite.impl-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [dendrite.core :refer :all]
+            [dendrite.impl :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.schema :as schema]
             [dendrite.test-helpers :as helpers])
@@ -134,7 +134,7 @@
     (testing "byte-buffer-writer"
       (is (thrown-with-msg?
            Exception #"foo"
-           (with-redefs [dendrite.core/complete-record-group! throw-foo-fn]
+           (with-redefs [dendrite.impl/complete-record-group! throw-foo-fn]
              (.close (dremel-paper-writer))))))
     (testing "file-writer"
       (is (thrown-with-msg?
@@ -239,6 +239,8 @@
                                     (str *err*))
                           [:coercion-fn :to-base-type-fn :from-base-type-fn])))))))))
 
-(deftest pmap-records-convenience-function
+(deftest pmap-convenience-function
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
     (is (= [3 1] (pmap (comp count :name) rdr)))))
+
+(deftest )
