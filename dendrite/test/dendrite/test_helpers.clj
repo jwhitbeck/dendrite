@@ -90,12 +90,12 @@
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
 
-(defn get-byte-array-reader ^ByteArrayReader [^Flushable byte-array-writable]
+(defn get-byte-array-reader ^dendrite.java.ByteArrayReader [^Flushable byte-array-writable]
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteArrayReader.)))
 
-(defn get-byte-buffer ^ByteBuffer [^Flushable byte-array-writable]
+(defn get-byte-buffer ^java.nio.ByteBuffer [^Flushable byte-array-writable]
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteBuffer/wrap)))
