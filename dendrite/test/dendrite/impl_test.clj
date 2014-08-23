@@ -15,7 +15,8 @@
 
 (defn- dremel-paper-writer ^java.io.Closeable []
   (doto (byte-buffer-writer (schema/read-string dremel-paper-schema-str))
-    (write! [dremel-paper-record1 dremel-paper-record2])))
+    (write! dremel-paper-record1)
+    (write! dremel-paper-record2)))
 
 (deftest dremel-paper
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
@@ -31,8 +32,8 @@
 
 (deftest byte-buffer-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))
-        writer (doto (byte-buffer-writer (-> helpers/test-schema-str schema/read-string))
-                 (write! records))
+        writer (->> (byte-buffer-writer (-> helpers/test-schema-str schema/read-string))
+                    (#(reduce write! % records)))
         byte-buffer (byte-buffer! writer)]
     (testing "full schema"
       (is (= records (read (byte-buffer-reader byte-buffer)))))
@@ -44,7 +45,7 @@
 (deftest file-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))]
     (with-open [w (file-writer tmp-filename (-> helpers/test-schema-str schema/read-string))]
-      (write! w records))
+      (reduce write! w records))
     (testing "full schema"
       (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))
@@ -61,7 +62,7 @@
                                 :compression-thresholds {}}
                                tmp-filename
                                test-schema)]
-      (write! w records))
+      (reduce write! w records))
     (testing "schema is indeed optimized"
       (is (= (str "{:docid #req #col [long delta],"
                   " :links {:backward (long), :forward [long]},"
@@ -112,9 +113,9 @@
 (deftest record-group-lengths
   (letfn [(avg-record-group-length [target-length]
             (let [records (take 1000 (helpers/rand-test-records))
-                  writer (doto (byte-buffer-writer {:target-record-group-length target-length}
+                  writer (->> (byte-buffer-writer {:target-record-group-length target-length}
                                                    (-> helpers/test-schema-str schema/read-string))
-                           (write! records))
+                              (#(reduce write! % records)))
                   byte-buffer (byte-buffer! writer)]
               (->> (byte-buffer-reader byte-buffer)
                    stats
@@ -141,12 +142,12 @@
            Exception #"foo"
            (with-redefs [dendrite.record-group/write-byte-buffer (constantly (Exception. "foo"))]
              (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
-               (write! w [dremel-paper-record1])))))
+               (write! w dremel-paper-record1)))))
       (is (thrown-with-msg?
            Exception #"foo"
            (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer throw-foo-fn]
              (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
-               (write! w [dremel-paper-record1]))))))
+               (write! w dremel-paper-record1))))))
     (io/delete-file tmp-filename))
   (testing "exceptions in the reading thread are caught in the main thread"
     (testing "byte-buffer-reader"
@@ -159,7 +160,7 @@
            Exception #"foo"
            (with-redefs [dendrite.record-group/byte-buffer-reader throw-foo-fn]
              (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
-               (write! w [dremel-paper-record1]))
+               (write! w dremel-paper-record1))
              (with-open [r (file-reader tmp-filename)]
                (read r)))))
       (io/delete-file tmp-filename)
@@ -173,13 +174,16 @@
     (testing "invalid records trigger an exception while writing"
       (is (thrown-with-msg?
            IllegalArgumentException #"Failed to stripe record '\{:docid \"not-a-number\"\}"
-           (helpers/throw-cause (doto (dremel-paper-writer)
-                                  (write! [bad-record]))))))
+           (helpers/throw-cause (helpers/throw-cause (with-open [w (dremel-paper-writer)]
+                                                       (write! w bad-record)))))))
     (testing "invalid-input-handler can process exceptions"
       (let [error-atom (atom nil)
             w (doto (byte-buffer-writer {:invalid-input-handler (fn [record e] (reset! error-atom record))}
                                         (schema/read-string dremel-paper-schema-str))
-                (write! [bad-record dremel-paper-record1 dremel-paper-record2]))]
+                (write! bad-record)
+                (write! dremel-paper-record1)
+                (write! dremel-paper-record2)
+                .close)]
         (is (= @error-atom bad-record))
         (is (= [dremel-paper-record1 dremel-paper-record2]
                (read (-> w byte-buffer! byte-buffer-reader))))))))
@@ -227,14 +231,14 @@
       (testing "throw error when the writer is not passed the :custom types option"
         (is (thrown-with-msg?
              IllegalArgumentException #"Unsupported type 'date' for column \[:at\]"
-             (helpers/throw-cause (doto (byte-buffer-writer {:docid 'long :at 'date})
-                                    (write! records))))))
+             (helpers/throw-cause (with-open [w (byte-buffer-writer {:docid 'long :at 'date})]
+                                    (reduce write! w records))))))
       (testing "throw error when invalid field is defined in custom-types"
         (is (thrown-with-msg?
              IllegalArgumentException #"Key :invalid is not a valid derived-type key. "
              (byte-buffer-writer {:custom-types {'date {:invalid 'bar}}} {:docid 'long :at 'date}))))
-      (let [w (doto (byte-buffer-writer {:custom-types custom-types} {:docid 'long :at 'date})
-                (write! records))
+      (let [w (with-open [w (byte-buffer-writer {:custom-types custom-types} {:docid 'long :at 'date})]
+                (reduce write! w records))
             bb (byte-buffer! w)]
         (testing "read as derived type when :custom-types option is passed"
           (is (= records (->> bb (byte-buffer-reader {:custom-types custom-types}) read))))
