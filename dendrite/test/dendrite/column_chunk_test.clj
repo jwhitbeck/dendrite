@@ -305,7 +305,7 @@
         (is (= :incremental (find-best-encoding* reader))))))
   (testing "small set of keywords"
     (let [cs (column-spec-required :keyword :plain :none)
-          input-blocks (->> #(rand-nth [:foo :bar :baz]) repeatedly (rand-blocks cs) (take 1000))
+          input-blocks (->> #(rand-nth [:foo ::bar :baz]) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader)))))

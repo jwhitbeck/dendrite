@@ -1,6 +1,6 @@
 (ns dendrite.encoding
   (:require [dendrite.utils :as utils])
-  (:import [clojure.lang Ratio]
+  (:import [clojure.lang Keyword Ratio]
            [dendrite.java
             Encoder Decoder
             BooleanPackedEncoder BooleanPackedDecoder
@@ -90,6 +90,11 @@
 (defn str->utf8-bytes [^String s] (.getBytes s utf8-charset))
 
 (defn utf8-bytes->str [^bytes bs] (String. bs utf8-charset))
+
+(defn keyword->str [^Keyword k]
+  (if-let [kw-namespace (namespace k)]
+    (str kw-namespace "/" (name k))
+    (name k)))
 
 (defn bigint->bytes [^clojure.lang.BigInt bi] (.. bi toBigInteger toByteArray))
 
@@ -203,7 +208,7 @@
                              :from-base-type-fn bytes->ratio})
    :keyword (map->DerivedType {:base-type :byte-array
                                :coercion-fn keyword
-                               :to-base-type-fn (comp str->utf8-bytes name)
+                               :to-base-type-fn (comp str->utf8-bytes keyword->str)
                                :from-base-type-fn (comp keyword utf8-bytes->str)})
    :symbol (map->DerivedType {:base-type :byte-array
                               :coercion-fn symbol
