@@ -1,12 +1,13 @@
 (ns dendrite.schema
   (:require [clojure.edn :as edn]
+            [clojure.pprint :as pprint]
             [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.compression :as compression]
             [dendrite.metadata :refer [map->column-spec-with-defaults map->Field] :as metadata]
             [dendrite.utils :refer [format-ks]])
   (:import [dendrite.metadata ColumnSpec Field]
-           [java.io Writer])
+           [java.io StringWriter Writer])
   (:refer-clojure :exclude [read-string col record?]))
 
 (set! *warn-on-reflection* true)
@@ -393,3 +394,15 @@
 
 (defn queried-column-indices-set [queried-schema]
   (->> queried-schema column-specs (map :column-index) set))
+
+(defmethod pprint/simple-dispatch ColumnSpec [column-specs]
+  (metadata/print-colspec column-specs *out*))
+
+(defmethod pprint/simple-dispatch RequiredField [required-field]
+  (.write *out* "#req ")
+  (pprint/simple-dispatch (:field required-field)))
+
+(defn pretty [unparsed-schema]
+  (with-open [sw (StringWriter.)]
+    (pprint/pprint unparsed-schema sw)
+    (str sw)))

@@ -26,12 +26,14 @@
 (defn map->column-spec-with-defaults [m]
   (map->ColumnSpec (merge {:encoding :plain :compression :none} m)))
 
-(defmethod print-method ColumnSpec
-  [{:keys [type encoding compression]} ^Writer w]
-  (if (and (= compression :none) (= encoding :plain))
-    (.write w (name type))
-    (.write w (str "#col [" (name type) " " (name encoding)
-                   (when-not (= compression :none) (str " " (name compression))) "]"))))
+(defn print-colspec [column-spec ^Writer w]
+  (let [{:keys [type encoding compression]} column-spec]
+    (if (and (= compression :none) (= encoding :plain))
+      (.write w (name type))
+      (.write w (str "#col [" (name type) " " (name encoding)
+                     (when-not (= compression :none) (str " " (name compression))) "]")))))
+
+(. ^clojure.lang.MultiFn print-method addMethod ColumnSpec print-colspec)
 
 (defn read-column-spec [vs]
   (let [[type encoding compression] (map keyword vs)]
