@@ -85,9 +85,10 @@
 (deftest custom-metadata
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}
         writer (doto (dremel-paper-writer)
-                 (set-metadata! test-custom-metadata))
+                 (set-metadata! test-custom-metadata)
+                 (update-metadata! assoc :more "foo"))
         byte-buffer (byte-buffer! writer)]
-    (is (= test-custom-metadata (-> byte-buffer byte-buffer-reader metadata)))))
+    (is (= (assoc test-custom-metadata :more "foo") (-> byte-buffer byte-buffer-reader metadata)))))
 
 (deftest corrupt-data
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]

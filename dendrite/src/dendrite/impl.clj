@@ -126,8 +126,7 @@
   (parse-options default-read-options parse-read-option opts))
 
 (defprotocol IWriter
-  (write! [_ record])
-  (set-metadata! [_ metadata]))
+  (write! [_ record]))
 
 (defprotocol IReader
   (read* [_ opts])
@@ -260,8 +259,6 @@
         (throw (IllegalStateException. "Cannot write to closed writer.")))
       (.put writing-queue (if (nil? record) {} record)))
     this)
-  (set-metadata! [_ metadata]
-    (swap! metadata-atom assoc :custom metadata))
   Closeable
   (close [_]
     (when-not @closed
@@ -280,6 +277,12 @@
                (finally
                  (close-writer! backend-writer)))))
       (reset! closed true))))
+
+(defn set-metadata! [writer metadata]
+  (swap! (:metadata-atom writer) assoc :custom metadata))
+
+(defn update-metadata! [writer f & args]
+  (swap! (:metadata-atom writer) update-in [:custom] #(apply f % args)))
 
 (defn- writer [backend-writer schema options]
   (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
