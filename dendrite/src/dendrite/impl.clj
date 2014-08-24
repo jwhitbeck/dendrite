@@ -27,7 +27,7 @@
 
 (def default-writer-options
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
-   :target-data-page-length (* 8 1024)            ; 8KB
+   :target-data-page-length (* 128 1024)          ; 128 KB
    :optimize-columns? nil
    :compression-thresholds {:lz4 0.9 :deflate 0.5}
    :invalid-input-handler nil
