@@ -223,11 +223,8 @@
       (is (= :delta (find-best-encoding* reader)))))
   (testing "incrementing dates as a custom-type"
     (let [cs (column-spec-required :date :plain :none)
-          input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))
-          type-store (encoding/type-store {:date {:base-type :long
-                                                  :to-base-type-fn #(.getTime ^Date %)
-                                                  :from-base-type-fn #(Date. (long %))}})]
-      (let [reader (write-column-chunk-and-get-reader cs test-target-data-page-length type-store input-blocks)]
+          input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
+      (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
         (is (= (read reader) input-blocks))
         (is (= :delta (find-best-encoding* reader))))))
   (testing "small selection of random longs"
@@ -296,13 +293,13 @@
       (is (= (read reader) input-blocks))
       (is (= :incremental (find-best-encoding* reader)))))
   (testing "incrementing dates"
-    (let [cs (column-spec-required :date :plain :none)
+    (let [cs (column-spec-required :date-str :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))
-          type-store (encoding/type-store {:date {:base-type :string
-                                                  :to-base-type-fn #(locking simple-date-format
-                                                                      (.format simple-date-format %))
-                                                  :from-base-type-fn #(locking simple-date-format
-                                                                        (.parse simple-date-format %))}})]
+          type-store (encoding/type-store {:date-str {:base-type :string
+                                                      :to-base-type-fn #(locking simple-date-format
+                                                                          (.format simple-date-format %))
+                                                      :from-base-type-fn #(locking simple-date-format
+                                                                            (.parse simple-date-format %))}})]
       (let [reader (write-column-chunk-and-get-reader cs test-target-data-page-length type-store input-blocks)]
         (is (= (read reader) input-blocks))
         (is (= :incremental (find-best-encoding* reader))))))

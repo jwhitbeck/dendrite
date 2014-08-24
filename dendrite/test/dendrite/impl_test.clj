@@ -225,20 +225,20 @@
           t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
           records [{:docid 1 :at t1} {:docid 2 :at t2}]
           records-with-timestamps [{:docid 1 :at (.getTime t1)} {:docid 2 :at (.getTime t2)}]
-          custom-types {'date {:base-type 'long
-                               :coercion-fn identity
-                               :to-base-type-fn #(.getTime ^Date %)
-                               :from-base-type-fn #(Date. (long %))}}]
+          custom-types {'test-type {:base-type 'long
+                                    :coercion-fn identity
+                                    :to-base-type-fn #(.getTime ^Date %)
+                                    :from-base-type-fn #(Date. (long %))}}]
       (testing "throw error when the writer is not passed the :custom types option"
         (is (thrown-with-msg?
-             IllegalArgumentException #"Unsupported type 'date' for column \[:at\]"
-             (helpers/throw-cause (with-open [w (byte-buffer-writer {:docid 'long :at 'date})]
+             IllegalArgumentException #"Unsupported type 'test-type' for column \[:at\]"
+             (helpers/throw-cause (with-open [w (byte-buffer-writer {:docid 'long :at 'test-type})]
                                     (reduce write! w records))))))
       (testing "throw error when invalid field is defined in custom-types"
         (is (thrown-with-msg?
              IllegalArgumentException #"Key :invalid is not a valid derived-type key. "
-             (byte-buffer-writer {:custom-types {'date {:invalid 'bar}}} {:docid 'long :at 'date}))))
-      (let [w (with-open [w (byte-buffer-writer {:custom-types custom-types} {:docid 'long :at 'date})]
+             (byte-buffer-writer {:custom-types {'test-type {:invalid 'bar}}} {:docid 'long :at 'test-type}))))
+      (let [w (with-open [w (byte-buffer-writer {:custom-types custom-types} {:docid 'long :at 'test-type})]
                 (reduce write! w records))
             bb (byte-buffer! w)]
         (testing "read as derived type when :custom-types option is passed"
@@ -247,7 +247,7 @@
           (binding [*err* (StringWriter.)]
             (let [records-read (-> bb byte-buffer-reader read)]
               (is (= records-with-timestamps records-read))
-              (is (every? #(re-find (re-pattern (str % " is not defined for type 'date', "
+              (is (every? #(re-find (re-pattern (str % " is not defined for type 'test-type', "
                                                      "defaulting to clojure.core/identity."))
                                     (str *err*))
                           [:coercion-fn :to-base-type-fn :from-base-type-fn])))))))))

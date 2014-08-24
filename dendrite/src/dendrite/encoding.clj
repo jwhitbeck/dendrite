@@ -17,7 +17,8 @@
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
             ByteArrayReader BufferedByteArrayWriter]
-           [java.nio.charset Charset]))
+           [java.nio.charset Charset]
+           [java.util Date]))
 
 (set! *warn-on-reflection* true)
 
@@ -143,6 +144,11 @@
 
 (defn ratio [r] (if (ratio? r) r (Ratio. (bigint r) BigInteger/ONE)))
 
+(defn date [d]
+  (if-not (instance? Date d)
+    (throw (IllegalArgumentException. (format "%s is not an instance of java.util.Date." d)))
+    d))
+
 (defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
 
 (defn- get-derived-type-fn [derived-type-name derived-type-map fn-keyword]
@@ -175,6 +181,10 @@
                               :coercion-fn str
                               :to-base-type-fn str->utf8-bytes
                               :from-base-type-fn utf8-bytes->str})
+   :date (map->DerivedType {:base-type :long
+                            :coercion-fn date
+                            :to-base-type-fn (fn [^Date d] (.getTime d))
+                            :from-base-type-fn (fn [^long l] (Date. l))})
    :char (map->DerivedType {:base-type :int
                             :coercion-fn char
                             :to-base-type-fn int
