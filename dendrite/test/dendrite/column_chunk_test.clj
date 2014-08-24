@@ -289,6 +289,12 @@
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :incremental (find-best-encoding* reader)))))
+  (testing "random ratios"
+    (let [cs (column-spec-required :ratio :plain :none)
+          input-blocks (->> #(helpers/rand-ratio 40) repeatedly (rand-blocks cs) (take 1000))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :incremental (find-best-encoding* reader)))))
   (testing "incrementing dates"
     (let [cs (column-spec-required :date :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))

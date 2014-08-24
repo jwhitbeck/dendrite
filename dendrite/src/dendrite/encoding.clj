@@ -1,6 +1,7 @@
 (ns dendrite.encoding
   (:require [dendrite.utils :as utils])
-  (:import [dendrite.java
+  (:import [clojure.lang Ratio]
+           [dendrite.java
             Encoder Decoder
             BooleanPackedEncoder BooleanPackedDecoder
             IntPlainEncoder IntPlainDecoder
@@ -93,26 +94,54 @@
 
 (defn bytes->bigint [^bytes bs] (bigint (BigInteger. bs)))
 
+(defn- byte-array-set-int [^bytes bs i v]
+  (aset bs (+ i 3) (unchecked-byte v))
+  (aset bs (+ i 2) (unchecked-byte (bit-shift-right v 8)))
+  (aset bs (inc i) (unchecked-byte (bit-shift-right v 16)))
+  (aset bs i (unchecked-byte (bit-shift-right v 24))))
+
+(defn- byte-array-get-int [^bytes bs i]
+  (bit-or (bit-shift-left (aget bs i) 24)
+          (bit-shift-left (aget bs (inc i)) 16)
+          (bit-shift-left (aget bs (+ i 2)) 8)
+          (aget bs (+ i 3))))
+
 (defn bigdec->bytes [^BigDecimal bd]
   (let [unscaled-bigint-bytes (.. bd unscaledValue toByteArray)
         scale (.scale bd)
         ba (byte-array (+ (alength unscaled-bigint-bytes) 4))]
+    (byte-array-set-int ba 0 scale)
     (System/arraycopy unscaled-bigint-bytes 0 ba 4 (alength unscaled-bigint-bytes))
-    (aset ba 3 (unchecked-byte scale))
-    (aset ba 2 (unchecked-byte (bit-shift-right scale 8)))
-    (aset ba 1 (unchecked-byte (bit-shift-right scale 16)))
-    (aset ba 0 (unchecked-byte (bit-shift-right scale 24)))
     ba))
 
 (defn bytes->bigdec [^bytes bs]
-  (let [scale (bit-or (bit-shift-left (aget bs 0) 24)
-                      (bit-shift-left (aget bs 1) 16)
-                      (bit-shift-left (aget bs 2) 8)
-                      (aget bs 3))
+  (let [scale (int (byte-array-get-int bs 0))
         unscaled-length (- (alength bs) 4)
         unscaled-bigint-bytes (byte-array unscaled-length)]
     (System/arraycopy bs 4 unscaled-bigint-bytes 0 unscaled-length)
     (BigDecimal. (BigInteger. unscaled-bigint-bytes) scale)))
+
+(defn ratio->bytes [^Ratio r]
+  (let [numerator-bytes (.. r numerator toByteArray)
+        denominator-bytes (.. r denominator toByteArray)
+        numerator-length (alength numerator-bytes)
+        denominator-length (alength denominator-bytes)
+        ba (byte-array (+ numerator-length denominator-length 4))]
+    (byte-array-set-int ba 0 numerator-length)
+    (System/arraycopy numerator-bytes 0 ba 4 numerator-length)
+    (System/arraycopy denominator-bytes 0 ba (+ 4 numerator-length) denominator-length)
+    ba))
+
+(defn bytes->ratio [^bytes bs]
+  (let [numerator-length (int (byte-array-get-int bs 0))
+        denominator-length (- (alength bs) numerator-length 4)
+        numerator-bytes (byte-array numerator-length)
+        denominator-bytes (byte-array denominator-length)]
+    (System/arraycopy bs 4 numerator-bytes 0 numerator-length)
+    (System/arraycopy bs (+ 4 numerator-length) denominator-bytes 0 denominator-length)
+    (Ratio. (BigInteger. numerator-bytes) (BigInteger. denominator-bytes))))
+
+(defn ratio [r] (if (ratio? r) r (Ratio. (bigint r) BigInteger/ONE)))
 
 (defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
 
@@ -158,6 +187,10 @@
                               :coercion-fn bigdec
                               :to-base-type-fn bigdec->bytes
                               :from-base-type-fn bytes->bigdec})
+   :ratio (map->DerivedType {:base-type :byte-array
+                             :coercion-fn ratio
+                             :to-base-type-fn ratio->bytes
+                             :from-base-type-fn bytes->ratio})
    :keyword (map->DerivedType {:base-type :byte-array
                                :coercion-fn keyword
                                :to-base-type-fn (comp str->utf8-bytes name)

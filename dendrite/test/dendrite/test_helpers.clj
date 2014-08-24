@@ -55,6 +55,8 @@
 
 (defn rand-bigdec [n] (BigDecimal. ^BigInteger (rand-biginteger n) (int (rand-int-bits 2))))
 
+(defn rand-ratio [n] (/ (rand-bigint n) (rand-bigint n)))
+
 (defn rand-biginteger-signed [n]
   (cond-> ^BigInteger (rand-biginteger n)
           (= (rand-sign) 1) .negate))
