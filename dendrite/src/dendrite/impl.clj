@@ -135,7 +135,7 @@
   (metadata [_])
   (schema [_]))
 
-(defprotocol ^:private IBackendWriter
+(defprotocol IBackendWriter
   (flush-record-group! [_ record-group-writer])
   (finish! [_ metadata])
   (close-writer! [_]))
