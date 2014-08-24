@@ -11,14 +11,16 @@
   (->> (map (fnil + 0 0) (vals byte-stats-a) (vals byte-stats-b))
        (apply ->ByteStats)))
 
-(defrecord ColumnChunkStats [spec num-pages num-values length byte-stats])
+(defrecord ColumnChunkStats [spec num-pages num-values num-dictionary-values length byte-stats])
 
 (defn pages->column-chunk-stats [spec pages-stats]
-  (let [all-bytes-stats (reduce add-byte-stats (map :byte-stats pages-stats))]
+  (let [all-bytes-stats (reduce add-byte-stats (map :byte-stats pages-stats))
+        has-dictionnary? (-> pages-stats first :byte-stats :dictionary-length)]
     (map->ColumnChunkStats
      {:spec spec
       :num-pages (count pages-stats)
-      :num-values (reduce + (map :num-values pages-stats))
+      :num-values (reduce + (map :num-values (if has-dictionnary? (rest pages-stats) pages-stats)))
+      :num-dictionary-values (if has-dictionnary? (-> pages-stats first :num-values) 0)
       :length (reduce + (map :length pages-stats))
       :byte-stats all-bytes-stats})))
 
@@ -29,13 +31,14 @@
     :length (+ (:length column-chunk-stats-a) (:length column-chunk-stats-b))
     :byte-stats (add-byte-stats (:byte-stats column-chunk-stats-a) (:byte-stats column-chunk-stats-b))}))
 
-(defrecord ColumnStats [spec length num-column-chunks num-pages num-values byte-stats])
+(defrecord ColumnStats [spec length num-column-chunks num-pages num-values num-dictionary-values byte-stats])
 
 (defn column-chunks->column-stats [column-chunks-stats]
   (map->ColumnStats
    {:spec (-> column-chunks-stats first :spec)
     :length (reduce + (map :length column-chunks-stats))
     :num-values (reduce + (map :num-values column-chunks-stats))
+    :num-dictionary-values (reduce + (map :num-dictionary-values column-chunks-stats))
     :num-column-chunks (count column-chunks-stats)
     :num-pages (reduce + (map :num-pages column-chunks-stats))
     :byte-stats (reduce add-byte-stats (map :byte-stats column-chunks-stats))}))
