@@ -1,7 +1,8 @@
 (ns dendrite.utils
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
-  (:import [dendrite.java Singleton]
+  (:import [clojure.lang ITransientCollection]
+           [dendrite.java Singleton PersistentLinkedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -113,6 +114,10 @@
     (step (into-array Object seqs))))
 
 (definline single [x] `(Singleton. ~x))
+
+(definline transient-linked-seq [] `(PersistentLinkedSeq/newEmptyTransient))
+
+(defn transient? [x] (instance? ITransientCollection x))
 
 (defn flatten-1 [seqs]
   (letfn [(step [cs rs]

@@ -17,6 +17,10 @@
     (is (= dremel-paper-record2-striped (stripe-record dremel-paper-record2 dremel-paper-schema)))))
 
 (deftest test-schema
+  (testing "striping returns ArraySeqs"
+    (let [test-schema (-> helpers/test-schema-str s/read-string (s/parse helpers/default-type-store))]
+      (is (instance? clojure.lang.ArraySeq
+                     (stripe-record {:docid 0 :is-active false :name [nil]} test-schema)))))
   (testing "record striping works on test-schema"
     (let [test-schema (-> helpers/test-schema-str s/read-string (s/parse helpers/default-type-store))
           test-record {:docid 0
