@@ -100,31 +100,21 @@
 
 (defn bytes->bigint [^bytes bs] (bigint (BigInteger. bs)))
 
-(defn- byte-array-set-int [^bytes bs i v]
-  (aset bs (+ i 3) (unchecked-byte v))
-  (aset bs (+ i 2) (unchecked-byte (bit-shift-right v 8)))
-  (aset bs (inc i) (unchecked-byte (bit-shift-right v 16)))
-  (aset bs i (unchecked-byte (bit-shift-right v 24))))
-
-(defn- byte-array-get-int [^bytes bs i]
-  (bit-or (bit-shift-left (aget bs i) 24)
-          (bit-shift-left (aget bs (inc i)) 16)
-          (bit-shift-left (aget bs (+ i 2)) 8)
-          (aget bs (+ i 3))))
-
 (defn bigdec->bytes [^BigDecimal bd]
   (let [unscaled-bigint-bytes (.. bd unscaledValue toByteArray)
         scale (.scale bd)
-        ba (byte-array (+ (alength unscaled-bigint-bytes) 4))]
-    (byte-array-set-int ba 0 scale)
-    (System/arraycopy unscaled-bigint-bytes 0 ba 4 (alength unscaled-bigint-bytes))
-    ba))
+        baw (ByteArrayWriter. (+ (alength unscaled-bigint-bytes) 4))]
+    (doto baw
+      (.writeFixedInt scale)
+      (.writeByteArray unscaled-bigint-bytes))
+    (.buffer baw)))
 
 (defn bytes->bigdec [^bytes bs]
-  (let [scale (int (byte-array-get-int bs 0))
+  (let [bar (ByteArrayReader. bs)
+        scale (.readFixedInt bar)
         unscaled-length (- (alength bs) 4)
         unscaled-bigint-bytes (byte-array unscaled-length)]
-    (System/arraycopy bs 4 unscaled-bigint-bytes 0 unscaled-length)
+    (.readByteArray bar unscaled-bigint-bytes)
     (BigDecimal. (BigInteger. unscaled-bigint-bytes) scale)))
 
 (defn ratio->bytes [^Ratio r]
@@ -132,19 +122,21 @@
         denominator-bytes (.. r denominator toByteArray)
         numerator-length (alength numerator-bytes)
         denominator-length (alength denominator-bytes)
-        ba (byte-array (+ numerator-length denominator-length 4))]
-    (byte-array-set-int ba 0 numerator-length)
-    (System/arraycopy numerator-bytes 0 ba 4 numerator-length)
-    (System/arraycopy denominator-bytes 0 ba (+ 4 numerator-length) denominator-length)
-    ba))
+        baw (ByteArrayWriter. (+ numerator-length denominator-length 4))]
+    (doto baw
+      (.writeFixedInt numerator-length)
+      (.writeByteArray numerator-bytes)
+      (.writeByteArray denominator-bytes))
+    (.buffer baw)))
 
 (defn bytes->ratio [^bytes bs]
-  (let [numerator-length (int (byte-array-get-int bs 0))
+  (let [bar (ByteArrayReader. bs)
+        numerator-length (.readFixedInt bar)
         denominator-length (- (alength bs) numerator-length 4)
         numerator-bytes (byte-array numerator-length)
         denominator-bytes (byte-array denominator-length)]
-    (System/arraycopy bs 4 numerator-bytes 0 numerator-length)
-    (System/arraycopy bs (+ 4 numerator-length) denominator-bytes 0 denominator-length)
+    (.readByteArray bar numerator-bytes)
+    (.readByteArray bar denominator-bytes)
     (Ratio. (BigInteger. numerator-bytes) (BigInteger. denominator-bytes))))
 
 (defn ratio [r] (if (ratio? r) r (Ratio. (bigint r) BigInteger/ONE)))
