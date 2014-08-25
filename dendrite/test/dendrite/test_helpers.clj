@@ -4,7 +4,7 @@
             [dendrite.leveled-value :refer [->LeveledValue]])
   (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable]
            [java.nio ByteBuffer]
-           [java.util Random])
+           [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
 
 (set! *warn-on-reflection* true)
@@ -64,6 +64,8 @@
 (defn rand-byte-array
   ([] (rand-byte-array (clojure.core/rand-int 24)))
   ([n] (byte-array (repeatedly n rand-byte))))
+
+(defn rand-uuid [] (UUID/randomUUID))
 
 (defn leveled [{:keys [max-definition-level max-repetition-level] :or {nested? true} :as spec} coll]
   (lazy-seq

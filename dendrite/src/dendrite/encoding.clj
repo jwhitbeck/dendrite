@@ -16,9 +16,9 @@
             ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
-            ByteArrayReader BufferedByteArrayWriter]
+            ByteArrayReader ByteArrayWriter BufferedByteArrayWriter]
            [java.nio.charset Charset]
-           [java.util Date]))
+           [java.util Date UUID]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,6 +154,21 @@
     (throw (IllegalArgumentException. (format "%s is not an instance of java.util.Date." d)))
     d))
 
+(defn uuid->bytes [^UUID uuid]
+  (let [baw (doto (ByteArrayWriter. 16)
+              (.writeFixedLong (.getMostSignificantBits uuid))
+              (.writeFixedLong (.getLeastSignificantBits uuid)))]
+    (.buffer baw)))
+
+(defn bytes->uuid [^bytes bs]
+  (let [bar (ByteArrayReader. bs)]
+    (UUID. (.readFixedLong bar) (.readFixedLong bar))))
+
+(defn uuid [x]
+  (if-not (instance? UUID x)
+    (throw (IllegalArgumentException. (format "%s is not an instance of java.util.UUID" x)))
+    x))
+
 (defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
 
 (defn- get-derived-type-fn [derived-type-name derived-type-map fn-keyword]
@@ -190,6 +205,10 @@
                             :coercion-fn date
                             :to-base-type-fn (fn [^Date d] (.getTime d))
                             :from-base-type-fn (fn [^long l] (Date. l))})
+   :uuid (map->DerivedType {:base-type :fixed-length-byte-array
+                            :coercion-fn uuid
+                            :to-base-type-fn uuid->bytes
+                            :from-base-type-fn bytes->uuid})
    :char (map->DerivedType {:base-type :int
                             :coercion-fn char
                             :to-base-type-fn int

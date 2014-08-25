@@ -325,6 +325,12 @@
                              (->> reader read flatten (map #(.value ^LeveledValue %)))
                              (->> input-blocks flatten (map #(.value ^LeveledValue %))))))
       (is (= :plain (find-best-encoding* reader)))))
+  (testing "UUIDs"
+    (let [cs (column-spec-required :uuid :plain :none)
+          input-blocks (->> helpers/rand-uuid repeatedly (rand-blocks cs) (take 1000))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :plain (find-best-encoding* reader)))))
   (testing "small selection of random byte arrays"
     (let [cs (column-spec-required :fixed-length-byte-array :plain :none)
           rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
