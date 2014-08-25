@@ -1,6 +1,6 @@
 (defproject dendrite.benchmarks "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "Benchmark code for dendrite, a Dremel-like columnar storage format for Clojure."
+  :url "https://github.com/jwhitbeck/dendrite"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-opts ["-server" "-Xmx4g"]
