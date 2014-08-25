@@ -6,14 +6,14 @@ public class FixedLengthByteArrayPlainDecoder extends AbstractDecoder {
 
   public FixedLengthByteArrayPlainDecoder(final ByteArrayReader baw) {
     super(baw);
-    this.length = byte_array_reader.readUInt();
+    this.length = byteArrayReader.readUInt();
   }
 
   @Override
   public Object decode() {
-    byte[] fixed_length_byte_array = new byte[length];
-    byte_array_reader.readByteArray(fixed_length_byte_array, 0, length);
-    return fixed_length_byte_array;
+    byte[] fixedLengthByteArray = new byte[length];
+    byteArrayReader.readByteArray(fixedLengthByteArray, 0, length);
+    return fixedLengthByteArray;
   }
 
 }

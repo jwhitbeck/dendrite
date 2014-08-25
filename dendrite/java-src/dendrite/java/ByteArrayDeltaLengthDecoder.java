@@ -2,26 +2,26 @@ package dendrite.java;
 
 public class ByteArrayDeltaLengthDecoder extends AbstractDecoder {
 
-  private final IntPackedDeltaDecoder lengths_decoder;
+  private final IntPackedDeltaDecoder lengthsDecoder;
 
   public ByteArrayDeltaLengthDecoder(final ByteArrayReader baw) {
     super(baw);
-    int lengths_num_bytes = byte_array_reader.readUInt();
-    lengths_decoder = new IntPackedDeltaDecoder(byte_array_reader);
-    byte_array_reader.position += lengths_num_bytes;
+    int lengthsNumBytes = byteArrayReader.readUInt();
+    lengthsDecoder = new IntPackedDeltaDecoder(byteArrayReader);
+    byteArrayReader.position += lengthsNumBytes;
   }
 
   @Override
   public Object decode() {
-    int length = (int)lengths_decoder.decode();
-    byte[] byte_array = new byte[length];
-    byte_array_reader.readByteArray(byte_array, 0, length);
-    return byte_array;
+    int length = (int)lengthsDecoder.decode();
+    byte[] byteArray = new byte[length];
+    byteArrayReader.readByteArray(byteArray, 0, length);
+    return byteArray;
   }
 
   public void decodeInto(ByteArrayWriter baw) {
-    int length = (int)lengths_decoder.decode();
-    byte_array_reader.readBytes(baw, length);
+    int length = (int)lengthsDecoder.decode();
+    byteArrayReader.readBytes(baw, length);
   }
 
 }

@@ -8,7 +8,7 @@ public class IntPlainDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    return byte_array_reader.readFixedInt();
+    return byteArrayReader.readFixedInt();
   }
 
 }

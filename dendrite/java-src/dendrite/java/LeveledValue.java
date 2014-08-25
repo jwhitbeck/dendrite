@@ -7,10 +7,10 @@ public final class LeveledValue {
   final public int definitionLevel;
   final public Object value;
 
-  public LeveledValue(final int replvl, final int deflvl, final Object v) {
-    repetitionLevel = replvl;
-    definitionLevel = deflvl;
-    value = v;
+  public LeveledValue(final int repetitionLevel, final int definitionLevel, final Object value) {
+    this.repetitionLevel = repetitionLevel;
+    this.definitionLevel = definitionLevel;
+    this.value = value;
   }
 
   public LeveledValue apply(final IFn fn){

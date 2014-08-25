@@ -113,15 +113,15 @@ public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
     @Override
     public ITransientCollection conj(Object val) {
       if (tail == null) {
-        Node new_tail = new Node().add(val);
-        head = new_tail;
-        tail = new_tail;
+        Node newTail = new Node().add(val);
+        head = newTail;
+        tail = newTail;
       } else if (tail.cnt < 32) {
         tail.add(val);
       } else {
-        Node new_tail = new Node().add(val);
-        tail.next = new_tail;
-        tail = new_tail;
+        Node newTail = new Node().add(val);
+        tail.next = newTail;
+        tail = newTail;
       }
       cnt += 1;
       return this;

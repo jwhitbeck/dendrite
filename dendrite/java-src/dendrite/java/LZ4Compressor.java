@@ -4,42 +4,42 @@ import java.util.zip.Deflater;
 
 public class LZ4Compressor implements Compressor {
 
-  private final ByteArrayWriter input_buffer;
-  private final ByteArrayWriter output_buffer;
+  private final ByteArrayWriter inputBuffer;
+  private final ByteArrayWriter outputBuffer;
 
   public LZ4Compressor() {
-    input_buffer = new ByteArrayWriter();
-    output_buffer = new ByteArrayWriter();
+    inputBuffer = new ByteArrayWriter();
+    outputBuffer = new ByteArrayWriter();
   }
 
   @Override
   public void compress(final Flushable flushable) {
-    flushable.flush(input_buffer);
+    flushable.flush(inputBuffer);
     net.jpountz.lz4.LZ4Compressor lz4_compressor = LZ4.compressor();
-    output_buffer.ensureRemainingCapacity(lz4_compressor.maxCompressedLength(input_buffer.length()));
-    int compressed_length = lz4_compressor.compress(input_buffer.buffer, 0, input_buffer.length(),
-                                                output_buffer.buffer, 0);
-    output_buffer.position += compressed_length;
+    outputBuffer.ensureRemainingCapacity(lz4_compressor.maxCompressedLength(inputBuffer.length()));
+    int compressedLength = lz4_compressor.compress(inputBuffer.buffer, 0, inputBuffer.length(),
+                                                   outputBuffer.buffer, 0);
+    outputBuffer.position += compressedLength;
   }
 
   @Override
   public void reset() {
-    input_buffer.reset();
-    output_buffer.reset();
+    inputBuffer.reset();
+    outputBuffer.reset();
   }
 
   @Override
   public int uncompressedLength() {
-    return input_buffer.length();
+    return inputBuffer.length();
   }
 
   @Override
   public int compressedLength() {
-    return output_buffer.length();
+    return outputBuffer.length();
   }
 
   @Override
   public void flush(final ByteArrayWriter baw) {
-    output_buffer.flush(baw);
+    outputBuffer.flush(baw);
   }
 }

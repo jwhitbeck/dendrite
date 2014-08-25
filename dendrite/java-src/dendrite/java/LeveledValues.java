@@ -53,14 +53,14 @@ public final class LeveledValues {
                                                                 final Decoder dataDecoder,
                                                                 final int maxDefinitionLevel) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
-    final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
-    final Iterator data_i = dataDecoder.iterator();
-    while (def_lvl_i.hasNext()){
-      int def_lvl = (int) def_lvl_i.next();
-      if (def_lvl < maxDefinitionLevel) {
-        vs.conj(new Singleton(new LeveledValue(0, def_lvl, null)));
+    final Iterator defLvlIterator = definitionLevelsDecoder.iterator();
+    final Iterator dataIterator = dataDecoder.iterator();
+    while (defLvlIterator.hasNext()){
+      int defLvl = (int) defLvlIterator.next();
+      if (defLvl < maxDefinitionLevel) {
+        vs.conj(new Singleton(new LeveledValue(0, defLvl, null)));
       } else {
-        vs.conj(new Singleton(new LeveledValue(0, def_lvl, data_i.next())));
+        vs.conj(new Singleton(new LeveledValue(0, defLvl, dataIterator.next())));
       }
     }
     return vs.persistent();
@@ -71,14 +71,14 @@ public final class LeveledValues {
                                                                   final int maxDefinitionLevel,
                                                                   final IFn fn) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
-    final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
-    final Iterator data_i = dataDecoder.iterator();
-    while (def_lvl_i.hasNext()){
-      int def_lvl = (int) def_lvl_i.next();
-      if (def_lvl < maxDefinitionLevel) {
-        vs.conj(new Singleton(new LeveledValue(0, def_lvl, null)));
+    final Iterator defLvlIterator = definitionLevelsDecoder.iterator();
+    final Iterator dataIterator = dataDecoder.iterator();
+    while (defLvlIterator.hasNext()){
+      int defLvl = (int) defLvlIterator.next();
+      if (defLvl < maxDefinitionLevel) {
+        vs.conj(new Singleton(new LeveledValue(0, defLvl, null)));
       } else {
-        vs.conj(new Singleton(new LeveledValue(0, def_lvl, fn.invoke(data_i.next()))));
+        vs.conj(new Singleton(new LeveledValue(0, defLvl, fn.invoke(dataIterator.next()))));
       }
     }
     return vs.persistent();
@@ -88,24 +88,24 @@ public final class LeveledValues {
                                                        final Decoder definitionLevelsDecoder,
                                                        final Decoder dataDecoder,
                                                        final int maxDefinitionLevel) {
-    final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
-    final Iterator rep_lvl_i = repetitionLevelsDecoder.iterator();
-    final Iterator data_i = dataDecoder.iterator();
+    final Iterator defLvlIterator = definitionLevelsDecoder.iterator();
+    final Iterator repLvlIterator = repetitionLevelsDecoder.iterator();
+    final Iterator dataIterator = dataDecoder.iterator();
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
-    boolean seen_first_value = false;
-    while (rep_lvl_i.hasNext()){
-      int rep_lvl = (int)rep_lvl_i.next();
-      if (rep_lvl == 0 && seen_first_value){
+    boolean seenFirstValue = false;
+    while (repLvlIterator.hasNext()){
+      int repLvl = (int)repLvlIterator.next();
+      if (repLvl == 0 && seenFirstValue){
         vs.conj(rv.persistent());
         rv = PersistentLinkedSeq.newEmptyTransient();
       }
-      seen_first_value = true;
-      int def_lvl = (int)def_lvl_i.next();
-      if (def_lvl < maxDefinitionLevel) {
-        rv.conj(new LeveledValue(rep_lvl, def_lvl, null));
+      seenFirstValue = true;
+      int defLvl = (int)defLvlIterator.next();
+      if (defLvl < maxDefinitionLevel) {
+        rv.conj(new LeveledValue(repLvl, defLvl, null));
       } else {
-        rv.conj(new LeveledValue(rep_lvl, def_lvl, data_i.next()));
+        rv.conj(new LeveledValue(repLvl, defLvl, dataIterator.next()));
       }
     }
     if (rv != null) {
@@ -119,24 +119,24 @@ public final class LeveledValues {
                                                          final Decoder dataDecoder,
                                                          final int maxDefinitionLevel,
                                                          final IFn fn) {
-    final Iterator def_lvl_i = definitionLevelsDecoder.iterator();
-    final Iterator rep_lvl_i = repetitionLevelsDecoder.iterator();
-    final Iterator data_i = dataDecoder.iterator();
+    final Iterator defLvlIterator = definitionLevelsDecoder.iterator();
+    final Iterator repLvlIterator = repetitionLevelsDecoder.iterator();
+    final Iterator dataIterator = dataDecoder.iterator();
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
-    boolean seen_first_value = false;
-    while (rep_lvl_i.hasNext()){
-      int rep_lvl = (int)rep_lvl_i.next();
-      if (rep_lvl == 0 && seen_first_value){
+    boolean seenFirstValue = false;
+    while (repLvlIterator.hasNext()){
+      int repLvl = (int)repLvlIterator.next();
+      if (repLvl == 0 && seenFirstValue){
         vs.conj(rv.persistent());
         rv = PersistentLinkedSeq.newEmptyTransient();
       }
-      seen_first_value = true;
-      int def_lvl = (int)def_lvl_i.next();
-      if (def_lvl < maxDefinitionLevel) {
-        rv.conj(new LeveledValue(rep_lvl, def_lvl, null));
+      seenFirstValue = true;
+      int defLvl = (int)defLvlIterator.next();
+      if (defLvl < maxDefinitionLevel) {
+        rv.conj(new LeveledValue(repLvl, defLvl, null));
       } else {
-        rv.conj(new LeveledValue(rep_lvl, def_lvl, fn.invoke(data_i.next())));
+        rv.conj(new LeveledValue(repLvl, defLvl, fn.invoke(dataIterator.next())));
       }
     }
     if (rv != null) {

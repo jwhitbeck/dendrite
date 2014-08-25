@@ -12,7 +12,7 @@ public class BooleanPackedDecoder extends AbstractDecoder {
   @Override
   public Object decode() {
     if ((position % 8) == 0) {
-      byte_array_reader.readPackedBooleans(octuplet);
+      byteArrayReader.readPackedBooleans(octuplet);
       position = 0;
     }
     boolean b = octuplet[position];

@@ -8,11 +8,11 @@ public class BooleanPackedEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     final boolean b = (boolean) o;
-    num_values += 1;
+    numValues += 1;
     octuplet[position] = b;
     position += 1;
     if (position == 8) {
-      byte_array_writer.writePackedBooleans(octuplet);
+      byteArrayWriter.writePackedBooleans(octuplet);
       position = 0;
     }
   }
@@ -26,7 +26,7 @@ public class BooleanPackedEncoder extends AbstractEncoder {
   @Override
   public void finish() {
     if (position > 0){
-      byte_array_writer.writePackedBooleans(octuplet);
+      byteArrayWriter.writePackedBooleans(octuplet);
       position = 0;
     }
   }

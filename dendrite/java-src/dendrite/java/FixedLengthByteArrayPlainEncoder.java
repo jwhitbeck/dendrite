@@ -7,16 +7,16 @@ public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     final byte[] bs = (byte[]) o;
-    num_values += 1;
+    numValues += 1;
     if (length != bs.length) {
       if (length == -1) {
         length = bs.length;
-        byte_array_writer.writeUInt(length);
+        byteArrayWriter.writeUInt(length);
       } else {
         throw new IllegalStateException("Different byte-array lengths in FixedLengthByteArrayEncoder");
       }
     }
-    byte_array_writer.writeByteArray(bs, 0, length);
+    byteArrayWriter.writeByteArray(bs, 0, length);
   }
 
   @Override

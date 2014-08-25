@@ -8,7 +8,7 @@ public class LongPlainDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    return byte_array_reader.readFixedLong();
+    return byteArrayReader.readFixedLong();
   }
 
 }

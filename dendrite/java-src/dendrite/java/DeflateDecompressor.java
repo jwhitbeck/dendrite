@@ -10,15 +10,15 @@ public class DeflateDecompressor implements Decompressor {
                                     final int decompressedLength) {
     Inflater inflater = new Inflater(true);
     inflater.setInput(bar.buffer, bar.position, compressedLength);
-    byte[] decompressed_bytes = new byte[decompressedLength];
+    byte[] decompressedBytes = new byte[decompressedLength];
     try {
-      inflater.inflate(decompressed_bytes);
+      inflater.inflate(decompressedBytes);
     } catch (DataFormatException dfe) {
       throw new IllegalStateException(dfe);
     } finally {
       inflater.end();
     }
-    return new ByteArrayReader(decompressed_bytes);
+    return new ByteArrayReader(decompressedBytes);
   }
 
 }

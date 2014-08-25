@@ -6,17 +6,17 @@ import java.util.ArrayList;
 
 public abstract class AbstractDecoder implements Decoder {
 
-  protected final ByteArrayReader byte_array_reader;
-  private final int num_values;
+  protected final ByteArrayReader byteArrayReader;
+  private final int numValues;
 
-  public AbstractDecoder(final ByteArrayReader baw) {
-    byte_array_reader = baw.slice();
-    num_values = byte_array_reader.readUInt();
+  public AbstractDecoder(final ByteArrayReader byteArrayReader) {
+    this.byteArrayReader = byteArrayReader.slice();
+    this.numValues = this.byteArrayReader.readUInt();
   }
 
   @Override
   public int numEncodedValues() {
-    return num_values;
+    return numValues;
   }
 
   @Override
@@ -25,7 +25,7 @@ public abstract class AbstractDecoder implements Decoder {
       int i = 0;
       @Override
       public boolean hasNext() {
-        return i < num_values;
+        return i < numValues;
       }
       @Override
       public Object next() {

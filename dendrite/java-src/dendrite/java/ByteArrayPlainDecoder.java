@@ -8,10 +8,10 @@ public class ByteArrayPlainDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    int length = byte_array_reader.readFixedInt();
-    byte[] byte_array = new byte[length];
-    byte_array_reader.readByteArray(byte_array, 0, length);
-    return byte_array;
+    int length = byteArrayReader.readFixedInt();
+    byte[] byteArray = new byte[length];
+    byteArrayReader.readByteArray(byteArray, 0, length);
+    return byteArray;
   }
 
 }

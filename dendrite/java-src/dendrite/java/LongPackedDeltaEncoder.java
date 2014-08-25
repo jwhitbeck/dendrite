@@ -9,130 +9,130 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
   private static final int MAX_MINIBLOCK_LENGTH = 32;
   private static final int MIN_MINIBLOCK_LENGTH = 8;
 
-  private BigInteger[] value_buffer = new BigInteger[MAX_BLOCK_LENGTH + 1];
+  private BigInteger[] valueBuffer = new BigInteger[MAX_BLOCK_LENGTH + 1];
   private int position = 0;
   private BigInteger[] deltas = new BigInteger[MAX_BLOCK_LENGTH];
-  private BigInteger min_delta;
-  private long [] reference_frame = new long[MAX_BLOCK_LENGTH];
-  private int num_encoded_values = 0;
+  private BigInteger minDelta;
+  private long [] referenceFrame = new long[MAX_BLOCK_LENGTH];
+  private int numEncodedValues = 0;
 
-  private ByteArrayWriter best_encoding = new ByteArrayWriter(128);
-  private ByteArrayWriter current_encoding = new ByteArrayWriter(128);
+  private ByteArrayWriter bestEncoding = new ByteArrayWriter(128);
+  private ByteArrayWriter currentEncoding = new ByteArrayWriter(128);
 
   @Override
   public void encode(final Object o) {
-    num_values += 1;
+    numValues += 1;
     if (position == MAX_BLOCK_LENGTH + 1) {
       flushBlock();
     }
-    value_buffer[position] = BigInteger.valueOf((long)o);
+    valueBuffer[position] = BigInteger.valueOf((long)o);
     position += 1;
   }
 
   private ByteArrayWriter getBestMiniblockEncodingForBlock() {
-    int block_length = getBlockLength(position);
-    computeDeltas(block_length);
+    int blockLength = getBlockLength(position);
+    computeDeltas(blockLength);
     computeFrameOfReference();
 
-    int miniblock_length = MIN_MINIBLOCK_LENGTH;
+    int miniblockLength = MIN_MINIBLOCK_LENGTH;
 
-    best_encoding.reset();
-    flushBlockWithNumMiniBlocks(best_encoding, miniblock_length, block_length);
+    bestEncoding.reset();
+    flushBlockWithNumMiniBlocks(bestEncoding, miniblockLength, blockLength);
 
-    int min_length = best_encoding.length();
+    int minLength = bestEncoding.length();
 
-    miniblock_length <<= 1;
-    while (miniblock_length <= Math.min(MAX_BLOCK_LENGTH, block_length)) {
-      current_encoding.reset();
-      flushBlockWithNumMiniBlocks(current_encoding, miniblock_length, block_length);
-      int current_length = current_encoding.length();
-      if (current_length < min_length) {
-        ByteArrayWriter tmp = best_encoding;
-        best_encoding = current_encoding;
-        current_encoding = tmp;
-        min_length = current_length;
+    miniblockLength <<= 1;
+    while (miniblockLength <= Math.min(MAX_BLOCK_LENGTH, blockLength)) {
+      currentEncoding.reset();
+      flushBlockWithNumMiniBlocks(currentEncoding, miniblockLength, blockLength);
+      int currentLength = currentEncoding.length();
+      if (currentLength < minLength) {
+        ByteArrayWriter tmp = bestEncoding;
+        bestEncoding = currentEncoding;
+        currentEncoding = tmp;
+        minLength = currentLength;
       }
-      miniblock_length <<= 1;
+      miniblockLength <<= 1;
     }
 
-    return best_encoding;
+    return bestEncoding;
   }
 
-  private void flushBlockWithNumMiniBlocks(final ByteArrayWriter baw, final int mini_block_length,
-                                          final int block_length) {
-    int num_miniblocks = block_length / mini_block_length;
-    long start_value = value_buffer[0].longValue();
-    int[] miniblock_bit_widths = new int[num_miniblocks];
-    for (int j=0; j<num_miniblocks; ++j) {
-      miniblock_bit_widths[j] = getMiniBlockBitWidth(j * mini_block_length, mini_block_length);
+  private void flushBlockWithNumMiniBlocks(final ByteArrayWriter baw, final int miniBlockLength,
+                                           final int blockLength) {
+    int numMiniblocks = blockLength / miniBlockLength;
+    long startValue = valueBuffer[0].longValue();
+    int[] miniblockBitWidths = new int[numMiniblocks];
+    for (int j=0; j<numMiniblocks; ++j) {
+      miniblockBitWidths[j] = getMiniBlockBitWidth(j * miniBlockLength, miniBlockLength);
     }
-    baw.writeUInt(block_length);
-    baw.writeUInt(num_miniblocks);
+    baw.writeUInt(blockLength);
+    baw.writeUInt(numMiniblocks);
     baw.writeUInt(position);
-    baw.writeSLong(start_value);
-    if (num_miniblocks > 0){
-      baw.writeSIntVLQ(min_delta);
-      for (int j=0; j<num_miniblocks; ++j) {
-        baw.writeByte((byte) (miniblock_bit_widths[j] & 0xff));
+    baw.writeSLong(startValue);
+    if (numMiniblocks > 0){
+      baw.writeSIntVLQ(minDelta);
+      for (int j=0; j<numMiniblocks; ++j) {
+        baw.writeByte((byte) (miniblockBitWidths[j] & 0xff));
       }
-      for (int j=0; j<num_miniblocks; ++j) {
-        int num_remaining_values = position - 1 - j * mini_block_length;
-        int length = num_remaining_values < mini_block_length ? num_remaining_values : mini_block_length;
-        baw.writePackedInts64(reference_frame, miniblock_bit_widths[j], j * mini_block_length, length);
+      for (int j=0; j<numMiniblocks; ++j) {
+        int numRemainingValues = position - 1 - j * miniBlockLength;
+        int length = numRemainingValues < miniBlockLength ? numRemainingValues : miniBlockLength;
+        baw.writePackedInts64(referenceFrame, miniblockBitWidths[j], j * miniBlockLength, length);
       }
     }
   }
 
   private int getMiniBlockBitWidth(final int miniBlockStartPosition, final int miniBlockLength) {
-    int max_bit_width = 0;
+    int maxBitWidth = 0;
     for (int j=miniBlockStartPosition; j<miniBlockStartPosition+miniBlockLength; ++j) {
-      int bit_width = ByteArrayWriter.getBitWidth(reference_frame[j]);
-      if (bit_width > max_bit_width) {
-        max_bit_width = bit_width;
+      int bitWidth = ByteArrayWriter.getBitWidth(referenceFrame[j]);
+      if (bitWidth > maxBitWidth) {
+        maxBitWidth = bitWidth;
       }
     }
-    return max_bit_width;
+    return maxBitWidth;
   }
 
   private static final BigInteger INFINITY = BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(2);
 
-  private void computeDeltas(final int block_length) {
-    min_delta = INFINITY;
+  private void computeDeltas(final int blockLength) {
+    minDelta = INFINITY;
     for (int j=0; j<position-1; ++j) {
-      BigInteger delta = value_buffer[j+1].subtract(value_buffer[j]);
+      BigInteger delta = valueBuffer[j+1].subtract(valueBuffer[j]);
       deltas[j] = delta;
-      if (delta.compareTo(min_delta) == -1) {
-        min_delta = delta;
+      if (delta.compareTo(minDelta) == -1) {
+        minDelta = delta;
       }
     }
   }
 
   private void computeFrameOfReference() {
-    Arrays.fill(reference_frame, 0, position-1, 0);
+    Arrays.fill(referenceFrame, 0, position-1, 0);
     for (int j=0; j<position-1; ++j) {
-      BigInteger relative_delta = deltas[j].subtract(min_delta);
-      reference_frame[j] = relative_delta.longValue();
+      BigInteger relativeDelta = deltas[j].subtract(minDelta);
+      referenceFrame[j] = relativeDelta.longValue();
     }
   }
 
-  private static int getBlockLength(final int num_values_in_block) {
-    int ints_after_first = num_values_in_block - 1;
-    if (ints_after_first == 0) {
+  private static int getBlockLength(final int numValuesInBlock) {
+    int intsAfterFirst = numValuesInBlock - 1;
+    if (intsAfterFirst == 0) {
       return 0;
     } else {
-      int block_length = 8;
-      while (ints_after_first > block_length && block_length < MAX_BLOCK_LENGTH) {
-        block_length <<= 1;
+      int blockLength = 8;
+      while (intsAfterFirst > blockLength && blockLength < MAX_BLOCK_LENGTH) {
+        blockLength <<= 1;
       }
-      return block_length;
+      return blockLength;
     }
   }
 
   private void flushBlock() {
     if (position > 0) {
-      ByteArrayWriter full_block_encoding = getBestMiniblockEncodingForBlock();
-      full_block_encoding.flush(byte_array_writer);
-      num_encoded_values += position;
+      ByteArrayWriter fullBlockEncoding = getBestMiniblockEncodingForBlock();
+      fullBlockEncoding.flush(byteArrayWriter);
+      numEncodedValues += position;
     }
     position = 0;
   }
@@ -140,7 +140,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
   @Override
   public void reset() {
     position = 0;
-    num_encoded_values = 0;
+    numEncodedValues = 0;
     super.reset();
   }
 
@@ -153,10 +153,10 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
 
   @Override
   public int estimatedLength() {
-    if (num_encoded_values == 0) {
+    if (numEncodedValues == 0) {
       return position; // very rough estimate when we haven't flushed anything yet
     }
-    return super.estimatedLength() * (int)(1 + (double)position / (double)num_encoded_values);
+    return super.estimatedLength() * (int)(1 + (double)position / (double)numEncodedValues);
   }
 
 }

@@ -4,26 +4,26 @@ import java.util.Iterator;
 
 public class IntPackedRunLengthDecoder implements Decoder {
 
-  private final IntFixedBitWidthPackedRunLengthDecoder int32_decoder;
+  private final IntFixedBitWidthPackedRunLengthDecoder int32Decoder;
 
   public IntPackedRunLengthDecoder(final ByteArrayReader baw) {
-    ByteArrayReader byte_array_reader = baw.slice();
-    int width = (int)byte_array_reader.readByte() & 0xff;
-    int32_decoder = new IntFixedBitWidthPackedRunLengthDecoder(byte_array_reader, width);
+    ByteArrayReader byteArrayReader = baw.slice();
+    int width = (int)byteArrayReader.readByte() & 0xff;
+    int32Decoder = new IntFixedBitWidthPackedRunLengthDecoder(byteArrayReader, width);
   }
 
   @Override
   public Object decode() {
-    return int32_decoder.decode();
+    return int32Decoder.decode();
   }
 
   @Override
   public int numEncodedValues() {
-    return int32_decoder.numEncodedValues();
+    return int32Decoder.numEncodedValues();
   }
 
   @Override
   public Iterator iterator() {
-    return int32_decoder.iterator();
+    return int32Decoder.iterator();
   }
 }

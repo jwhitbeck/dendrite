@@ -8,7 +8,7 @@ public class DoublePlainDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    return byte_array_reader.readDouble();
+    return byteArrayReader.readDouble();
   }
 
 }

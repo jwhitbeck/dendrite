@@ -4,16 +4,16 @@ import java.math.BigInteger;
 
 public class LongPackedDeltaDecoder extends AbstractDecoder {
 
-  private long[] miniblock_buffer = new long[128];
-  private int miniblock_position = 0;
-  private int miniblock_length = 0;
-  private int current_miniblock_index = 0;
-  private int num_miniblocks = 0;
-  private int[] miniblock_bit_widths = new int[16];
-  private int remaining_values_in_block = 0;
-  private int block_length = 0;
-  private BigInteger block_min_delta;
-  private BigInteger block_current_value;
+  private long[] miniblockBuffer = new long[128];
+  private int miniblockPosition = 0;
+  private int miniblockLength = 0;
+  private int currentMiniblockIndex = 0;
+  private int numMiniblocks = 0;
+  private int[] miniblockBitWidths = new int[16];
+  private int remainingValuesInBlock = 0;
+  private int blockLength = 0;
+  private BigInteger blockMinDelta;
+  private BigInteger blockCurrentValue;
 
   public LongPackedDeltaDecoder(final ByteArrayReader baw) {
     super(baw);
@@ -21,20 +21,20 @@ public class LongPackedDeltaDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    if (remaining_values_in_block > 0) {
-      if (miniblock_position == -1) { // read from first value
-        miniblock_position = 0;
-      } else if (current_miniblock_index == -1) { // no miniblock loaded
+    if (remainingValuesInBlock > 0) {
+      if (miniblockPosition == -1) { // read from first value
+        miniblockPosition = 0;
+      } else if (currentMiniblockIndex == -1) { // no miniblock loaded
         initNextMiniBlock();
         setCurrentValueFromMiniBlockBuffer();
-      } else if (miniblock_position < miniblock_length) { // reading from buffered miniblock
+      } else if (miniblockPosition < miniblockLength) { // reading from buffered miniblock
         setCurrentValueFromMiniBlockBuffer();
       } else { // finished reading current mini block
         initNextMiniBlock();
         setCurrentValueFromMiniBlockBuffer();
       }
-      remaining_values_in_block -= 1;
-      return block_current_value.longValue();
+      remainingValuesInBlock -= 1;
+      return blockCurrentValue.longValue();
     } else { // no more values in block, load next block
       initNextBlock();
       return decode();
@@ -50,32 +50,32 @@ public class LongPackedDeltaDecoder extends AbstractDecoder {
   }
 
   private void setCurrentValueFromMiniBlockBuffer() {
-    BigInteger next_relative_delta = valueOfUnsignedLong(miniblock_buffer[miniblock_position]);
-    BigInteger delta = next_relative_delta.add(block_min_delta);
-    block_current_value = block_current_value.add(delta);
-    miniblock_position += 1;
+    BigInteger nextRelativeDelta = valueOfUnsignedLong(miniblockBuffer[miniblockPosition]);
+    BigInteger delta = nextRelativeDelta.add(blockMinDelta);
+    blockCurrentValue = blockCurrentValue.add(delta);
+    miniblockPosition += 1;
   }
 
   private void initNextMiniBlock() {
-    current_miniblock_index += 1;
-    int width = miniblock_bit_widths[current_miniblock_index];
-    int length = remaining_values_in_block < miniblock_length? remaining_values_in_block : miniblock_length;
-    byte_array_reader.readPackedInts64(miniblock_buffer, width, length);
-    miniblock_position = 0;
+    currentMiniblockIndex += 1;
+    int width = miniblockBitWidths[currentMiniblockIndex];
+    int length = remainingValuesInBlock < miniblockLength? remainingValuesInBlock : miniblockLength;
+    byteArrayReader.readPackedInts64(miniblockBuffer, width, length);
+    miniblockPosition = 0;
   }
 
   private void initNextBlock() {
-    block_length = byte_array_reader.readUInt();
-    num_miniblocks = byte_array_reader.readUInt();
-    miniblock_length = num_miniblocks > 0? block_length / num_miniblocks : 0;
-    remaining_values_in_block = byte_array_reader.readUInt();
-    miniblock_position = -1;
-    current_miniblock_index = -1;
-    block_current_value = BigInteger.valueOf(byte_array_reader.readSLong());
-    if (num_miniblocks > 0) {
-      block_min_delta = byte_array_reader.readSIntVLQ();
-      for (int i=0; i<num_miniblocks; ++i) {
-        miniblock_bit_widths[i] = (int)byte_array_reader.readByte() & 0xff;
+    blockLength = byteArrayReader.readUInt();
+    numMiniblocks = byteArrayReader.readUInt();
+    miniblockLength = numMiniblocks > 0? blockLength / numMiniblocks : 0;
+    remainingValuesInBlock = byteArrayReader.readUInt();
+    miniblockPosition = -1;
+    currentMiniblockIndex = -1;
+    blockCurrentValue = BigInteger.valueOf(byteArrayReader.readSLong());
+    if (numMiniblocks > 0) {
+      blockMinDelta = byteArrayReader.readSIntVLQ();
+      for (int i=0; i<numMiniblocks; ++i) {
+        miniblockBitWidths[i] = (int)byteArrayReader.readByte() & 0xff;
       }
     }
   }

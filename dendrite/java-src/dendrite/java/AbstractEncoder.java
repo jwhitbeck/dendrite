@@ -2,17 +2,17 @@ package dendrite.java;
 
 public abstract class AbstractEncoder implements Encoder {
 
-  protected final ByteArrayWriter byte_array_writer;
-  protected int num_values = 0;
+  protected final ByteArrayWriter byteArrayWriter;
+  protected int numValues = 0;
 
   public AbstractEncoder() {
-    byte_array_writer = new ByteArrayWriter();
+    this.byteArrayWriter = new ByteArrayWriter();
   }
 
   @Override
   public void reset() {
-    num_values = 0;
-    byte_array_writer.reset();
+    numValues = 0;
+    byteArrayWriter.reset();
   }
 
   @Override
@@ -20,7 +20,7 @@ public abstract class AbstractEncoder implements Encoder {
 
   @Override
   public int length() {
-    return ByteArrayWriter.getNumUIntBytes(num_values) +  byte_array_writer.length();
+    return ByteArrayWriter.getNumUIntBytes(numValues) +  byteArrayWriter.length();
   }
 
   @Override
@@ -31,13 +31,13 @@ public abstract class AbstractEncoder implements Encoder {
   @Override
   public void flush(final ByteArrayWriter baw) {
     finish();
-    baw.writeUInt(num_values);
-    byte_array_writer.flush(baw);
+    baw.writeUInt(numValues);
+    byteArrayWriter.flush(baw);
   }
 
   @Override
   public int numEncodedValues() {
-    return num_values;
+    return numValues;
   }
 
 }

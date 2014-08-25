@@ -184,19 +184,19 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
 
   public final static class KeywordIndexHashMap {
 
-    final long[] hash_array;
+    final long[] hashArray;
     final Keyword[] kws;
     final int mask;
-    final static long hasheq_mask  = 0x00000000ffffffffL;
-    final static long idx_mask     = 0x7fffffff00000000L;
-    final static long presence_bit = 0x8000000000000000L;
+    final static long hasheqMask  = 0x00000000ffffffffL;
+    final static long idxMask     = 0x7fffffff00000000L;
+    final static long presenceBit = 0x8000000000000000L;
     final static KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(null);
 
     public KeywordIndexHashMap(final IPersistentCollection keywords) {
       int cnt = RT.count(keywords);
       kws = new Keyword[cnt];
       int size = hashArraySize(cnt);
-      hash_array = new long[size];
+      hashArray = new long[size];
       mask = size - 1;
       SeqIterator si = new SeqIterator(RT.seq(keywords));
       long i = 0;
@@ -210,38 +210,38 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
 
     private void insert(final Keyword k, final long i) {
       int hasheq = k.hasheq();
-      long hv = presence_bit | ((long) hasheq & hasheq_mask) | ((i << 32) & idx_mask);
+      long hv = presenceBit | ((long) hasheq & hasheqMask) | ((i << 32) & idxMask);
       int j = hasheq & mask;
-      while (hash_array[j] != 0){
-        if ((int)(hash_array[j] & hasheq_mask) == hasheq) {
+      while (hashArray[j] != 0){
+        if ((int)(hashArray[j] & hasheqMask) == hasheq) {
           throw new IllegalArgumentException("Duplicate key " + k);
         }
         j = (j + 1) & mask;
       }
-      hash_array[j] = hv;
+      hashArray[j] = hv;
     }
 
     public int get(final Keyword k) {
       int hasheq = k.hasheq();
-      long lhasheq = ((long)hasheq) & hasheq_mask;
+      long lhasheq = ((long)hasheq) & hasheqMask;
       int j = hasheq & mask;
-      long hv = hash_array[j];
+      long hv = hashArray[j];
       if (hv == 0){
         return -1;
       }
-      while ((hv & hasheq_mask) != lhasheq) {
+      while ((hv & hasheqMask) != lhasheq) {
         j = (j + 1) & mask;
-        hv = hash_array[j];
+        hv = hashArray[j];
         if (hv == 0) {
           return -1;
         }
       }
-      return (int)((hv & idx_mask) >>> 32);
+      return (int)((hv & idxMask) >>> 32);
     }
 
-    private static int hashArraySize(final int kw_cnt) {
+    private static int hashArraySize(final int kwCnt) {
       int s = 1;
-      while (s < kw_cnt) {
+      while (s < kwCnt) {
         s <<= 1;
       }
       return s <<= 1;

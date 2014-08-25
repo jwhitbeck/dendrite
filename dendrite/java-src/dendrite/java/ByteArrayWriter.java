@@ -24,9 +24,9 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
   }
 
   private void grow() {
-    byte[] new_buffer = new byte[buffer.length << 1];
-    System.arraycopy(buffer, 0, new_buffer, 0, buffer.length);
-    buffer = new_buffer;
+    byte[] newBuffer = new byte[buffer.length << 1];
+    System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+    buffer = newBuffer;
   }
 
   public void ensureRemainingCapacity(final int capacity) {
@@ -58,13 +58,13 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
   }
 
   public static int getNumUIntBytes(final int i) {
-    int num_bytes = 0;
+    int numBytes = 0;
     int v = i;
     do {
-      num_bytes += 1;
+      numBytes += 1;
       v >>>= 7;
     } while (v != 0);
-    return num_bytes;
+    return numBytes;
   }
 
   public void writeUInt(final int i) {
@@ -121,28 +121,28 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
   }
 
   public void writeBigInt(final BigInteger bi) {
-    byte[] int_as_bytes = bi.toByteArray();
-    writeUInt(int_as_bytes.length);
-    writeByteArray(int_as_bytes);
+    byte[] intAsBytes = bi.toByteArray();
+    writeUInt(intAsBytes.length);
+    writeByteArray(intAsBytes);
   }
 
   public void writeUIntVLQ(final BigInteger bi) {
-    byte[] int_as_bytes = bi.toByteArray();
-    int num_bytes = int_as_bytes.length;
-    int byte_buffer = 0;
+    byte[] intAsBytes = bi.toByteArray();
+    int numBytes = intAsBytes.length;
+    int byteBuffer = 0;
     int shift = 0;
-    for (int i=num_bytes-1; i>=0; --i) {
-      int value = int_as_bytes[i] & 0xff;
-      int bit_width = i==0? getBitWidth(value) : 8;
-      byte_buffer |= value << shift;
-      shift += bit_width;
+    for (int i=numBytes-1; i>=0; --i) {
+      int value = intAsBytes[i] & 0xff;
+      int bitWidth = i==0? getBitWidth(value) : 8;
+      byteBuffer |= value << shift;
+      shift += bitWidth;
       while (shift >= 7) {
-        writeByte((byte)((byte_buffer & 0x7f) | 0x80));
-        byte_buffer >>>= 7;
+        writeByte((byte)((byteBuffer & 0x7f) | 0x80));
+        byteBuffer >>>= 7;
         shift -= 7;
       }
     }
-    writeByte((byte)byte_buffer);
+    writeByte((byte)byteBuffer);
   }
 
   public static BigInteger encodeZigZag(final BigInteger bi) {
@@ -182,10 +182,10 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
   }
 
   public void writeByteArray(final byte[] bytes, final int offset, final int length) {
-    int buffer_length = buffer.length;
-    while (position + length > buffer_length) {
+    int bufferLength = buffer.length;
+    while (position + length > bufferLength) {
       grow();
-      buffer_length <<= 1;
+      bufferLength <<= 1;
     }
     System.arraycopy(bytes, offset, buffer, position, length);
     position += length;
@@ -201,12 +201,12 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
 
   public void writePackedInt(final int i, final int width) {
     final int mask = (width == 32)? -1 : ~((-1) << width);
-    int current_byte = i & mask;
-    int remaining_width = width;
-    while (remaining_width > 0) {
-      writeByte((byte) current_byte);
-      current_byte >>>= 8;
-      remaining_width -= 8;
+    int currentByte = i & mask;
+    int remainingWidth = width;
+    while (remainingWidth > 0) {
+      writeByte((byte) currentByte);
+      currentByte >>>= 8;
+      remainingWidth -= 8;
     }
   }
 
@@ -228,18 +228,18 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
                                             final int offset, final int length) {
     final int mask = ~((-1) << width);
     int shift = 0;
-    int current_byte = 0;
+    int currentByte = 0;
     for (int i=offset; i<offset+length; ++i) {
-      current_byte |= (ints[i] & mask) << shift;
+      currentByte |= (ints[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte) current_byte);
-        current_byte >>>= 8;
+        writeByte((byte) currentByte);
+        currentByte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte) current_byte);
+      writeByte((byte) currentByte);
     }
   }
 
@@ -247,18 +247,18 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
                                            final int offset, final int length) {
     final long mask = ~((long)-1 << width);
     int shift = 0;
-    long current_byte = 0;
+    long currentByte = 0;
     for (int i=offset; i<offset+length; ++i) {
-      current_byte |= ((long)ints[i] & mask) << shift;
+      currentByte |= ((long)ints[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte) current_byte);
-        current_byte >>>= 8;
+        writeByte((byte) currentByte);
+        currentByte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte) current_byte);
+      writeByte((byte) currentByte);
     }
   }
 
@@ -280,18 +280,18 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
                                             final int offset, final int length) {
     final long mask = ~(((long)-1) << width);
     int shift = 0;
-    long current_byte = 0;
+    long currentByte = 0;
     for (int i=offset; i<offset+length; ++i) {
-      current_byte |= (longs[i] & mask) << shift;
+      currentByte |= (longs[i] & mask) << shift;
       shift += width;
       while (shift >= 8) {
-        writeByte((byte) current_byte);
-        current_byte >>>= 8;
+        writeByte((byte) currentByte);
+        currentByte >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte) current_byte);
+      writeByte((byte) currentByte);
     }
   }
 
@@ -299,21 +299,21 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
                                            final int offset, final int length) {
     final long mask = width==64? (long)-1 : ~(((long)-1) << width);
     int shift = 0;
-    long current_byte_hi = 0;
-    long current_byte_lo = 0;
+    long currentByteHi = 0;
+    long currentByteLo = 0;
     for (int i=offset; i<offset+length; ++i) {
-      current_byte_lo |= (longs[i] & mask) << shift;
-      current_byte_hi = shift == 0? 0 : (longs[i] & mask) >>> (64 - shift);
+      currentByteLo |= (longs[i] & mask) << shift;
+      currentByteHi = shift == 0? 0 : (longs[i] & mask) >>> (64 - shift);
       shift += width;
       while (shift >= 8) {
-        writeByte((byte) current_byte_lo);
-        current_byte_lo = (current_byte_hi << 56) | (current_byte_lo >>> 8);
-        current_byte_hi >>>= 8;
+        writeByte((byte) currentByteLo);
+        currentByteLo = (currentByteHi << 56) | (currentByteLo >>> 8);
+        currentByteHi >>>= 8;
         shift -= 8;
       }
     }
     if (shift > 0) {
-      writeByte((byte) current_byte_lo);
+      writeByte((byte) currentByteLo);
     }
   }
 
@@ -330,15 +330,15 @@ public class ByteArrayWriter implements Flushable, Resetable, Lengthable {
     flushable.flush(this);
   }
 
-  public void write(final ByteBuffer byte_buffer) {
-    int buffer_length = buffer.length;
-    int new_data_length = byte_buffer.limit() - byte_buffer.position();
-    while (position + new_data_length > buffer_length) {
+  public void write(final ByteBuffer byteBuffer) {
+    int bufferLength = buffer.length;
+    int newDataLength = byteBuffer.limit() - byteBuffer.position();
+    while (position + newDataLength > bufferLength) {
       grow();
-      buffer_length <<= 1;
+      bufferLength <<= 1;
     }
-    byte_buffer.get(buffer, position, new_data_length);
-    position += new_data_length;
+    byteBuffer.get(buffer, position, newDataLength);
+    position += newDataLength;
   }
 
 }

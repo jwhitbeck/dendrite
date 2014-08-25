@@ -8,7 +8,7 @@ public class FloatPlainDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    return byte_array_reader.readFloat();
+    return byteArrayReader.readFloat();
   }
 
 }

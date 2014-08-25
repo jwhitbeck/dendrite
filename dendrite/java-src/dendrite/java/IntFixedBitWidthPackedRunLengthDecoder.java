@@ -3,10 +3,10 @@ package dendrite.java;
 public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractDecoder {
 
   private final int[] octuplet = new int[8];
-  private int octuplet_position = 8;
-  private int num_octoplets_to_read = 0;
-  private int rle_value = 0;
-  private int num_rle_values_to_read = 0;
+  private int octupletPosition = 8;
+  private int numOctopletsToRead = 0;
+  private int rleValue = 0;
+  private int numRleValuesToRead = 0;
   private final int width;
 
   public IntFixedBitWidthPackedRunLengthDecoder(final ByteArrayReader baw, final int width) {
@@ -16,9 +16,9 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    if (num_rle_values_to_read > 0) {
+    if (numRleValuesToRead > 0) {
       return decodeFromRLEValue();
-    } else if (octuplet_position < 8) {
+    } else if (octupletPosition < 8) {
       return decodeFromOctuplet();
     } else {
       bufferNextRun();
@@ -27,37 +27,37 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractDecoder {
   }
 
   private int decodeFromOctuplet() {
-    int v = octuplet[octuplet_position];
-    octuplet_position += 1;
-    if (octuplet_position == 8 && num_octoplets_to_read > 0) {
+    int v = octuplet[octupletPosition];
+    octupletPosition += 1;
+    if (octupletPosition == 8 && numOctopletsToRead > 0) {
       bufferNextOctuplet();
     }
     return v;
   }
 
   private int decodeFromRLEValue() {
-    num_rle_values_to_read -= 1;
-    return rle_value;
+    numRleValuesToRead -= 1;
+    return rleValue;
   }
 
   private void bufferNextOctuplet() {
-    byte_array_reader.readPackedInts32(octuplet, width, 8);
-    num_octoplets_to_read -= 1;
-    octuplet_position = 0;
+    byteArrayReader.readPackedInts32(octuplet, width, 8);
+    numOctopletsToRead -= 1;
+    octupletPosition = 0;
   }
 
-  private void bufferNextRLERun(final int num_occurences_rle_value) {
-    num_rle_values_to_read = num_occurences_rle_value;
-    rle_value = byte_array_reader.readPackedInt(width);
+  private void bufferNextRLERun(final int numOccurencesRleValue) {
+    numRleValuesToRead = numOccurencesRleValue;
+    rleValue = byteArrayReader.readPackedInt(width);
   }
 
-  private void bufferNextPackedIntRun(final int num_octuplets) {
-    num_octoplets_to_read = num_octuplets;
+  private void bufferNextPackedIntRun(final int numOctuplets) {
+    numOctopletsToRead = numOctuplets;
     bufferNextOctuplet();
   }
 
   private void bufferNextRun() {
-    int n = byte_array_reader.readUInt();
+    int n = byteArrayReader.readUInt();
     if ((n & 1) == 1) {
       bufferNextPackedIntRun(n >>> 1);
     } else {
