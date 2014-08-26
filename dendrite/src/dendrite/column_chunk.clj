@@ -297,7 +297,7 @@
         best-compression
           (->> (dissoc compressed-lengths-map :none)
                (filter (fn [[compression length]]
-                         (<= (/ length no-compression-length) (get candidates-treshold-map compression))))
+                         (>= (/ no-compression-length length) (get candidates-treshold-map compression))))
                (sort-by val)
                ffirst)]
     (or best-compression :none)))

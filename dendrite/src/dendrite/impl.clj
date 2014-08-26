@@ -39,7 +39,7 @@
   {:target-record-group-length (* 256 1024 1024)  ; 256 MB
    :target-data-page-length (* 128 1024)          ; 128 KB
    :optimize-columns? nil
-   :compression-thresholds {:lz4 0.9 :deflate 0.7}
+   :compression-thresholds {:lz4 1.2 :deflate 1.5}
    :invalid-input-handler nil
    :custom-types nil})
 
