@@ -232,7 +232,7 @@
       (is (= (read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
   (testing "incrementing dates as a custom-type"
-    (let [cs (column-spec-required :date :plain :none)
+    (let [cs (column-spec-required :inst :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (rand-blocks cs) (take 1000))]
       (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
         (is (= (read reader) input-blocks))

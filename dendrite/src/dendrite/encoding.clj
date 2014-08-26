@@ -151,7 +151,7 @@
 
 (defn ratio [r] (if (ratio? r) r (Ratio. (bigint r) BigInteger/ONE)))
 
-(defn date [d]
+(defn inst [d]
   (if-not (instance? Date d)
     (throw (IllegalArgumentException. (format "%s is not an instance of java.util.Date." d)))
     d))
@@ -203,8 +203,8 @@
                               :coercion-fn str
                               :to-base-type-fn str->utf8-bytes
                               :from-base-type-fn utf8-bytes->str})
-   :date (map->DerivedType {:base-type :long
-                            :coercion-fn date
+   :inst (map->DerivedType {:base-type :long
+                            :coercion-fn inst
                             :to-base-type-fn (fn [^Date d] (.getTime d))
                             :from-base-type-fn (fn [^long l] (Date. l))})
    :uuid (map->DerivedType {:base-type :fixed-length-byte-array
