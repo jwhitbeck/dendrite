@@ -23,6 +23,12 @@
 (set! *warn-on-reflection* true)
 
 (defn col
+  "Returns a column specification. Takes one to three arguments:
+  - type:        the column type symbol (e.g. int)
+  - encoding:    the column encoding symbol (default: plain)
+  - compression: the column compression symbol (default: none)
+
+  See README for all supported encoding/compression types."
   ([type]
      (map->column-spec-with-defaults {:type (keyword type)}))
   ([type encoding]
@@ -52,9 +58,13 @@
   (.write w "#req ")
   (print-method (:field v) w))
 
-(def req ->RequiredField)
+(def req
+  "Marks the enclosed schema element as required."
+  ->RequiredField)
 
-(defn read-string [s]
+(defn read-string
+  "Parse an edn-formatted dendrite string."
+  [s]
   (edn/read-string {:readers {'req ->RequiredField
                               'col metadata/read-column-spec}}
                    s))
@@ -271,7 +281,10 @@
   (.write w (format "#%s " (-> v :tag name)))
   (print-method (:field v) w))
 
-(def tag ->TaggedField)
+(def tag
+  "Tags the enclosed query element with the provided tag. Meant to be used in combination with the :readers
+  option."
+  ->TaggedField)
 
 (defn read-query-string [query-string]
   (edn/read-string {:default tag} query-string))
@@ -412,7 +425,10 @@
   (.write *out* "#req ")
   (pprint/simple-dispatch (:field required-field)))
 
-(defn pretty [unparsed-schema]
+(defn pretty
+  "Returns a pretty-printed string serialization of the provided schema. Useful for saving a schema in a
+  separate file."
+  [schema]
   (with-open [sw (StringWriter.)]
-    (pprint/pprint unparsed-schema sw)
+    (pprint/pprint schema sw)
     (str sw)))

@@ -22,6 +22,7 @@
 
 (defalias write! impl/write!)
 (defalias set-metadata! impl/set-metadata!)
+(defalias update-metadata! impl/set-metadata!)
 (defalias byte-buffer! impl/byte-buffer!)
 
 (defalias read impl/read)

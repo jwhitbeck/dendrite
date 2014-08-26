@@ -136,13 +136,20 @@
   (parse-options default-read-options parse-read-option opts))
 
 (defprotocol IWriter
-  (write! [_ record]))
+  (write! [_ record]
+    "Write a single record to this writer. Returns the writer."))
 
 (defprotocol IReader
   (read* [_ opts])
-  (stats [_])
-  (metadata [_])
-  (schema [_]))
+  (stats [_]
+    "Returns a map containing all the stats associated with this reader. The tree top-level keys
+    are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
+    summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging
+    to the same column.")
+  (metadata [_]
+    "Returns the user-defined metadata for this reader.")
+  (schema [_]
+    "Returns this reader's schema."))
 
 (defprotocol IBackendWriter
   (flush-record-group! [_ record-group-writer])
@@ -288,10 +295,14 @@
                  (close-writer! backend-writer)))))
       (reset! closed true))))
 
-(defn set-metadata! [writer metadata]
+(defn set-metadata!
+  "Sets the user-defined metadata of the provided writer."
+  [writer metadata]
   (swap! (:metadata-atom writer) assoc :custom metadata))
 
-(defn update-metadata! [writer f & args]
+(defn update-metadata!
+  "Updates the user-defined metadata of the provided writer to (apply f current-metadata args)."
+  [writer f & args]
   (swap! (:metadata-atom writer) update-in [:custom] #(apply f % args)))
 
 (defn- writer [backend-writer schema options]
@@ -323,17 +334,40 @@
         :closed (atom false)}))))
 
 (defn byte-buffer-writer
+  "Returns a dendrite writer that outputs to a byte-buffer. schema should be a valid dendrite schema. The
+  optional options map support the same options as for file-writer."
   (^java.io.Closeable [schema] (byte-buffer-writer nil schema))
   (^java.io.Closeable [options schema]
      (writer (byte-array-backend-writer) schema options)))
 
-(defn byte-buffer! ^java.nio.ByteBuffer [^Closeable writer]
+(defn byte-buffer!
+  "Closes a byte-buffer writer and returns a java.nio.ByteBuffer containing the full dendrite serialization."
+  ^java.nio.ByteBuffer [^Closeable writer]
   (if-let [^ByteArrayWriter byte-array-writer (get-in writer [:backend-writer :byte-array-writer])]
     (do (.close writer)
         (ByteBuffer/wrap (.buffer byte-array-writer) 0 (.position byte-array-writer)))
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
 
 (defn file-writer
+  "Returns a dendrite writer that outputs to a file. schema should be a valid dendrite schema and filename
+  the path to the file to output to.
+
+  If provided, the options map supports the following keys:
+  :target-data-page-length    - the target length in bytes of the data pages (default 131072)
+  :target-record-group-length - the target length in bytes of each record group (default 268435456)
+  :optimize-columns?          - either true, false or nil. If true, will try each encoding/compression pair
+                                and select the most efficient one (subject to the :compression-thresholds).
+                                If nil (default), will only optimize if all the columns are in the default
+                                encoding/compression. If false, will never optimize the columns.
+  :compression-thresholds     - a map of compression method (e.g., :lz4) to the minimum compression ratio
+                                (e.g., 2) below which the overhead of compression is not not deemed
+                                worthwhile. Default: {:lz4 1.2 :deflate 1.5}
+  :invalid-input-handler      - a function with two arguments: record and exception. If an input record does
+                                not conform to the schema, it will be passed to this function along with the
+                                exception it triggered. By default, this option is nil and exceptions
+                                triggered by invalid records are not caught.
+  :custom-types               - a map of of custom-type symbol to custom-type specification. See README for
+                                full explanation."
   (^java.io.Closeable [schema filename] (file-writer nil schema filename))
   (^java.io.Closeable [options schema filename]
      (writer (file-channel-backend-writer filename) schema options)))
@@ -427,21 +461,46 @@
                        encoding/type-store)})))
 
 (defn byte-buffer-reader
+  "Returns a dendrite reader for the provided java.nio.ByteBuffer.
+
+  If provided, the options map supports the following keys:
+  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See README for
+                   full explanation."
   (^java.io.Closeable [^ByteBuffer byte-buffer] (byte-buffer-reader nil byte-buffer))
   (^java.io.Closeable [options ^ByteBuffer byte-buffer]
      (reader (->ByteBufferBackendReader byte-buffer) options)))
 
 (defn file-reader
-  (^java.io.Closeable [f] (file-reader nil f))
-  (^java.io.Closeable [options f]
-     (let [file-channel (utils/file-channel f :read)
+  "Returns a dendrite reader for the provided filename.
+
+  If provided, the options map supports the following keys:
+  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See README for
+                   full explanation."
+  (^java.io.Closeable [filename] (file-reader nil filename))
+  (^java.io.Closeable [options filename]
+     (let [file-channel (utils/file-channel filename :read)
            mapped-byte-buffer (utils/map-file-channel file-channel)]
        (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options))))
 
 (defn read
+  "Returns a lazy-seq of all the records in the reader.
+
+  If provided, the options map supports the following keys:
+  :missing-fields-as-nil? - should be true (default) or false. If true, then fields that are specified in the
+                            query but are not present in this reader's schema will be read as nil values. If
+                            false, querying for fields not present in the schema will throw an exception.
+  :query                  - the query. Default: '_. See README for full explanation.
+  :readers                - a map of query tag symbol to tag function. Default: nil. See README for full
+                            explanantion."
   ([reader] (read nil reader))
   ([options reader]
      (read* reader options)))
 
-(defn pmap [f reader & {:as opts}]
-  (read* reader (assoc opts :pmap-fn f)))
+(defn pmap
+  "Like read but applies the function f to all queried records. Convenience function that leverages the query
+  tagging functionality. Since it applies f as part of the parallelized record assembly, it is likely more
+  efficient to calling (map f ..) or (pmap f ..) outside of dendrite. If provided, the options map supports
+  the same options as read."
+  ([f reader] (pmap nil f reader))
+  ([options f reader]
+     (read* reader (assoc options :pmap-fn f))))
