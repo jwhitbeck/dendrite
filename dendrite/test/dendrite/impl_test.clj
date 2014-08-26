@@ -54,7 +54,7 @@
 
 (deftest file-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))]
-    (with-open [w (file-writer tmp-filename (-> helpers/test-schema-str schema/read-string))]
+    (with-open [w (file-writer (-> helpers/test-schema-str schema/read-string) tmp-filename)]
       (reduce write! w records))
     (testing "full schema"
       (is (= records (with-open [r (file-reader tmp-filename)]
@@ -70,8 +70,8 @@
         test-schema (-> helpers/test-schema-str schema/read-string)]
     (with-open [w (file-writer {:optimize-columns? true
                                 :compression-thresholds {}}
-                               tmp-filename
-                               test-schema)]
+                               test-schema
+                               tmp-filename)]
       (reduce write! w records))
     (testing "schema is indeed optimized"
       (is (= (str "{:docid #req #col [long delta],"
@@ -152,12 +152,12 @@
       (is (thrown-with-msg?
            Exception #"foo"
            (with-redefs [dendrite.record-group/write-byte-buffer (constantly (Exception. "foo"))]
-             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+             (with-open [w (file-writer (-> dremel-paper-schema-str schema/read-string) tmp-filename)]
                (write! w dremel-paper-record1)))))
       (is (thrown-with-msg?
            Exception #"foo"
            (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer throw-foo-fn]
-             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+             (with-open [w (file-writer (-> dremel-paper-schema-str schema/read-string) tmp-filename)]
                (write! w dremel-paper-record1))))))
     (io/delete-file tmp-filename))
   (testing "exceptions in the reading thread are caught in the main thread"
@@ -170,7 +170,7 @@
       (is (thrown-with-msg?
            Exception #"foo"
            (with-redefs [dendrite.record-group/byte-buffer-reader throw-foo-fn]
-             (with-open [w (file-writer tmp-filename (-> dremel-paper-schema-str schema/read-string))]
+             (with-open [w (file-writer (-> dremel-paper-schema-str schema/read-string) tmp-filename)]
                (write! w dremel-paper-record1))
              (with-open [r (file-reader tmp-filename)]
                (read r)))))

@@ -334,8 +334,8 @@
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
 
 (defn file-writer
-  (^java.io.Closeable [filename schema] (file-writer nil filename schema))
-  (^java.io.Closeable [options filename schema]
+  (^java.io.Closeable [schema filename] (file-writer nil schema filename))
+  (^java.io.Closeable [options schema filename]
      (writer (file-channel-backend-writer filename) schema options)))
 
 (defn- record-group-offsets [record-groups-metadata offset]
