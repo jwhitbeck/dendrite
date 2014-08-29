@@ -36,7 +36,7 @@
   (= magic-str (utils/byte-buffer->str bb)))
 
 (def default-writer-options
-  {:target-record-group-length (* 256 1024 1024)  ; 256 MB
+  {:target-record-group-length (* 128 1024 1024)  ; 128 MB
    :target-data-page-length (* 128 1024)          ; 128 KB
    :optimize-columns? nil
    :compression-thresholds {:lz4 1.2 :deflate 1.5}
