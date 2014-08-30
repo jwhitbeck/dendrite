@@ -259,10 +259,14 @@
     (->DataColumnChunkReader byte-array-reader column-chunk-metadata type-store column-spec)))
 
 (defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length type-store]
-  (let [w (reduce write!
-                  (writer target-data-page-length type-store new-colum-spec)
-                  (read column-chunk-reader))]
-    (.length (doto ^BufferedByteArrayWriter w .finish))))
+  (let [^BufferedByteArrayWriter w (reduce write!
+                                           (writer target-data-page-length type-store new-colum-spec)
+                                           (read column-chunk-reader))]
+    (.finish w)
+    (if (and (= :dictionary (:encoding new-colum-spec))
+             (> (-> w metadata :data-page-offset) target-data-page-length))
+      Long/MAX_VALUE                    ;      Disqualify dictionary encoding if the dictionnary is too long.
+      (.length w))))
 
 (defn find-best-encoding [column-chunk-reader target-data-page-length]
   (let [ct (-> column-chunk-reader :column-spec (assoc :compression :none))

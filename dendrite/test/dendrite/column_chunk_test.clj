@@ -343,7 +343,7 @@
       (is (= :plain (find-best-encoding* reader)))))
   (testing "small selection of random byte arrays"
     (let [cs (column-spec-required :fixed-length-byte-array :plain :none)
-          rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
+          rand-byte-arrays (repeatedly 10 #(helpers/rand-byte-array 16))
           input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (rand-blocks cs) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (every? true? (map helpers/byte-array=
@@ -379,7 +379,7 @@
                             (take 5000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (assoc cs
-               :encoding :dictionary
+               :encoding :delta-length
                :compression :deflate)
              (find-best-column-spec reader test-target-data-page-length {:lz4 0.8 :deflate 0.5}))))))
 
