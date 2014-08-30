@@ -96,7 +96,7 @@
   (let [test-custom-metadata {:foo {:bar "test"} :baz [1 2 3]}
         writer (doto (dremel-paper-writer)
                  (set-metadata! test-custom-metadata)
-                 (update-metadata! assoc :more "foo"))
+                 (swap-metadata! assoc :more "foo"))
         byte-buffer (byte-buffer! writer)]
     (is (= (assoc test-custom-metadata :more "foo") (-> byte-buffer byte-buffer-reader metadata)))))
 

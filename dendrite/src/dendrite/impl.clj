@@ -300,7 +300,7 @@
   [writer metadata]
   (swap! (:metadata-atom writer) assoc :custom metadata))
 
-(defn update-metadata!
+(defn swap-metadata!
   "Updates the user-defined metadata of the provided writer to (apply f current-metadata args)."
   [writer f & args]
   (swap! (:metadata-atom writer) update-in [:custom] #(apply f % args)))
