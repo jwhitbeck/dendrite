@@ -37,7 +37,7 @@
 
 (def default-writer-options
   {:record-group-length (* 128 1024 1024) ; 128 MB
-   :data-page-length (* 128 1024)         ; 128 KB
+   :data-page-length (* 256 1024)         ; 256 KB
    :optimize-columns? nil
    :compression-thresholds {:lz4 1.2 :deflate 1.5}
    :invalid-input-handler nil
@@ -353,7 +353,7 @@
   the path to the file to output to.
 
   If provided, the options map supports the following keys:
-  :data-page-length        - the length in bytes of the data pages (default 131072)
+  :data-page-length        - the length in bytes of the data pages (default 262144)
   :record-group-length     - the length in bytes of each record group (default 134217728)
   :optimize-columns?       - either true, false or nil. If true, will try each encoding/compression pair and
                              select the most efficient one (subject to the :compression-thresholds).
