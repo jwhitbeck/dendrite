@@ -371,7 +371,6 @@
 (deftest find-best-column-types
   (testing "lorem ispum permutations"
     (let [cs (column-spec-required :string :plain :none)
-          rand-byte-arrays (repeatedly 100 #(helpers/rand-byte-array 16))
           lorem-ipsum-words (-> helpers/lorem-ipsum (string/split #" ") set)
           lorem-ipsum-shuffles (repeatedly 100 #(->> lorem-ipsum-words shuffle (apply str)))
           input-blocks (->> #(rand-nth lorem-ipsum-shuffles)
