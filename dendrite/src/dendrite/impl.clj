@@ -36,8 +36,8 @@
   (= magic-str (utils/byte-buffer->str bb)))
 
 (def default-writer-options
-  {:target-record-group-length (* 128 1024 1024)  ; 128 MB
-   :target-data-page-length (* 128 1024)          ; 128 KB
+  {:record-group-length (* 128 1024 1024) ; 128 MB
+   :data-page-length (* 128 1024)         ; 128 KB
    :optimize-columns? nil
    :compression-thresholds {:lz4 1.2 :deflate 1.5}
    :invalid-input-handler nil
@@ -57,15 +57,15 @@
 
 (defn- parse-writer-option [k v]
   (case k
-    :target-record-group-length
+    :record-group-length
     (if-not (and (number? v) (pos? (long v)))
       (throw (IllegalArgumentException.
-              (format ":target-record-group-length expects a positive integer but got '%s'." v)))
+              (format ":record-group-length expects a positive integer but got '%s'." v)))
       (long v))
-    :target-data-page-length
+    :data-page-length
     (if-not (and (number? v) (pos? v))
       (throw (IllegalArgumentException.
-              (format ":target-data-page-length expects a positive integer but got '%s'." v)))
+              (format ":data-page-length expects a positive integer but got '%s'." v)))
       (long v))
     :optimize-columns?
     (if-not ((some-fn utils/boolean? nil?) v)
@@ -306,13 +306,13 @@
   (swap! (:metadata-atom writer) update-in [:custom] #(apply f % args)))
 
 (defn- writer [backend-writer schema options]
-  (let [{:keys [target-record-group-length target-data-page-length optimize-columns? custom-types
+  (let [{:keys [record-group-length data-page-length optimize-columns? custom-types
                 compression-thresholds invalid-input-handler]} (parse-writer-options options)]
     (let [parsed-custom-types (keywordize-custom-types custom-types)
           type-store (encoding/type-store parsed-custom-types)
           parsed-schema (schema/parse schema type-store)
           writing-queue (LinkedBlockingQueue. 100)
-          record-group-writer (record-group/writer target-data-page-length
+          record-group-writer (record-group/writer data-page-length
                                                    type-store
                                                    (schema/column-specs parsed-schema))
           optimize? (or optimize-columns? (all-default-column-specs? parsed-schema))
@@ -326,7 +326,7 @@
                                    (remove nil?)
                                    (write-striped-records record-group-writer
                                                           backend-writer
-                                                          target-record-group-length
+                                                          record-group-length
                                                           optimize?
                                                           compression-thresholds)))
         :backend-writer backend-writer
@@ -353,21 +353,21 @@
   the path to the file to output to.
 
   If provided, the options map supports the following keys:
-  :target-data-page-length    - the target length in bytes of the data pages (default 131072)
-  :target-record-group-length - the target length in bytes of each record group (default 268435456)
-  :optimize-columns?          - either true, false or nil. If true, will try each encoding/compression pair
-                                and select the most efficient one (subject to the :compression-thresholds).
-                                If nil (default), will only optimize if all the columns are in the default
-                                encoding/compression. If false, will never optimize the columns.
-  :compression-thresholds     - a map of compression method (e.g., :lz4) to the minimum compression ratio
-                                (e.g., 2) below which the overhead of compression is not not deemed
-                                worthwhile. Default: {:lz4 1.2 :deflate 1.5}
-  :invalid-input-handler      - a function with two arguments: record and exception. If an input record does
-                                not conform to the schema, it will be passed to this function along with the
-                                exception it triggered. By default, this option is nil and exceptions
-                                triggered by invalid records are not caught.
-  :custom-types               - a map of of custom-type symbol to custom-type specification. See README for
-                                full explanation."
+  :data-page-length        - the length in bytes of the data pages (default 131072)
+  :record-group-length     - the length in bytes of each record group (default 134217728)
+  :optimize-columns?       - either true, false or nil. If true, will try each encoding/compression pair and
+                             select the most efficient one (subject to the :compression-thresholds).
+                             If nil (default), will only optimize if all the columns are in the default
+                             encoding/compression. If false, will never optimize the columns.
+  :compression-thresholds  - a map of compression method (e.g., :lz4) to the minimum compression ratio
+                             (e.g., 2) below which the overhead of compression is not not deemed worthwhile.
+                             Default: {:lz4 1.2 :deflate 1.5}
+  :invalid-input-handler   - a function with two arguments: record and exception. If an input record does
+                             not conform to the schema, it will be passed to this function along with the
+                             exception it triggered. By default, this option is nil and exceptions
+                             triggered by invalid records are not caught.
+  :custom-types            - a map of of custom-type symbol to custom-type specification. See README for
+                             full explanation."
   (^java.io.Closeable [schema filename] (file-writer nil schema filename))
   (^java.io.Closeable [options schema filename]
      (writer (file-channel-backend-writer filename) schema options)))

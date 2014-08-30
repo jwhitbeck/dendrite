@@ -124,7 +124,7 @@
 (deftest record-group-lengths
   (letfn [(avg-record-group-length [target-length]
             (let [records (take 1000 (helpers/rand-test-records))
-                  writer (->> (byte-buffer-writer {:target-record-group-length target-length}
+                  writer (->> (byte-buffer-writer {:record-group-length target-length}
                                                    (-> helpers/test-schema-str schema/read-string))
                               (#(reduce write! % records)))
                   byte-buffer (byte-buffer! writer)]
@@ -135,7 +135,7 @@
                    butlast
                    (map :length)
                    helpers/avg)))]
-    (testing "record-group lengths are approximately equal to target-record-group-length"
+    (testing "record-group lengths are approximately equal to record-group-length"
       (is (helpers/roughly (* 3 1024) (avg-record-group-length (* 3 1024))))
       (is (helpers/roughly 1024 (avg-record-group-length 1024))))))
 
@@ -270,18 +270,18 @@
   (testing "writer options"
     (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                       (#'dendrite.impl/parse-writer-options opts))
-         {:target-record-group-length "foo"}
-         ":target-record-group-length expects a positive integer but got 'foo'."
-         {:target-record-group-length nil}
-         ":target-record-group-length expects a positive integer but got 'null'."
-         {:target-record-group-length -1.5}
-         ":target-record-group-length expects a positive integer but got '-1.5'."
-         {:target-data-page-length "foo"}
-         ":target-data-page-length expects a positive integer but got 'foo'."
-         {:target-data-page-length nil}
-         ":target-data-page-length expects a positive integer but got 'null'."
-         {:target-data-page-length -1.5}
-         ":target-data-page-length expects a positive integer but got '-1.5'."
+         {:record-group-length "foo"}
+         ":record-group-length expects a positive integer but got 'foo'."
+         {:record-group-length nil}
+         ":record-group-length expects a positive integer but got 'null'."
+         {:record-group-length -1.5}
+         ":record-group-length expects a positive integer but got '-1.5'."
+         {:data-page-length "foo"}
+         ":data-page-length expects a positive integer but got 'foo'."
+         {:data-page-length nil}
+         ":data-page-length expects a positive integer but got 'null'."
+         {:data-page-length -1.5}
+         ":data-page-length expects a positive integer but got '-1.5'."
          {:optimize-columns? "foo"}
          ":optimize-columns\\? expects either true, false, or nil but got 'foo'"
          {:compression-thresholds :lz4}
