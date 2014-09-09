@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.util.Iterator;
 
-public class IntPackedRunLengthDecoder implements Decoder {
+public class IntPackedRunLengthDecoder implements IntDecoder {
 
   private final IntFixedBitWidthPackedRunLengthDecoder int32Decoder;
 
@@ -30,6 +30,11 @@ public class IntPackedRunLengthDecoder implements Decoder {
   }
 
   @Override
+  public int decodeInt() {
+    return int32Decoder.decodeInt();
+  }
+
+  @Override
   public int numEncodedValues() {
     return int32Decoder.numEncodedValues();
   }
@@ -37,5 +42,10 @@ public class IntPackedRunLengthDecoder implements Decoder {
   @Override
   public Iterator iterator() {
     return int32Decoder.iterator();
+  }
+
+  @Override
+  public IntIterator intIterator() {
+    return int32Decoder.intIterator();
   }
 }

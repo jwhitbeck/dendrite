@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractDecoder {
+public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
 
   private final int[] octuplet = new int[8];
   private int octupletPosition = 8;
@@ -27,14 +27,14 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractDecoder {
   }
 
   @Override
-  public Object decode() {
+  public int decodeInt() {
     if (numRleValuesToRead > 0) {
       return decodeFromRLEValue();
     } else if (octupletPosition < 8) {
       return decodeFromOctuplet();
     } else {
       bufferNextRun();
-      return decode();
+      return decodeInt();
     }
   }
 

@@ -12,15 +12,7 @@
 
 package dendrite.java;
 
-public class IntPlainDecoder extends AbstractIntDecoder {
-
-  public IntPlainDecoder(final ByteArrayReader baw) {
-    super(baw);
-  }
-
-  @Override
-  public int decodeInt() {
-    return byteArrayReader.readFixedInt();
-  }
-
+public interface IntIterator {
+  public boolean hasNext();
+  public int next();
 }

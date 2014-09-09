@@ -12,42 +12,30 @@
 
 package dendrite.java;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.ArrayList;
+public abstract class AbstractIntDecoder extends AbstractDecoder implements IntDecoder {
 
-public abstract class AbstractDecoder implements Decoder {
-
-  protected final ByteArrayReader byteArrayReader;
-  protected final int numValues;
-
-  public AbstractDecoder(final ByteArrayReader byteArrayReader) {
-    this.byteArrayReader = byteArrayReader.slice();
-    this.numValues = this.byteArrayReader.readUInt();
+  public AbstractIntDecoder(final ByteArrayReader byteArrayReader) {
+    super(byteArrayReader);
   }
 
   @Override
-  public int numEncodedValues() {
-    return numValues;
+  public Object decode() {
+    return decodeInt();
   }
 
   @Override
-  public Iterator iterator() {
-    return new Iterator() {
+  public IntIterator intIterator() {
+    return new IntIterator() {
       int i = 0;
       @Override
       public boolean hasNext() {
         return i < numValues;
       }
       @Override
-      public Object next() {
-        Object v = decode();
+      public int next() {
+        int v = decodeInt();
         i += 1;
         return v;
-      }
-      @Override
-      public void remove() {
-        throw new UnsupportedOperationException();
       }
     };
   }

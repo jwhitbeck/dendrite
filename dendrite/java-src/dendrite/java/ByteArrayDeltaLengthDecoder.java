@@ -25,14 +25,14 @@ public class ByteArrayDeltaLengthDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    int length = (int)lengthsDecoder.decode();
+    int length = lengthsDecoder.decodeInt();
     byte[] byteArray = new byte[length];
     byteArrayReader.readByteArray(byteArray, 0, length);
     return byteArray;
   }
 
   public void decodeInto(ByteArrayWriter baw) {
-    int length = (int)lengthsDecoder.decode();
+    int length = lengthsDecoder.decodeInt();
     byteArrayReader.readBytes(baw, length);
   }
 

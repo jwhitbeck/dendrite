@@ -28,7 +28,7 @@ public class ByteArrayIncrementalDecoder extends AbstractDecoder {
 
   @Override
   public Object decode() {
-    int prefixLength = (int)prefixLengthsDecoder.decode();
+    int prefixLength = prefixLengthsDecoder.decodeInt();
     buffer.position = prefixLength;
     byteArrayDecoder.decodeInto(buffer);
     byte[] byteArray = new byte[buffer.length()];

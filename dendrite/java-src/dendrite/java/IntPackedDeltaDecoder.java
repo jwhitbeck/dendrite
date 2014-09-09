@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class IntPackedDeltaDecoder extends AbstractDecoder {
+public class IntPackedDeltaDecoder extends AbstractIntDecoder {
 
   private int[] miniblockBuffer = new int[128];
   private int miniblockPosition = 0;
@@ -30,7 +30,7 @@ public class IntPackedDeltaDecoder extends AbstractDecoder {
   }
 
   @Override
-  public Object decode() {
+  public int decodeInt() {
     if (remainingValuesInBlock > 0) {
       if (miniblockPosition == -1) { // read from first value
         miniblockPosition = 0;
@@ -47,7 +47,7 @@ public class IntPackedDeltaDecoder extends AbstractDecoder {
       return (int)blockCurrentValue;
     } else { // no more values in block, load next block
       initNextBlock();
-      return decode();
+      return decodeInt();
     }
   }
 
