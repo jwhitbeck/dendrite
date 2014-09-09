@@ -33,7 +33,7 @@
   ^long [^long idx value target]
   (if (zero? value)
     (inc idx)
-    (let [next-idx (-> (/ target value) (* idx) (- idx) (/ 2) (+ idx) int)]
+    (let [next-idx (-> (/ target value) (* idx) (- idx) (/ 2) (+ idx) long)]
       (if (= next-idx idx)
         (inc next-idx)
         next-idx))))
