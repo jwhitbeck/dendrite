@@ -226,7 +226,7 @@
                                         column-spec]
   IColumnChunkReader
   (read [this]
-    (let [ ^objects dict-array (read-dictionary this)]
+    (let [^objects dict-array (read-dictionary this)]
       (read (->DataColumnChunkReader byte-array-reader
                                      column-chunk-metadata
                                      type-store
