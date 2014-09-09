@@ -1,6 +1,6 @@
 # Dendrite
 
-A high-performance columnar storage format for Clojure.
+A columnar storage format for Clojure.
 
 Dendrite supports all of Clojure's rich datatypes and is designed for complex nested data structures. It
 implements the record shredding and assembly ideas from Google's
