@@ -6,4 +6,6 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [net.jpountz.lz4/lz4 "1.2.0"]
                  [org.clojure/data.fressian "0.2.0"]]
-  :java-source-paths ["java-src"])
+  :java-source-paths ["java-src"]
+  :scm {:name "git"
+        :url "https://github.com/jwhitbeck/dendrite"})
