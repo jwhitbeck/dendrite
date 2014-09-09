@@ -12,11 +12,10 @@
   (:require [dendrite.compression :refer [compressor decompressor-ctor]]
             [dendrite.encoding :refer [levels-encoder levels-decoder encoder decoder-ctor]]
             [dendrite.estimation :as estimation]
-            [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum] :as utils])
   (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter Flushable
-            Compressor Decompressor Encoder Decoder LeveledValue LeveledValues Dictionary])
+            Compressor Decompressor Encoder LeveledValue LeveledValues Dictionary])
   (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
