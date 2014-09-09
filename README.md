@@ -20,6 +20,8 @@ LZ4 compression and `org.clojure/data.fressian` for metadata serialization).
 Word of warning: this code has not yet been battle-tested. Prior to the 1.0 release, no effort will be made at
 preserving backwards compatibility of APIs or binary compatibility of files.
 
+[![Build Status](https://travis-ci.org/jwhitbeck/dendrite.png)](https://travis-ci.org/jwhitbeck/dendrite.png)
+
 ## Basic usage
 
 FIXME
