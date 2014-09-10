@@ -50,6 +50,12 @@
           (reset! next-num-values-for-page-length-check
                   (estimation/next-threshold-check (page/num-values page-writer) estimated-page-length
                                                    target-data-page-length)))))
+    ;; Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are fully
+    ;; realized when read, this can lead to memory issues when deserializng so we cap the total number of
+    ;; values in a page here.
+    (let [max-num-values-per-page target-data-page-length]
+      (when (>= (page/num-values page-writer) max-num-values-per-page)
+        (flush-data-page-writer! this)))
     (page/write! page-writer leveled-values)
     this)
   (metadata [this]
