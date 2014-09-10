@@ -10,7 +10,8 @@
 
 (ns dendrite.assembly
   (:require [dendrite.leveled-value :refer [->LeveledValue]]
-            [dendrite.schema :as schema])
+            [dendrite.schema :as schema]
+            [dendrite.utils :as utils])
   (:import [clojure.lang ArraySeq]
            [dendrite.java LeveledValue PersistentFixedKeysHashMap]))
 
@@ -80,7 +81,7 @@
         ^objects field-ass-fn-array (into-array clojure.lang.IFn field-ass-fns)
         n (count field-names)]
     (fn [^objects leveled-values-array]
-      (let [^objects vals (make-array Object n)]
+      (let [^objects vals (utils/make-object-array n)]
         (loop [i (int 0)]
           (if (= i n)
             (.create fact vals)

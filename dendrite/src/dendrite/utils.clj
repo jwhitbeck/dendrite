@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java Singleton PersistentLinkedSeq]
+           [dendrite.java Array Singleton PersistentLinkedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -96,32 +96,38 @@
     (.get bb chars)
     (String. chars)))
 
+(definline make-object-array
+  "Like (make-array Object n) but doesn't use java.lang.reflect and is 3x faster for small arrays (i.e. with
+  fewer than 10 elements)."
+  [n]
+  `(Array/create (int ~n)))
+
 (defn multiplex [seqs]
-  (letfn [(all-first [^objects seq-array]
-            (let [^objects af (make-array Object (alength seq-array))]
+  (letfn [(all-first [^objects seq-array ^long seq-array-len]
+            (let [^objects af (make-object-array seq-array-len)]
               (loop [i (int 0)]
-                (if (< i (alength seq-array))
+                (if (< i seq-array-len)
                   (do (aset af i (first (aget seq-array i)))
                       (recur (unchecked-inc i)))
                   (seq af)))))
-          (rest! [^objects seq-array]
+          (rest! [^objects seq-array ^long seq-array-len]
             (loop [i (int 0)]
-              (if (< i (alength seq-array))
+              (if (< i seq-array-len)
                 (do (aset seq-array i (rest (aget seq-array i)))
                     (recur (unchecked-inc i)))
                 seq-array)))
-          (step [^objects seq-array]
+          (step [^objects seq-array ^long seq-array-len]
             (lazy-seq
              (when (seq (aget seq-array 0))
                (let [size 32
                      b (chunk-buffer size)]
                  (loop [i 0]
                    (when (and (< i size) (seq (aget seq-array 0)))
-                     (chunk-append b (all-first seq-array))
-                     (rest! seq-array)
+                     (chunk-append b (all-first seq-array seq-array-len))
+                     (rest! seq-array seq-array-len)
                      (recur (inc i))))
-                 (chunk-cons (chunk b) (step seq-array))))))]
-    (step (into-array Object seqs))))
+                 (chunk-cons (chunk b) (step seq-array seq-array-len))))))]
+    (step (into-array Object seqs) (count seqs))))
 
 (definline single [x] `(Singleton. ~x))
 
