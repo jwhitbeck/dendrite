@@ -300,7 +300,6 @@
     :data-compressor (compressor compression)
     :finished? (atom false)}))
 
-
 (defprotocol IDataPageReader
   (read [_] [_ map-fn])
   (skip [_]))
