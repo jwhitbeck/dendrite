@@ -227,14 +227,14 @@
                              :coercion-fn ratio
                              :to-base-type-fn ratio->bytes
                              :from-base-type-fn bytes->ratio})
-   :keyword (map->DerivedType {:base-type :byte-array
+   :keyword (map->DerivedType {:base-type :string
                                :coercion-fn keyword
-                               :to-base-type-fn (comp str->utf8-bytes keyword->str)
-                               :from-base-type-fn (comp keyword utf8-bytes->str)})
-   :symbol (map->DerivedType {:base-type :byte-array
+                               :to-base-type-fn keyword->str
+                               :from-base-type-fn keyword})
+   :symbol (map->DerivedType {:base-type :string
                               :coercion-fn symbol
-                              :to-base-type-fn (comp str->utf8-bytes name)
-                              :from-base-type-fn (comp symbol utf8-bytes->str)})})
+                              :to-base-type-fn name
+                              :from-base-type-fn symbol})})
 
 (defn- build-type-hierarchy [t all-derived-types]
   (if (base-type? t)
