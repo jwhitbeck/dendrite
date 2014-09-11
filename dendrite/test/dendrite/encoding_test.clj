@@ -27,9 +27,12 @@
          :byte-array (byte-array 2)
          :fixed-length-byte-array (byte-array 2)
          :string "foo"
+         :inst (java.util.Date.)
+         :uuid (java.util.UUID/randomUUID)
          :char \c
          :bigint 2
          :bigdec 2.3
+         :ratio (/ 2 3)
          :keyword :foo
          :symbol 'foo)
     (are [t y] (thrown-with-msg? IllegalArgumentException #"Could not coerce" ((coercion-fn ts t) y))
@@ -40,9 +43,12 @@
          :double "foo"
          :byte-array ["a" 10]
          :fixed-length-byte-array ["a" 10]
+         :inst "date"
+         :uuid "uuid"
          :char "f"
          :bigint "foo"
          :bigdec "foo"
+         :ratio "foo"
          :symbol 2)))
 
 (deftest validity-checks
