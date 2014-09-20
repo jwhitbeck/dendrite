@@ -27,7 +27,7 @@
   (let [all-bytes-stats (reduce add-byte-stats (map :byte-stats pages-stats))
         has-dictionnary? (-> pages-stats first :byte-stats :dictionary-length)]
     (map->ColumnChunkStats
-     {:spec spec
+     {:spec (select-keys spec [:type :encoding :compression :max-repetition-level :max-definition-level :path])
       :num-pages (count pages-stats)
       :num-values (reduce + (map :num-values (if has-dictionnary? (rest pages-stats) pages-stats)))
       :num-dictionary-values (if has-dictionnary? (-> pages-stats first :num-values) 0)
