@@ -105,13 +105,13 @@
 (defn multiplex [seqs]
   (letfn [(all-first [^objects seq-array ^long seq-array-len]
             (let [^objects af (make-object-array seq-array-len)]
-              (loop [i (int 0)]
+              (loop [i 0]
                 (if (< i seq-array-len)
                   (do (aset af i (first (aget seq-array i)))
                       (recur (unchecked-inc i)))
                   (seq af)))))
           (rest! [^objects seq-array ^long seq-array-len]
-            (loop [i (int 0)]
+            (loop [i 0]
               (if (< i seq-array-len)
                 (do (aset seq-array i (rest (aget seq-array i)))
                     (recur (unchecked-inc i)))

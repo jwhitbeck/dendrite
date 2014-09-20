@@ -82,7 +82,7 @@
         n (count field-names)]
     (fn [^objects leveled-values-array]
       (let [^objects vals (utils/make-object-array n)]
-        (loop [i (int 0)]
+        (loop [i 0]
           (if (= i n)
             (.create fact vals)
             (let [v ((aget field-ass-fn-array i) leveled-values-array)]
