@@ -42,7 +42,7 @@
                                   ^ByteArrayWriter byte-array-writer
                                   ^DataPageWriter page-writer]
   IColumnChunkWriter
-  (write! [this leveled-values]
+  (write! [this v]
     (when (>= (page/num-values page-writer) @next-num-values-for-page-length-check)
       (let [estimated-page-length (.estimatedLength page-writer)]
         (if (>= estimated-page-length target-data-page-length)
@@ -56,7 +56,7 @@
     (let [max-num-values-per-page target-data-page-length]
       (when (>= (page/num-values page-writer) max-num-values-per-page)
         (flush-data-page-writer! this)))
-    (page/write! page-writer leveled-values)
+    (page/write! page-writer v)
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
@@ -123,14 +123,16 @@
                                         ^DataColumnChunkWriter data-column-chunk-writer
                                         column-spec]
   IColumnChunkWriter
-  (write! [this leveled-values]
-    (->> leveled-values
-         (map (fn [^LeveledValue leveled-value]
-                (let [v (.value leveled-value)]
-                  (if (nil? v)
-                    leveled-value
-                    (.assoc leveled-value (value-index this v))))))
-         (write! data-column-chunk-writer))
+  (write! [this v]
+    (if (pos? (:max-repetition-level column-spec))
+      (->> v
+           (map (fn [^LeveledValue leveled-value]
+                  (let [v (.value leveled-value)]
+                    (if (nil? v)
+                      leveled-value
+                      (.assoc leveled-value (value-index this v))))))
+           (write! data-column-chunk-writer))
+      (write! data-column-chunk-writer (when-not (nil? v) (value-index this v))))
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)

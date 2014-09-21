@@ -41,7 +41,7 @@
                        :keywords #{"commodo"}
                        :meta {"adipisicing" "laboris" "commodo" "elit"}}]
       (is (= (stripe-record test-record test-schema)
-             [[(->LeveledValue 0 0 0)]
+             [0
               [(->LeveledValue 0 2 3)]
               [(->LeveledValue 0 2 1) (->LeveledValue 1 2 2) ]
               [(->LeveledValue 0 2 "us") (->LeveledValue 2 2 "gb")]
@@ -50,11 +50,11 @@
               [(->LeveledValue 0 1 "adipisicing") (->LeveledValue 1 1 "commodo")]
               [(->LeveledValue 0 1 "laboris") (->LeveledValue 1 1 "elit")]
               [(->LeveledValue 0 1 "commodo")]
-              [(->LeveledValue 0 0 false)]]))))
+              false]))))
   (testing "nil values in repeated records are preserved"
     (let [test-schema (-> helpers/test-schema-str s/read-string (s/parse helpers/default-type-store))]
       (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema)
-             [[(->LeveledValue 0 0 0)]
+             [0
               [(->LeveledValue 0 0 nil)]
               [(->LeveledValue 0 0 nil)]
               [(->LeveledValue 0 1 nil)]
@@ -63,7 +63,7 @@
               [(->LeveledValue 0 0 nil)]
               [(->LeveledValue 0 0 nil)]
               [(->LeveledValue 0 0 nil)]
-              [(->LeveledValue 0 0 false)]])))))
+              false])))))
 
 (deftest invalid-records
   (testing "missing required field"

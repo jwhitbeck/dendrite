@@ -33,6 +33,24 @@
         (read map-fn)
         utils/flatten-1)))
 
+(defn- write-values! [data-page-writer values]
+  (doseq [v values]
+    (write! data-page-writer v))
+  data-page-writer)
+
+(defn- write-read-single-non-repeated-data-page
+  [{:keys [max-definition-level max-repetition-level]} value-type encoding compression
+   input-values & {:keys [map-fn]}]
+  (let [page-writer (data-page-writer max-repetition-level max-definition-level
+                                      helpers/default-type-store value-type encoding compression)
+        page-reader-ctor #(data-page-reader % max-repetition-level max-definition-level
+                                            helpers/default-type-store value-type encoding compression)]
+    (-> page-writer
+        (write-values! input-values)
+        helpers/get-byte-array-reader
+        page-reader-ctor
+        (read map-fn))))
+
 (defn- write-entries! [dictionary-page-writer entries]
   (doseq [entry entries]
     (write-entry! dictionary-page-writer entry))
@@ -76,13 +94,13 @@
         (is (= output-values input-values))))
     (testing "required"
       (let [spec {:max-definition-level 0 :max-repetition-level 0}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
-            output-values (write-read-single-data-page spec :int :plain :none input-values)]
+            input-values (->> (repeatedly helpers/rand-int) (take 1000))
+            output-values (write-read-single-non-repeated-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "non-repeated"
       (let [spec {:max-definition-level 2 :max-repetition-level 0}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
-            output-values (write-read-single-data-page spec :int :plain :none input-values)]
+            input-values (->> (repeatedly helpers/rand-int) (helpers/with-rand-nils 0.2) (take 1000))
+            output-values (write-read-single-non-repeated-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "empty page"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}

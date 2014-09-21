@@ -34,8 +34,8 @@
         :optional :optional-value
         :required :required-value))))
 
-(defn- append-non-repeated! [striped-record-array column-index leveled-values]
-  (aset ^objects striped-record-array (int column-index) leveled-values))
+(defn- append-non-repeated! [striped-record-array column-index value]
+  (aset ^objects striped-record-array (int column-index) value))
 
 (defn- append-repeated! [striped-record-array column-index leveled-values]
   (let [tr (or (aget ^objects striped-record-array (int column-index)) (transient-linked-seq))]
@@ -45,37 +45,57 @@
   [field parents coercion-fns-map]
   (let [path (conj parents (:name field))
         {:keys [max-repetition-level max-definition-level column-index] :as cs} (:column-spec field)
-        coercion-fn (get coercion-fns-map (:type cs))
-        append-fn (if (zero? max-repetition-level) append-non-repeated! append-repeated!)]
-    (fn [striped-record-array record nil-parent? repetition-level definition-level]
-      (let [lv (if nil-parent?
-                 (->LeveledValue repetition-level definition-level nil)
-                 (if (nil? record)
-                   (throw (IllegalArgumentException.
-                           (format "Required field %s is missing" (format-ks path))))
-                   (try
-                     (->LeveledValue repetition-level max-definition-level (coercion-fn record))
-                     (catch Exception e
-                       (throw (IllegalArgumentException.
-                               (format "Could not coerce value in %s" (format-ks path)) e))))))]
-        (append-fn striped-record-array column-index (single lv))))))
+        coercion-fn (get coercion-fns-map (:type cs))]
+    (if (zero? max-repetition-level)
+      (fn [striped-record-array record nil-parent? repetition-level definition-level]
+        (let [v (when-not nil-parent?
+                  (if (nil? record)
+                    (throw (IllegalArgumentException.
+                            (format "Required field %s is missing" (format-ks path))))
+                    (try
+                      (coercion-fn record)
+                      (catch Exception e
+                        (throw (IllegalArgumentException.
+                                (format "Could not coerce value in %s" (format-ks path)) e))))))]
+          (append-non-repeated! striped-record-array column-index v)))
+      (fn [striped-record-array record nil-parent? repetition-level definition-level]
+        (let [lv (if nil-parent?
+                   (->LeveledValue repetition-level definition-level nil)
+                   (if (nil? record)
+                     (throw (IllegalArgumentException.
+                             (format "Required field %s is missing" (format-ks path))))
+                     (try
+                       (->LeveledValue repetition-level max-definition-level (coercion-fn record))
+                       (catch Exception e
+                         (throw (IllegalArgumentException.
+                                 (format "Could not coerce value in %s" (format-ks path)) e))))))]
+          (append-repeated! striped-record-array column-index (single lv)))))))
 
 (defmethod stripe-fn* :optional-value
   [field parents coercion-fns-map]
   (let [path (conj parents (:name field))
         {:keys [max-repetition-level max-definition-level column-index] :as cs} (:column-spec field)
-        coercion-fn (get coercion-fns-map (:type cs))
-        append-fn (if (zero? max-repetition-level) append-non-repeated! append-repeated!)]
-    (fn [striped-record-array record nil-parent? repetition-level definition-level]
-      (let [v (try
-                (some-> record coercion-fn)
-                (catch Exception e
-                  (throw (IllegalArgumentException.
-                          (format "Could not coerce value in %s" (format-ks path)) e))))
-            lvs (single (->LeveledValue repetition-level
-                                        (if (nil? v) definition-level max-definition-level)
-                                        v))]
-        (append-fn striped-record-array column-index lvs)))))
+        coercion-fn (get coercion-fns-map (:type cs))]
+    (if (zero? max-repetition-level)
+      (fn [striped-record-array record nil-parent? repetition-level definition-level]
+        (let [v (when record
+                  (try
+                    (coercion-fn record)
+                    (catch Exception e
+                      (throw (IllegalArgumentException.
+                              (format "Could not coerce value in %s" (format-ks path)) e)))))]
+          (append-non-repeated! striped-record-array column-index v)))
+      (fn [striped-record-array record nil-parent? repetition-level definition-level]
+        (let [v (when record
+                  (try
+                    (coercion-fn record)
+                    (catch Exception e
+                      (throw (IllegalArgumentException.
+                              (format "Could not coerce value in %s" (format-ks path)) e)))))
+              lvs (single (->LeveledValue repetition-level
+                                          (if (nil? v) definition-level max-definition-level)
+                                          v))]
+          (append-repeated! striped-record-array column-index lvs))))))
 
 (defmethod stripe-fn* :repeated-value
   [field parents coercion-fns-map]

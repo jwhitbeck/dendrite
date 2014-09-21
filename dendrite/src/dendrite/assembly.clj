@@ -40,12 +40,15 @@
 (defmethod assemble-fn* :non-repeated-value
   [field]
   (let [col-idx (-> field :column-spec :query-column-index)]
-    (fn [^objects leveled-values-array]
-      (let [lvls (aget leveled-values-array col-idx)
-            ^LeveledValue lv (first lvls)]
-        (aset leveled-values-array col-idx (rest lvls))
-        (when lv
-          (.value lv))))))
+    (if (-> field :column-spec :max-repetition-level pos?)
+      (fn [^objects leveled-values-array]
+        (let [lvls (aget leveled-values-array col-idx)
+              ^LeveledValue lv (first lvls)]
+          (aset leveled-values-array col-idx (rest lvls))
+          (when lv
+            (.value lv))))
+      (fn [^objects leveled-values-array]
+        (aget leveled-values-array col-idx)))))
 
 (defmethod assemble-fn* :repeated-value
   [field]

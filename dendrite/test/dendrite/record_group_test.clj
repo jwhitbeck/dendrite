@@ -47,10 +47,10 @@
                                                   helpers/default-type-store
                                                   true
                                                   {})]
-        (is (= [[[(->LeveledValue 0 0 10)]
+        (is (= [[10
                  [(->LeveledValue 0 3 "us") (->LeveledValue 2 2 nil)
                   (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
-                [[(->LeveledValue 0 0 20)]
+                [20
                  [(->LeveledValue 0 1 nil)]]]
                (read (byte-buffer-reader bb 0 record-group-metadata
                                          helpers/default-type-store two-fields-schema))))))))

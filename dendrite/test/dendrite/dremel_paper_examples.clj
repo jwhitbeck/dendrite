@@ -37,7 +37,7 @@
           {:language [{:code "en-gb" :country "gb"}]}]})
 
 (def dremel-paper-record1-striped
-  [[(->LeveledValue 0 0 10)]
+  [10
    [(->LeveledValue 0 2 20) (->LeveledValue 1 2 40) (->LeveledValue 1 2 60)]
    [(->LeveledValue 0 1 nil)]
    [(->LeveledValue 0 2 "en-us") (->LeveledValue 2 2 "en") (->LeveledValue 1 1 nil)
@@ -52,7 +52,7 @@
    :name [{:url "http://C"}]})
 
 (def dremel-paper-record2-striped
-  [[(->LeveledValue 0 0 20)]
+  [20
    [(->LeveledValue 0 2 80)]
    [(->LeveledValue 0 2 10) (->LeveledValue 1 2 30)]
    [(->LeveledValue 0 1 nil)]

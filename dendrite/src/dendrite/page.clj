@@ -155,15 +155,20 @@
      ^Compressor data-compressor
      finished?]
   IDataPageWriter
-  (write! [this leveled-values]
-    (doseq [^LeveledValue lv leveled-values]
-      (let [v (.value lv)]
-        (when-not (nil? v)
-          (.encode data-encoder v)))
-      (when repetition-level-encoder
-        (.encode repetition-level-encoder (.repetitionLevel lv)))
-      (when definition-level-encoder
-        (.encode definition-level-encoder (.definitionLevel lv))))
+  (write! [this v]
+    (if repetition-level-encoder
+      (doseq [^LeveledValue lv v]
+        (let [v (.value lv)]
+          (when-not (nil? v)
+            (.encode data-encoder v)))
+        (.encode repetition-level-encoder (.repetitionLevel lv))
+        (.encode definition-level-encoder (.definitionLevel lv)))
+      (if definition-level-encoder
+        (if (nil? v)
+          (.encode definition-level-encoder (int 0))
+          (do (.encode definition-level-encoder (int 1))
+              (.encode data-encoder v)))
+        (.encode data-encoder v)))
     this)
   IPageWriter
   (num-values [_]

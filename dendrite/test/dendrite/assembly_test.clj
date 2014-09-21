@@ -34,12 +34,11 @@
                                          {})]
       (is (= {:docid 10
               :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
-             (assemble [[(->LeveledValue 0 0 10)]
+             (assemble [10
                         [(->LeveledValue 0 3 "us") (->LeveledValue 2 2 nil)
                          (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
                        sub-schema)))
-      (is (= {:docid 20 :name [nil]} (assemble [[(->LeveledValue 0 0 20)]
-                                             [(->LeveledValue 0 1 nil)]]
+      (is (= {:docid 20 :name [nil]} (assemble [20 [(->LeveledValue 0 1 nil)]]
                                    sub-schema))))))
 
 (def test-schema (-> test-schema-str schema/read-string (schema/parse default-type-store)))

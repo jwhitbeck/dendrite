@@ -77,6 +77,13 @@
 
 (defn rand-uuid [] (UUID/randomUUID))
 
+(defn with-rand-nils [p s]
+  (lazy-seq
+   (if (< (rand) p)
+     (cons nil (with-rand-nils p s))
+     (when (seq s)
+       (cons (first s) (with-rand-nils p (rest s)))))))
+
 (defn leveled [{:keys [max-definition-level max-repetition-level] :or {nested? true} :as spec} coll]
   (lazy-seq
    (let [next-value (first coll)

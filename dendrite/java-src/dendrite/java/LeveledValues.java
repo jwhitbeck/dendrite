@@ -48,7 +48,7 @@ public final class LeveledValues {
   private static IPersistentCollection assembleRequired(final Decoder dataDecoder) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     for (Object o : dataDecoder) {
-      vs.conj(new Singleton(new LeveledValue(0, 0, o)));
+      vs.conj(o);
     }
     return vs.persistent();
   }
@@ -56,7 +56,7 @@ public final class LeveledValues {
   private static IPersistentCollection assembleRequiredFn(final Decoder dataDecoder, final IFn fn) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     for (Object o : dataDecoder) {
-      vs.conj(new Singleton(new LeveledValue(0, 0, fn.invoke(o))));
+      vs.conj(fn.invoke(o));
     }
     return vs.persistent();
   }
@@ -68,11 +68,10 @@ public final class LeveledValues {
     final IntIterator defLvlIterator = definitionLevelsDecoder.intIterator();
     final Iterator dataIterator = dataDecoder.iterator();
     while (defLvlIterator.hasNext()){
-      int defLvl = defLvlIterator.next();
-      if (defLvl < maxDefinitionLevel) {
-        vs.conj(new Singleton(new LeveledValue(0, defLvl, null)));
+      if (defLvlIterator.next() == 0) {
+        vs.conj(null);
       } else {
-        vs.conj(new Singleton(new LeveledValue(0, defLvl, dataIterator.next())));
+        vs.conj(dataIterator.next());
       }
     }
     return vs.persistent();
@@ -86,11 +85,10 @@ public final class LeveledValues {
     final IntIterator defLvlIterator = definitionLevelsDecoder.intIterator();
     final Iterator dataIterator = dataDecoder.iterator();
     while (defLvlIterator.hasNext()){
-      int defLvl = defLvlIterator.next();
-      if (defLvl < maxDefinitionLevel) {
-        vs.conj(new Singleton(new LeveledValue(0, defLvl, null)));
+      if (defLvlIterator.next() == 0) {
+        vs.conj(null);
       } else {
-        vs.conj(new Singleton(new LeveledValue(0, defLvl, fn.invoke(dataIterator.next()))));
+        vs.conj(fn.invoke(dataIterator.next()));
       }
     }
     return vs.persistent();
