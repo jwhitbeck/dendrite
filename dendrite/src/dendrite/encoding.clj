@@ -37,13 +37,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private valid-encodings-for-types
-  {:boolean #{:plain :dictionary}
-   :int #{:plain :vlq :zig-zag :packed-run-length :delta :dictionary}
-   :long #{:plain :vlq :zig-zag :delta :dictionary}
-   :float #{:plain :dictionary}
-   :double #{:plain :dictionary}
-   :byte-array #{:plain :incremental :delta-length :dictionary}
-   :fixed-length-byte-array #{:plain :dictionary}})
+  {:boolean #{:plain :dictionary :frequency}
+   :int #{:plain :vlq :zig-zag :packed-run-length :delta :dictionary :frequency}
+   :long #{:plain :vlq :zig-zag :delta :dictionary :frequency}
+   :float #{:plain :dictionary :frequency}
+   :double #{:plain :dictionary :frequency}
+   :byte-array #{:plain :incremental :delta-length :dictionary :frequency}
+   :fixed-length-byte-array #{:plain :dictionary :frequency}})
 
 (defn- base-type? [t] (contains? valid-encodings-for-types t))
 

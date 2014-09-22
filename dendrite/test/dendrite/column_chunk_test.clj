@@ -151,6 +151,29 @@
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))))
 
+(deftest frequency-column-chunk
+  (let [cs (column-spec :int :frequency :deflate)
+        input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
+        reader (write-column-chunk-and-get-reader cs input-blocks)
+        output-blocks (read reader)]
+    (testing "write/read a frequency colum-chunk"
+      (is (= input-blocks output-blocks)))
+    (testing "value mapping"
+      (let [map-fn (partial * 2)
+            mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
+        (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
+               (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
+    (testing "repeatable writes"
+      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length
+                                                     helpers/default-type-store
+                                                     cs)
+                    (write-blocks input-blocks))
+            baw1 (doto (ByteArrayWriter. 10) (.write w))
+            baw2 (doto (ByteArrayWriter. 10) (.write w))]
+        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+    (testing "repeatable reads"
+      (is (= (read reader) (read reader))))))
+
 (defn- find-best-encoding* [reader] (find-best-encoding reader test-target-data-page-length))
 
 (deftest find-best-boolean-encodings
@@ -199,6 +222,13 @@
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader)))))
+  (testing "skewed selection of random ints"
+    (let [cs (column-spec-required :int :plain :none)
+          input-blocks (concat (->> helpers/rand-int repeatedly (take 255))
+                               (apply interleave (repeatedly 10 #(take 100 (repeat (helpers/rand-int))))))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :frequency (find-best-encoding reader (* 100 1024))))))
   (testing "small random signed ints with an occasional large one."
     (let [cs (column-spec-required :int :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 7)
