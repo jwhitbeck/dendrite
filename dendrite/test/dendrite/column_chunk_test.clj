@@ -199,6 +199,26 @@
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader)))))
+  (testing "small random signed ints with an occasional large one."
+    (let [cs (column-spec-required :int :plain :none)
+          input-blocks (->> #(helpers/rand-int-bits 7)
+                            repeatedly
+                            (helpers/rand-map 0.1 (constantly (helpers/rand-int-bits 24)))
+                            (take 100))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :vlq (find-best-encoding* reader)))))
+  (testing "small random signed ints with an occasional large one."
+    (let [cs (column-spec-required :int :plain :none)
+          input-blocks (->> #(helpers/rand-int-bits 7)
+                            repeatedly
+                            (helpers/rand-map 0.1 (constantly (helpers/rand-int-bits 24)))
+                            (map * (repeatedly helpers/rand-sign))
+                            (map unchecked-int)
+                            (take 100))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :zig-zag (find-best-encoding* reader)))))
   (testing "small selection of chars"
     (let [cs (column-spec-required :char :plain :none)
           input-blocks (->> #(rand-nth [\c \return \u1111]) repeatedly (take 1000))
@@ -219,6 +239,25 @@
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
+  (testing "small random longs with an occasional large one."
+    (let [cs (column-spec-required :long :plain :none)
+          input-blocks (->> #(helpers/rand-long-bits 7)
+                            repeatedly
+                            (helpers/rand-map 0.1 (constantly (helpers/rand-long-bits 24)))
+                            (take 100))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :vlq (find-best-encoding* reader)))))
+  (testing "small random signed longs with an occasional large one."
+    (let [cs (column-spec-required :long :plain :none)
+          input-blocks (->> #(helpers/rand-long-bits 7)
+                            repeatedly
+                            (helpers/rand-map 0.1 (constantly (helpers/rand-long-bits 24)))
+                            (map * (repeatedly helpers/rand-sign))
+                            (take 100))
+          reader (write-column-chunk-and-get-reader cs input-blocks)]
+      (is (= (read reader) input-blocks))
+      (is (= :zig-zag (find-best-encoding* reader)))))
   (testing "increasing longs"
     (let [cs (column-spec-required :long :plain :none)
           input-blocks (->> (range) (take 1000))

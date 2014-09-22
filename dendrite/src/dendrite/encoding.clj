@@ -15,10 +15,14 @@
             Encoder Decoder
             BooleanPackedEncoder BooleanPackedDecoder
             IntPlainEncoder IntPlainDecoder
+            IntVLQEncoder IntVLQDecoder
+            IntZigZagEncoder IntZigZagDecoder
             IntPackedDeltaEncoder IntPackedDeltaDecoder
             IntFixedBitWidthPackedRunLengthEncoder IntFixedBitWidthPackedRunLengthDecoder
             IntPackedRunLengthEncoder IntPackedRunLengthDecoder
             LongPlainEncoder LongPlainDecoder
+            LongVLQEncoder LongVLQDecoder
+            LongZigZagEncoder LongZigZagDecoder
             LongPackedDeltaEncoder LongPackedDeltaDecoder
             FloatPlainEncoder FloatPlainDecoder
             DoublePlainEncoder DoublePlainDecoder
@@ -34,8 +38,8 @@
 
 (def ^:private valid-encodings-for-types
   {:boolean #{:plain :dictionary}
-   :int #{:plain :packed-run-length :delta :dictionary}
-   :long #{:plain :delta :dictionary}
+   :int #{:plain :vlq :zig-zag :packed-run-length :delta :dictionary}
+   :long #{:plain :vlq :zig-zag :delta :dictionary}
    :float #{:plain :dictionary}
    :double #{:plain :dictionary}
    :byte-array #{:plain :incremental :delta-length :dictionary}
@@ -55,12 +59,16 @@
   (case base-type
     :boolean #(BooleanPackedDecoder. %)
     :int (case encoding
-             :plain #(IntPlainDecoder. %)
-             :packed-run-length #(IntPackedRunLengthDecoder. %)
-             :delta #(IntPackedDeltaDecoder. %))
+           :plain #(IntPlainDecoder. %)
+           :vlq #(IntVLQDecoder. %)
+           :zig-zag #(IntZigZagDecoder. %)
+           :packed-run-length #(IntPackedRunLengthDecoder. %)
+           :delta #(IntPackedDeltaDecoder. %))
     :long (case encoding
-             :plain #(LongPlainDecoder. %)
-             :delta #(LongPackedDeltaDecoder. %))
+            :plain #(LongPlainDecoder. %)
+            :vlq #(LongVLQDecoder. %)
+            :zig-zag #(LongZigZagDecoder. %)
+            :delta #(LongPackedDeltaDecoder. %))
     :float #(FloatPlainDecoder. %)
     :double #(DoublePlainDecoder. %)
     :byte-array (case encoding
@@ -73,12 +81,16 @@
   (case base-type
     :boolean (BooleanPackedEncoder.)
     :int (case encoding
-             :plain (IntPlainEncoder.)
-             :packed-run-length (IntPackedRunLengthEncoder.)
-             :delta (IntPackedDeltaEncoder.))
+           :plain (IntPlainEncoder.)
+           :vlq (IntVLQEncoder.)
+           :zig-zag (IntZigZagEncoder.)
+           :packed-run-length (IntPackedRunLengthEncoder.)
+           :delta (IntPackedDeltaEncoder.))
     :long (case encoding
-             :plain (LongPlainEncoder.)
-             :delta (LongPackedDeltaEncoder.))
+            :plain (LongPlainEncoder.)
+            :vlq (LongVLQEncoder.)
+            :zig-zag (LongZigZagEncoder.)
+            :delta (LongPackedDeltaEncoder.))
     :float (FloatPlainEncoder.)
     :double (DoublePlainEncoder.)
     :byte-array (case encoding

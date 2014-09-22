@@ -22,7 +22,7 @@
 
 (defenum repetition-type [:optional :required :list :vector :map :set])
 
-(defenum encoding-type [:plain :dictionary :packed-run-length :delta :incremental :delta-length])
+(defenum encoding-type [:plain :dictionary :packed-run-length :delta :incremental :delta-length :vlq :zig-zag])
 
 (defrecord Metadata [record-groups-metadata schema custom-types custom])
 

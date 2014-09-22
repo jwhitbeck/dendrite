@@ -14,10 +14,14 @@
   (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
             Encoder Decoder
             IntPlainEncoder IntPlainDecoder
+            IntVLQEncoder IntVLQDecoder
+            IntZigZagEncoder IntZigZagDecoder
             IntFixedBitWidthPackedRunLengthEncoder IntFixedBitWidthPackedRunLengthDecoder
             IntPackedRunLengthEncoder IntPackedRunLengthDecoder
             IntPackedDeltaEncoder IntPackedDeltaDecoder
             LongPlainEncoder LongPlainDecoder
+            LongVLQEncoder LongVLQDecoder
+            LongZigZagEncoder LongZigZagDecoder
             LongPackedDeltaEncoder LongPackedDeltaDecoder
             FloatPlainEncoder FloatPlainDecoder DoublePlainEncoder DoublePlainDecoder
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
@@ -67,6 +71,10 @@
 (deftest int-encoders
   (testing "plain encoder/decoder"
     (test-encoder #(IntPlainEncoder.) #(IntPlainDecoder. %) (repeatedly helpers/rand-int)))
+  (testing "vlq encoder/decoder"
+    (test-encoder #(IntVLQEncoder.) #(IntVLQDecoder. %) (repeatedly helpers/rand-int)))
+  (testing "zigzag encoder/decoder"
+    (test-encoder #(IntZigZagEncoder.) #(IntZigZagDecoder. %) (repeatedly helpers/rand-int)))
   (testing "fixed-bit-width packed run-length encoder/decoder"
     (testing "sparse input"
       (let [rand-ints (->> (repeatedly #(rand-int 8)) (map #(if (= 7 %) (int (rand-int 8)) (int 0))))]
@@ -100,6 +108,10 @@
 (deftest long-encoders
   (testing "plain encoder/decoder"
     (test-encoder #(LongPlainEncoder.) #(LongPlainDecoder. %) (repeatedly helpers/rand-long)))
+  (testing "vlq encoder/decoder"
+    (test-encoder #(LongVLQEncoder.) #(LongVLQDecoder. %) (repeatedly helpers/rand-long)))
+  (testing "zigzag encoder/decoder"
+    (test-encoder #(LongZigZagEncoder.) #(LongZigZagDecoder. %) (repeatedly helpers/rand-long)))
   (testing "packed delta encoder/decoder"
     (test-encoder #(LongPackedDeltaEncoder.) #(LongPackedDeltaDecoder. %) (repeatedly helpers/rand-long)))
   (testing "packed delta encoder's finish method is idempotent"
