@@ -176,7 +176,7 @@
       (is (= :plain (find-best-encoding* reader)))))
   (testing "random ints (non-repeated)"
     (let [cs (column-spec-non-repeated :int :plain :none)
-          input-blocks (->> helpers/rand-int repeatedly (helpers/with-rand-nils 0.2) (take 100))
+          input-blocks (->> helpers/rand-int repeatedly (helpers/rand-map 0.2 (constantly nil)) (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))

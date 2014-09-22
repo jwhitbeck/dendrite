@@ -99,7 +99,9 @@
         (is (= output-values input-values))))
     (testing "non-repeated"
       (let [spec {:max-definition-level 2 :max-repetition-level 0}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/with-rand-nils 0.2) (take 1000))
+            input-values (->> (repeatedly helpers/rand-int)
+                              (helpers/rand-map 0.2 (constantly nil))
+                              (take 1000))
             output-values (write-read-single-non-repeated-data-page spec :int :plain :none input-values)]
         (is (= output-values input-values))))
     (testing "empty page"
