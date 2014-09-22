@@ -183,8 +183,7 @@
 (defn- dictionary-indices-column-spec [column-spec]
   (-> column-spec
       (assoc :type :int
-             :encoding :packed-run-length
-             :compression :none)
+             :encoding :packed-run-length)
       (dissoc :map-fn)))
 
 (defn- dictionary-column-chunk-writer [target-data-page-length type-store column-spec]
@@ -300,8 +299,7 @@
 (defn- frequency-indices-column-spec [column-spec]
   (-> column-spec
       (assoc :type :int
-             :encoding :vlq
-             :compression :none)
+             :encoding :vlq)
       (dissoc :map-fn)))
 
 (defn- frequency-column-chunk-writer [target-data-page-length type-store column-spec]
