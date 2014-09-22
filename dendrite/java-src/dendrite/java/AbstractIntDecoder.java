@@ -22,21 +22,4 @@ public abstract class AbstractIntDecoder extends AbstractDecoder implements IntD
   public Object decode() {
     return decodeInt();
   }
-
-  @Override
-  public IntIterator intIterator() {
-    return new IntIterator() {
-      int i = 0;
-      @Override
-      public boolean hasNext() {
-        return i < numValues;
-      }
-      @Override
-      public int next() {
-        int v = decodeInt();
-        i += 1;
-        return v;
-      }
-    };
-  }
 }

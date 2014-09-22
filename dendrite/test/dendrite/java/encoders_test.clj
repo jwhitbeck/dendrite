@@ -34,7 +34,8 @@
      (let [encoder (encoder-constructor)]
        (doseq [x (take n input-seq)]
          (.encode ^Encoder encoder x))
-       (->> encoder helpers/get-byte-array-reader decoder-constructor (take n)))))
+       (let [decoder (->> encoder helpers/get-byte-array-reader decoder-constructor)]
+         (repeatedly n #(.decode ^Decoder decoder))))))
 
 (defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
   (let [output-seq (write-read n encoder-constructor decoder-constructor input-seq)]

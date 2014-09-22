@@ -315,12 +315,7 @@
          (reify
            Decoder
            (decode [_] (base->derived-type (.decode bd)))
-           (numEncodedValues [_] (.numEncodedValues bd))
-           (iterator [_] (let [i (.iterator bd)]
-                           (reify java.util.Iterator
-                             (hasNext [_] (.hasNext i))
-                             (next [_] (base->derived-type (.next i)))
-                             (remove [_] (.remove i))))))))))
+           (numEncodedValues [_] (.numEncodedValues bd)))))))
 
 (defn coercion-fn [ts t]
   (let [coerce (if-not (base-type? t)

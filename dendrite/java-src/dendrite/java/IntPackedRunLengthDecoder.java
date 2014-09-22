@@ -38,14 +38,4 @@ public class IntPackedRunLengthDecoder implements IntDecoder {
   public int numEncodedValues() {
     return int32Decoder.numEncodedValues();
   }
-
-  @Override
-  public Iterator iterator() {
-    return int32Decoder.iterator();
-  }
-
-  @Override
-  public IntIterator intIterator() {
-    return int32Decoder.intIterator();
-  }
 }
