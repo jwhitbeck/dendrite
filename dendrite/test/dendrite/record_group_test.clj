@@ -38,7 +38,7 @@
         bb (helpers/get-byte-buffer w)]
     (testing "full schema"
       (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
-             (read (byte-buffer-reader bb 0 record-group-metadata
+             (read (byte-buffer-reader bb record-group-metadata
                                        helpers/default-type-store
                                        dremel-paper-full-query-schema)))))
     (testing "two fields example"
@@ -52,7 +52,7 @@
                   (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
                 [20
                  [(->LeveledValue 0 1 nil)]]]
-               (read (byte-buffer-reader bb 0 record-group-metadata
+               (read (byte-buffer-reader bb record-group-metadata
                                          helpers/default-type-store two-fields-schema))))))))
 
 (deftest byte-buffer-random-records-write-read
@@ -69,14 +69,14 @@
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (testing "full schema"
       (is (= striped-records
-             (read (byte-buffer-reader bb 0 record-group-metadata helpers/default-type-store parsed-query)))))
+             (read (byte-buffer-reader bb record-group-metadata helpers/default-type-store parsed-query)))))
     (testing "read seq is chunked"
-      (is (chunked-seq? (seq (read (byte-buffer-reader bb 0
+      (is (chunked-seq? (seq (read (byte-buffer-reader bb
                                                        record-group-metadata helpers/default-type-store
                                                        parsed-query))))))
     (testing "read seq is composed of ArraySeqs"
       (is (every? (partial instance? clojure.lang.ArraySeq)
-                  (read (byte-buffer-reader bb 0 record-group-metadata
+                  (read (byte-buffer-reader bb record-group-metadata
                                             helpers/default-type-store parsed-query)))))))
 
 (deftest file-random-records-write-read
@@ -99,8 +99,7 @@
              (with-open [f (utils/file-channel tmp-file :read)]
                (doall
                 (read
-                 (byte-buffer-reader (utils/map-file-channel f)
-                                     0
+                 (byte-buffer-reader (utils/map-file-channel f 0 (.size f))
                                      record-group-metadata
                                      helpers/default-type-store
                                      parsed-query)))))))

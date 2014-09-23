@@ -67,14 +67,15 @@
     (FileChannel/open path opts)))
 
 (defn map-file-channel
-  ^ByteBuffer [^FileChannel file-channel]
-  (.map file-channel FileChannel$MapMode/READ_ONLY 0 (.size file-channel)))
+  ^ByteBuffer [^FileChannel file-channel offset length]
+  (.map file-channel FileChannel$MapMode/READ_ONLY offset length))
 
 (defn sub-byte-buffer
   ^ByteBuffer [^ByteBuffer bb offset length]
-  (doto (.slice bb)
-    (.position offset)
-    (.limit (+ offset length))))
+  (let [current-position (.position bb)]
+    (doto (.duplicate bb)
+      (.position (+ current-position offset))
+      (.limit (+ current-position offset length)))))
 
 (defn int->byte-buffer
   ^ByteBuffer [i]

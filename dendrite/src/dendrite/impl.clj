@@ -61,7 +61,11 @@
     (if-not (and (number? v) (pos? (long v)))
       (throw (IllegalArgumentException.
               (format ":record-group-length expects a positive integer but got '%s'." v)))
-      (long v))
+      ;; java.nio.FileChannel's implementation cannot map file areas larger than 2GB. Since dendrite maps
+      ;; entire record-groups, this limitation also applies here.
+      (if (> (long v) (long Integer/MAX_VALUE))
+        (throw (IllegalArgumentException. ":record-group-length can be no greater than Integer/MAX_VALUE"))
+        (long v)))
     :data-page-length
     (if-not (and (number? v) (pos? v))
       (throw (IllegalArgumentException.
@@ -372,43 +376,73 @@
   (^java.io.Closeable [options schema filename]
      (writer (file-channel-backend-writer filename) schema options)))
 
-(defn- record-group-offsets [record-groups-metadata offset]
-  (->> record-groups-metadata (map :length) butlast (reductions + offset)))
+(defn- record-group-lengths [record-groups-metadata]
+  (map :length record-groups-metadata))
 
-(defn- byte-buffer->metadata [^ByteBuffer byte-buffer]
-  (let [length (.limit byte-buffer)
-        last-magic-bytes-pos (- length magic-bytes-length)
-        metadata-length-pos (- last-magic-bytes-pos int-length)]
-    (if-not
-        (and (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer 0 magic-bytes-length))
-             (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer last-magic-bytes-pos magic-bytes-length)))
-      (throw (IllegalArgumentException.
-              (if (.hasArray byte-buffer)
-                "Provided byte buffer does not contain a valid dendrite serialization."
-                "File is not a valid dendrite file.")))
-      (let [metadata-length (-> byte-buffer
-                                (utils/sub-byte-buffer metadata-length-pos int-length)
-                                utils/byte-buffer->int)]
-        (-> byte-buffer
-            (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
-            metadata/read)))))
+(defn- record-group-offsets [record-groups-metadata offset]
+  (->> record-groups-metadata record-group-lengths butlast (reductions + offset)))
 
 (defprotocol IBackendReader
+  (record-group-byte-buffers [_ record-groups-metadata])
+  (read-metadata [_])
+  (length [_])
   (close-reader! [_]))
 
 (defrecord ByteBufferBackendReader [^ByteBuffer byte-buffer]
   IBackendReader
+  (length [_]
+    (.limit byte-buffer))
+  (read-metadata [_]
+    (let [length (.limit byte-buffer)
+          last-magic-bytes-pos (- length magic-bytes-length)
+          metadata-length-pos (- last-magic-bytes-pos int-length)]
+      (if-not
+          (and (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer 0 magic-bytes-length))
+               (valid-magic-bytes? (utils/sub-byte-buffer byte-buffer last-magic-bytes-pos magic-bytes-length)))
+        (throw (IllegalArgumentException.
+                "Provided byte buffer does not contain a valid dendrite serialization."))
+        (let [metadata-length (-> byte-buffer
+                                  (utils/sub-byte-buffer metadata-length-pos int-length)
+                                  utils/byte-buffer->int)]
+          (-> byte-buffer
+              (utils/sub-byte-buffer (- metadata-length-pos metadata-length) metadata-length)
+              metadata/read)))))
+  (record-group-byte-buffers [_ record-groups-metadata]
+    (map (partial utils/sub-byte-buffer byte-buffer)
+         (record-group-offsets record-groups-metadata magic-bytes-length)
+         (record-group-lengths record-groups-metadata)))
   (close-reader! [_]))
 
-(defrecord FileChannelBackendReader [^FileChannel file-channel ^ByteBuffer byte-buffer]
+(defrecord FileChannelBackendReader [^FileChannel file-channel]
   IBackendReader
+  (length [_]
+    (.size file-channel))
+  (read-metadata [_]
+    (let [length (.size file-channel)
+          last-magic-bytes-pos (- length magic-bytes-length)
+          metadata-length-pos (- last-magic-bytes-pos int-length)]
+      (if-not
+          (and (valid-magic-bytes? (utils/map-file-channel file-channel 0 magic-bytes-length))
+               (valid-magic-bytes? (utils/map-file-channel file-channel
+                                                           last-magic-bytes-pos
+                                                           magic-bytes-length)))
+        (throw (IllegalArgumentException. "File is not a valid dendrite file."))
+        (let [metadata-length (-> file-channel
+                                  (utils/map-file-channel metadata-length-pos int-length)
+                                  utils/byte-buffer->int)]
+          (-> file-channel
+              (utils/map-file-channel (- metadata-length-pos metadata-length) metadata-length)
+              metadata/read)))))
+  (record-group-byte-buffers [_ record-groups-metadata]
+    (map (partial utils/map-file-channel file-channel)
+         (record-group-offsets record-groups-metadata magic-bytes-length)
+         (record-group-lengths record-groups-metadata)))
   (close-reader! [_]
     (.close file-channel)))
 
 (defn- record-group-readers [backend-reader record-groups-metadata type-store queried-schema]
-  (utils/pmap-1 #(record-group/byte-buffer-reader (:byte-buffer backend-reader) %1 %2
-                                                  type-store queried-schema)
-                (record-group-offsets record-groups-metadata magic-bytes-length)
+  (utils/pmap-1 #(record-group/byte-buffer-reader %1 %2 type-store queried-schema)
+                (record-group-byte-buffers backend-reader record-groups-metadata)
                 record-groups-metadata))
 
 (defrecord Reader [backend-reader metadata type-store]
@@ -439,8 +473,7 @@
                              (map stats/column-chunks->column-stats))]
       {:record-groups record-groups-stats
        :columns columns-stats
-       :global (stats/record-groups->global-stats (.limit ^ByteBuffer (:byte-buffer backend-reader))
-                                                  record-groups-stats)}))
+       :global (stats/record-groups->global-stats (length backend-reader) record-groups-stats)}))
   (metadata [_]
     (:custom metadata))
   (schema [_]
@@ -450,7 +483,7 @@
     (close-reader! backend-reader)))
 
 (defn- reader [backend-reader options]
-  (let [metadata (-> backend-reader :byte-buffer byte-buffer->metadata)
+  (let [metadata (read-metadata backend-reader)
         {:keys [custom-types]} (parse-reader-options options)]
     (map->Reader
      {:backend-reader backend-reader
@@ -478,9 +511,7 @@
                    full explanation."
   (^java.io.Closeable [filename] (file-reader nil filename))
   (^java.io.Closeable [options filename]
-     (let [file-channel (utils/file-channel filename :read)
-           mapped-byte-buffer (utils/map-file-channel file-channel)]
-       (reader (->FileChannelBackendReader file-channel mapped-byte-buffer) options))))
+    (reader (->FileChannelBackendReader (utils/file-channel filename :read)) options)))
 
 (defn read
   "Returns a lazy-seq of all the records in the reader.

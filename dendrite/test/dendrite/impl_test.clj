@@ -270,6 +270,8 @@
   (testing "writer options"
     (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                       (#'dendrite.impl/parse-writer-options opts))
+         {:record-group-length (inc Integer/MAX_VALUE)}
+         ":record-group-length can be no greater than Integer/MAX_VALUE"
          {:record-group-length "foo"}
          ":record-group-length expects a positive integer but got 'foo'."
          {:record-group-length nil}

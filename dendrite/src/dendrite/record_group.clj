@@ -124,14 +124,14 @@
   (->> record-group-metadata :column-chunks-metadata (map :length)))
 
 (defn- column-chunk-byte-offsets
-  [record-group-metadata offset]
-  (->> record-group-metadata column-chunk-lengths butlast (reductions + offset)))
+  [record-group-metadata]
+  (->> record-group-metadata column-chunk-lengths butlast (reductions + 0)))
 
-(defn byte-buffer-reader [^ByteBuffer byte-buffer offset record-group-metadata type-store queried-schema]
+(defn byte-buffer-reader [^ByteBuffer byte-buffer record-group-metadata type-store queried-schema]
   (let [queried-indices (schema/queried-column-indices-set queried-schema)
         byte-array-readers
         (->> (column-chunk-lengths record-group-metadata)
-             (map vector (column-chunk-byte-offsets record-group-metadata offset))
+             (map vector (column-chunk-byte-offsets record-group-metadata))
              (utils/filter-indices queried-indices)
              (map (fn [[offset length]]
                     (ByteArrayReader. (utils/sub-byte-buffer byte-buffer offset length)))))
