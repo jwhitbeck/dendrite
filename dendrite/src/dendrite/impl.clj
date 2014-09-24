@@ -9,7 +9,8 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.impl
-  (:require [dendrite.assembly :as assembly]
+  (:require [clojure.core.reducers :refer [CollFold]]
+            [dendrite.assembly :as assembly]
             [dendrite.striping :as striping]
             [dendrite.encoding :as encoding]
             [dendrite.estimation :as estimation]
@@ -145,6 +146,7 @@
 
 (defprotocol IReader
   (read* [_ opts])
+  (folder* [_ opts])
   (stats [_]
     "Returns a map containing all the stats associated with this reader. The tree top-level keys
     are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
@@ -460,6 +462,29 @@
            (map record-group/read)
            utils/flatten-1
            (utils/chunked-pmap assemble))))
+  (folder* [_ opts]
+    (let [{:keys [query missing-fields-as-nil? readers]} (parse-read-options opts)
+          queried-schema (schema/apply-query (:schema metadata)
+                                             query
+                                             type-store
+                                             missing-fields-as-nil?
+                                             readers)
+          read-striped #(->> (record-group-readers backend-reader
+                                                   (:record-groups-metadata metadata)
+                                                   type-store
+                                                   queried-schema)
+                             (map record-group/read)
+                             utils/flatten-1)
+          assemble (assembly/assemble-fn queried-schema)]
+      (reify
+        clojure.core.protocols/CollReduce
+        (coll-reduce [_ f]
+          (reduce f (utils/chunked-pmap assemble (read-striped))))
+        (coll-reduce [_ f init]
+          (reduce f init (utils/chunked-pmap assemble (read-striped))))
+        CollFold
+        (coll-fold [_ n combinef reducef]
+          (utils/chunked-fold n assemble reducef combinef (read-striped))))))
   (stats [_]
     (let [full-query (schema/apply-query (:schema metadata) '_ type-store true nil)
           all-stats (->> (record-group-readers backend-reader
@@ -535,3 +560,11 @@
   ([f reader] (pmap nil f reader))
   ([options f reader]
      (read* reader (assoc options :pmap-fn f))))
+
+(defn folder
+  "Like read but returns a foldable collection (as per core.reducers) instead of a lazy-seq. The fold
+  operation on this collection applies the reduce function in each of the parallel record assembly threads for
+  increased performance. If provided, the options map supports the same options as read."
+  ([reader] (folder nil reader))
+  ([options reader]
+     (folder* reader options)))

@@ -216,6 +216,12 @@
           (pmap (comp doall (partial map f)))
           flatten-1)))
 
+(defn chunked-fold [n mapf reducef combinef coll]
+  (->> coll
+       (chunk-partition-all n)
+       (pmap #(->> % (map mapf) (reduce reducef (combinef))))
+       (reduce combinef (combinef))))
+
 (defn callable? [f] (instance? Callable f))
 
 (defn boolean? [b] (or (true? b) (false? b)))

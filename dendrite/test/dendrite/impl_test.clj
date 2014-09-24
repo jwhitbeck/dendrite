@@ -10,6 +10,7 @@
 
 (ns dendrite.impl-test
   (:require [clojure.test :refer :all]
+            [clojure.core.reducers :as r]
             [clojure.java.io :as io]
             [dendrite.impl :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
@@ -269,6 +270,11 @@
 (deftest chunkiness
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
     (is (chunked-seq? (-> byte-buffer byte-buffer-reader read seq)))))
+
+(deftest foldable
+  (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
+    (= 30 (->> byte-buffer byte-buffer-reader folder (r/map :docid) (r/fold +)))
+    (= 30 (->> byte-buffer byte-buffer-reader folder (r/map :docid) (r/reduce +)))))
 
 (deftest invalid-options-are-caught
   (testing "writer options"

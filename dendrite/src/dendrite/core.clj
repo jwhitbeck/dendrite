@@ -27,6 +27,7 @@
 
 (defalias read impl/read)
 (defalias pmap impl/pmap)
+(defalias folder impl/folder)
 (defalias stats impl/stats)
 (defalias metadata impl/metadata)
 (defalias schema impl/schema)
