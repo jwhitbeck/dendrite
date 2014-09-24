@@ -266,6 +266,10 @@
   (let [rdr (-> (dremel-paper-writer) byte-buffer! byte-buffer-reader)]
     (is (= [3 1] (pmap (comp count :name) rdr)))))
 
+(deftest chunkiness
+  (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
+    (is (chunked-seq? (-> byte-buffer byte-buffer-reader read seq)))))
+
 (deftest invalid-options-are-caught
   (testing "writer options"
     (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)

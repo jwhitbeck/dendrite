@@ -181,12 +181,38 @@
   ([f c1 c2]
      (pmap-1 (partial apply f) (multiplex [c1 c2]))))
 
+(defn- chunk-take [n coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (when (pos? n)
+       (let [c (chunk-first s)]
+         (chunk-cons c (chunk-take (- n (count c)) (chunk-rest s))))))))
+
+(defn- chunk-nthrest
+  [coll n]
+  (loop [n n xs coll]
+    (if (pos? n)
+      (when-let [s (seq xs)]
+        (let [c (chunk-first s)]
+          (recur (- n (count c)) (chunk-rest s))))
+      xs)))
+
+(defn- chunk-partition-all
+  [n coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (if (chunked-seq? s)
+       (let [seg (doall (chunk-take n s))]
+         (cons seg (chunk-partition-all n (chunk-nthrest s n))))
+       (let [seg (doall (take n s))]
+         (cons seg (chunk-partition-all n (nthrest s n))))))))
+
 (defn chunked-pmap
   ([f coll]
      (chunked-pmap f 255 coll))
   ([f chunk-size coll]
      (->> coll
-          (partition-all chunk-size)
+          (chunk-partition-all chunk-size)
           (pmap (comp doall (partial map f)))
           flatten-1)))
 
