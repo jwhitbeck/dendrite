@@ -1,9 +1,13 @@
-(ns dendrite.benchmark.build-benchmark-data
+(ns dendrite.benchmark.user-events
   (:require [cheshire.core :as json]
-            [dendrite :as d]
-            [dendrite.benchmark.utils :as utils]
-            [org.httpkit.client :as http]
-            [ring.util.codec :as codec]))
+            [clojure.java.io :as io]
+            [dendrite.core :as d]
+            [dendrite.utils :as du]
+            [dendrite.benchmark.utils :as utils])
+  (:import [java.text SimpleDateFormat]
+           [java.util Date]))
+
+(set! *warn-on-reflection* true)
 
 (def mockaroo-columns
   [{:name "id" :type "Sequence"}
@@ -45,48 +49,28 @@
    {:name "devices.connections.events.at" :type "Date" :min "01/01/2012"}
    {:name "devices.connections.events.type" :type "Custom List"
     :values ["Listing" "Purchase" "Search" "Profile update"]}
-   {:name "devices.connections.events.amount" :type "Money" :min 0 :max 100 :percentBlank 40}
-   ])
-
-(defn rand-samples [n mockaroo-columns mockaroo-api-key]
-  (-> (format "http://www.mockaroo.com/api/generate.json?count=%d&key=%s&columns=%s"
-              n mockaroo-api-key (-> mockaroo-columns json/generate-string codec/url-encode))
-      http/get
-      deref
-      :body
-      codec/url-decode
-      (json/parse-string keyword)))
-
-(defn generate-samples-file [filename n mockaroo-columns mockaroo-api-key]
-  (let [batch-size 100
-        samples (->> (repeatedly #(rand-samples batch-size mockaroo-columns mockaroo-api-key))
-                     (apply concat)
-                     (map #(assoc %2 :id %1) (range))
-                     (take n))]
-    (with-open [f (utils/gzip-writer filename)]
-      (doseq [sample samples]
-        (when (zero? (mod (:id sample) 100))
-          (println (str "Processing sample " (:id sample))))
-        (.write f (str (json/generate-string sample) "\n"))))))
+   {:name "devices.connections.events.amount" :type "Money" :min 0 :max 100 :percentBlank 40}])
 
 (defn- fix-lat-long [obj]
-  (update-in obj [:devices]
-             (fn [devices]
-               (->> devices
-                    (map (fn [device]
-                           (update-in device [:connections]
-                                      (fn [connections]
-                                        (->> connections
-                                             (map (fn [connection]
-                                                    (-> connection
-                                                        (update-in [:geo :long] #(Float/parseFloat %))
-                                                        (update-in [:geo :lat] #(Float/parseFloat %))))))))))))))
+  (update-in
+   obj
+   [:devices]
+   (fn [devices]
+     (->> devices
+          (map (fn [device]
+                 (update-in device [:connections]
+                            (fn [connections]
+                              (->> connections
+                                   (map (fn [connection]
+                                          (-> connection
+                                              (update-in [:geo :long] #(Float/parseFloat %))
+                                              (update-in [:geo :lat] #(Float/parseFloat %))))))))))))))
 
 (defn- fix-yob [obj]
   (update-in obj [:personal :yob] #(Integer/parseInt %)))
 
+(defn fix-json-file [input-json-filename output-json-filename]
+  (utils/fix-json-file (comp fix-yob fix-lat-long) input-json-filename output-json-filename))
+
 (defn json-file->dendrite-file [json-filename dendrite-filename]
-  (let [schema (-> "resources/mockaroo_schema.edn" slurp d/read-schema-string)]
-    (with-open [r (utils/gzip-reader json-filename)
-                w (d/file-writer dendrite-filename schema :target-record-group-length (* 10 1024 1024))]
-      (d/write! w (->> r line-seq (map #(-> % (json/parse-string keyword) fix-yob fix-lat-long)))))))
+  (utils/json-file->dendrite-file "user_events_schema.edn" json-filename dendrite-filename))
