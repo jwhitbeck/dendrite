@@ -146,7 +146,7 @@
 
 (defprotocol IReader
   (read* [_ opts])
-  (folder* [_ opts])
+  (foldable* [_ opts])
   (stats [_]
     "Returns a map containing all the stats associated with this reader. The tree top-level keys
     are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
@@ -462,7 +462,7 @@
            (map record-group/read)
            utils/flatten-1
            (utils/chunked-pmap assemble))))
-  (folder* [_ opts]
+  (foldable* [_ opts]
     (let [{:keys [query missing-fields-as-nil? readers]} (parse-read-options opts)
           queried-schema (schema/apply-query (:schema metadata)
                                              query
@@ -561,10 +561,10 @@
   ([options f reader]
      (read* reader (assoc options :pmap-fn f))))
 
-(defn folder
+(defn foldable
   "Like read but returns a foldable collection (as per core.reducers) instead of a lazy-seq. The fold
   operation on this collection applies the reduce function in each of the parallel record assembly threads for
   increased performance. If provided, the options map supports the same options as read."
-  ([reader] (folder nil reader))
+  ([reader] (foldable nil reader))
   ([options reader]
-     (folder* reader options)))
+     (foldable* reader options)))

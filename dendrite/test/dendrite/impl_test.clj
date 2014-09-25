@@ -271,10 +271,10 @@
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
     (is (chunked-seq? (-> byte-buffer byte-buffer-reader read seq)))))
 
-(deftest foldable
+(deftest folding
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
-    (= 30 (->> byte-buffer byte-buffer-reader folder (r/map :docid) (r/fold +)))
-    (= 30 (->> byte-buffer byte-buffer-reader folder (r/map :docid) (r/reduce +)))))
+    (= 30 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/fold +)))
+    (= 30 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/reduce +)))))
 
 (deftest invalid-options-are-caught
   (testing "writer options"
