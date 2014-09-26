@@ -150,7 +150,7 @@
 
 (defn assemble-fn [parsed-query]
   (let [ass-fn (assemble-fn* parsed-query)]
-    (fn [^ArraySeq leveled-values]
-      (when leveled-values
-        (let [lva (.array leveled-values)]
+    (fn [^ArraySeq striped-record]
+      (when striped-record
+        (let [lva (.array striped-record)]
           (ass-fn lva))))))
