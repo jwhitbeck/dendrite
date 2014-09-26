@@ -35,7 +35,7 @@ public class DeflateCompressor implements Compressor {
     deflater.deflate(outputBuffer.buffer, 0, outputBuffer.buffer.length - outputBuffer.position);
     while (!deflater.finished()) {
       int prevBufferLength = outputBuffer.buffer.length;
-      outputBuffer.ensureRemainingCapacity(inputBuffer.length());
+      outputBuffer.ensureRemainingCapacity(prevBufferLength + inputBuffer.length());
       deflater.deflate(outputBuffer.buffer, prevBufferLength,
                        outputBuffer.buffer.length - prevBufferLength);
     }
