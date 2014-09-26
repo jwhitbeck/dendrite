@@ -1,0 +1,17 @@
+{:id #req int
+ :copyright #req string
+ :player #req int
+ :media #req {:height #req int
+              :format #req string
+              :person [{:items #req string}]
+              :width #req int
+              :duration #req int
+              :size #req int
+              :title #req string
+              :bitrate #req int
+              :uri #req string}
+ :image [{:size #req int
+          :height #req int
+          :width #req int
+          :title #req string
+          :uri #req string}]}
