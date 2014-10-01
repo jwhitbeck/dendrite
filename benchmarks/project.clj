@@ -10,6 +10,6 @@
                  [com.taoensso/nippy "2.7.0-RC1"]
                  [dendrite "0.2.1-SNAPSHOT"]
                  [net.jpountz.lz4/lz4 "1.2.0"]
-                 [http-kit "2.1.16"]
+                 [http-kit "2.1.19"]
                  [ring/ring-codec "1.0.0"]
                  [org.clojure/data.fressian "0.2.0"]])
