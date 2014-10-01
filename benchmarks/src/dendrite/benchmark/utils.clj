@@ -1,5 +1,6 @@
 (ns dendrite.benchmark.utils
-  (:require [clojure.java.io :as io]
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.data.fressian :as fressian]
             [cheshire.core :as json]
             [dendrite.core :as d]
@@ -95,6 +96,16 @@
       (doseq [rec records]
         (.write w (str rec))
         (.newLine w )))))
+
+(defn json-file->edn-file [compression json-filename edn-filename]
+  (let [open-writer (case compression
+                      :gzip (comp buffered-writer gzip-output-stream file-output-stream)
+                      :lz4 (comp buffered-writer lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+                ^BufferedWriter w (open-writer edn-filename)]
+      (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
+        (.write w (str obj))
+        (.newLine w)))))
 
 (defn json-file->dendrite-file [schema-resource json-filename dendrite-filename]
   (let [schema (-> schema-resource io/resource slurp d/read-schema-string)]
