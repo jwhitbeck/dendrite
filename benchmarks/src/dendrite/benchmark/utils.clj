@@ -5,7 +5,8 @@
             [dendrite.core :as d]
             [dendrite.utils :as du]
             [org.httpkit.client :as http]
-            [ring.util.codec :as codec])
+            [ring.util.codec :as codec]
+            [taoensso.nippy :as nippy])
   (:import [net.jpountz.lz4 LZ4BlockInputStream LZ4BlockOutputStream]
            [java.io BufferedReader BufferedWriter FileInputStream FileOutputStream InputStreamReader
             OutputStreamWriter ObjectOutputStream ObjectInputStream BufferedOutputStream BufferedInputStream
@@ -178,3 +179,27 @@
                 ^ObjectOutputStream w (open-stream output-filename)]
       (doseq [byte-buffer (->> r line-seq (map (comp fressian/write #(json/parse-string % true))))]
         (write-byte-buffer! w byte-buffer)))))
+
+(defn json-file->nippy-file [compression json-filename output-filename]
+  (let [open-stream (case compression
+                      :gzip (comp object-output-stream buffered-output-stream
+                                  gzip-output-stream file-output-stream)
+                      :lz4 (comp object-output-stream buffered-output-stream
+                                 lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+                ^ObjectOutputStream w (open-stream output-filename)]
+      (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
+        (nippy/freeze-to-out! w obj)))))
+
+(defn json-file->parallel-nippy-file [compression json-filename output-filename]
+  (let [open-stream (case compression
+                      :gzip (comp object-output-stream buffered-output-stream
+                                  gzip-output-stream file-output-stream)
+                      :lz4 (comp object-output-stream buffered-output-stream
+                                 lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+                ^ObjectOutputStream w (open-stream output-filename)]
+      (doseq [byte-buffer (->> (line-seq r)
+                               (map (comp #(ByteBuffer/wrap %) nippy/freeze #(json/parse-string % true))))]
+        (write-byte-buffer! w byte-buffer)))))
+
