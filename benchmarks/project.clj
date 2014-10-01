@@ -7,7 +7,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [cheshire "5.3.1"]
                  [com.taoensso/nippy "2.7.0-RC1"]
-                 [dendrite "0.1.0-SNAPSHOT"]
+                 [dendrite "0.2.1-SNAPSHOT"]
                  [net.jpountz.lz4/lz4 "1.2.0"]
                  [http-kit "2.1.16"]
                  [ring/ring-codec "1.0.0"]
