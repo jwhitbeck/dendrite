@@ -79,15 +79,15 @@
                      (apply concat)
                      (map #(assoc %2 :id %1) (range))
                      (take n))]
-    (with-open [f (gzip-writer filename)]
+    (with-open [w (-> filename file-output-stream gzip-output-stream buffered-writer)]
       (doseq [sample samples]
         (when (zero? (mod (:id sample) 100))
           (println (str "Processing sample " (:id sample))))
-        (.write f (str (json/generate-string sample) "\n"))))))
+        (.write w (str (json/generate-string sample) "\n"))))))
 
 (defn fix-json-file [fix-fn input-json-filename output-json-filename]
-  (with-open [r (gzip-reader input-json-filename)
-              w (gzip-writer output-json-filename)]
+  (with-open [r (-> input-json-filename file-input-stream gzip-input-stream buffered-reader)
+              w (-> output-json-filename file-output-stream gzip-output-stream buffered-writer)]
     (let [records (->> r
                        line-seq
                        (du/chunked-pmap (comp json/generate-string fix-fn #(json/parse-string % true))))]
@@ -97,7 +97,7 @@
 
 (defn json-file->dendrite-file [schema-resource json-filename dendrite-filename]
   (let [schema (-> schema-resource io/resource slurp d/read-schema-string)]
-    (with-open [r (gzip-reader json-filename)
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
                 w (d/file-writer schema dendrite-filename)]
       (->> r
            line-seq
@@ -110,7 +110,7 @@
                                   gzip-output-stream file-output-stream)
                       :lz4 (comp object-output-stream buffered-output-stream
                                  lz4-output-stream file-output-stream))]
-    (with-open [r (gzip-reader json-filename)
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
                 ^ObjectOutputStream w (open-stream output-filename)]
       (doseq [json-obj (->> r line-seq (map #(json/parse-string % true)))]
         (.writeObject w json-obj)))))
@@ -145,7 +145,7 @@
                                   gzip-output-stream file-output-stream)
                       :lz4 (comp object-output-stream buffered-output-stream
                                  lz4-output-stream file-output-stream))]
-    (with-open [r (gzip-reader json-filename)
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
                 ^ObjectOutputStream w (open-stream output-filename)]
       (doseq [byte-buffer (->> r line-seq (map (comp serialize-byte-buffer #(json/parse-string % true))))]
         (write-byte-buffer! w byte-buffer)))))
@@ -163,7 +163,7 @@
                                   gzip-output-stream file-output-stream)
                       :lz4 (comp fressian/create-writer buffered-output-stream
                                  lz4-output-stream file-output-stream))]
-    (with-open [r (gzip-reader json-filename)
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
                 ^FressianWriter w (open-stream output-filename)]
       (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
         (.writeObject w obj)))))
@@ -174,7 +174,7 @@
                                   gzip-output-stream file-output-stream)
                       :lz4 (comp object-output-stream buffered-output-stream
                                  lz4-output-stream file-output-stream))]
-    (with-open [r (gzip-reader json-filename)
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
                 ^ObjectOutputStream w (open-stream output-filename)]
       (doseq [byte-buffer (->> r line-seq (map (comp fressian/write #(json/parse-string % true))))]
         (write-byte-buffer! w byte-buffer)))))
