@@ -1,5 +1,6 @@
 (ns dendrite.benchmark.media-content
-  (:require [dendrite.benchmark.utils :as utils]))
+  (:require [abracad.avro :as avro]
+            [dendrite.benchmark.utils :as utils]))
 
 (def mockaroo-columns
   [{:name "images" :type "JSON Array"}
@@ -41,3 +42,35 @@
 
 (defn fix-json-file [input-json-filename output-json-filename]
   (utils/fix-json-file (comp fix-persons fix-media fix-image) input-json-filename output-json-filename))
+
+(def avro-schema
+  (avro/parse-schema
+   {:name "media-content"
+    :type "record"
+    :fields [{:name "id" :type "int"}
+             {:name "media"
+              :type {:name "media-record"
+                     :type "record"
+                     :fields [{:name "format" :type "string"}
+                              {:name "width" :type "int"}
+                              {:name "height" :type "int"}
+                              {:name "copyright" :type "string"}
+                              {:name "duration" :type "int"}
+                              {:name "size" :type "string"}
+                              {:name "title" :type "string"}
+                              {:name "persons" :type {:name "persons-list"
+                                                      :type "array"
+                                                      :items {:type "string"}}}
+                              {:name "bitrate" :type "int"}
+                              {:name "player" :type "string"}
+                              {:name "uri" :type "string"}]}}
+             {:name "images"
+              :type {:name "images-list"
+                     :type "array"
+                     :items {:name "image"
+                             :type "record"
+                             :fields [{:name "size" :type "int"}
+                                      {:name "height" :type "int"}
+                                      {:name "width" :type "int"}
+                                      {:name "title" :type "string"}
+                                      {:name "uri" :type "string"}]}}}]}))

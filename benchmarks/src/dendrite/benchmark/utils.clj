@@ -1,5 +1,6 @@
 (ns dendrite.benchmark.utils
-  (:require [clojure.edn :as edn]
+  (:require [abracad.avro :as avro]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.data.fressian :as fressian]
             [cheshire.core :as json]
@@ -212,5 +213,25 @@
                 ^ObjectOutputStream w (open-stream output-filename)]
       (doseq [byte-buffer (->> (line-seq r)
                                (map (comp #(ByteBuffer/wrap %) nippy/freeze #(json/parse-string % true))))]
+        (write-byte-buffer! w byte-buffer)))))
+
+(defn json-file->avro-file [compression schema json-filename avro-filename]
+  (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+              w (avro/data-file-writer (if (= compression :gzip) "deflate" "snappy") schema avro-filename)]
+    (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
+      (.append w obj))))
+
+(defn json-file->parallel-avro-file [compression schema json-filename avro-filename]
+  (let [open-stream (case compression
+                      :gzip (comp object-output-stream buffered-output-stream
+                                  gzip-output-stream file-output-stream)
+                      :lz4 (comp object-output-stream buffered-output-stream
+                                 lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+                ^ObjectOutputStream w (open-stream avro-filename)]
+      (doseq [byte-buffer (->> (line-seq r)
+                               (map (comp #(ByteBuffer/wrap %)
+                                          #(avro/binary-encoded schema %)
+                                          #(json/parse-string % true))))]
         (write-byte-buffer! w byte-buffer)))))
 
