@@ -6,11 +6,11 @@
               :persons [string]
               :width #req int
               :duration #req int
-              :size #req string
+              :size #req int
               :title #req string
               :bitrate #req int
               :uri #req string}
- :images [{:size #req int
+ :images [{:size #req string
            :height #req int
            :width #req int
            :title #req string
