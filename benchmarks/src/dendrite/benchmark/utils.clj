@@ -31,6 +31,12 @@
   ^net.jpountz.lz4.LZ4BlockInputStream [^FileInputStream fis]
   (LZ4BlockInputStream. fis))
 
+(defn compressed-input-stream
+  ^java.io.InputStream [^FileInputStream fis compression]
+  (case compression
+    :gzip (gzip-input-stream fis)
+    :lz4 (lz4-input-stream fis)))
+
 (defn buffered-reader
   ^java.io.BufferedReader [^InputStream is]
   (BufferedReader. (InputStreamReader. is) (* 256 1024)))
@@ -212,3 +218,65 @@
                                         json-filename
                                         protobuf-filename))
 
+(defn read-plain-text-file [compression parse-fn filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression) buffered-reader)]
+    (->> r line-seq (map parse-fn) last)))
+
+(defn read-plain-text-file-parallel [compression parse-fn filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression) buffered-reader)]
+    (->> r line-seq (du/chunked-pmap parse-fn) last)))
+
+(defn read-json-file [compression keywordize? filename]
+  (read-plain-text-file compression #(json/parse-string % keywordize?) filename))
+
+(defn read-json-file-parallel [compression keywordize? filename]
+  (read-plain-text-file-parallel compression #(json/parse-string % keywordize?) filename))
+
+(defn read-edn-file [compression filename]
+  (read-plain-text-file compression edn/read-string filename))
+
+(defn read-edn-file-parallel [compression filename]
+  (read-plain-text-file-parallel compression edn/read-string filename))
+
+(defn read-dendrite-file [filename]
+  (with-open [r (d/file-reader filename)]
+    (last (d/read r))))
+
+(defn read-byte-buffer-file [n compression parse-fn filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
+                    buffered-input-stream object-input-stream)]
+    (->> r (byte-byffer-seq n) (du/chunked-pmap parse-fn) last)))
+
+(defn read-fressian-file [n compression filename]
+  (with-open [^FressianReader r (-> filename file-input-stream (compressed-input-stream compression)
+                                    buffered-input-stream fressian/create-reader)]
+    (last (repeatedly n #(.readObject r)))))
+
+(defn read-fressian-file-parallel [n compression filename]
+  (read-byte-buffer-file n compression fressian/read filename))
+
+(defn read-nippy-file [n compression filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
+                    buffered-input-stream object-input-stream)]
+    (last (repeatedly n #(nippy/thaw-from-in! r)))))
+
+(defn read-nippy-file-parallel [n compression filename]
+  (read-byte-buffer-file n compression (comp nippy/thaw #(.array ^ByteBuffer %)) filename))
+
+(defn read-avro-file [filename]
+  (with-open [r (avro/data-file-reader filename)]
+    (last r)))
+
+(defn read-avro-file-parallel [n compression avro-schema filename]
+  (read-byte-buffer-file n compression (comp #(avro/decode avro-schema %) #(.array ^ByteBuffer %)) filename))
+
+(defn read-protobuf-file [n compression proto-deserialize filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
+                    buffered-input-stream object-input-stream)]
+    (->> r
+         (byte-byffer-seq n)
+         (map (comp proto-deserialize #(.array ^ByteBuffer %)))
+         last)))
+
+(defn read-protobuf-file-parallel [n compression proto-deserialize filename]
+  (read-byte-buffer-file n compression (comp proto-deserialize #(.array ^ByteBuffer %)) filename))
