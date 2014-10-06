@@ -3,7 +3,7 @@
   :url "https://github.com/jwhitbeck/dendrite"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :java-opts ["-server" "-Xmx4g"]
+  :java-opts ["-server" "-Xmx6g" "-Xms6g"]
   :plugins [[lein-protobuf "0.4.1"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [cheshire "5.3.1"]
