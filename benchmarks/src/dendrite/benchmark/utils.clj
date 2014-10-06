@@ -280,3 +280,20 @@
 
 (defn read-protobuf-file-parallel [n compression proto-deserialize filename]
   (read-byte-buffer-file n compression (comp proto-deserialize #(.array ^ByteBuffer %)) filename))
+
+(defmacro time-with-gc [& body]
+  `(do (System/gc)
+       (Thread/sleep 2000)
+       (let [begin# (System/nanoTime)]
+         ~@body
+         (double (/ (- (System/nanoTime) begin#) 1000000)))))
+
+(defn benchmark-read-fn [create-fn read-fn]
+  (fn [benchmarked-filename]
+    (create-fn benchmarked-filename)
+    ;; ensure JIT kicks in
+    (dotimes [_ 10] (read-fn benchmarked-filename))
+    (let [result {:file-size (-> benchmarked-filename io/as-file .length)
+                  :read-times (vec (repeatedly 20 #(time-with-gc (read-fn benchmarked-filename))))}]
+      (-> benchmarked-filename io/as-file .delete)
+      result)))
