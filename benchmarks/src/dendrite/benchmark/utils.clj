@@ -67,6 +67,13 @@
   ^java.io.ObjectOutputStream [^BufferedOutputStream bos]
   (ObjectOutputStream. bos))
 
+(defn compressed-object-output-stream
+  ^java.io.ObjectOutputStream [compression filename]
+  (let [compressed-output-stream (case compression
+                                   :gzip gzip-output-stream
+                                   :lz4 lz4-output-stream)]
+    (-> filename file-output-stream compressed-output-stream buffered-output-stream object-output-stream)))
+
 (defn rand-samples [n mockaroo-columns mockaroo-api-key]
   (-> (format "http://www.mockaroo.com/api/generate.json?count=%d&key=%s&columns=%s"
               n mockaroo-api-key (-> mockaroo-columns json/generate-string codec/url-encode))
@@ -118,15 +125,10 @@
            (reduce d/write! w)))))
 
 (defn json-file->java-objects-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream output-filename)]
-      (doseq [json-obj (->> r line-seq (map #(json/parse-string % true)))]
-        (.writeObject w json-obj)))))
+  (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+              ^ObjectOutputStream w (compressed-object-output-stream compression output-filename)]
+    (doseq [json-obj (->> r line-seq (map #(json/parse-string % true)))]
+      (.writeObject w json-obj))))
 
 (defn serialize-byte-buffer [obj]
   (let [baos (ByteArrayOutputStream. 1024)
@@ -152,16 +154,14 @@
     (.readFully ois buf 0 num-bytes)
     (ByteBuffer/wrap buf)))
 
+(defn json-file->parallel-byte-buffer-file [compression serialize-fn json-filename output-filename]
+  (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+              ^ObjectOutputStream w (compressed-object-output-stream compression output-filename)]
+    (doseq [byte-buffer (->> r line-seq (map (comp serialize-fn #(json/parse-string % true))))]
+      (write-byte-buffer! w byte-buffer))))
+
 (defn json-file->parallel-java-objects-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream output-filename)]
-      (doseq [byte-buffer (->> r line-seq (map (comp serialize-byte-buffer #(json/parse-string % true))))]
-        (write-byte-buffer! w byte-buffer)))))
+  (json-file->parallel-byte-buffer-file compression serialize-byte-buffer json-filename output-filename))
 
 (defn byte-byffer-seq [n ^ObjectInputStream ois]
   (repeatedly n #(read-byte-buffer! ois)))
@@ -171,49 +171,28 @@
   (fressian/create-reader br))
 
 (defn json-file->fressian-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp fressian/create-writer buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp fressian/create-writer buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
+  (let [fressian-output-stream (case compression
+                                 :gzip (comp fressian/create-writer buffered-output-stream
+                                             gzip-output-stream file-output-stream)
+                                 :lz4 (comp fressian/create-writer buffered-output-stream
+                                            lz4-output-stream file-output-stream))]
     (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^FressianWriter w (open-stream output-filename)]
+                ^FressianWriter w (fressian-output-stream output-filename)]
       (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
         (.writeObject w obj)))))
 
 (defn json-file->parallel-fressian-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream output-filename)]
-      (doseq [byte-buffer (->> r line-seq (map (comp fressian/write #(json/parse-string % true))))]
-        (write-byte-buffer! w byte-buffer)))))
+  (json-file->parallel-byte-buffer-file compression fressian/write json-filename output-filename))
 
 (defn json-file->nippy-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream output-filename)]
-      (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
-        (nippy/freeze-to-out! w obj)))))
+  (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+              ^ObjectOutputStream w (compressed-object-output-stream compression output-filename)]
+    (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
+      (nippy/freeze-to-out! w obj))))
 
 (defn json-file->parallel-nippy-file [compression json-filename output-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream output-filename)]
-      (doseq [byte-buffer (->> (line-seq r)
-                               (map (comp #(ByteBuffer/wrap %) nippy/freeze #(json/parse-string % true))))]
-        (write-byte-buffer! w byte-buffer)))))
+  (json-file->parallel-byte-buffer-file compression (comp #(ByteBuffer/wrap %) nippy/freeze)
+                                        json-filename output-filename))
 
 (defn json-file->avro-file [compression schema json-filename avro-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
@@ -222,30 +201,14 @@
       (.append w obj))))
 
 (defn json-file->parallel-avro-file [compression schema json-filename avro-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream avro-filename)]
-      (doseq [byte-buffer (->> (line-seq r)
-                               (map (comp #(ByteBuffer/wrap %)
-                                          #(avro/binary-encoded schema %)
-                                          #(json/parse-string % true))))]
-        (write-byte-buffer! w byte-buffer)))))
+  (json-file->parallel-byte-buffer-file compression
+                                        (comp #(ByteBuffer/wrap %) #(avro/binary-encoded schema %))
+                                        json-filename
+                                        avro-filename))
 
-(defn json-file->protobuf-file [compression proto-serialize json-filename avro-filename]
-  (let [open-stream (case compression
-                      :gzip (comp object-output-stream buffered-output-stream
-                                  gzip-output-stream file-output-stream)
-                      :lz4 (comp object-output-stream buffered-output-stream
-                                 lz4-output-stream file-output-stream))]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                ^ObjectOutputStream w (open-stream avro-filename)]
-      (doseq [byte-buffer (->> (line-seq r)
-                               (map (comp #(ByteBuffer/wrap %)
-                                          proto-serialize
-                                          #(json/parse-string % true))))]
-        (write-byte-buffer! w byte-buffer)))))
+(defn json-file->protobuf-file [compression proto-serialize json-filename protobuf-filename]
+  (json-file->parallel-byte-buffer-file compression
+                                        (comp #(ByteBuffer/wrap %) proto-serialize)
+                                        json-filename
+                                        protobuf-filename))
 
