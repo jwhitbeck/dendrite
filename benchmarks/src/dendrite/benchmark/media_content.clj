@@ -1,6 +1,8 @@
 (ns dendrite.benchmark.media-content
   (:require [abracad.avro :as avro]
-            [dendrite.benchmark.utils :as utils]))
+            [dendrite.benchmark.utils :as utils]
+            [flatland.protobuf.core :refer :all])
+  (:import [dendrite.benchmarks V22LiteMedia$MediaContent]))
 
 (def mockaroo-columns
   [{:name "images" :type "JSON Array"}
@@ -78,3 +80,15 @@
                                       {:name "width" :type "int"}
                                       {:name "title" :type "string"}
                                       {:name "uri" :type "string"}]}}}]}))
+
+(def MediaContent (protodef V22LiteMedia$MediaContent))
+
+(defn proto-serialize ^bytes [media-content]
+  (let [images (:images media-content)
+        fixed-media-content (-> media-content
+                                (assoc :image images)
+                                (dissoc :images))]
+    (protobuf-dump (apply protobuf MediaContent (apply concat fixed-media-content)))))
+
+(defn proto-deserialize [^bytes bs]
+  (protobuf-load MediaContent bs))

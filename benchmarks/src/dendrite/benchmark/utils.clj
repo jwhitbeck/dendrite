@@ -235,3 +235,17 @@
                                           #(json/parse-string % true))))]
         (write-byte-buffer! w byte-buffer)))))
 
+(defn json-file->protobuf-file [compression proto-serialize json-filename avro-filename]
+  (let [open-stream (case compression
+                      :gzip (comp object-output-stream buffered-output-stream
+                                  gzip-output-stream file-output-stream)
+                      :lz4 (comp object-output-stream buffered-output-stream
+                                 lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+                ^ObjectOutputStream w (open-stream avro-filename)]
+      (doseq [byte-buffer (->> (line-seq r)
+                               (map (comp #(ByteBuffer/wrap %)
+                                          proto-serialize
+                                          #(json/parse-string % true))))]
+        (write-byte-buffer! w byte-buffer)))))
+
