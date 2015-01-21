@@ -177,7 +177,8 @@
                 (if (seq tail)
                   (cons (deref cur) (step (future (f (first tail))) (rest tail)))
                   [(deref cur)])))]
-       (step (future (f (first coll))) (rest coll))))
+       (when (seq coll)
+         (step (future (f (first coll))) (rest coll)))))
   ([f c1 c2]
      (pmap-1 (partial apply f) (multiplex [c1 c2]))))
 

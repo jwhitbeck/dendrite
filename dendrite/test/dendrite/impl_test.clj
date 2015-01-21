@@ -66,6 +66,12 @@
                (doall (read {:query {:docid '_}} r))))))
     (io/delete-file tmp-filename)))
 
+(deftest empty-file-write-read
+  (.close (file-writer (-> helpers/test-schema-str schema/read-string) tmp-filename))
+  (with-open [r (file-reader tmp-filename)]
+    (is (empty? (read r))))
+  (io/delete-file tmp-filename))
+
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (-> helpers/test-schema-str schema/read-string)]
