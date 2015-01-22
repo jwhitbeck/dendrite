@@ -10,12 +10,14 @@ the desired information.
 
 [Dremel]: http://research.google.com/pubs/pub36632.html
 
-Furthermore, this library also borrows many ideas from the [Parquet][] project, an
-implementation of the Dremel file format for Hadoop. Unlike Parquet, Dendrite is not tied to any particular
-ecosystem and is designed to be a small library with very few external dependencies (`net.jpountz.lz4/lz4` for
-LZ4 compression and `org.clojure/data.fressian` for metadata serialization).
+Furthermore, this library also borrows many ideas from the [Parquet][] project, an implementation of the
+Dremel file format for Hadoop. Unlike Parquet, Dendrite is not tied to any particular ecosystem and is
+designed to be a small library with very few external dependencies ([lz4-java][] for LZ4 compression and
+[fressian][] for metadata serialization).
 
 [Parquet]: http://parquet.io/
+[lz4-java]: https://github.com/jpountz/lz4-java
+[fressian]: https://github.com/clojure/data.fressian
 
 Word of warning: this code has not yet been battle-tested. Prior to the 1.0 release, no effort will be made at
 preserving backwards compatibility of APIs or binary compatibility of files.
@@ -91,6 +93,6 @@ In _Proc. VLDB_, 2010
 
 ## License
 
-Copyright &copy; 2013-2014 John Whitbeck
+Copyright &copy; 2013-2015 John Whitbeck
 
 Distributed under the Eclipse Public License, the same as Clojure.
