@@ -1,4 +1,4 @@
-(defproject dendrite "0.2.1-SNAPSHOT"
+(defproject dendrite "0.2.1"
   :description "A Dremel-like columnar storage format for Clojure."
   :url "https://github.com/jwhitbeck/dendrite"
   :license {:name "Eclipse Public License"
