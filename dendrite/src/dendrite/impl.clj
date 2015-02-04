@@ -491,11 +491,13 @@
                                                (:record-groups-metadata metadata)
                                                type-store
                                                full-query)
-                         (map record-group/stats))
-          record-groups-stats (map :record-group all-stats)
-          columns-stats (->> (map :column-chunks all-stats)
-                             (apply map vector)
-                             (map stats/column-chunks->column-stats))]
+                         (map record-group/stats)
+                         seq)
+          record-groups-stats (some->> all-stats (map :record-group))
+          columns-stats (some->> all-stats
+                                 (map :column-chunks)
+                                 (apply map vector)
+                                 (map stats/column-chunks->column-stats))]
       {:record-groups record-groups-stats
        :columns columns-stats
        :global (stats/record-groups->global-stats (length backend-reader) record-groups-stats)}))

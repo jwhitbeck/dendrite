@@ -17,9 +17,13 @@
 
 (defrecord PageStats [num-values length byte-stats])
 
-(defn add-byte-stats [byte-stats-a byte-stats-b]
-  (->> (map (fnil + 0 0) (vals byte-stats-a) (vals byte-stats-b))
-       (apply ->ByteStats)))
+(defn add-byte-stats
+  ([]
+   (map->ByteStats {:header-length 0 :repetition-levels-length 0 :definition-levels-length 0 :data-length 0
+                    :dictionary-header-length 0 :dictionary-length 0}))
+  ([byte-stats-a byte-stats-b]
+   (->> (map (fnil + 0 0) (vals byte-stats-a) (vals byte-stats-b))
+        (apply ->ByteStats))))
 
 (defrecord ColumnChunkStats [spec num-pages num-values num-dictionary-values length byte-stats])
 
@@ -69,6 +73,6 @@
    {:data-length (reduce + (map :length record-groups-stats))
     :length length
     :num-records (reduce + (map :num-records record-groups-stats))
-    :num-columns (-> record-groups-stats first :num-columns)
+    :num-columns (-> record-groups-stats first (:num-columns 0))
     :num-record-groups (count record-groups-stats)
     :byte-stats (reduce add-byte-stats (map :byte-stats record-groups-stats))}))

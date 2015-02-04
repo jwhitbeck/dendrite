@@ -69,7 +69,9 @@
 (deftest empty-file-write-read
   (.close (file-writer (-> helpers/test-schema-str schema/read-string) tmp-filename))
   (with-open [r (file-reader tmp-filename)]
-    (is (empty? (read r))))
+    (is (empty? (read r)))
+    (is (zero? (-> r stats :global :data-length)))
+    (is (pos? (-> r stats :global :length))))
   (io/delete-file tmp-filename))
 
 (deftest automatic-schema-optimization
