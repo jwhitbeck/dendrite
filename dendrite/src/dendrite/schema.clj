@@ -38,7 +38,7 @@
                                       :encoding (keyword encoding)
                                       :compression (keyword compression)})))
 
-(defn record? [field] (-> field :sub-fields empty? not))
+(defn record? [field] (-> field :sub-fields seq))
 
 (defn- repeated? [{repetition :repetition}] (not (#{:optional :required} repetition)))
 
