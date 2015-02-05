@@ -329,6 +329,7 @@
         :write-thread (future (->> writing-queue
                                    blocking-queue-seq
                                    (utils/chunked-pmap stripe)
+                                   ; nil striped records are invalid inputs that have been handled
                                    (remove nil?)
                                    (write-striped-records record-group-writer
                                                           backend-writer
