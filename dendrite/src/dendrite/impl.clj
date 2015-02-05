@@ -165,7 +165,8 @@
 (def ^:private queue-poison ::poison)
 
 (defn- blocking-queue-seq [^LinkedBlockingQueue queue]
-  (lazy-seq (let [v (.take queue)]
+  (lazy-seq (let [v (.take queue)
+                  v (when-not (= v ::nil-record) v)]
               (when-not (= queue-poison v)
                 (cons v (blocking-queue-seq queue))))))
 
@@ -280,7 +281,7 @@
       (if (instance? Exception @write-thread)
         (throw @write-thread)
         (throw (IllegalStateException. "Cannot write to closed writer.")))
-      (.put writing-queue (if (nil? record) {} record)))
+      (.put writing-queue (if (nil? record) ::nil-record record)))
     this)
   Closeable
   (close [_]

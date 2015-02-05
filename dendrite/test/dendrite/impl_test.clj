@@ -74,6 +74,36 @@
     (is (pos? (-> r stats :global :length))))
   (io/delete-file tmp-filename))
 
+(deftest flat-base-type-write-read
+  (testing "required"
+    (let [records (take 100 (repeatedly #(rand-int 100)))]
+      (with-open [w (file-writer (schema/req 'int) tmp-filename)]
+        (reduce write! w records))
+      (is (= records (with-open [r (file-reader tmp-filename)]
+                       (doall (read r)))))))
+  (testing "optional"
+    (let [records (->> (repeatedly #(rand-int 100)) (helpers/rand-map 0.1 (constantly nil)) (take 100))]
+      (with-open [w (file-writer 'int tmp-filename)]
+        (reduce write! w records))
+      (is (= records (with-open [r (file-reader tmp-filename)]
+                       (doall (read r)))))))
+  (io/delete-file tmp-filename))
+
+(deftest flat-repeated-type-write-read
+  (testing "repeated base type"
+    (let [records (->> (repeatedly #(rand-int 100)) (partition 5) (take 20))]
+      (with-open [w (file-writer ['int] tmp-filename)]
+        (reduce write! w records))
+      (is (= records (with-open [r (file-reader tmp-filename)]
+                       (doall (read r)))))))
+  (testing "repeated records"
+    (let [records (->> (helpers/rand-test-records) (partition 5) (take 20))]
+      (with-open [w (file-writer [(-> helpers/test-schema-str schema/read-string)] tmp-filename)]
+        (reduce write! w records))
+      (is (= records (with-open [r (file-reader tmp-filename)]
+                       (doall (read r)))))))
+  (io/delete-file tmp-filename))
+
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (-> helpers/test-schema-str schema/read-string)]

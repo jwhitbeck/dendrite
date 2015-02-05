@@ -106,26 +106,22 @@
                       (format-ks parents)))))
     cs))
 
-(defmethod parse* :list
-  [coll parents type-store]
-  (let [sub-schema (parse* (first coll) parents type-store)]
-    (if (column-spec? sub-schema)
-      (map->Field {:repetition :list :column-spec sub-schema})
-      (assoc sub-schema :repetition :list))))
+(defn- parse-repeated
+  [repetition-type coll parents type-store]
+  (let [repeated-elem (first coll)]
+    (when (required-field? repeated-elem)
+      (throw (IllegalArgumentException.
+              (format "Repeated field %s cannot be marked as required." (format-ks parents)))))
+    (let [sub-schema (parse* repeated-elem parents type-store)]
+      (if (column-spec? sub-schema)
+        (map->Field {:repetition repetition-type :column-spec sub-schema})
+        (assoc sub-schema :repetition repetition-type)))))
 
-(defmethod parse* :vector
-  [coll parents type-store]
-  (let [sub-schema (parse* (first coll) parents type-store)]
-    (if (column-spec? sub-schema)
-      (map->Field {:repetition :vector :column-spec sub-schema})
-      (assoc sub-schema :repetition :vector))))
+(defmethod parse* :list [coll parents type-store] (parse-repeated :list coll parents type-store))
 
-(defmethod parse* :set
-  [coll parents type-store]
-  (let [sub-schema (parse* (first coll) parents type-store)]
-    (if (column-spec? sub-schema)
-      (map->Field {:repetition :set :column-spec sub-schema})
-      (assoc sub-schema :repetition :set))))
+(defmethod parse* :vector [coll parents type-store] (parse-repeated :vector coll parents type-store))
+
+(defmethod parse* :set [coll parents type-store] (parse-repeated :set coll parents type-store))
 
 (defmethod parse* :record
   [coll parents type-store]
@@ -194,17 +190,25 @@
     (assoc-in field ks current-level)))
 
 (defn- with-definition-levels [schema]
-  (-> schema
-      (schema-with-level 0 (complement required?) [:column-spec :max-definition-level] false)
-      (schema-with-level 0 (complement required?) [:definition-level] true)))
+  (let [definition-level (if (required? schema) 0 1)]
+    (-> schema
+        (schema-with-level definition-level (complement required?) [:column-spec :max-definition-level] false)
+        (schema-with-level definition-level (complement required?) [:definition-level] true))))
 
 (defn- with-repetition-levels [schema]
-  (-> schema
-      (schema-with-level 0 repeated? [:column-spec :max-repetition-level] false)
-      (schema-with-level 0 repeated? [:repetition-level] true)))
+  (let [repetition-level (if (repeated? schema) 1 0)]
+    (-> schema
+        (schema-with-level repetition-level repeated? [:column-spec :max-repetition-level] false)
+        (schema-with-level repetition-level repeated? [:repetition-level] true))))
 
 (defn- with-top-record-required [schema]
-  (assoc schema :repetition :required))
+  (cond-> schema
+    (and (record? schema) (not (repeated? schema))) (assoc :repetition :required)))
+
+(defn- with-raw-colum-spec-boxed [schema]
+  (if (column-spec? schema)
+    (map->Field {:column-spec schema :repetition :optional})
+    schema))
 
 (defn- with-column-spec-paths* [field path]
   (let [next-path (if (:name field) (conj path (:name field)) path)]
@@ -228,6 +232,7 @@
 
 (defn- annotate [schema]
   (-> schema
+      with-raw-colum-spec-boxed
       (with-column-indices :column-index)
       with-top-record-required
       with-repetition-levels
@@ -235,7 +240,14 @@
 
 (defn parse [unparsed-schema type-store]
   (try
-    (-> unparsed-schema (parse* [] type-store) annotate)
+    (let [enclosing-required? (required-field? unparsed-schema)
+          unparsed-schema (cond-> unparsed-schema enclosing-required? :field)
+          schema (-> unparsed-schema (parse* [] type-store) annotate)]
+      (if enclosing-required?
+        (if (repeated? schema)
+          (throw (IllegalArgumentException. "Root is both required and repeated"))
+          (assoc schema :repetition :required))
+        schema))
     (catch Exception e
       (throw (IllegalArgumentException. (format "Failed to parse schema '%s'" unparsed-schema) e)))))
 

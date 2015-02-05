@@ -62,7 +62,9 @@
                  (let [lvs (aget leveled-values-array col-idx)
                        ^LeveledValue flv (first lvs)
                        next-rl (if-let [^LeveledValue n (second lvs)] (.repetitionLevel n) 0)]
-                   (when-not (and (nil? (.value flv)) (> max-dl (.definitionLevel flv)) (> max-rl next-rl))
+                   (if (and (nil? (.value flv)) (> max-dl (.definitionLevel flv)) (> max-rl next-rl))
+                     (do (aset leveled-values-array col-idx (rest lvs))
+                         nil)
                      (let [ret (loop [rlvs (rest lvs)
                                       tr (conj! (transient empty-coll) (.value flv))]
                                  (let [^LeveledValue lv (first rlvs)]

@@ -19,7 +19,7 @@
 (deftest parse-unparsed-schema-str
   (testing "write/read unparsed schema"
     (is (= (read-string test-schema-str)
-           (-> test-schema-str read-string str read-string))))
+           (-> test-schema-str read-string pr-str read-string))))
   (testing "parse unparsed schema"
     (is (= (read-string test-schema-str)
            (-> test-schema-str read-string (parse default-type-store) unparse)))))
@@ -57,6 +57,17 @@
     {'string (req {:foo 'int})} :optional :required
     {'string #{{:foo 'int}}} :optional :set))
 
+(deftest flat-schemas
+  (testing "base types"
+    (is (= 'int (-> "int" read-string str read-string)))
+    (is (= 'int (-> "int" read-string (parse default-type-store) unparse)))
+    (is (= (req (col 'int 'plain 'lz4)) (-> "#req #col [int plain lz4]" read-string pr-str read-string)))
+    (is (= 'byte-array (-> "byte-array" read-string str read-string))))
+  (testing "repeated"
+    (is (= ['int] (-> "[int]" read-string str read-string)))
+    (is (= ['int] (-> "[int]" read-string (parse default-type-store) unparse)))
+    (is (= [(col 'int 'plain 'lz4)] (-> "[#col [int plain lz4]]" read-string pr-str read-string)))))
+
 (deftest invalid-schemas
   (testing "unsupported types"
     (is (thrown-with-msg?
@@ -87,7 +98,11 @@
   (testing "nesting required elements"
     (is (thrown-with-msg?
          IllegalArgumentException #"Cannot mark a field as required multiple times"
-         (parse {:foo (req (req 'int))} default-type-store)))))
+         (parse {:foo (req (req 'int))} default-type-store))))
+  (testing "required repeated fields"
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Repeated field \[:foo\] cannot be marked as required"
+         (throw-cause (parse {:foo [(req 'int)]} default-type-store))))))
 
 (deftest queries
   (let [schema (-> test-schema-str read-string (parse default-type-store))]
