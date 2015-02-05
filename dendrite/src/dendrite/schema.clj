@@ -132,7 +132,7 @@
   (map->Field
    {:repetition :optional
     :sub-fields (for [[k v] coll :let [mark-required? (required-field? v)
-                                       v (if mark-required? (:field v) v)]]
+                                       v (cond-> v mark-required? :field)]]
                   (let [parsed-v (parse* v (conj parents k) type-store)
                         field (if (column-spec? parsed-v)
                                 (map->Field {:name k :repetition :optional :column-spec parsed-v})
