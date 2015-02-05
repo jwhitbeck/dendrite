@@ -83,7 +83,11 @@
   (testing "marking a field as both repeated and required in a map"
     (is (thrown-with-msg?
          IllegalArgumentException #"Field \[:value\] is marked both required and repeated"
-         (throw-cause (parse {'string (req ['int])} default-type-store))))))
+         (throw-cause (parse {'string (req ['int])} default-type-store)))))
+  (testing "nesting required elements"
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Cannot mark a field as required multiple times"
+         (parse {:foo (req (req 'int))} default-type-store)))))
 
 (deftest queries
   (let [schema (-> test-schema-str read-string (parse default-type-store))]

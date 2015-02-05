@@ -58,18 +58,21 @@
   (.write w "#req ")
   (print-method (:field v) w))
 
-(def req
+(defn- required-field? [elem] (instance? RequiredField elem))
+
+(defn req
   "Marks the enclosed schema element as required."
-  ->RequiredField)
+  [elem]
+  (when (required-field? elem)
+    (throw (IllegalArgumentException. "Cannot mark a field as required multiple times")))
+  (->RequiredField elem))
 
 (defn read-string
   "Parse an edn-formatted dendrite string."
   [s]
-  (edn/read-string {:readers {'req ->RequiredField
+  (edn/read-string {:readers {'req req
                               'col metadata/read-column-spec}}
                    s))
-
-(defn- required-field? [elem] (instance? RequiredField elem))
 
 (defn- column-spec? [elem] (instance? ColumnSpec elem))
 
