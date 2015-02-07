@@ -51,21 +51,21 @@
     (sub-field field k)
     (sub-field-in (sub-field field k) ks)))
 
-(defrecord RequiredField [field])
-
-(defmethod print-method RequiredField
-  [v ^Writer w]
-  (.write w "#req ")
-  (print-method (:field v) w))
-
-(defn- required-field? [elem] (instance? RequiredField elem))
+(defn- required-elem? [elem] (= ::required (-> elem meta :type)))
 
 (defn req
   "Marks the enclosed schema element as required."
   [elem]
-  (when (required-field? elem)
+  (when (required-elem? elem)
     (throw (IllegalArgumentException. "Cannot mark a field as required multiple times")))
-  (->RequiredField elem))
+  (vary-meta elem assoc :type ::required))
+
+(defn- unreq [elem] (vary-meta elem dissoc :type))
+
+(defmethod print-method ::required
+  [v ^Writer w]
+  (.write w "#req ")
+  (print-method (unreq v) w))
 
 (defn read-string
   "Parse an edn-formatted dendrite string."
@@ -91,7 +91,7 @@
   [column-spec parents type-store]
   (let [cs (if (symbol? column-spec)
              (map->column-spec-with-defaults {:type (keyword column-spec)})
-             column-spec)]
+             (unreq column-spec))]
     (when-not (encoding/valid-value-type? type-store (:type cs))
       (throw (IllegalArgumentException.
               (format "Unsupported type '%s' for column %s" (name (:type cs)) (format-ks parents)))))
@@ -109,7 +109,7 @@
 (defn- parse-repeated
   [repetition-type coll parents type-store]
   (let [repeated-elem (first coll)]
-    (when (required-field? repeated-elem)
+    (when (required-elem? repeated-elem)
       (throw (IllegalArgumentException.
               (format "Repeated field %s cannot be marked as required." (format-ks parents)))))
     (let [sub-schema (parse* repeated-elem parents type-store)]
@@ -127,8 +127,7 @@
   [coll parents type-store]
   (map->Field
    {:repetition :optional
-    :sub-fields (for [[k v] coll :let [mark-required? (required-field? v)
-                                       v (cond-> v mark-required? :field)]]
+    :sub-fields (for [[k v] coll :let [mark-required? (required-elem? v)]]
                   (let [parsed-v (parse* v (conj parents k) type-store)
                         field (if (column-spec? parsed-v)
                                 (map->Field {:name k :repetition :optional :column-spec parsed-v})
@@ -144,10 +143,8 @@
   [coll parents type-store]
   (letfn [(parse-map-tree [key-or-val name-kw]
             (let [path (conj parents name-kw)
-                  mark-required? (required-field? key-or-val)
-                  parsed-tree (if mark-required?
-                                (parse* (:field key-or-val) parents type-store)
-                                (parse* key-or-val path type-store))]
+                  mark-required? (required-elem? key-or-val)
+                  parsed-tree (parse* key-or-val path type-store)]
               (if (column-spec? parsed-tree)
                 (-> {:name name-kw :column-spec parsed-tree}
                     (assoc :repetition (if mark-required? :required :optional))
@@ -240,8 +237,7 @@
 
 (defn parse [unparsed-schema type-store]
   (try
-    (let [enclosing-required? (required-field? unparsed-schema)
-          unparsed-schema (cond-> unparsed-schema enclosing-required? :field)
+    (let [enclosing-required? (required-elem? unparsed-schema)
           schema (-> unparsed-schema (parse* [] type-store) annotate)]
       (if enclosing-required?
         (if (repeated? schema)
@@ -286,7 +282,7 @@
       :vector [sub-edn]
       :set #{sub-edn}
       :map {(-> sub-edn :key) (-> sub-edn :value)}
-      :required (if (root? field) sub-edn (->RequiredField sub-edn))
+      :required (if (root? field) sub-edn (req sub-edn))
       sub-edn)))
 
 (defrecord TaggedField [tag field])
@@ -436,9 +432,10 @@
 (defmethod pprint/simple-dispatch ColumnSpec [column-specs]
   (metadata/print-colspec column-specs *out*))
 
-(defmethod pprint/simple-dispatch RequiredField [required-field]
+(defmethod pprint/simple-dispatch ::required
+  [required-field]
   (.write *out* "#req ")
-  (pprint/simple-dispatch (:field required-field)))
+  (pprint/simple-dispatch (vary-meta required-field dissoc :type)))
 
 (defn pretty
   "Returns a pretty-printed string serialization of the provided schema. Useful for saving a schema in a
