@@ -285,17 +285,22 @@
       :required (if (root? field) sub-edn (req sub-edn))
       sub-edn)))
 
-(defrecord TaggedField [tag field])
+(defn- tagged? [elem] (= ::tagged (-> elem meta :type)))
 
-(defmethod print-method TaggedField
-  [v ^Writer w]
-  (.write w (format "#%s " (-> v :tag name)))
-  (print-method (:field v) w))
-
-(def tag
+(defn tag
   "Tags the enclosed query element with the provided tag. Meant to be used in combination with the :readers
   option."
-  ->TaggedField)
+  [tag elem]
+  (when (tagged? elem)
+    (throw (IllegalArgumentException. "Cannot tag an element multiple times")))
+  (vary-meta elem assoc :type ::tagged ::tag tag))
+
+(defn- untag [elem] (vary-meta elem dissoc :type ::tagged))
+
+(defmethod print-method ::tagged
+  [v ^Writer w]
+  (.write w (format "#%s " (-> v meta ::tag name)))
+  (print-method (untag v) w))
 
 (defn read-query-string [query-string]
   (edn/read-string {:default tag} query-string))
@@ -305,7 +310,7 @@
 (defmulti ^:private apply-query*
   (fn [sub-schema query readers missing-fields-as-nil? parents]
     (cond
-     (instance? TaggedField query) :tagged
+     (tagged? query) :tagged
      (and (map? query) (keyword? (some-> query first key))) :record
      (and (map? query) (pos? (count query))) :map
      (set? query) :set
@@ -316,13 +321,14 @@
 
 (defmethod apply-query* :tagged
   [sub-schema tagged-query readers missing-fields-as-nil? parents]
-  (if-let [reader-fn (get readers (:tag tagged-query))]
-    (let [sub-query (apply-query* sub-schema (:field tagged-query) readers missing-fields-as-nil? parents)]
-      (if (or (repeated? sub-query) (record? sub-query))
-        (assoc sub-query :reader-fn reader-fn)
-        (assoc-in sub-query [:column-spec :map-fn] reader-fn)))
-    (throw (IllegalArgumentException.
-            (format "No reader function was provided for tag '%s'." (:tag tagged-query))))))
+  (let [tag (-> tagged-query meta ::tag)]
+    (if-let [reader-fn (get readers tag)]
+      (let [sub-query (apply-query* sub-schema (untag tagged-query) readers missing-fields-as-nil? parents)]
+        (if (or (repeated? sub-query) (record? sub-query))
+          (assoc sub-query :reader-fn reader-fn)
+          (assoc-in sub-query [:column-spec :map-fn] reader-fn)))
+      (throw (IllegalArgumentException.
+              (format "No reader function was provided for tag '%s'." tag))))))
 
 (defmethod apply-query* :symbol
   [sub-schema query-symbol readers missing-fields-as-nil? parents]
