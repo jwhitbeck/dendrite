@@ -248,6 +248,21 @@
                                        :missing-fields-as-nil? false}
                                       (byte-buffer-reader bb))))))))
 
+(deftest entrypoints
+  (let [records (take 100 (helpers/rand-test-records))]
+    (with-open [w (file-writer (-> helpers/test-schema-str schema/read-string) tmp-filename)]
+      (reduce write! w records))
+    (testing "sub records"
+      (is (= (map :links records) (with-open [r (file-reader tmp-filename)]
+                                    (doall (read {:entrypoint [:links]} r))))))
+    (testing "access a column directly"
+      (is (= (map :docid records (with-open [r (file-reader tmp-filename)]
+                                   (doall (read {:entrypoint [:docid]} r)))))))
+    (testing "access a repeated column"
+      (is (= (map #(get-in [:links :backward] records) (with-open [r (file-reader tmp-filename)]
+                                                         (doall (read {:entrypoint [:links :backward]} r)))))))
+    (io/delete-file tmp-filename)))
+
 (deftest readers
   (testing "readers functions transform output"
     (let [bb (byte-buffer! (dremel-paper-writer))]
@@ -350,6 +365,8 @@
   (testing "read options"
     (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                       (#'dendrite.impl/parse-read-options opts))
+         {:entrypoint :foo}
+         ":entrypoint expects a sequence but got ':foo'"
          {:missing-fields-as-nil? nil}
          ":missing-fields-as-nil\\? expects a boolean but got 'null'"
          {:missing-fields-as-nil? "foo"}

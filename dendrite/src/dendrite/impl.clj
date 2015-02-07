@@ -49,6 +49,7 @@
 
 (def default-read-options
   {:query '_
+   :entrypoint nil
    :missing-fields-as-nil? true
    :readers nil
    :pmap-fn nil})
@@ -113,6 +114,11 @@
 (defn- parse-read-option [k v]
   (case k
     :query v
+    :entrypoint
+    (when v
+      (if-not (sequential? v)
+        (throw (IllegalArgumentException. (format ":entrypoint expects a sequence but got '%s'" v)))
+        v))
     :missing-fields-as-nil?
     (if-not (utils/boolean? v)
       (throw (IllegalArgumentException. (format ":missing-fields-as-nil? expects a boolean but got '%s'" v)))
@@ -452,8 +458,8 @@
 (defrecord Reader [backend-reader metadata type-store]
   IReader
   (read* [_ opts]
-    (let [{:keys [query missing-fields-as-nil? readers pmap-fn]} (parse-read-options opts)
-          queried-schema (cond-> (schema/apply-query (:schema metadata)
+    (let [{:keys [query missing-fields-as-nil? readers pmap-fn entrypoint]} (parse-read-options opts)
+          queried-schema (cond-> (schema/apply-query (schema/sub-schema-in (:schema metadata) entrypoint)
                                                      query
                                                      type-store
                                                      missing-fields-as-nil?
@@ -465,8 +471,8 @@
            utils/flatten-1
            (utils/chunked-pmap assemble))))
   (foldable* [_ opts]
-    (let [{:keys [query missing-fields-as-nil? readers]} (parse-read-options opts)
-          queried-schema (schema/apply-query (:schema metadata)
+    (let [{:keys [query missing-fields-as-nil? readers entrypoint]} (parse-read-options opts)
+          queried-schema (schema/apply-query (schema/sub-schema-in (:schema metadata) entrypoint)
                                              query
                                              type-store
                                              missing-fields-as-nil?
@@ -550,11 +556,12 @@
                             query but are not present in this reader's schema will be read as nil values. If
                             false, querying for fields not present in the schema will throw an exception.
   :query                  - the query. Default: '_. See README for full explanation.
+  :entrypoint             - a sequence of keys to begin the query within a subset of the schema. Cannot
+                            contain any keys to repeated fields. See README for full explanation.
   :readers                - a map of query tag symbol to tag function. Default: nil. See README for full
-                            explanantion."
+                            explanation."
   ([reader] (read nil reader))
-  ([options reader]
-     (read* reader options)))
+  ([options reader] (read* reader options)))
 
 (defn pmap
   "Like read but applies the function f to all queried records. Convenience function that leverages the query
@@ -562,13 +569,11 @@
   efficient to calling (map f ..) or (pmap f ..) outside of dendrite. If provided, the options map supports
   the same options as read."
   ([f reader] (pmap nil f reader))
-  ([options f reader]
-     (read* reader (assoc options :pmap-fn f))))
+  ([options f reader] (read* reader (assoc options :pmap-fn f))))
 
 (defn foldable
   "Like read but returns a foldable collection (as per core.reducers) instead of a lazy-seq. The fold
   operation on this collection applies the reduce function in each of the parallel record assembly threads for
   increased performance. If provided, the options map supports the same options as read."
   ([reader] (foldable nil reader))
-  ([options reader]
-     (foldable* reader options)))
+  ([options reader] (foldable* reader options)))

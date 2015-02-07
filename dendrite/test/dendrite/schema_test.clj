@@ -176,3 +176,14 @@
            {:name #{{:url '_}}} "Field \\[:name\\] contains a vector in the schema, cannot be read as a set."
            {:name {'string '_}} (str "Field \\[:name\\] contains a vector in the schema, "
                                      "cannot be read as a map.")))))
+
+(deftest entrypoints
+  (let [unparsed-schema (-> test-schema-str read-string)
+        schema (parse unparsed-schema default-type-store)]
+    (is (= unparsed-schema (-> schema (sub-schema-in nil) unparse)))
+    (is (= (:links unparsed-schema) (-> schema (sub-schema-in [:links]) unparse)))
+    (is (= (get-in unparsed-schema [:links :backward])
+           (-> schema (sub-schema-in [:links :backward]) unparse)))
+    (is (thrown-with-msg?
+         IllegalArgumentException #"Entrypoint '\[:name :language\]' contains repeated field ':name'"
+         (sub-schema-in schema [:name :language])))))

@@ -259,6 +259,17 @@
   (->> (recursive-column-specs schema [])
        (sort-by :column-index)))
 
+(defn sub-schema-in [schema entrypoint]
+  (loop [ks entrypoint
+         sc schema]
+    (if (seq ks)
+      (if (repeated? sc)
+        (throw (IllegalArgumentException. (format "Entrypoint '%s' contains repeated field '%s'"
+                                                  (format-ks entrypoint)
+                                                  (-> sc :name))))
+        (recur (rest ks) (sub-field sc (first ks))))
+      sc)))
+
 (defn- root? [field] (nil? (:name field)))
 
 (defmulti unparse type)
