@@ -12,18 +12,30 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
 import java.util.zip.Inflater;
 import net.jpountz.lz4.LZ4FastDecompressor;
 
 public class LZ4Decompressor implements Decompressor {
 
   @Override
-  public ByteArrayReader decompress(final ByteArrayReader bar, final int compressedLength,
-                                    final int decompressedLength) {
+  public ByteBuffer decompress(final ByteBuffer byteBuffer, final int compressedLength,
+                               final int decompressedLength) {
     byte[] decompressedBytes = new byte[decompressedLength];
     LZ4FastDecompressor lz4Decompressor = LZ4.decompressor();
-    lz4Decompressor.decompress(bar.buffer, bar.position, decompressedBytes, 0, decompressedLength);
-    return new ByteArrayReader(decompressedBytes);
+    byte[] compressedBytes;
+    int offset;
+    if (byteBuffer.hasArray()) {
+      compressedBytes = byteBuffer.array();
+      offset = byteBuffer.arrayOffset() + byteBuffer.position();
+      byteBuffer.position(byteBuffer.position() + compressedLength);
+    } else {
+      compressedBytes = new byte[compressedLength];
+      byteBuffer.get(compressedBytes);
+      offset = 0;
+    }
+    lz4Decompressor.decompress(compressedBytes, offset, decompressedBytes, 0, decompressedLength);
+    return ByteBuffer.wrap(decompressedBytes);
   }
 
 }

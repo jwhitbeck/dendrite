@@ -12,12 +12,9 @@
 
 package dendrite.java;
 
-public interface Compressor extends Resetable, Flushable {
+public interface Compressor extends OutputBuffer {
 
   public int uncompressedLength();
-
-  public int compressedLength();
-
-  public void compress(final Flushable byteArrayWritable);
+  public void compress(OutputBuffer outputBuffer);
 
 }

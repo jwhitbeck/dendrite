@@ -11,24 +11,25 @@
 (ns dendrite.java.compressors-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :refer [lorem-ipsum]])
-  (:import [dendrite.java ByteArrayWriter ByteArrayReader
+  (:import [dendrite.java MemoryOutputStream
             Compressor Decompressor
             DeflateCompressor DeflateDecompressor
-            LZ4Compressor LZ4Decompressor]))
+            LZ4Compressor LZ4Decompressor]
+           [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
 (defn compress-decompress-lorum-ipsum [^Compressor compressor ^Decompressor decompressor]
-  (let [baw (ByteArrayWriter. 10)
-        compressed-baw (ByteArrayWriter. 10)]
-    (.writeByteArray baw (.getBytes (str lorem-ipsum) "UTF-8"))
+  (let [mos (MemoryOutputStream. 10)
+        compressed-mos (MemoryOutputStream. 10)]
+    (.write mos (.getBytes (str lorem-ipsum) "UTF-8"))
     (doto compressor
-      (.compress baw)
-      (.flush compressed-baw))
-    (let [bar (ByteArrayReader. (.buffer compressed-baw))]
+      (.compress mos)
+      (.writeTo compressed-mos))
+    (let [bb (.byteBuffer compressed-mos)]
       (-> decompressor
-          (.decompress bar (.compressedLength compressor) (.uncompressedLength compressor))
-          .buffer
+          (.decompress bb (.length compressor) (.uncompressedLength compressor))
+          .array
           (String. "UTF-8")))))
 
 (deftest deflate-test

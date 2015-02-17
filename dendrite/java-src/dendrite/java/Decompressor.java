@@ -12,8 +12,10 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public interface Decompressor {
 
-  public ByteArrayReader decompress(ByteArrayReader bar, int compressedLength, int decompressedLength);
+  public ByteBuffer decompress(ByteBuffer byteBuffer, int compressedLength, int decompressedLength);
 
 }

@@ -16,19 +16,19 @@ import java.util.zip.Deflater;
 
 public class DeflateCompressor implements Compressor {
 
-  private final ByteArrayWriter inputBuffer;
-  private final ByteArrayWriter outputBuffer;
+  private final MemoryOutputStream inputBuffer;
+  private final MemoryOutputStream outputBuffer;
   private final Deflater deflater;
 
   public DeflateCompressor() {
     deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
-    inputBuffer = new ByteArrayWriter();
-    outputBuffer = new ByteArrayWriter();
+    inputBuffer = new MemoryOutputStream();
+    outputBuffer = new MemoryOutputStream();
   }
 
   @Override
-  public void compress(final Flushable flushable) {
-    flushable.flush(inputBuffer);
+  public void compress(final OutputBuffer buffer) {
+    buffer.writeTo(inputBuffer);
     deflater.setInput(inputBuffer.buffer, 0, inputBuffer.length());
     deflater.finish();
     outputBuffer.ensureRemainingCapacity(inputBuffer.length());
@@ -55,14 +55,21 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public int compressedLength() {
+  public int length() {
     return outputBuffer.length();
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
-    outputBuffer.flush(baw);
+  public int estimatedLength() {
+    return outputBuffer.length();
   }
 
+  @Override
+  public void finish() {}
+
+  @Override
+  public void writeTo(final MemoryOutputStream mos) {
+    outputBuffer.writeTo(mos);
+  }
 
 }

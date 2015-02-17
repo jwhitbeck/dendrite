@@ -12,16 +12,28 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
 import java.util.zip.Inflater;
 import java.util.zip.DataFormatException;
 
 public class DeflateDecompressor implements Decompressor {
 
   @Override
-  public ByteArrayReader decompress(final ByteArrayReader bar, final int compressedLength,
-                                    final int decompressedLength) {
+  public ByteBuffer decompress(final ByteBuffer byteBuffer, final int compressedLength,
+                               final int decompressedLength) {
     Inflater inflater = new Inflater(true);
-    inflater.setInput(bar.buffer, bar.position, compressedLength);
+    byte[] compressedBytes;
+    int offset;
+    if (byteBuffer.hasArray()) {
+      compressedBytes = byteBuffer.array();
+      offset = byteBuffer.arrayOffset() + byteBuffer.position();
+      byteBuffer.position(byteBuffer.position() + compressedLength);
+    } else {
+      compressedBytes = new byte[compressedLength];
+      byteBuffer.get(compressedBytes);
+      offset = 0;
+    }
+    inflater.setInput(compressedBytes, offset, compressedLength);
     byte[] decompressedBytes = new byte[decompressedLength];
     try {
       inflater.inflate(decompressedBytes);
@@ -30,7 +42,7 @@ public class DeflateDecompressor implements Decompressor {
     } finally {
       inflater.end();
     }
-    return new ByteArrayReader(decompressedBytes);
+    return ByteBuffer.wrap(decompressedBytes);
   }
 
 }
