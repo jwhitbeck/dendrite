@@ -12,7 +12,7 @@
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable]
+  (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable MemoryOutputStream OutputBuffer]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -120,6 +120,11 @@
   (let [baw (ByteArrayWriter.)]
     (.write baw byte-array-writable)
     (-> baw .buffer ByteBuffer/wrap)))
+
+(defn output-buffer->byte-buffer ^java.nio.ByteBuffer [^OutputBuffer output-buffer]
+  (let [mos (MemoryOutputStream.)]
+    (.writeTo output-buffer mos)
+    (.byteBuffer mos)))
 
 (def test-schema-str
   "{:docid #req #col [long delta lz4]

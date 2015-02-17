@@ -12,14 +12,16 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public abstract class AbstractDecoder implements Decoder {
 
-  protected final ByteArrayReader byteArrayReader;
+  protected final ByteBuffer bb;
   protected final int numValues;
 
-  public AbstractDecoder(final ByteArrayReader byteArrayReader) {
-    this.byteArrayReader = byteArrayReader.slice();
-    this.numValues = this.byteArrayReader.readUInt();
+  public AbstractDecoder(final ByteBuffer byteBuffer) {
+    bb = byteBuffer.slice();
+    numValues = Bytes.readUInt(bb);
   }
 
   @Override

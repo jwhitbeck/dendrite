@@ -74,12 +74,12 @@ public class ByteArrayIncrementalEncoder implements Encoder {
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void writeTo(final MemoryOutputStream memoryOutputStream) {
     finish();
-    baw.writeUInt(numValues);
-    baw.writeUInt(prefixLengthsEncoder.length());
-    prefixLengthsEncoder.flush(baw);
-    byteArrayEncoder.flush(baw);
+    Bytes.writeUInt(memoryOutputStream, numValues);
+    Bytes.writeUInt(memoryOutputStream, prefixLengthsEncoder.length());
+    prefixLengthsEncoder.writeTo(memoryOutputStream);
+    byteArrayEncoder.writeTo(memoryOutputStream);
   }
 
   @Override

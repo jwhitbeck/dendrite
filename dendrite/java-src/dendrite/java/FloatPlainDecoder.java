@@ -12,15 +12,17 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class FloatPlainDecoder extends AbstractDecoder {
 
-  public FloatPlainDecoder(final ByteArrayReader baw) {
-    super(baw);
+  public FloatPlainDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
   public Object decode() {
-    return byteArrayReader.readFloat();
+    return Bytes.readFloat(bb);
   }
 
 }

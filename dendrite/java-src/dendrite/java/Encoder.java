@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public interface Encoder extends BufferedByteArrayWriter {
+public interface Encoder extends OutputBuffer {
   public void encode(final Object o);
   public int numEncodedValues();
 }

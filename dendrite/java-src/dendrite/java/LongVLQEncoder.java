@@ -17,7 +17,7 @@ public class LongVLQEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     numValues += 1;
-    byteArrayWriter.writeULong((long)o);
+    Bytes.writeULong(mos, (long) o);
   }
 
 }

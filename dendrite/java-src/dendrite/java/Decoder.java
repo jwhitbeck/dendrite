@@ -12,8 +12,6 @@
 
 package dendrite.java;
 
-import java.util.List;
-
 public interface Decoder {
   public Object decode();
   public int numEncodedValues();

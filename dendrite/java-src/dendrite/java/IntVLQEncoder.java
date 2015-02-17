@@ -17,7 +17,7 @@ public class IntVLQEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     numValues += 1;
-    byteArrayWriter.writeUInt((Integer) o);
+    Bytes.writeUInt(mos, (int) o);
   }
 
 }

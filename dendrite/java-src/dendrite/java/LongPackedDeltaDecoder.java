@@ -13,6 +13,7 @@
 package dendrite.java;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 
 public class LongPackedDeltaDecoder extends AbstractDecoder {
 
@@ -27,8 +28,8 @@ public class LongPackedDeltaDecoder extends AbstractDecoder {
   private BigInteger blockMinDelta;
   private BigInteger blockCurrentValue;
 
-  public LongPackedDeltaDecoder(final ByteArrayReader baw) {
-    super(baw);
+  public LongPackedDeltaDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -72,22 +73,22 @@ public class LongPackedDeltaDecoder extends AbstractDecoder {
     currentMiniblockIndex += 1;
     int width = miniblockBitWidths[currentMiniblockIndex];
     int length = remainingValuesInBlock < miniblockLength? remainingValuesInBlock : miniblockLength;
-    byteArrayReader.readPackedInts64(miniblockBuffer, width, length);
+    Bytes.readPackedInts64(bb, miniblockBuffer, width, length);
     miniblockPosition = 0;
   }
 
   private void initNextBlock() {
-    blockLength = byteArrayReader.readUInt();
-    numMiniblocks = byteArrayReader.readUInt();
+    blockLength = Bytes.readUInt(bb);
+    numMiniblocks = Bytes.readUInt(bb);
     miniblockLength = numMiniblocks > 0? blockLength / numMiniblocks : 0;
-    remainingValuesInBlock = byteArrayReader.readUInt();
+    remainingValuesInBlock = Bytes.readUInt(bb);
     miniblockPosition = -1;
     currentMiniblockIndex = -1;
-    blockCurrentValue = BigInteger.valueOf(byteArrayReader.readSLong());
+    blockCurrentValue = BigInteger.valueOf(Bytes.readSLong(bb));
     if (numMiniblocks > 0) {
-      blockMinDelta = byteArrayReader.readSIntVLQ();
+      blockMinDelta = Bytes.readSIntVLQ(bb);
       for (int i=0; i<numMiniblocks; ++i) {
-        miniblockBitWidths[i] = (int)byteArrayReader.readByte() & 0xff;
+        miniblockBitWidths[i] = (int)bb.get() & 0xff;
       }
     }
   }

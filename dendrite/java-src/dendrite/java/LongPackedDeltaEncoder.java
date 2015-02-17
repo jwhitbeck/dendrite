@@ -28,8 +28,8 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
   private long [] referenceFrame = new long[MAX_BLOCK_LENGTH];
   private int numEncodedValues = 0;
 
-  private ByteArrayWriter bestEncoding = new ByteArrayWriter(128);
-  private ByteArrayWriter currentEncoding = new ByteArrayWriter(128);
+  private MemoryOutputStream bestEncoding = new MemoryOutputStream(128);
+  private MemoryOutputStream currentEncoding = new MemoryOutputStream(128);
 
   @Override
   public void encode(final Object o) {
@@ -41,7 +41,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
     position += 1;
   }
 
-  private ByteArrayWriter getBestMiniblockEncodingForBlock() {
+  private MemoryOutputStream getBestMiniblockEncodingForBlock() {
     int blockLength = getBlockLength(position);
     computeDeltas(blockLength);
     computeFrameOfReference();
@@ -59,7 +59,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
       flushBlockWithNumMiniBlocks(currentEncoding, miniblockLength, blockLength);
       int currentLength = currentEncoding.length();
       if (currentLength < minLength) {
-        ByteArrayWriter tmp = bestEncoding;
+        MemoryOutputStream tmp = bestEncoding;
         bestEncoding = currentEncoding;
         currentEncoding = tmp;
         minLength = currentLength;
@@ -70,27 +70,28 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
     return bestEncoding;
   }
 
-  private void flushBlockWithNumMiniBlocks(final ByteArrayWriter baw, final int miniBlockLength,
-                                           final int blockLength) {
+  private void flushBlockWithNumMiniBlocks(final MemoryOutputStream memoryOutputStream,
+                                           final int miniBlockLength, final int blockLength) {
     int numMiniblocks = blockLength / miniBlockLength;
     long startValue = valueBuffer[0].longValue();
     int[] miniblockBitWidths = new int[numMiniblocks];
     for (int j=0; j<numMiniblocks; ++j) {
       miniblockBitWidths[j] = getMiniBlockBitWidth(j * miniBlockLength, miniBlockLength);
     }
-    baw.writeUInt(blockLength);
-    baw.writeUInt(numMiniblocks);
-    baw.writeUInt(position);
-    baw.writeSLong(startValue);
+    Bytes.writeUInt(memoryOutputStream, blockLength);
+    Bytes.writeUInt(memoryOutputStream, numMiniblocks);
+    Bytes.writeUInt(memoryOutputStream, position);
+    Bytes.writeSLong(memoryOutputStream, startValue);
     if (numMiniblocks > 0){
-      baw.writeSIntVLQ(minDelta);
+      Bytes.writeSIntVLQ(memoryOutputStream, minDelta);
       for (int j=0; j<numMiniblocks; ++j) {
-        baw.writeByte((byte) (miniblockBitWidths[j] & 0xff));
+        memoryOutputStream.write(miniblockBitWidths[j]);
       }
       for (int j=0; j<numMiniblocks; ++j) {
         int numRemainingValues = position - 1 - j * miniBlockLength;
         int length = numRemainingValues < miniBlockLength ? numRemainingValues : miniBlockLength;
-        baw.writePackedInts64(referenceFrame, miniblockBitWidths[j], j * miniBlockLength, length);
+        Bytes.writePackedInts64(memoryOutputStream, referenceFrame, miniblockBitWidths[j],
+                                j * miniBlockLength, length);
       }
     }
   }
@@ -98,7 +99,7 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
   private int getMiniBlockBitWidth(final int miniBlockStartPosition, final int miniBlockLength) {
     int maxBitWidth = 0;
     for (int j=miniBlockStartPosition; j<miniBlockStartPosition+miniBlockLength; ++j) {
-      int bitWidth = ByteArrayWriter.getBitWidth(referenceFrame[j]);
+      int bitWidth = Bytes.getBitWidth(referenceFrame[j]);
       if (bitWidth > maxBitWidth) {
         maxBitWidth = bitWidth;
       }
@@ -142,8 +143,8 @@ public class LongPackedDeltaEncoder extends AbstractEncoder {
 
   private void flushBlock() {
     if (position > 0) {
-      ByteArrayWriter fullBlockEncoding = getBestMiniblockEncodingForBlock();
-      fullBlockEncoding.flush(byteArrayWriter);
+      MemoryOutputStream fullBlockEncoding = getBestMiniblockEncodingForBlock();
+      fullBlockEncoding.writeTo(mos);
       numEncodedValues += position;
     }
     position = 0;

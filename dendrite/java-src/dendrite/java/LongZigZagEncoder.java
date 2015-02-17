@@ -17,7 +17,7 @@ public class LongZigZagEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     numValues += 1;
-    byteArrayWriter.writeSLong((long)o);
+    Bytes.writeSLong(mos, (long) o);
   }
 
 }

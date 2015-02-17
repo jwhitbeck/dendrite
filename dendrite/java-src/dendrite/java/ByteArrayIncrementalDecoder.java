@@ -12,18 +12,22 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class ByteArrayIncrementalDecoder extends AbstractDecoder {
 
   private final ByteArrayDeltaLengthDecoder byteArrayDecoder;
   private final IntPackedDeltaDecoder prefixLengthsDecoder;
-  private final ByteArrayWriter buffer;
+  private final MemoryOutputStream buffer;
 
-  public ByteArrayIncrementalDecoder(final ByteArrayReader baw) {
-    super(baw);
-    int prefixLengthsNumBytes = byteArrayReader.readUInt();
-    prefixLengthsDecoder = new IntPackedDeltaDecoder(byteArrayReader);
-    byteArrayDecoder = new ByteArrayDeltaLengthDecoder(byteArrayReader.sliceAhead(prefixLengthsNumBytes));
-    buffer = new ByteArrayWriter(128);
+  public ByteArrayIncrementalDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
+    int prefixLengthsNumBytes = Bytes.readUInt(bb);
+    prefixLengthsDecoder = new IntPackedDeltaDecoder(bb);
+    ByteBuffer byteArrayDeltaLengths = bb.slice();
+    byteArrayDeltaLengths.position(byteArrayDeltaLengths.position() + prefixLengthsNumBytes);
+    byteArrayDecoder = new ByteArrayDeltaLengthDecoder(byteArrayDeltaLengths);
+    buffer = new MemoryOutputStream(128);
   }
 
   @Override

@@ -17,7 +17,7 @@ public class IntPlainEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     numValues += 1;
-    byteArrayWriter.writeFixedInt((Integer) o);
+    Bytes.writeFixedInt(mos, (int) o);
   }
 
 }

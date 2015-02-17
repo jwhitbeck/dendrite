@@ -12,6 +12,8 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
 
   private final int[] octuplet = new int[8];
@@ -21,8 +23,8 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
   private int numRleValuesToRead = 0;
   private final int width;
 
-  public IntFixedBitWidthPackedRunLengthDecoder(final ByteArrayReader baw, final int width) {
-    super(baw);
+  public IntFixedBitWidthPackedRunLengthDecoder(final ByteBuffer byteBuffer, final int width) {
+    super(byteBuffer);
     this.width = width;
   }
 
@@ -53,14 +55,14 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
   }
 
   private void bufferNextOctuplet() {
-    byteArrayReader.readPackedInts32(octuplet, width, 8);
+    Bytes.readPackedInts32(bb, octuplet, width, 8);
     numOctopletsToRead -= 1;
     octupletPosition = 0;
   }
 
   private void bufferNextRLERun(final int numOccurencesRleValue) {
     numRleValuesToRead = numOccurencesRleValue;
-    rleValue = byteArrayReader.readPackedInt(width);
+    rleValue = Bytes.readPackedInt(bb, width);
   }
 
   private void bufferNextPackedIntRun(final int numOctuplets) {
@@ -69,7 +71,7 @@ public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
   }
 
   private void bufferNextRun() {
-    int n = byteArrayReader.readUInt();
+    int n = Bytes.readUInt(bb);
     if ((n & 1) == 1) {
       bufferNextPackedIntRun(n >>> 1);
     } else {

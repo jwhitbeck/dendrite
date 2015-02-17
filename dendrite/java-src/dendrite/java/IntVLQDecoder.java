@@ -12,15 +12,17 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class IntVLQDecoder extends AbstractIntDecoder {
 
-  public IntVLQDecoder(final ByteArrayReader baw) {
-    super(baw);
+  public IntVLQDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
   public int decodeInt() {
-    return byteArrayReader.readUInt();
+    return Bytes.readUInt(bb);
   }
 
 }

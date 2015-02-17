@@ -12,16 +12,16 @@
 
 package dendrite.java;
 
-import java.util.Iterator;
+import java.nio.ByteBuffer;
 
 public class IntPackedRunLengthDecoder implements IntDecoder {
 
   private final IntFixedBitWidthPackedRunLengthDecoder int32Decoder;
 
-  public IntPackedRunLengthDecoder(final ByteArrayReader baw) {
-    ByteArrayReader byteArrayReader = baw.slice();
-    int width = (int)byteArrayReader.readByte() & 0xff;
-    int32Decoder = new IntFixedBitWidthPackedRunLengthDecoder(byteArrayReader, width);
+  public IntPackedRunLengthDecoder(final ByteBuffer byteBuffer) {
+    ByteBuffer bb = byteBuffer.slice();
+    int width = (int)bb.get() & 0xff;
+    int32Decoder = new IntFixedBitWidthPackedRunLengthDecoder(bb, width);
   }
 
   @Override

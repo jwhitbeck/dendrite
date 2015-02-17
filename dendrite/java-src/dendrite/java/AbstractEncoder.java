@@ -14,17 +14,17 @@ package dendrite.java;
 
 public abstract class AbstractEncoder implements Encoder {
 
-  protected final ByteArrayWriter byteArrayWriter;
+  protected final MemoryOutputStream mos;
   protected int numValues = 0;
 
   public AbstractEncoder() {
-    this.byteArrayWriter = new ByteArrayWriter();
+    this.mos = new MemoryOutputStream();
   }
 
   @Override
   public void reset() {
     numValues = 0;
-    byteArrayWriter.reset();
+    mos.reset();
   }
 
   @Override
@@ -32,7 +32,7 @@ public abstract class AbstractEncoder implements Encoder {
 
   @Override
   public int length() {
-    return ByteArrayWriter.getNumUIntBytes(numValues) +  byteArrayWriter.length();
+    return Bytes.getNumUIntBytes(numValues) +  mos.length();
   }
 
   @Override
@@ -41,10 +41,10 @@ public abstract class AbstractEncoder implements Encoder {
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void writeTo(final MemoryOutputStream memoryOutputStream) {
     finish();
-    baw.writeUInt(numValues);
-    byteArrayWriter.flush(baw);
+    Bytes.writeUInt(memoryOutputStream, numValues);
+    mos.writeTo(memoryOutputStream);
   }
 
   @Override

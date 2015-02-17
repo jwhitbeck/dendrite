@@ -12,9 +12,11 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class IntPackedRunLengthEncoder extends AbstractEncoder {
 
-  private final ByteArrayWriter intBuffer;
+  private final MemoryOutputStream intBuffer;
   private final IntFixedBitWidthPackedRunLengthEncoder rleEncoder;
   private int numBufferedValues;
   private int maxWidth;
@@ -22,7 +24,7 @@ public class IntPackedRunLengthEncoder extends AbstractEncoder {
 
   public IntPackedRunLengthEncoder() {
     rleEncoder = new IntFixedBitWidthPackedRunLengthEncoder(0);
-    intBuffer = new ByteArrayWriter();
+    intBuffer = new MemoryOutputStream();
     maxWidth = 0;
     numBufferedValues = 0;
     isFinished = false;
@@ -31,11 +33,11 @@ public class IntPackedRunLengthEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     final int i = (int) o;
-    final int width = ByteArrayWriter.getBitWidth(i);
+    final int width = Bytes.getBitWidth(i);
     if (width > maxWidth) {
       maxWidth = width;
     }
-    intBuffer.writeUInt(i);
+    Bytes.writeUInt(intBuffer, i);
     numBufferedValues += 1;
   }
 
@@ -52,9 +54,9 @@ public class IntPackedRunLengthEncoder extends AbstractEncoder {
   public void finish() {
     if (!isFinished) {
       rleEncoder.setWidth(maxWidth);
-      ByteArrayReader intBufferReader = new ByteArrayReader(intBuffer.buffer);
+      ByteBuffer intBufferReader = intBuffer.byteBuffer();
       for (int j=0; j<numBufferedValues; ++j) {
-        rleEncoder.encode(intBufferReader.readUInt());
+        rleEncoder.encode(Bytes.readUInt(intBufferReader));
       }
       rleEncoder.finish();
       isFinished = true;
@@ -69,15 +71,15 @@ public class IntPackedRunLengthEncoder extends AbstractEncoder {
   @Override
   public int estimatedLength() {
     int estimatedNumOctoplets = (numBufferedValues / 8) + 1;
-    return 1 + ByteArrayWriter.getNumUIntBytes(estimatedNumOctoplets << 1)
-      + (8 * estimatedNumOctoplets * maxWidth) + ByteArrayWriter.getNumUIntBytes(numBufferedValues);
+    return 1 + Bytes.getNumUIntBytes(estimatedNumOctoplets << 1)
+      + (8 * estimatedNumOctoplets * maxWidth) + Bytes.getNumUIntBytes(numBufferedValues);
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void writeTo(final MemoryOutputStream memoryOutputStream) {
     finish();
-    baw.writeByte((byte)maxWidth);
-    rleEncoder.flush(baw);
+    memoryOutputStream.write(maxWidth);
+    rleEncoder.writeTo(memoryOutputStream);
   }
 
   @Override

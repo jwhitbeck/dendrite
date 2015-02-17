@@ -12,19 +12,21 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class FixedLengthByteArrayPlainDecoder extends AbstractDecoder {
 
   private final int length;
 
-  public FixedLengthByteArrayPlainDecoder(final ByteArrayReader baw) {
-    super(baw);
-    this.length = byteArrayReader.readUInt();
+  public FixedLengthByteArrayPlainDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
+    this.length = Bytes.readUInt(bb);
   }
 
   @Override
   public Object decode() {
     byte[] fixedLengthByteArray = new byte[length];
-    byteArrayReader.readByteArray(fixedLengthByteArray, 0, length);
+    bb.get(fixedLengthByteArray, 0, length);
     return fixedLengthByteArray;
   }
 

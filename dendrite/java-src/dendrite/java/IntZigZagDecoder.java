@@ -12,15 +12,17 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class IntZigZagDecoder extends AbstractIntDecoder {
 
-  public IntZigZagDecoder(final ByteArrayReader baw) {
-    super(baw);
+  public IntZigZagDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
   public int decodeInt() {
-    return byteArrayReader.readSInt();
+    return Bytes.readSInt(bb);
   }
 
 }

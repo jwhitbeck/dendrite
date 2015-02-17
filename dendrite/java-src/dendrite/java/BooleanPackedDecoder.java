@@ -12,19 +12,21 @@
 
 package dendrite.java;
 
+import java.nio.ByteBuffer;
+
 public class BooleanPackedDecoder extends AbstractDecoder {
 
   private final boolean[] octuplet = new boolean[8];
   private int position = 0;
 
-  public BooleanPackedDecoder(final ByteArrayReader baw){
-    super(baw);
+  public BooleanPackedDecoder(final ByteBuffer byteBuffer){
+    super(byteBuffer);
   }
 
   @Override
   public Object decode() {
     if ((position % 8) == 0) {
-      byteArrayReader.readPackedBooleans(octuplet);
+      Bytes.readPackedBooleans(bb, octuplet);
       position = 0;
     }
     boolean b = octuplet[position];

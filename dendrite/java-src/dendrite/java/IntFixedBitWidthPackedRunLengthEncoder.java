@@ -18,7 +18,7 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
   private int numOccurencesRleValue = 0;
   private int[] currentOctuplet = new int[8];
   private int currentOctupletPosition = 0;
-  private ByteArrayWriter octupletBuffer = new ByteArrayWriter();
+  private MemoryOutputStream octupletBuffer = new MemoryOutputStream();
   private int numBufferedOctuplets;
   private int rleThreshold;
   private int width;
@@ -79,7 +79,7 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
         currentOctuplet[j] = 0; // pad with zeros
       }
       currentOctupletPosition = 0;
-      octupletBuffer.writePackedInts32(currentOctuplet, width, 8);
+      Bytes.writePackedInts32(octupletBuffer, currentOctuplet, width, 8);
       numBufferedOctuplets += 1;
       flushBitPacked();
     } else if (numOccurencesRleValue > 0) {
@@ -92,10 +92,10 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
   @Override
   public int estimatedLength() {
     if (numOccurencesRleValue > 0) {
-      return super.estimatedLength() + ByteArrayWriter.getNumUIntBytes(rleValue)
-        + ByteArrayWriter.getBitWidth(numOccurencesRleValue << 1);
+      return super.estimatedLength() + Bytes.getNumUIntBytes(rleValue)
+        + Bytes.getBitWidth(numOccurencesRleValue << 1);
     } else {
-      return super.estimatedLength() + ByteArrayWriter.getNumUIntBytes(numBufferedOctuplets << 1)
+      return super.estimatedLength() + Bytes.getNumUIntBytes(numBufferedOctuplets << 1)
         + (8 * width * numBufferedOctuplets) + currentOctupletPosition > 0? (8 * width) : 0;
     }
   }
@@ -116,7 +116,7 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
     currentOctuplet[currentOctupletPosition] = i;
     currentOctupletPosition += 1;
     if (currentOctupletPosition == 8) {
-      octupletBuffer.writePackedInts32(currentOctuplet, width, 8);
+      Bytes.writePackedInts32(octupletBuffer, currentOctuplet, width, 8);
       currentOctupletPosition = 0;
       numBufferedOctuplets += 1;
     }
@@ -129,11 +129,11 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
   }
 
   private void writeBitPackedHeader() {
-    byteArrayWriter.writeUInt(numBufferedOctuplets << 1 | 1);
+    Bytes.writeUInt(mos, numBufferedOctuplets << 1 | 1);
   }
 
   private void flushBitPackedBuffer() {
-    octupletBuffer.flush(byteArrayWriter);
+    octupletBuffer.writeTo(mos);
     octupletBuffer.reset();
   }
 
@@ -147,11 +147,11 @@ public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
   }
 
   private void writeRLEHeader() {
-    byteArrayWriter.writeUInt(numOccurencesRleValue << 1);
+    Bytes.writeUInt(mos, numOccurencesRleValue << 1);
   }
 
   private void writeRLEValue () {
-    byteArrayWriter.writePackedInt(rleValue, width);
+    Bytes.writePackedInt(mos, rleValue, width);
   }
 
 }

@@ -17,7 +17,7 @@ public class IntZigZagEncoder extends AbstractEncoder {
   @Override
   public void encode(final Object o) {
     numValues += 1;
-    byteArrayWriter.writeSInt((Integer) o);
+    Bytes.writeSInt(mos, (int) o);
   }
 
 }

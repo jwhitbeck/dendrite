@@ -15,12 +15,12 @@ package dendrite.java;
 public class ByteArrayDeltaLengthEncoder implements Encoder {
 
   private final IntPackedDeltaEncoder lengthsEncoder;
-  private final ByteArrayWriter byteArrayWriter;
+  private final MemoryOutputStream byteArrayBuffer;
   private int numValues = 0;
 
   public ByteArrayDeltaLengthEncoder() {
     lengthsEncoder = new IntPackedDeltaEncoder();
-    byteArrayWriter = new ByteArrayWriter();
+    byteArrayBuffer = new MemoryOutputStream();
   }
 
   @Override
@@ -28,19 +28,19 @@ public class ByteArrayDeltaLengthEncoder implements Encoder {
     final byte[] bs = (byte[]) o;
     numValues += 1;
     lengthsEncoder.encode(bs.length);
-    byteArrayWriter.writeByteArray(bs, 0, bs.length);
+    byteArrayBuffer.write(bs, 0, bs.length);
   }
 
   public void encode(final byte[] bs, final int offset, final int length) {
     numValues += 1;
     lengthsEncoder.encode(length);
-    byteArrayWriter.writeByteArray(bs, offset, length);
+    byteArrayBuffer.write(bs, offset, length);
   }
 
   @Override
   public void reset() {
     numValues = 0;
-    byteArrayWriter.reset();
+    byteArrayBuffer.reset();
     lengthsEncoder.reset();
   }
 
@@ -51,24 +51,24 @@ public class ByteArrayDeltaLengthEncoder implements Encoder {
 
   @Override
   public int length() {
-    return ByteArrayWriter.getNumUIntBytes(numValues)
-      + ByteArrayWriter.getNumUIntBytes(lengthsEncoder.length()) + lengthsEncoder.length()
-      + byteArrayWriter.length();
+    return Bytes.getNumUIntBytes(numValues)
+      + Bytes.getNumUIntBytes(lengthsEncoder.length()) + lengthsEncoder.length()
+      + byteArrayBuffer.length();
   }
 
   public int estimatedLength() {
     int estimatedLengthsEncoderLength = lengthsEncoder.estimatedLength();
-    return ByteArrayWriter.getNumUIntBytes(numValues) + byteArrayWriter.length()
-      + ByteArrayWriter.getNumUIntBytes(estimatedLengthsEncoderLength) + estimatedLengthsEncoderLength;
+    return Bytes.getNumUIntBytes(numValues) + byteArrayBuffer.length()
+      + Bytes.getNumUIntBytes(estimatedLengthsEncoderLength) + estimatedLengthsEncoderLength;
   }
 
   @Override
-  public void flush(final ByteArrayWriter baw) {
+  public void writeTo(final MemoryOutputStream memoryOutputStream) {
     finish();
-    baw.writeUInt(numValues);
-    baw.writeUInt(lengthsEncoder.length());
-    lengthsEncoder.flush(baw);
-    byteArrayWriter.flush(baw);
+    Bytes.writeUInt(memoryOutputStream, numValues);
+    Bytes.writeUInt(memoryOutputStream, lengthsEncoder.length());
+    lengthsEncoder.writeTo(memoryOutputStream);
+    byteArrayBuffer.writeTo(memoryOutputStream);
   }
 
   @Override

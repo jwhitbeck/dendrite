@@ -24,7 +24,7 @@ public class BooleanPackedEncoder extends AbstractEncoder {
     octuplet[position] = b;
     position += 1;
     if (position == 8) {
-      byteArrayWriter.writePackedBooleans(octuplet);
+      Bytes.writePackedBooleans(mos, octuplet);
       position = 0;
     }
   }
@@ -38,7 +38,7 @@ public class BooleanPackedEncoder extends AbstractEncoder {
   @Override
   public void finish() {
     if (position > 0){
-      byteArrayWriter.writePackedBooleans(octuplet);
+      Bytes.writePackedBooleans(mos, octuplet);
       position = 0;
     }
   }

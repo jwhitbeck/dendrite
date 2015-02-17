@@ -23,12 +23,12 @@ public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder {
     if (length != bs.length) {
       if (length == -1) {
         length = bs.length;
-        byteArrayWriter.writeUInt(length);
+        Bytes.writeUInt(mos, length);
       } else {
         throw new IllegalStateException("Different byte-array lengths in FixedLengthByteArrayEncoder");
       }
     }
-    byteArrayWriter.writeByteArray(bs, 0, length);
+    mos.write(bs, 0, length);
   }
 
   @Override

@@ -11,8 +11,9 @@
 (ns dendrite.java.encoders-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ByteArrayReader ByteArrayWriter BooleanPackedEncoder BooleanPackedDecoder
+  (:import [dendrite.java MemoryOutputStream
             Encoder Decoder
+            BooleanPackedEncoder BooleanPackedDecoder
             IntPlainEncoder IntPlainDecoder
             IntVLQEncoder IntVLQDecoder
             IntZigZagEncoder IntZigZagDecoder
@@ -27,7 +28,8 @@
             FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
             ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
-            ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder]))
+            ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder]
+           [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +40,7 @@
      (let [encoder (encoder-constructor)]
        (doseq [x (take n input-seq)]
          (.encode ^Encoder encoder x))
-       (let [decoder (->> encoder helpers/get-byte-array-reader decoder-constructor)]
+       (let [decoder (->> encoder helpers/output-buffer->byte-buffer decoder-constructor)]
          (repeatedly n #(.decode ^Decoder decoder))))))
 
 (defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
@@ -51,12 +53,12 @@
 
 (defn finish-repeatedly [n encoder-constructor input-seq]
   (let [^Encoder encoder (encoder-constructor)
-        baw (ByteArrayWriter.)]
+        mos (MemoryOutputStream.)]
     (doseq [x (take 10 input-seq)]
       (.encode encoder x))
     (dotimes [_ n] (.finish encoder))
-    (.flush encoder baw)
-    (seq (.buffer baw))))
+    (.writeTo encoder mos)
+    (-> mos .byteBuffer .array seq)))
 
 (defn test-finish-idempotence [encoder-constructor input-seq]
   (let [finish-fn (fn [n] (finish-repeatedly n encoder-constructor input-seq))]
@@ -134,24 +136,24 @@
           read-byte-arrays (write-read #(FixedLengthByteArrayPlainEncoder.)
                                        #(FixedLengthByteArrayPlainDecoder. %)
                                        rand-byte-arrays)]
-      (is (every? true? (map helpers/byte-array= read-byte-arrays rand-byte-arrays))))))
+      (is (every? true? (map = (map seq read-byte-arrays) (map seq rand-byte-arrays)))))))
 
 (deftest byte-array-encoders
   (testing "plain encoder/decoder"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayPlainEncoder.) #(ByteArrayPlainDecoder. %) rand-byte-arrays)]
-      (is (every? true? (map helpers/byte-array= read-byte-arrays rand-byte-arrays)))))
+      (is (every? true? (map = (map seq read-byte-arrays) (map seq rand-byte-arrays))))))
   (testing "delta-length encoder/decoder"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayDeltaLengthEncoder.)
                                        #(ByteArrayDeltaLengthDecoder. %) rand-byte-arrays)]
-      (is (every? true? (map helpers/byte-array= read-byte-arrays rand-byte-arrays)))))
+      (is (every? true? (map = (map seq read-byte-arrays) (map seq rand-byte-arrays))))))
   (testing "delta-length encoder's finish method is idempotent"
     (test-finish-idempotence #(ByteArrayDeltaLengthEncoder.) (repeatedly helpers/rand-byte-array)))
   (testing "incremental encoder/decoder"
     (let [rand-byte-arrays (repeatedly helpers/rand-byte-array)
           read-byte-arrays (write-read #(ByteArrayIncrementalEncoder.)
                                        #(ByteArrayIncrementalDecoder. %) rand-byte-arrays)]
-      (is (every? true? (map helpers/byte-array= read-byte-arrays rand-byte-arrays)))))
+      (is (every? true? (map = (map seq read-byte-arrays) (map seq rand-byte-arrays))))))
   (testing "incremental encoder's finish method is idempotent"
     (test-finish-idempotence #(ByteArrayIncrementalEncoder.) (repeatedly helpers/rand-byte-array))))

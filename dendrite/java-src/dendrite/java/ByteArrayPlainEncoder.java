@@ -18,8 +18,8 @@ public class ByteArrayPlainEncoder extends AbstractEncoder {
   public void encode(final Object o) {
     final byte[] bs = (byte[]) o;
     numValues += 1;
-    byteArrayWriter.writeFixedInt(bs.length);
-    byteArrayWriter.writeByteArray(bs, 0, bs.length);
+    Bytes.writeFixedInt(mos, bs.length);
+    mos.write(bs, 0, bs.length);
   }
 
 }
