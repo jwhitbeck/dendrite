@@ -30,7 +30,8 @@
             ByteArrayPlainEncoder ByteArrayPlainDecoder
             ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
             ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
-            ByteArrayReader ByteArrayWriter BufferedByteArrayWriter]
+            Bytes]
+           [java.nio ByteBuffer]
            [java.nio.charset Charset]
            [java.util Date UUID]))
 
@@ -99,13 +100,11 @@
                   :delta-length (ByteArrayDeltaLengthEncoder.))
     :fixed-length-byte-array (FixedLengthByteArrayPlainEncoder.)))
 
-(defn- packed-bit-width [n] (- 32 (Integer/numberOfLeadingZeros n)))
-
 (defn levels-encoder [max-level]
-  (IntFixedBitWidthPackedRunLengthEncoder. (packed-bit-width max-level)))
+  (IntFixedBitWidthPackedRunLengthEncoder. (Bytes/getBitWidth (int max-level))))
 
-(defn levels-decoder [^ByteArrayReader byte-array-reader max-level]
-  (IntFixedBitWidthPackedRunLengthDecoder. byte-array-reader (packed-bit-width max-level)))
+(defn levels-decoder [^ByteBuffer byte-buffer max-level]
+  (IntFixedBitWidthPackedRunLengthDecoder. byte-buffer (Bytes/getBitWidth (int max-level))))
 
 (def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 
@@ -125,18 +124,18 @@
 (defn bigdec->bytes [^BigDecimal bd]
   (let [unscaled-bigint-bytes (.. bd unscaledValue toByteArray)
         scale (.scale bd)
-        baw (ByteArrayWriter. (+ (alength unscaled-bigint-bytes) 4))]
-    (doto baw
-      (.writeFixedInt scale)
-      (.writeByteArray unscaled-bigint-bytes))
-    (.buffer baw)))
+        bb (ByteBuffer/wrap (byte-array (+ (alength unscaled-bigint-bytes) 4)))]
+    (doto bb
+      (.putInt scale)
+      (.put unscaled-bigint-bytes))
+    (.array bb)))
 
 (defn bytes->bigdec [^bytes bs]
-  (let [bar (ByteArrayReader. bs)
-        scale (.readFixedInt bar)
+  (let [bb (ByteBuffer/wrap bs)
+        scale (.getInt bb)
         unscaled-length (- (alength bs) 4)
         unscaled-bigint-bytes (byte-array unscaled-length)]
-    (.readByteArray bar unscaled-bigint-bytes)
+    (.get bb unscaled-bigint-bytes)
     (BigDecimal. (BigInteger. unscaled-bigint-bytes) scale)))
 
 (defn ratio->bytes [^Ratio r]
@@ -144,21 +143,21 @@
         denominator-bytes (.. r denominator toByteArray)
         numerator-length (alength numerator-bytes)
         denominator-length (alength denominator-bytes)
-        baw (ByteArrayWriter. (+ numerator-length denominator-length 4))]
-    (doto baw
-      (.writeFixedInt numerator-length)
-      (.writeByteArray numerator-bytes)
-      (.writeByteArray denominator-bytes))
-    (.buffer baw)))
+        bb (ByteBuffer/wrap (byte-array (+ numerator-length denominator-length 4)))]
+    (doto bb
+      (.putInt numerator-length)
+      (.put numerator-bytes)
+      (.put denominator-bytes))
+    (.array bb)))
 
 (defn bytes->ratio [^bytes bs]
-  (let [bar (ByteArrayReader. bs)
-        numerator-length (.readFixedInt bar)
+  (let [bb (ByteBuffer/wrap bs)
+        numerator-length (.getInt bb)
         denominator-length (- (alength bs) numerator-length 4)
         numerator-bytes (byte-array numerator-length)
         denominator-bytes (byte-array denominator-length)]
-    (.readByteArray bar numerator-bytes)
-    (.readByteArray bar denominator-bytes)
+    (.get bb numerator-bytes)
+    (.get bb denominator-bytes)
     (Ratio. (BigInteger. numerator-bytes) (BigInteger. denominator-bytes))))
 
 (defn ratio [r] (if (ratio? r) r (Ratio. (bigint r) BigInteger/ONE)))
@@ -169,14 +168,14 @@
     d))
 
 (defn uuid->bytes [^UUID uuid]
-  (let [baw (doto (ByteArrayWriter. 16)
-              (.writeFixedLong (.getMostSignificantBits uuid))
-              (.writeFixedLong (.getLeastSignificantBits uuid)))]
-    (.buffer baw)))
+  (let [bb (doto (ByteBuffer/wrap (byte-array 16))
+             (.putLong (.getMostSignificantBits uuid))
+             (.putLong (.getLeastSignificantBits uuid)))]
+    (.array bb)))
 
 (defn bytes->uuid [^bytes bs]
-  (let [bar (ByteArrayReader. bs)]
-    (UUID. (.readFixedLong bar) (.readFixedLong bar))))
+  (let [bb (ByteBuffer/wrap bs)]
+    (UUID. (.getLong bb) (.getLong bb))))
 
 (defn uuid [x]
   (if-not (instance? UUID x)
@@ -316,7 +315,7 @@
         (finish [_] (.finish be))
         (length [_] (.length be))
         (estimatedLength [_] (.estimatedLength be))
-        (flush [_ byte-array-writer] (.flush be byte-array-writer))))))
+        (writeTo [_ memory-output-stream] (.writeTo be memory-output-stream))))))
 
 (defn decoder-ctor [ts t encoding]
   (if (base-type? t)
