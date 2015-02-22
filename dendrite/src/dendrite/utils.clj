@@ -71,11 +71,17 @@
   (.map file-channel FileChannel$MapMode/READ_ONLY offset length))
 
 (defn sub-byte-buffer
-  ^ByteBuffer [^ByteBuffer bb offset length]
-  (let [current-position (.position bb)]
-    (doto (.duplicate bb)
+  ^ByteBuffer [^ByteBuffer byte-buffer offset length]
+  (let [bb (.duplicate byte-buffer)
+        current-position (.position bb)]
+    (doto bb
       (.position (+ current-position offset))
       (.limit (+ current-position offset length)))))
+
+(defn skip [^ByteBuffer byte-buffer offset]
+  (let [bb (.duplicate byte-buffer)]
+    (doto bb
+      (.position (+ offset (.position bb))))))
 
 (defn int->byte-buffer
   ^ByteBuffer [i]

@@ -12,11 +12,8 @@
 
 package dendrite.java;
 
-public interface OutputBuffer extends Writeable {
+public interface Writeable {
 
-  public int length();
-  public int estimatedLength();
-  public void reset();
-  public void finish();
+  public void writeTo(MemoryOutputStream os);
 
 }
