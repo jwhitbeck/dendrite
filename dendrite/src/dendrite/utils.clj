@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java Singleton PersistentLinkedSeq]
+           [dendrite.java Singleton PersistentLinkedSeq MultiplexedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -103,32 +103,7 @@
     (.get bb chars)
     (String. chars)))
 
-(defn multiplex [seqs]
-  (letfn [(all-first [^objects seq-array ^long seq-array-len]
-            (let [^objects af (object-array seq-array-len)]
-              (loop [i 0]
-                (if (< i seq-array-len)
-                  (do (aset af i (first (aget seq-array i)))
-                      (recur (unchecked-inc i)))
-                  (seq af)))))
-          (rest! [^objects seq-array ^long seq-array-len]
-            (loop [i 0]
-              (if (< i seq-array-len)
-                (do (aset seq-array i (rest (aget seq-array i)))
-                    (recur (unchecked-inc i)))
-                seq-array)))
-          (step [^objects seq-array ^long seq-array-len]
-            (lazy-seq
-             (when (seq (aget seq-array 0))
-               (let [size 32
-                     b (chunk-buffer size)]
-                 (loop [i 0]
-                   (when (and (< i size) (seq (aget seq-array 0)))
-                     (chunk-append b (all-first seq-array seq-array-len))
-                     (rest! seq-array seq-array-len)
-                     (recur (inc i))))
-                 (chunk-cons (chunk b) (step seq-array seq-array-len))))))]
-    (step (into-array Object seqs) (count seqs))))
+(definline multiplex [seqs] `(MultiplexedSeq/create ~seqs))
 
 (definline single [x] `(Singleton. ~x))
 
