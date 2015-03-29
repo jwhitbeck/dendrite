@@ -17,7 +17,7 @@
             [dendrite.metadata :as metadata]
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ByteArrayWriter BufferedByteArrayWriter LeveledValue]
+  (:import [dendrite.java LeveledValue OutputBuffer]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
   (:refer-clojure :exclude [read]))
@@ -26,23 +26,20 @@
 
 (def test-target-data-page-length 1000)
 
-(defn write-blocks [column-chunk-writer blocks]
-  (reduce write! column-chunk-writer blocks))
+(defn write-blocks! [column-chunk-writer blocks]
+  (doseq [block blocks]
+    (write! column-chunk-writer block)))
 
 (defn write-column-chunk-and-get-reader
   ([column-spec input-blocks]
      (write-column-chunk-and-get-reader column-spec test-target-data-page-length
                                         helpers/default-type-store input-blocks))
   ([column-spec target-data-page-length type-store input-blocks]
-     (let [w (doto ^BufferedByteArrayWriter (writer target-data-page-length
-                                                    type-store
-                                                    column-spec)
-               (write-blocks input-blocks)
-               .finish)
-           column-chunk-metadata (metadata w)]
-       (-> w
-           helpers/get-byte-array-reader
-           (reader column-chunk-metadata type-store column-spec)))))
+   (let [^OutputBuffer w (writer target-data-page-length type-store column-spec)]
+     (write-blocks! w input-blocks)
+     (.finish w)
+     (-> (helpers/output-buffer->byte-buffer w)
+         (reader (metadata w) type-store column-spec)))))
 
 (def ^SimpleDateFormat simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -104,13 +101,11 @@
           (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                  (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length
-                                                     helpers/default-type-store
-                                                     cs)
-                (write-blocks input-blocks))
-            baw1 (doto (ByteArrayWriter. 10) (.write w))
-            baw2 (doto (ByteArrayWriter. 10) (.write w))]
-        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (write-blocks! w input-blocks)
+        (let [bb1 (helpers/output-buffer->byte-buffer w)
+              bb2 (helpers/output-buffer->byte-buffer w)]
+          (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))
     (testing "Page length estimation converges"
@@ -118,7 +113,7 @@
                 (let [reader (write-column-chunk-and-get-reader cs target-length
                                                                 helpers/default-type-store input-blocks)
                       num-data-pages (-> reader :column-chunk-metadata :num-data-pages)]
-                  (->> (page/read-data-page-headers (:byte-array-reader reader) num-data-pages)
+                  (->> (page/read-data-page-headers (:byte-buffer reader) num-data-pages)
                        rest                      ; the first page is always inaccurate
                        butlast                   ; the last page can have any length
                        (map (comp :length page/stats))
@@ -141,13 +136,11 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length
-                                                     helpers/default-type-store
-                                                     cs)
-                (write-blocks input-blocks))
-            baw1 (doto (ByteArrayWriter. 10) (.write w))
-            baw2 (doto (ByteArrayWriter. 10) (.write w))]
-        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (write-blocks! w input-blocks)
+        (let [bb1 (helpers/output-buffer->byte-buffer w)
+              bb2 (helpers/output-buffer->byte-buffer w)]
+          (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))))
 
@@ -164,13 +157,11 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [w (doto ^BufferedByteArrayWriter (writer test-target-data-page-length
-                                                     helpers/default-type-store
-                                                     cs)
-                    (write-blocks input-blocks))
-            baw1 (doto (ByteArrayWriter. 10) (.write w))
-            baw2 (doto (ByteArrayWriter. 10) (.write w))]
-        (is (= (-> baw1 .buffer seq) (-> baw2 .buffer seq)))))
+      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (write-blocks! w input-blocks)
+        (let [bb1 (helpers/output-buffer->byte-buffer w)
+              bb2 (helpers/output-buffer->byte-buffer w)]
+          (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
     (testing "repeatable reads"
       (is (= (read reader) (read reader))))))
 

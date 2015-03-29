@@ -14,8 +14,9 @@
             [dendrite.leveled-value :as lv]
             [dendrite.metadata :as metadata]
             [dendrite.page :as page]
-            [dendrite.stats :as stats])
-  (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader LeveledValue]
+            [dendrite.stats :as stats]
+            [dendrite.utils :as utils])
+  (:import [dendrite.java LeveledValue MemoryOutputStream OutputBuffer]
            [dendrite.page DataPageWriter DictionaryPageWriter]
            [java.nio ByteBuffer]
            [java.util HashMap])
@@ -36,8 +37,7 @@
   (read-dictionary [_]))
 
 (defprotocol IColumnChunkWriterImpl
-  (target-data-page-length [_])
-  (flush-to-byte-buffer! [_ byte-buffer]))
+  (target-data-page-length [_]))
 
 (defprotocol IDataColumnChunkWriter
   (flush-data-page-writer! [_]))
@@ -47,7 +47,7 @@
                                   target-data-page-length
                                   length-estimator
                                   column-spec
-                                  ^ByteArrayWriter byte-array-writer
+                                  ^MemoryOutputStream memory-output-stream
                                   ^DataPageWriter page-writer]
   IColumnChunkWriter
   (write! [this v]
@@ -77,30 +77,27 @@
   IDataColumnChunkWriter
   (flush-data-page-writer! [_]
     (when (pos? (page/num-values page-writer))
-      (.write byte-array-writer page-writer)
+      (.writeTo page-writer memory-output-stream)
       (swap! num-pages inc)
       (reset! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
       (.reset page-writer)))
-  (flush-to-byte-buffer! [this byte-buffer]
-    (.finish this)
-    (.flush byte-array-writer ^ByteBuffer byte-buffer))
-  BufferedByteArrayWriter
+  OutputBuffer
   (reset [_]
     (reset! num-pages 0)
-    (.reset byte-array-writer)
+    (.reset memory-output-stream)
     (.reset page-writer))
   (finish [this]
     (when (pos? (page/num-values page-writer))
-      (let [estimated-length (+ (.length byte-array-writer) (.estimatedLength page-writer))]
+      (let [estimated-length (+ (.length memory-output-stream) (.estimatedLength page-writer))]
         (flush-data-page-writer! this)
         (estimation/update! length-estimator (.length this) estimated-length))))
   (length [_]
-    (.length byte-array-writer))
+    (.length memory-output-stream))
   (estimatedLength [this]
-    (estimation/correct length-estimator (+ (.length byte-array-writer) (.estimatedLength page-writer))))
-  (flush [this baw]
+    (estimation/correct length-estimator (+ (.length memory-output-stream) (.estimatedLength page-writer))))
+  (writeTo [this mos]
     (.finish this)
-    (.write baw byte-array-writer)))
+    (.writeTo memory-output-stream mos)))
 
 (defn- data-column-chunk-writer [target-data-page-length type-store column-spec]
   (let [{:keys [max-repetition-level max-definition-level type encoding compression]} column-spec]
@@ -109,7 +106,7 @@
       :num-pages (atom 0)
       :target-data-page-length target-data-page-length
       :length-estimator (estimation/ratio-estimator)
-      :byte-array-writer (ByteArrayWriter.)
+      :memory-output-stream (MemoryOutputStream.)
       :column-spec column-spec
       :page-writer (page/data-page-writer max-repetition-level max-definition-level type-store type
                                           encoding compression)})))
@@ -150,11 +147,6 @@
   IColumnChunkWriterImpl
   (target-data-page-length [_]
     (target-data-page-length data-column-chunk-writer))
-  (flush-to-byte-buffer! [this byte-buffer]
-    (.finish this)
-    (.flush (doto (ByteArrayWriter. (.length dictionary-writer)) (.write dictionary-writer))
-              ^ByteBuffer byte-buffer)
-    (flush-to-byte-buffer! data-column-chunk-writer ^ByteBuffer byte-buffer))
   IDictionaryColumChunkWriter
   (value-index [_ v]
     (let [k (keyable v)]
@@ -163,7 +155,7 @@
                 (.put reverse-dictionary k idx)
                 (page/write-entry! dictionary-writer v)
                 idx)))))
-  BufferedByteArrayWriter
+  OutputBuffer
   (reset [_]
     (.clear reverse-dictionary)
     (.reset dictionary-writer)
@@ -175,10 +167,10 @@
     (+ (.length dictionary-writer) (.length data-column-chunk-writer)))
   (estimatedLength [_]
     (+ (.estimatedLength dictionary-writer) (.estimatedLength data-column-chunk-writer)))
-  (flush [this baw]
+  (writeTo [this mos]
     (.finish this)
-    (.write baw dictionary-writer)
-    (.write baw data-column-chunk-writer)))
+    (.writeTo dictionary-writer mos)
+    (.writeTo data-column-chunk-writer mos)))
 
 (defn- dictionary-indices-column-spec [column-spec]
   (-> column-spec
@@ -225,11 +217,6 @@
   IColumnChunkWriterImpl
   (target-data-page-length [_]
     (target-data-page-length data-column-chunk-writer))
-  (flush-to-byte-buffer! [this byte-buffer]
-    (.finish this)
-    (.flush (doto (ByteArrayWriter. (.length dictionary-writer)) (.write dictionary-writer))
-            ^ByteBuffer byte-buffer)
-    (flush-to-byte-buffer! data-column-chunk-writer ^ByteBuffer byte-buffer))
   IDictionaryColumChunkWriter
   (value-index [_ v]
     (let [k (keyable v)
@@ -240,7 +227,7 @@
                       idx)))]
       (.put index-frequencies i (inc (or (.get index-frequencies i) 0)))
       i))
-  BufferedByteArrayWriter
+  OutputBuffer
   (reset [_]
     (reset! finished? false)
     (.clear reverse-dictionary)
@@ -257,14 +244,14 @@
                                  (map vector (range))
                                  (reduce (fn [^ints a [oi di]] (do (aset a (int oi) (int di)) a))
                                          (make-array Integer/TYPE (page/num-values dictionary-writer))))
-            ^objects dictionary-array (-> (doto (ByteArrayWriter.) (.write dictionary-writer))
-                                          .buffer
-                                          ByteArrayReader.
-                                          (page/read-dictionary type-store
-                                                                (:type column-spec)
-                                                                :plain
-                                                                (:compression column-spec)
-                                                                nil))
+            ^objects dictionary-array (let [mos (MemoryOutputStream.)]
+                                        (.writeTo dictionary-writer mos)
+                                        (page/read-dictionary (.byteBuffer mos)
+                                                              type-store
+                                                              (:type column-spec)
+                                                              :plain
+                                                              (:compression column-spec)
+                                                              nil))
             sorted-dictionnary-array (->> dictionary-array
                                           (map vector (range))
                                           (reduce (fn [^objects a [oi v]]
@@ -291,10 +278,10 @@
     (+ (.length dictionary-writer) (.length data-column-chunk-writer)))
   (estimatedLength [_]
     (+ (.estimatedLength dictionary-writer) (.estimatedLength buffer-column-chunk-writer)))
-  (flush [this baw]
+  (writeTo [this mos]
     (.finish this)
-    (.write baw dictionary-writer)
-    (.write baw data-column-chunk-writer)))
+    (.writeTo dictionary-writer mos)
+    (.writeTo data-column-chunk-writer mos)))
 
 (defn- frequency-indices-column-spec [column-spec]
   (-> column-spec
@@ -327,7 +314,7 @@
        (map page/stats)
        (stats/pages->column-chunk-stats (:column-spec column-chunk-reader))))
 
-(defrecord DataColumnChunkReader [^ByteArrayReader byte-array-reader
+(defrecord DataColumnChunkReader [^ByteBuffer byte-buffer
                                   column-chunk-metadata
                                   type-store
                                   column-spec]
@@ -336,7 +323,7 @@
     (let [map-fn (:map-fn column-spec)
           {:keys [type encoding compression max-repetition-level max-definition-level]} column-spec]
       (page/read-data-pages
-       (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
+       (utils/skip byte-buffer (:data-page-offset column-chunk-metadata))
        (:num-data-pages column-chunk-metadata)
        max-repetition-level
        max-definition-level
@@ -346,17 +333,17 @@
        compression
        map-fn)))
   (page-headers [_]
-    (page/read-data-page-headers (.sliceAhead byte-array-reader (:data-page-offset column-chunk-metadata))
+    (page/read-data-page-headers (utils/skip byte-buffer (:data-page-offset column-chunk-metadata))
                                  (:num-data-pages column-chunk-metadata))))
 
-(defrecord DictionaryColumnChunkReader [^ByteArrayReader byte-array-reader
+(defrecord DictionaryColumnChunkReader [^ByteBuffer byte-buffer
                                         column-chunk-metadata
                                         type-store
                                         column-spec]
   IColumnChunkReader
   (read [this]
     (let [^objects dict-array (read-dictionary this)]
-      (read (->DataColumnChunkReader byte-array-reader
+      (read (->DataColumnChunkReader byte-buffer
                                      column-chunk-metadata
                                      type-store
                                      (-> (if (= :dictionary (:encoding column-spec))
@@ -366,19 +353,19 @@
   (page-headers [this]
     (let [dictionary-page-header (->> column-chunk-metadata
                                       :dictionary-page-offset
-                                      (.sliceAhead byte-array-reader)
+                                      (utils/skip byte-buffer)
                                       page/read-dictionary-header)]
       (cons dictionary-page-header (indices-page-headers this))))
   IDictionaryColumnChunkReader
   (read-dictionary [_]
-    (page/read-dictionary (.sliceAhead byte-array-reader (:dictionary-page-offset column-chunk-metadata))
+    (page/read-dictionary (utils/skip byte-buffer (:dictionary-page-offset column-chunk-metadata))
                           type-store
                           (:type column-spec)
                           :plain
                           (:compression column-spec)
                           (:map-fn column-spec)))
   (indices-page-headers [_]
-    (page-headers (->DataColumnChunkReader byte-array-reader
+    (page-headers (->DataColumnChunkReader byte-buffer
                                            column-chunk-metadata
                                            type-store
                                            (if (= :dictionary (:encoding column-spec))
@@ -392,9 +379,9 @@
     (->DataColumnChunkReader byte-array-reader column-chunk-metadata type-store column-spec)))
 
 (defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length type-store]
-  (let [^BufferedByteArrayWriter w (reduce write!
-                                           (writer target-data-page-length type-store new-colum-spec)
-                                           (read column-chunk-reader))]
+  (let [^OutputBuffer w (writer target-data-page-length type-store new-colum-spec)]
+    (doseq [lv (read column-chunk-reader)]
+      (write! w lv))
     (.finish w)
     (if (and (#{:dictionary :frequency} (:encoding new-colum-spec))
              (> (-> w metadata :data-page-offset) target-data-page-length))
@@ -449,14 +436,12 @@
       :encoding best-encoding
       :compression best-compression)))
 
-(defn writer->reader! [^BufferedByteArrayWriter column-chunk-writer type-store]
+(defn writer->reader! [^OutputBuffer column-chunk-writer type-store]
   (.finish column-chunk-writer)
-  (let [metadata (metadata column-chunk-writer)]
-    (-> (doto (ByteArrayWriter. (.length column-chunk-writer))
-          (.write column-chunk-writer))
-        .buffer
-        ByteArrayReader.
-        (reader metadata type-store (:column-spec column-chunk-writer)))))
+  (let [metadata (metadata column-chunk-writer)
+        mos (MemoryOutputStream. (.length column-chunk-writer))]
+    (.writeTo column-chunk-writer mos)
+    (reader (.byteBuffer mos) metadata type-store (:column-spec column-chunk-writer))))
 
 (defn optimize! [column-chunk-writer type-store compression-candidates-treshold-map]
   (let [column-type (get-in column-chunk-writer [:column-spec :type])
