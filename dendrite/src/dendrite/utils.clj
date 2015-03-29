@@ -158,11 +158,10 @@
      (pmap-1 (partial apply f) (multiplex [c1 c2]))))
 
 (defn- chunk-take [n coll]
-  (lazy-seq
-   (when-let [s (seq coll)]
-     (when (pos? n)
-       (let [c (chunk-first s)]
-         (chunk-cons c (chunk-take (- n (count c)) (chunk-rest s))))))))
+  (when-let [s (seq coll)]
+    (when (pos? n)
+      (let [c (chunk-first s)]
+        (chunk-cons c (chunk-take (- n (count c)) (chunk-rest s)))))))
 
 (defn- chunk-nthrest
   [coll n]
