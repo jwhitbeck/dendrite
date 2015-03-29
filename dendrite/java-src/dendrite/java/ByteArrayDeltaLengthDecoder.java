@@ -35,6 +35,7 @@ public class ByteArrayDeltaLengthDecoder extends AbstractDecoder {
 
   public void decodeInto(final MemoryOutputStream mos) {
     int length = lengthsDecoder.decodeInt();
+    mos.ensureRemainingCapacity(length);
     bb.get(mos.buffer, mos.position, length);
     mos.position += length;
   }
