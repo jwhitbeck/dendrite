@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java Array Singleton PersistentLinkedSeq]
+           [dendrite.java Singleton PersistentLinkedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -103,15 +103,9 @@
     (.get bb chars)
     (String. chars)))
 
-(definline make-object-array
-  "Like (make-array Object n) but doesn't use java.lang.reflect and is 3x faster for small arrays (i.e. with
-  fewer than 10 elements)."
-  [n]
-  `(Array/create (int ~n)))
-
 (defn multiplex [seqs]
   (letfn [(all-first [^objects seq-array ^long seq-array-len]
-            (let [^objects af (make-object-array seq-array-len)]
+            (let [^objects af (object-array seq-array-len)]
               (loop [i 0]
                 (if (< i seq-array-len)
                   (do (aset af i (first (aget seq-array i)))

@@ -86,7 +86,7 @@
         ^objects field-ass-fn-array (into-array clojure.lang.IFn field-ass-fns)
         n (count field-names)]
     (fn [^objects leveled-values-array]
-      (let [^objects vals (utils/make-object-array n)]
+      (let [vals (object-array n)]
         (loop [i 0]
           (if (= i n)
             (.create fact vals)

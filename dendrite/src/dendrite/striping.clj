@@ -182,7 +182,7 @@
         n (count column-specs)
         sf (let [sf* (stripe-fn* schema [] (coercion-fns-map type-store column-specs))]
              (fn [record]
-               (let [sa (make-array Object n)]
+               (let [sa (object-array n)]
                  (try
                    (do
                      (sf* sa record false 0 0)

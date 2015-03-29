@@ -257,7 +257,7 @@
                                           (reduce (fn [^objects a [oi v]]
                                                     (do (aset a (aget index-map oi) v)
                                                         a))
-                                                  (make-array Object (alength dictionary-array))))]
+                                                  (object-array (alength dictionary-array))))]
         (.reset dictionary-writer)
         (doseq [e sorted-dictionnary-array]
           (page/write-entry! dictionary-writer e))
