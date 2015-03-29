@@ -8,4 +8,5 @@
                  [org.clojure/data.fressian "0.2.0"]]
   :java-source-paths ["java-src"]
   :scm {:name "git"
-        :url "https://github.com/jwhitbeck/dendrite"})
+        :url "https://github.com/jwhitbeck/dendrite"}
+  :profiles {:dev {:java-opts ["-server"]}})
