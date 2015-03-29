@@ -10,7 +10,7 @@
                  [com.damballa/abracad "0.4.11"]
                  [com.google.protobuf/protobuf-java "2.5.0"]
                  [com.taoensso/nippy "2.7.0-RC1"]
-                 [dendrite "0.2.1-SNAPSHOT"]
+                 [dendrite "0.2.3-SNAPSHOT"]
                  [org.flatland/protobuf "0.8.1"]
                  [net.jpountz.lz4/lz4 "1.2.0"]
                  [http-kit "2.1.19"]
