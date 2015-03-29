@@ -12,7 +12,7 @@
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java ByteArrayReader ByteArrayWriter Flushable MemoryOutputStream OutputBuffer]
+  (:import [dendrite.java MemoryOutputStream OutputBuffer]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -22,22 +22,6 @@
 (def ^:private ^Random rng (Random.))
 
 (def default-type-store (encoding/type-store nil))
-
-(defn byte-array= [^bytes aa ^bytes ab]
-  (and (= (alength aa) (alength ab))
-       (every? true? (map = aa ab))))
-
-(defn int-array= [^ints aa ^ints ab]
-  (and (= (alength aa) (alength ab))
-       (every? true? (map = aa ab))))
-
-(defn bool-array= [^booleans aa ^booleans ab]
-  (and (= (alength aa) (alength ab))
-       (every? true? (map = aa ab))))
-
-(defn long-array= [^longs aa ^longs ab]
-  (and (= (alength aa) (alength ab))
-       (every? true? (map = aa ab))))
 
 (defn rand-bool [] (zero? (clojure.core/rand-int 2)))
 
@@ -110,16 +94,6 @@
   ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
-
-(defn get-byte-array-reader ^dendrite.java.ByteArrayReader [^Flushable byte-array-writable]
-  (let [baw (ByteArrayWriter.)]
-    (.write baw byte-array-writable)
-    (-> baw .buffer ByteArrayReader.)))
-
-(defn get-byte-buffer ^java.nio.ByteBuffer [^Flushable byte-array-writable]
-  (let [baw (ByteArrayWriter.)]
-    (.write baw byte-array-writable)
-    (-> baw .buffer ByteBuffer/wrap)))
 
 (defn output-buffer->byte-buffer ^java.nio.ByteBuffer [^OutputBuffer output-buffer]
   (let [mos (MemoryOutputStream.)]

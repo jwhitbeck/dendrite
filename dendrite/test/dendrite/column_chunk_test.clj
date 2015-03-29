@@ -340,7 +340,7 @@
     (let [cs (column-spec-required :byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/byte-array= (read reader) input-blocks)))
+      (is (= (map seq (read reader) (map seq input-blocks))))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random big ints"
     (let [cs (column-spec-required :bigint :plain :none)
@@ -389,7 +389,7 @@
     (let [cs (column-spec-required :fixed-length-byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array 16) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/byte-array= (read reader) input-blocks)))
+      (is (= (map seq (read reader)) (map seq input-blocks)))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "UUIDs"
     (let [cs (column-spec-required :uuid :plain :none)
@@ -402,7 +402,7 @@
           rand-byte-arrays (repeatedly 10 #(helpers/rand-byte-array 16))
           input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (every? true? (map helpers/byte-array= (read reader) input-blocks)))
+      (is (= (map seq (read reader)) (map seq input-blocks)))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-compression-types

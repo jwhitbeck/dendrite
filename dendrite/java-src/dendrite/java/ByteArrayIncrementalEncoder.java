@@ -60,16 +60,16 @@ public class ByteArrayIncrementalEncoder implements Encoder {
 
   @Override
   public int length() {
-    return ByteArrayWriter.getNumUIntBytes(prefixLengthsEncoder.length())
-      + ByteArrayWriter.getNumUIntBytes(numValues)
+    return Bytes.getNumUIntBytes(prefixLengthsEncoder.length())
+      + Bytes.getNumUIntBytes(numValues)
       + prefixLengthsEncoder.length() + byteArrayEncoder.length();
   }
 
   @Override
   public int estimatedLength() {
     int estimatedPrefixLengthsEncoderLength = prefixLengthsEncoder.estimatedLength();
-    return ByteArrayWriter.getNumUIntBytes(estimatedPrefixLengthsEncoderLength)
-      + ByteArrayWriter.getNumUIntBytes(numValues)
+    return Bytes.getNumUIntBytes(estimatedPrefixLengthsEncoderLength)
+      + Bytes.getNumUIntBytes(numValues)
       + estimatedPrefixLengthsEncoderLength + byteArrayEncoder.length();
   }
 
