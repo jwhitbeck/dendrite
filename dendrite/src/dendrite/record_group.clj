@@ -14,7 +14,7 @@
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java BufferedByteArrayWriter ByteArrayReader ByteArrayWriter]
+  (:import [dendrite.java MemoryOutputStream OutputBuffer]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel FileChannel$MapMode])
   (:refer-clojure :exclude [read]))
@@ -29,26 +29,17 @@
   (metadata [_])
   (column-specs [_]))
 
-(defn- ensure-direct-byte-buffer-large-enough [^ByteBuffer byte-buffer length margin]
-  (if (and byte-buffer (>= (.capacity byte-buffer) length))
-    byte-buffer
-    (ByteBuffer/allocateDirect (int (* length (+ 1 margin))))))
-
-(defn- flush-column-chunks-to-byte-buffer [^ByteBuffer byte-buffer column-chunk-writers length]
-  (.clear byte-buffer)
-  (doseq [column-chunk-writer column-chunk-writers]
-    (column-chunk/flush-to-byte-buffer! column-chunk-writer byte-buffer))
-  (doto byte-buffer
-    (.limit length)
-    .rewind))
-
 (defn- write-byte-buffer [^FileChannel file-channel ^ByteBuffer byte-buffer]
   (try (.write file-channel byte-buffer)
        :success
        (catch Exception e
          e)))
 
-(defrecord RecordGroupWriter [num-records column-chunk-writers direct-byte-buffer io-thread type-store]
+(defrecord RecordGroupWriter [num-records
+                              column-chunk-writers
+                              ^MemoryOutputStream memory-output-stream
+                              io-thread
+                              type-store]
   IRecordGroupWriter
   (write! [this striped-record]
     (dorun (map column-chunk/write! column-chunk-writers striped-record))
@@ -64,10 +55,9 @@
   (flush-to-file-channel! [this file-channel]
     (.finish this)
     (await-io-completion this)
-    (let [length (.length this)]
-      (swap! direct-byte-buffer ensure-direct-byte-buffer-large-enough length 0.2)
-      (swap! direct-byte-buffer flush-column-chunks-to-byte-buffer column-chunk-writers length)
-      (reset! io-thread (future (write-byte-buffer file-channel @direct-byte-buffer)))))
+    (.reset memory-output-stream)
+    (.writeTo this memory-output-stream)
+    (reset! io-thread (future (write-byte-buffer file-channel (.byteBuffer memory-output-stream)))))
   (await-io-completion [_]
     (when @io-thread
       (let [ret @@io-thread]
@@ -75,32 +65,32 @@
           (throw ret)))))
   (column-specs [_]
     (map :column-spec column-chunk-writers))
-  BufferedByteArrayWriter
+  OutputBuffer
   (reset [_]
     (reset! num-records 0)
-    (doseq [column-chunk-writer column-chunk-writers]
-      (.reset ^BufferedByteArrayWriter column-chunk-writer)))
+    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+      (.reset column-chunk-writer)))
   (finish [this]
-    (doseq [column-chunk-writer column-chunk-writers]
-      (.finish ^BufferedByteArrayWriter column-chunk-writer)))
+    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+      (.finish column-chunk-writer)))
   (length [_]
     (->> column-chunk-writers
-         (map #(.length ^BufferedByteArrayWriter %))
+         (map #(.length ^OutputBuffer %))
          (reduce +)))
   (estimatedLength [_]
     (->> column-chunk-writers
-         (map #(.estimatedLength ^BufferedByteArrayWriter %))
+         (map #(.estimatedLength ^OutputBuffer %))
          (reduce +)))
-  (flush [this baw]
+  (writeTo [this mos]
     (.finish this)
-    (doseq [column-chunk-writer column-chunk-writers]
-      (.flush ^BufferedByteArrayWriter column-chunk-writer baw))))
+    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+      (.writeTo column-chunk-writer mos))))
 
 (defn writer [target-data-page-length type-store column-specs]
   (map->RecordGroupWriter
    {:num-records (atom 0)
     :column-chunk-writers (mapv (partial column-chunk/writer target-data-page-length type-store) column-specs)
-    :direct-byte-buffer (atom nil)
+    :memory-output-stream (MemoryOutputStream.)
     :io-thread (atom nil)
     :type-store type-store}))
 
@@ -129,19 +119,18 @@
 
 (defn byte-buffer-reader [^ByteBuffer byte-buffer record-group-metadata type-store queried-schema]
   (let [queried-indices (schema/queried-column-indices-set queried-schema)
-        byte-array-readers
+        byte-buffers
         (->> (column-chunk-lengths record-group-metadata)
              (map vector (column-chunk-byte-offsets record-group-metadata))
              (utils/filter-indices queried-indices)
-             (map (fn [[offset length]]
-                    (ByteArrayReader. (utils/sub-byte-buffer byte-buffer offset length)))))
+             (map (fn [[offset length]] (utils/sub-byte-buffer byte-buffer offset length))))
         column-chunks-metadata (->> record-group-metadata
                                     :column-chunks-metadata
                                     (utils/filter-indices queried-indices))]
     (map->RecordGroupReader
      {:num-records (:num-records record-group-metadata)
       :column-chunk-readers (mapv column-chunk/reader
-                                  byte-array-readers
+                                  byte-buffers
                                   column-chunks-metadata
                                   (repeat type-store)
                                   (schema/column-specs queried-schema))})))
@@ -153,7 +142,7 @@
           optimized-column-chunk-writers
             (->> record-group-writer
                  :column-chunk-writers
-                 (sort-by #(.estimatedLength ^BufferedByteArrayWriter %))
+                 (sort-by #(.estimatedLength ^OutputBuffer %))
                  reverse
                  (utils/upmap #(column-chunk/optimize! % type-store compression-threshold-map))
                  (sort-by (comp :column-index :column-spec)))]

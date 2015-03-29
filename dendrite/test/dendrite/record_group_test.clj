@@ -18,7 +18,7 @@
             [dendrite.striping :as striping]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java ByteArrayWriter Finishable]
+  (:import [dendrite.java OutputBuffer]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel])
   (:refer-clojure :exclude [read]))
@@ -28,14 +28,14 @@
 (def target-data-page-length 1024)
 
 (deftest dremel-write-read
-  (let [w (doto ^Finishable (writer target-data-page-length
-                                    helpers/default-type-store
-                                    (schema/column-specs dremel-paper-schema))
+  (let [w (doto ^OutputBuffer (writer target-data-page-length
+                                      helpers/default-type-store
+                                      (schema/column-specs dremel-paper-schema))
             (write! dremel-paper-record1-striped)
             (write! dremel-paper-record2-striped)
             .finish)
         record-group-metadata (metadata w)
-        bb (helpers/get-byte-buffer w)]
+        bb (helpers/output-buffer->byte-buffer w)]
     (testing "full schema"
       (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
              (read (byte-buffer-reader bb record-group-metadata
@@ -59,13 +59,13 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema helpers/default-type-store nil) records)
-        w (doto ^Finishable (writer target-data-page-length
-                                    helpers/default-type-store
-                                    (schema/column-specs test-schema))
+        w (doto ^OutputBuffer (writer target-data-page-length
+                                      helpers/default-type-store
+                                      (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)
-        bb (helpers/get-byte-buffer w)
+        bb (helpers/output-buffer->byte-buffer w)
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (testing "full schema"
       (is (= striped-records
@@ -83,9 +83,9 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema nil helpers/default-type-store) records)
-        w (doto ^Finishable (writer target-data-page-length
-                                    helpers/default-type-store
-                                    (schema/column-specs test-schema))
+        w (doto ^OutputBuffer (writer target-data-page-length
+                                      helpers/default-type-store
+                                      (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)
