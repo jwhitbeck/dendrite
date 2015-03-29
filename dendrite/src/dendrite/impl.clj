@@ -19,7 +19,7 @@
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java BufferedByteArrayWriter ByteArrayWriter ByteArrayReader]
+  (:import [dendrite.java Bytes OutputBuffer MemoryOutputStream]
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -29,7 +29,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private magic-str "den1")
-(def ^:private magic-bytes (into-array Byte/TYPE magic-str))
+(def ^{:private true :tag 'bytes} magic-bytes (into-array Byte/TYPE magic-str))
 (def ^:private magic-bytes-length (count magic-bytes))
 (def ^:private int-length 4)
 
@@ -182,19 +182,19 @@
 (defn- done? [fut]
   (.isDone ^Future fut))
 
-(defrecord ByteArrayBackendWriter [^ByteArrayWriter byte-array-writer]
+(defrecord MemoryOutputStreamBackendWriter [^MemoryOutputStream memory-output-stream]
   IBackendWriter
   (flush-record-group! [_ record-group-writer]
-    (.flush ^BufferedByteArrayWriter record-group-writer byte-array-writer))
+    (.writeTo ^OutputBuffer record-group-writer memory-output-stream))
   (finish! [_ metadata]
-    (let [metadata-byte-buffer (metadata/write metadata)]
-      (.write byte-array-writer metadata-byte-buffer)
-      (.writeFixedInt byte-array-writer (.limit metadata-byte-buffer))
-      (.writeByteArray byte-array-writer magic-bytes)))
+    (let [mbb (metadata/write metadata)]
+      (.write memory-output-stream (.array mbb) (.position mbb) (.limit mbb) )
+      (Bytes/writeFixedInt memory-output-stream (.limit mbb))
+      (.write memory-output-stream magic-bytes)))
   (close-writer! [_]))
 
-(defn- byte-array-backend-writer []
-  (->ByteArrayBackendWriter (doto (ByteArrayWriter.) (.writeByteArray magic-bytes))))
+(defn- memory-output-stream-backend-writer []
+  (->MemoryOutputStreamBackendWriter (doto (MemoryOutputStream.) (.write magic-bytes))))
 
 (defrecord FileChannelBackendWriter [^FileChannel file-channel]
   IBackendWriter
@@ -219,15 +219,15 @@
 (defn- all-default-column-specs? [schema]
   (every? is-default-column-spec? (schema/column-specs schema)))
 
-(defn- complete-record-group! [backend-writer ^BufferedByteArrayWriter record-group-writer]
-  (.finish ^BufferedByteArrayWriter record-group-writer)
+(defn- complete-record-group! [backend-writer ^OutputBuffer record-group-writer]
+  (.finish ^OutputBuffer record-group-writer)
   (let [metadata (record-group/metadata record-group-writer)]
     (flush-record-group! backend-writer record-group-writer)
     (.reset record-group-writer)
     metadata))
 
 (defn- write-striped-records
-  [^BufferedByteArrayWriter record-group-writer backend-writer target-record-group-length
+  [^OutputBuffer record-group-writer backend-writer target-record-group-length
    optimize? compression-threshold-map striped-records]
   (loop [next-num-records-for-length-check 10
          record-groups-metadata []
@@ -238,7 +238,7 @@
       (let [estimated-length (.estimatedLength rg-writer)]
         (if (>= estimated-length target-record-group-length)
           (if (and optimize? (not optimized?))
-            (let [^BufferedByteArrayWriter optimized-rg-writer
+            (let [^OutputBuffer optimized-rg-writer
                   (record-group/optimize! rg-writer compression-threshold-map)]
               (recur (estimation/next-threshold-check (record-group/num-records optimized-rg-writer)
                                                       (.estimatedLength optimized-rg-writer)
@@ -352,14 +352,14 @@
   optional options map support the same options as for file-writer."
   (^java.io.Closeable [schema] (byte-buffer-writer nil schema))
   (^java.io.Closeable [options schema]
-     (writer (byte-array-backend-writer) schema options)))
+    (writer (memory-output-stream-backend-writer) schema options)))
 
 (defn byte-buffer!
   "Closes a byte-buffer writer and returns a java.nio.ByteBuffer containing the full dendrite serialization."
   ^java.nio.ByteBuffer [^Closeable writer]
-  (if-let [^ByteArrayWriter byte-array-writer (get-in writer [:backend-writer :byte-array-writer])]
+  (if-let [^MemoryOutputStream memory-output-stream (get-in writer [:backend-writer :memory-output-stream])]
     (do (.close writer)
-        (ByteBuffer/wrap (.buffer byte-array-writer) 0 (.position byte-array-writer)))
+        (.byteBuffer memory-output-stream))
     (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
 
 (defn file-writer

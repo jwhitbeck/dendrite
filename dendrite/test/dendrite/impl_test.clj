@@ -192,11 +192,6 @@
            Exception #"foo"
            (with-redefs [dendrite.record-group/write-byte-buffer (constantly (Exception. "foo"))]
              (with-open [w (file-writer (-> dremel-paper-schema-str schema/read-string) tmp-filename)]
-               (write! w dremel-paper-record1)))))
-      (is (thrown-with-msg?
-           Exception #"foo"
-           (with-redefs [dendrite.record-group/flush-column-chunks-to-byte-buffer throw-foo-fn]
-             (with-open [w (file-writer (-> dremel-paper-schema-str schema/read-string) tmp-filename)]
                (write! w dremel-paper-record1))))))
     (io/delete-file tmp-filename))
   (testing "exceptions in the reading thread are caught in the main thread"
