@@ -12,6 +12,7 @@
                  [com.taoensso/nippy "2.7.0-RC1"]
                  [dendrite "0.2.3-SNAPSHOT"]
                  [org.flatland/protobuf "0.8.1"]
+                 [prismatic/plumbing "0.4.1"]
                  [net.jpountz.lz4/lz4 "1.2.0"]
                  [http-kit "2.1.19"]
                  [ring/ring-codec "1.0.0"]
