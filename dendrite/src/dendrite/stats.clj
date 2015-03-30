@@ -22,8 +22,7 @@
    (map->ByteStats {:header-length 0 :repetition-levels-length 0 :definition-levels-length 0 :data-length 0
                     :dictionary-header-length 0 :dictionary-length 0}))
   ([byte-stats-a byte-stats-b]
-   (->> (map (fnil + 0 0) (vals byte-stats-a) (vals byte-stats-b))
-        (apply ->ByteStats))))
+   (apply ->ByteStats (map (fnil + 0 0) (vals byte-stats-a) (vals byte-stats-b)))))
 
 (defrecord ColumnChunkStats [spec num-pages num-values num-dictionary-values length byte-stats])
 

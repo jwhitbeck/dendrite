@@ -151,10 +151,10 @@
   (value-index [_ v]
     (let [k (keyable v)]
       (or (.get reverse-dictionary k)
-          (do (let [idx (.size reverse-dictionary)]
-                (.put reverse-dictionary k idx)
-                (page/write-entry! dictionary-writer v)
-                idx)))))
+          (let [idx (.size reverse-dictionary)]
+            (.put reverse-dictionary k idx)
+            (page/write-entry! dictionary-writer v)
+            idx))))
   IOutputBuffer
   (reset [_]
     (.clear reverse-dictionary)
@@ -221,10 +221,10 @@
   (value-index [_ v]
     (let [k (keyable v)
           i (or (.get reverse-dictionary k)
-                (do (let [idx (.size reverse-dictionary)]
-                      (.put reverse-dictionary k idx)
-                      (page/write-entry! dictionary-writer v)
-                      idx)))]
+                (let [idx (.size reverse-dictionary)]
+                  (.put reverse-dictionary k idx)
+                  (page/write-entry! dictionary-writer v)
+                  idx))]
       (.put index-frequencies i (inc (or (.get index-frequencies i) 0)))
       i))
   IOutputBuffer
@@ -346,10 +346,11 @@
       (read (->DataColumnChunkReader byte-buffer
                                      column-chunk-metadata
                                      type-store
-                                     (-> (if (= :dictionary (:encoding column-spec))
-                                           (dictionary-indices-column-spec column-spec)
-                                           (frequency-indices-column-spec column-spec))
-                                         (assoc :map-fn #(aget dict-array (int %))))))))
+                                     (assoc (if (= :dictionary (:encoding column-spec))
+                                              (dictionary-indices-column-spec column-spec)
+                                              (frequency-indices-column-spec column-spec))
+                                            :map-fn
+                                            #(aget dict-array (int %)))))))
   (page-headers [this]
     (let [dictionary-page-header (->> column-chunk-metadata
                                       :dictionary-page-offset
@@ -449,9 +450,10 @@
                           (writer->reader! type-store)
                           (update-in [:column-spec :type] (partial encoding/base-type type-store)))
         target-data-page-length (target-data-page-length column-chunk-writer)
-        optimal-column-spec (-> (find-best-column-spec base-type-rdr
-                                                       target-data-page-length
-                                                       compression-candidates-treshold-map)
-                                (assoc :type column-type))
+        optimal-column-spec (assoc (find-best-column-spec base-type-rdr
+                                                          target-data-page-length
+                                                          compression-candidates-treshold-map)
+                                   :type
+                                   column-type)
         derived-type-rdr (assoc-in base-type-rdr [:column-spec :type] column-type)]
     (reduce write! (writer target-data-page-length type-store optimal-column-spec) (read derived-type-rdr))))

@@ -44,7 +44,7 @@
       (.write w (str "#col [" (name type) " " (name encoding)
                      (when-not (= compression :none) (str " " (name compression))) "]")))))
 
-(. ^clojure.lang.MultiFn print-method addMethod ColumnSpec print-colspec)
+(.addMethod ^clojure.lang.MultiFn print-method ColumnSpec print-colspec)
 
 (defn read-column-spec [vs]
   (let [[type encoding compression] (map keyword vs)]
@@ -176,13 +176,13 @@
                       :custom (.readObject reader)}))))
 
 (def ^:private read-handlers
-  (-> (merge {column-spec-tag column-spec-reader
-              field-tag field-reader
-              column-chunk-metadata-tag column-chunk-metadata-reader
-              record-group-metadata-tag record-group-metadata-reader
-              metadata-tag metadata-reader}
-             fressian/clojure-read-handlers)
-      fressian/associative-lookup))
+  (fressian/associative-lookup
+   (merge {column-spec-tag column-spec-reader
+           field-tag field-reader
+           column-chunk-metadata-tag column-chunk-metadata-reader
+           record-group-metadata-tag record-group-metadata-reader
+           metadata-tag metadata-reader}
+          fressian/clojure-read-handlers)))
 
 (defn read [^ByteBuffer byte-buffer]
   (fressian/read byte-buffer :handlers read-handlers))

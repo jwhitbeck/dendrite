@@ -272,8 +272,8 @@
                                 (record-group/optimize! rg-writer compression-threshold-map)
                                 rg-writer)
               final-rg-metadata (if (pos? (record-group/num-records final-rg-writer))
-                                  (->> (complete-record-group! backend-writer final-rg-writer)
-                                       (conj record-groups-metadata))
+                                  (conj record-groups-metadata
+                                        (complete-record-group! backend-writer final-rg-writer))
                                   record-groups-metadata)]
           (record-group/await-io-completion final-rg-writer)
           {:record-groups-metadata final-rg-metadata

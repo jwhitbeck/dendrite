@@ -219,8 +219,7 @@
 (defn- with-optimal-column-specs* [field optimal-column-specs-map]
   (if (record? field)
     (update-in field [:sub-fields] (partial map #(with-optimal-column-specs* % optimal-column-specs-map)))
-    (assoc field :column-spec (->> (get-in field [:column-spec :column-index])
-                                   (get optimal-column-specs-map)))))
+    (assoc field :column-spec (get optimal-column-specs-map (get-in field [:column-spec :column-index])))))
 
 (defn with-optimal-column-specs [schema optimal-column-specs]
   (with-optimal-column-specs* schema (->> optimal-column-specs
@@ -256,8 +255,7 @@
     (conj previous-column-specs (:column-spec field))))
 
 (defn column-specs [schema]
-  (->> (recursive-column-specs schema [])
-       (sort-by :column-index)))
+  (sort-by :column-index (recursive-column-specs schema [])))
 
 (defn sub-schema-in [schema entrypoint]
   (loop [ks entrypoint
@@ -266,7 +264,7 @@
       (if (repeated? sc)
         (throw (IllegalArgumentException. (format "Entrypoint '%s' contains repeated field '%s'"
                                                   (format-ks entrypoint)
-                                                  (-> sc :name))))
+                                                  (:name sc))))
         (recur (rest ks) (sub-field sc (first ks))))
       sc)))
 
@@ -364,7 +362,7 @@
     (do
       (when-not missing-fields-as-nil?
         (let [missing-fields (remove (->> sub-schema :sub-fields (map :name) set) (keys query-record))]
-          (when-not (empty? missing-fields)
+          (when (seq missing-fields)
             (throw (IllegalArgumentException.
                     (format "The following fields don't exist: %s."
                             (string/join ", " (map #(format-ks (conj parents %)) missing-fields))))))))
