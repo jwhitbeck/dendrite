@@ -92,7 +92,7 @@
                  v))
     :invalid-input-handler
     (when v
-      (if-not (utils/callable? v)
+      (if-not (fn? v)
         (throw (IllegalArgumentException. ":invalid-input-handler expects a function."))
         v))
     :custom-types
@@ -107,7 +107,7 @@
 (defn- parse-tag-reader [k v]
   (if-not (symbol? k)
     (throw (IllegalArgumentException. (format ":reader key should be a symbol but got '%s'." k)))
-    (if-not (utils/callable? v)
+    (if-not (fn? v)
       (throw (IllegalArgumentException. (format ":reader value for tag '%s' should be a function." k)))
       v)))
 
@@ -127,7 +127,7 @@
     (reduce-kv (fn [m t f] (assoc m t (parse-tag-reader t f))) {} v)
     :pmap-fn
     (when v
-      (if-not (utils/callable? v)
+      (if-not (fn? v)
         (throw (IllegalArgumentException. ":pmap-fn expects a function."))
         v))
     (throw (IllegalArgumentException. (format "%s is not a supported read option." k)))))

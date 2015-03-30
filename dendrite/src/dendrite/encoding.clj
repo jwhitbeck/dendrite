@@ -200,7 +200,7 @@
 
 (defn- get-derived-type-fn [derived-type-name derived-type-map fn-keyword]
   (if-let [f (get derived-type-map fn-keyword)]
-    (if-not (utils/callable? f)
+    (if-not (fn? f)
       (throw (IllegalArgumentException.
               (format "%s expects a function for type '%s'." fn-keyword (name derived-type-name))))
       f)
