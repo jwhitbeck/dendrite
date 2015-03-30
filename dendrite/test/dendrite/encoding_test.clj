@@ -11,7 +11,8 @@
 (ns dendrite.encoding-test
   (:require [clojure.test :refer :all]
             [dendrite.encoding :refer :all])
-  (:import [java.io StringWriter]))
+  (:import [java.io StringWriter]
+           [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +35,8 @@
          :bigdec 2.3
          :ratio (/ 2 3)
          :keyword :foo
-         :symbol 'foo)
+         :symbol 'foo
+         :byte-buffer (ByteBuffer/wrap (byte-array (map byte "foo"))))
     (are [t y] (thrown-with-msg? IllegalArgumentException #"Could not coerce" ((coercion-fn ts t) y))
          :int [1 2]
          :int "foo"
@@ -49,7 +51,8 @@
          :bigint "foo"
          :bigdec "foo"
          :ratio "foo"
-         :symbol 2)))
+         :symbol 2
+         :byte-buffer "foo")))
 
 (deftest validity-checks
   (testing "valid-value-type?"

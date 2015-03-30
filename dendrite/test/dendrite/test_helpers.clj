@@ -59,6 +59,15 @@
   ([] (rand-byte-array (clojure.core/rand-int 24)))
   ([n] (byte-array (repeatedly n rand-byte))))
 
+(defn rand-byte-buffer []
+  (ByteBuffer/wrap (rand-byte-array 32) (clojure.core/rand-int 10) (clojure.core/rand-int 22)))
+
+(defn byte-buffer->seq [^ByteBuffer bb]
+  (let [n (- (.limit bb) (.position bb))
+        bs (byte-array n)]
+    (System/arraycopy (.array bb) (.arrayOffset bb) bs 0 n)
+    (seq bs)))
+
 (defn rand-uuid [] (UUID/randomUUID))
 
 (defn rand-map [p f s]

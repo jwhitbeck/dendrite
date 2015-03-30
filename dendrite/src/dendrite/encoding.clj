@@ -182,6 +182,20 @@
     (throw (IllegalArgumentException. (format "%s is not an instance of java.util.UUID" x)))
     x))
 
+(defn byte-buffer->bytes [^ByteBuffer bb]
+  (let [n (- (.limit bb) (.position bb))
+        bs (byte-array n)]
+    (System/arraycopy (.array bb) (.arrayOffset bb) bs 0 n)
+    bs))
+
+(defn bytes->byte-buffer [^bytes bs]
+  (ByteBuffer/wrap bs))
+
+(defn byte-buffer [x]
+  (if-not (instance? ByteBuffer x)
+    (throw (IllegalArgumentException. (format "%s is not an instance of java.nio.ByteBuffer" x)))
+    x))
+
 (defrecord DerivedType [base-type coercion-fn to-base-type-fn from-base-type-fn])
 
 (defn- get-derived-type-fn [derived-type-name derived-type-map fn-keyword]
@@ -245,7 +259,11 @@
    :symbol (map->DerivedType {:base-type :string
                               :coercion-fn symbol
                               :to-base-type-fn name
-                              :from-base-type-fn symbol})})
+                              :from-base-type-fn symbol})
+   :byte-buffer (map->DerivedType {:base-type :byte-array
+                                   :coercion-fn byte-buffer
+                                   :to-base-type-fn byte-buffer->bytes
+                                   :from-base-type-fn bytes->byte-buffer})})
 
 (defn- build-type-hierarchy [t all-derived-types]
   (if (base-type? t)
