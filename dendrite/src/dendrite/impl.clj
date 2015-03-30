@@ -220,7 +220,7 @@
   (every? is-default-column-spec? (schema/column-specs schema)))
 
 (defn- complete-record-group! [backend-writer ^OutputBuffer record-group-writer]
-  (.finish ^OutputBuffer record-group-writer)
+  (.finish record-group-writer)
   (let [metadata (record-group/metadata record-group-writer)]
     (flush-record-group! backend-writer record-group-writer)
     (.reset record-group-writer)
