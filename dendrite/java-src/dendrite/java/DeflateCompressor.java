@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.util.zip.Deflater;
 
-public class DeflateCompressor implements Compressor {
+public class DeflateCompressor implements ICompressor {
 
   private final MemoryOutputStream inputBuffer;
   private final MemoryOutputStream outputBuffer;
@@ -27,7 +27,7 @@ public class DeflateCompressor implements Compressor {
   }
 
   @Override
-  public void compress(final OutputBuffer buffer) {
+  public void compress(final IOutputBuffer buffer) {
     buffer.writeTo(inputBuffer);
     deflater.setInput(inputBuffer.buffer, 0, inputBuffer.length());
     deflater.finish();

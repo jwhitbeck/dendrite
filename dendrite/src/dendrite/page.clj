@@ -14,8 +14,8 @@
             [dendrite.estimation :as estimation]
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum] :as utils])
-  (:import [dendrite.java Bytes Compressor Decompressor Dictionary Encoder LeveledValue LeveledValues
-            MemoryOutputStream OutputBuffer Writeable]
+  (:import [dendrite.java Bytes ICompressor IDecompressor Dictionary IEncoder LeveledValue LeveledValues
+            MemoryOutputStream IOutputBuffer IWriteable]
            [java.nio ByteBuffer])
   (:refer-clojure :exclude [read type]))
 
@@ -93,7 +93,7 @@
     0)
   (byte-offset-definition-levels [_]
     repetition-levels-length)
-  Writeable
+  IWriteable
   (writeTo [this mos]
     (encode-uints32! mos (vals this))))
 
@@ -125,7 +125,7 @@
       :length (+ (header-length this) (body-length this))
       :byte-stats (stats/map->ByteStats {:dictionary-header-length (header-length this)
                                          :dictionary-length compressed-data-length})}))
-  Writeable
+  IWriteable
   (writeTo [this mos]
     (encode-uints32! mos (vals this))))
 
@@ -151,10 +151,10 @@
 
 (defrecord DataPageWriter
     [body-length-estimator
-     ^Encoder repetition-level-encoder
-     ^Encoder definition-level-encoder
-     ^Encoder data-encoder
-     ^Compressor data-compressor
+     ^IEncoder repetition-level-encoder
+     ^IEncoder definition-level-encoder
+     ^IEncoder data-encoder
+     ^ICompressor data-compressor
      finished?]
   IDataPageWriter
   (write! [this v]
@@ -196,7 +196,7 @@
                                    (.length data-compressor)
                                    (.length data-encoder))
       :uncompressed-data-length (.length data-encoder)}))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (reset! finished? false)
     (when repetition-level-encoder
@@ -228,7 +228,7 @@
          (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this mos]
     (.finish this)
-    (.writeTo ^Writeable (header this) mos)
+    (.writeTo ^IWriteable (header this) mos)
     (when repetition-level-encoder
       (.writeTo repetition-level-encoder mos))
     (when definition-level-encoder
@@ -247,8 +247,8 @@
       :finished? (atom false)}))
 
 (defrecord DictionaryPageWriter [body-length-estimator
-                                 ^Encoder data-encoder
-                                 ^Compressor data-compressor
+                                 ^IEncoder data-encoder
+                                 ^ICompressor data-compressor
                                  finished?]
   IDictionaryPageWriter
   (write-entry! [this v]
@@ -271,7 +271,7 @@
                                    (.length data-compressor)
                                    (.length data-encoder))
       :uncompressed-data-length (.length data-encoder)}))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (reset! finished? false)
     (.reset data-encoder)
@@ -295,7 +295,7 @@
          (estimation/correct body-length-estimator (body-length provisional-header)))))
   (writeTo [this mos]
     (.finish this)
-    (.writeTo ^Writeable (header this) mos)
+    (.writeTo ^IWriteable (header this) mos)
     (if data-compressor
       (.writeTo data-compressor mos)
       (.writeTo data-encoder mos))))
@@ -330,8 +330,8 @@
                                           (utils/skip (byte-offset-definition-levels header))
                                           (levels-decoder max-definition-level)))
           data-byte-buffer (utils/skip byte-buffer (byte-offset-body header))
-          data-byte-buffer (if-let [decompressor (decompressor-ctor)]
-                             (.decompress ^Decompressor decompressor
+          data-byte-buffer (if-let [^IDecompressor decompressor (decompressor-ctor)]
+                             (.decompress decompressor
                                           data-byte-buffer
                                           (:compressed-data-length header)
                                           (:uncompressed-data-length header))
@@ -402,8 +402,8 @@
     (read-array this nil))
   (read-array [_ map-fn]
     (let [data-byte-buffer (utils/skip byte-buffer (byte-offset-body header))
-          data-byte-buffer (if-let [decompressor (decompressor-ctor)]
-                             (.decompress ^Decompressor decompressor
+          data-byte-buffer (if-let [^IDecompressor decompressor (decompressor-ctor)]
+                             (.decompress decompressor
                                           data-byte-buffer
                                           (:compressed-data-length header)
                                           (:uncompressed-data-length header))

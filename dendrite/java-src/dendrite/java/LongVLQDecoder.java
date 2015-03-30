@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class LongVLQDecoder extends AbstractDecoder {
+public class LongVLQDecoder extends ADecoder {
 
   public LongVLQDecoder(final ByteBuffer byteBuffer) {
     super(byteBuffer);

@@ -12,11 +12,16 @@
 
 package dendrite.java;
 
-public interface OutputBuffer extends Writeable {
+import java.nio.ByteBuffer;
 
-  public int length();
-  public int estimatedLength();
-  public void reset();
-  public void finish();
+public abstract class AIntDecoder extends ADecoder implements IIntDecoder {
 
+  public AIntDecoder(final ByteBuffer byteBuffer) {
+    super(byteBuffer);
+  }
+
+  @Override
+  public Object decode() {
+    return decodeInt();
+  }
 }

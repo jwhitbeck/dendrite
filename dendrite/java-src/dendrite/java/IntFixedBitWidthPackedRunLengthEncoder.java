@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class IntFixedBitWidthPackedRunLengthEncoder extends AbstractEncoder {
+public class IntFixedBitWidthPackedRunLengthEncoder extends AEncoder {
 
   private int rleValue = 0;
   private int numOccurencesRleValue = 0;

@@ -16,7 +16,7 @@
             [dendrite.page :as page]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java LeveledValue MemoryOutputStream OutputBuffer]
+  (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer]
            [dendrite.page DataPageWriter DictionaryPageWriter]
            [java.nio ByteBuffer]
            [java.util HashMap])
@@ -81,7 +81,7 @@
       (swap! num-pages inc)
       (reset! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
       (.reset page-writer)))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (reset! num-pages 0)
     (.reset memory-output-stream)
@@ -155,7 +155,7 @@
                 (.put reverse-dictionary k idx)
                 (page/write-entry! dictionary-writer v)
                 idx)))))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (.clear reverse-dictionary)
     (.reset dictionary-writer)
@@ -227,7 +227,7 @@
                       idx)))]
       (.put index-frequencies i (inc (or (.get index-frequencies i) 0)))
       i))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (reset! finished? false)
     (.clear reverse-dictionary)
@@ -379,7 +379,7 @@
     (->DataColumnChunkReader byte-array-reader column-chunk-metadata type-store column-spec)))
 
 (defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length type-store]
-  (let [^OutputBuffer w (writer target-data-page-length type-store new-colum-spec)]
+  (let [^IOutputBuffer w (writer target-data-page-length type-store new-colum-spec)]
     (doseq [lv (read column-chunk-reader)]
       (write! w lv))
     (.finish w)
@@ -436,7 +436,7 @@
       :encoding best-encoding
       :compression best-compression)))
 
-(defn writer->reader! [^OutputBuffer column-chunk-writer type-store]
+(defn writer->reader! [^IOutputBuffer column-chunk-writer type-store]
   (.finish column-chunk-writer)
   (let [metadata (metadata column-chunk-writer)
         mos (MemoryOutputStream. (.length column-chunk-writer))]

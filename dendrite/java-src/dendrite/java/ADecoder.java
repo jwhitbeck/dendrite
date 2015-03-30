@@ -12,8 +12,20 @@
 
 package dendrite.java;
 
-public interface Writeable {
+import java.nio.ByteBuffer;
 
-  public void writeTo(MemoryOutputStream os);
+public abstract class ADecoder implements IDecoder {
 
+  protected final ByteBuffer bb;
+  protected final int numValues;
+
+  public ADecoder(final ByteBuffer byteBuffer) {
+    bb = byteBuffer.slice();
+    numValues = Bytes.readUInt(bb);
+  }
+
+  @Override
+  public int numEncodedValues() {
+    return numValues;
+  }
 }

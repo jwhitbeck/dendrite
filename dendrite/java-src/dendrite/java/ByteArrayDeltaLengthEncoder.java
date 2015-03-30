@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class ByteArrayDeltaLengthEncoder implements Encoder {
+public class ByteArrayDeltaLengthEncoder implements IEncoder {
 
   private final IntPackedDeltaEncoder lengthsEncoder;
   private final MemoryOutputStream byteArrayBuffer;

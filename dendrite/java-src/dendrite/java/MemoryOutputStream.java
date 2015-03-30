@@ -15,7 +15,7 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 import java.io.OutputStream;
 
-public class MemoryOutputStream extends OutputStream implements OutputBuffer {
+public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
 
   private static int DEFAULT_BUFFER_LENGTH = 1024;
 

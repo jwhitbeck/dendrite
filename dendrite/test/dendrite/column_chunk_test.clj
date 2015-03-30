@@ -17,7 +17,7 @@
             [dendrite.metadata :as metadata]
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java LeveledValue OutputBuffer]
+  (:import [dendrite.java LeveledValue IOutputBuffer]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
   (:refer-clojure :exclude [read]))
@@ -35,7 +35,7 @@
      (write-column-chunk-and-get-reader column-spec test-target-data-page-length
                                         helpers/default-type-store input-blocks))
   ([column-spec target-data-page-length type-store input-blocks]
-   (let [^OutputBuffer w (writer target-data-page-length type-store column-spec)]
+   (let [^IOutputBuffer w (writer target-data-page-length type-store column-spec)]
      (write-blocks! w input-blocks)
      (.finish w)
      (-> (helpers/output-buffer->byte-buffer w)
@@ -101,7 +101,7 @@
           (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                  (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
         (write-blocks! w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
@@ -136,7 +136,7 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
         (write-blocks! w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
@@ -157,7 +157,7 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^OutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
+      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
         (write-blocks! w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]

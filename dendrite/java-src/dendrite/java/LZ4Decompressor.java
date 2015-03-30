@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.Inflater;
 import net.jpountz.lz4.LZ4FastDecompressor;
 
-public class LZ4Decompressor implements Decompressor {
+public class LZ4Decompressor implements IDecompressor {
 
   @Override
   public ByteBuffer decompress(final ByteBuffer byteBuffer, final int compressedLength,

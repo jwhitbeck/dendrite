@@ -15,7 +15,7 @@ package dendrite.java;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
-public class LongPackedDeltaDecoder extends AbstractDecoder {
+public class LongPackedDeltaDecoder extends ADecoder {
 
   private long[] miniblockBuffer = new long[128];
   private int miniblockPosition = 0;

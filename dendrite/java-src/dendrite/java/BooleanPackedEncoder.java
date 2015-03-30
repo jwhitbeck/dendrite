@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class BooleanPackedEncoder extends AbstractEncoder {
+public class BooleanPackedEncoder extends AEncoder {
 
   private boolean[] octuplet = new boolean[8];
   private int position = 0;

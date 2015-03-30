@@ -19,7 +19,7 @@
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java Bytes OutputBuffer MemoryOutputStream]
+  (:import [dendrite.java Bytes IOutputBuffer MemoryOutputStream]
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -185,7 +185,7 @@
 (defrecord MemoryOutputStreamBackendWriter [^MemoryOutputStream memory-output-stream]
   IBackendWriter
   (flush-record-group! [_ record-group-writer]
-    (.writeTo ^OutputBuffer record-group-writer memory-output-stream))
+    (.writeTo ^IOutputBuffer record-group-writer memory-output-stream))
   (finish! [_ metadata]
     (let [mbb (metadata/write metadata)]
       (.write memory-output-stream (.array mbb) (.position mbb) (.limit mbb) )
@@ -219,7 +219,7 @@
 (defn- all-default-column-specs? [schema]
   (every? is-default-column-spec? (schema/column-specs schema)))
 
-(defn- complete-record-group! [backend-writer ^OutputBuffer record-group-writer]
+(defn- complete-record-group! [backend-writer ^IOutputBuffer record-group-writer]
   (.finish record-group-writer)
   (let [metadata (record-group/metadata record-group-writer)]
     (flush-record-group! backend-writer record-group-writer)
@@ -227,7 +227,7 @@
     metadata))
 
 (defn- write-striped-records
-  [^OutputBuffer record-group-writer backend-writer target-record-group-length
+  [^IOutputBuffer record-group-writer backend-writer target-record-group-length
    optimize? compression-threshold-map striped-records]
   (loop [next-num-records-for-length-check 10
          record-groups-metadata []
@@ -238,7 +238,7 @@
       (let [estimated-length (.estimatedLength rg-writer)]
         (if (>= estimated-length target-record-group-length)
           (if (and optimize? (not optimized?))
-            (let [^OutputBuffer optimized-rg-writer
+            (let [^IOutputBuffer optimized-rg-writer
                   (record-group/optimize! rg-writer compression-threshold-map)]
               (recur (estimation/next-threshold-check (record-group/num-records optimized-rg-writer)
                                                       (.estimatedLength optimized-rg-writer)

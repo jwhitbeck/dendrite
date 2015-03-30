@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class FixedLengthByteArrayPlainEncoder extends AbstractEncoder {
+public class FixedLengthByteArrayPlainEncoder extends AEncoder {
 
   private int length = -1;
 

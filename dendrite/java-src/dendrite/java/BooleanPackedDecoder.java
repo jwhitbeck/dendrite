@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class BooleanPackedDecoder extends AbstractDecoder {
+public class BooleanPackedDecoder extends ADecoder {
 
   private final boolean[] octuplet = new boolean[8];
   private int position = 0;

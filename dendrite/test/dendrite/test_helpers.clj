@@ -12,7 +12,7 @@
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java MemoryOutputStream OutputBuffer]
+  (:import [dendrite.java MemoryOutputStream IOutputBuffer]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -104,7 +104,7 @@
   nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit
   anim id est laborum.")
 
-(defn output-buffer->byte-buffer ^java.nio.ByteBuffer [^OutputBuffer output-buffer]
+(defn output-buffer->byte-buffer ^java.nio.ByteBuffer [^IOutputBuffer output-buffer]
   (let [mos (MemoryOutputStream.)]
     (.writeTo output-buffer mos)
     (.byteBuffer mos)))

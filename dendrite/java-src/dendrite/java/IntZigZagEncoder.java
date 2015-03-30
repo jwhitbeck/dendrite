@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class IntZigZagEncoder extends AbstractEncoder {
+public class IntZigZagEncoder extends AEncoder {
 
   @Override
   public void encode(final Object o) {

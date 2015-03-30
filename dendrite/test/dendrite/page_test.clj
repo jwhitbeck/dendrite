@@ -14,7 +14,7 @@
             [dendrite.leveled-value :as lv]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java MemoryOutputStream OutputBuffer])
+  (:import [dendrite.java MemoryOutputStream IOutputBuffer])
   (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
@@ -112,11 +112,11 @@
     (testing "repeatable writes"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
-            ^OutputBuffer output-buffer (doto (data-page-writer (:max-repetition-level spec)
-                                                                (:max-definition-level spec)
-                                                                helpers/default-type-store
-                                                              :int :plain :none)
-                                          (write! input-values))
+            ^IOutputBuffer output-buffer (doto (data-page-writer (:max-repetition-level spec)
+                                                                 (:max-definition-level spec)
+                                                                 helpers/default-type-store
+                                                                 :int :plain :none)
+                                           (write! input-values))
             mos1 (MemoryOutputStream. 10)
             mos2 (MemoryOutputStream. 10)]
         (.writeTo output-buffer mos1)
@@ -162,9 +162,9 @@
         (is (nil? output-values))))
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            ^OutputBuffer output-buffer (doto (dictionary-page-writer helpers/default-type-store
-                                                                      :int :plain :none)
-                                          (write-entries! input-values))
+            ^IOutputBuffer output-buffer (doto (dictionary-page-writer helpers/default-type-store
+                                                                       :int :plain :none)
+                                           (write-entries! input-values))
             mos1 (MemoryOutputStream. 10)
             mos2 (MemoryOutputStream. 10)]
         (.writeTo output-buffer mos1)

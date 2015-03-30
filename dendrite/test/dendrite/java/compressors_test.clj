@@ -12,14 +12,14 @@
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :refer [lorem-ipsum]])
   (:import [dendrite.java MemoryOutputStream
-            Compressor Decompressor
+            ICompressor IDecompressor
             DeflateCompressor DeflateDecompressor
             LZ4Compressor LZ4Decompressor]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
-(defn compress-decompress-lorum-ipsum [^Compressor compressor ^Decompressor decompressor]
+(defn compress-decompress-lorum-ipsum [^ICompressor compressor ^IDecompressor decompressor]
   (let [mos (MemoryOutputStream. 10)
         compressed-mos (MemoryOutputStream. 10)]
     (.write mos (.getBytes (str lorem-ipsum) "UTF-8"))

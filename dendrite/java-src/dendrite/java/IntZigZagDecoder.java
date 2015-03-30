@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class IntZigZagDecoder extends AbstractIntDecoder {
+public class IntZigZagDecoder extends AIntDecoder {
 
   public IntZigZagDecoder(final ByteBuffer byteBuffer) {
     super(byteBuffer);

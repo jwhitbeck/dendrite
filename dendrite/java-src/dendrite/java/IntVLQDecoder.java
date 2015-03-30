@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class IntVLQDecoder extends AbstractIntDecoder {
+public class IntVLQDecoder extends AIntDecoder {
 
   public IntVLQDecoder(final ByteBuffer byteBuffer) {
     super(byteBuffer);

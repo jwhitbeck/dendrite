@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class IntVLQEncoder extends AbstractEncoder {
+public class IntVLQEncoder extends AEncoder {
 
   @Override
   public void encode(final Object o) {

@@ -12,7 +12,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java MemoryOutputStream
-            Encoder Decoder
+            IEncoder IDecoder
             BooleanPackedEncoder BooleanPackedDecoder
             IntPlainEncoder IntPlainDecoder
             IntVLQEncoder IntVLQDecoder
@@ -39,9 +39,9 @@
   ([n encoder-constructor decoder-constructor input-seq]
      (let [encoder (encoder-constructor)]
        (doseq [x (take n input-seq)]
-         (.encode ^Encoder encoder x))
+         (.encode ^IEncoder encoder x))
        (let [decoder (->> encoder helpers/output-buffer->byte-buffer decoder-constructor)]
-         (repeatedly n #(.decode ^Decoder decoder))))))
+         (repeatedly n #(.decode ^IDecoder decoder))))))
 
 (defn test-encode-n-values [n encoder-constructor decoder-constructor input-seq]
   (let [output-seq (write-read n encoder-constructor decoder-constructor input-seq)]
@@ -52,7 +52,7 @@
     (test-encode-n-values n encoder-constructor decoder-constructor input-seq)))
 
 (defn finish-repeatedly [n encoder-constructor input-seq]
-  (let [^Encoder encoder (encoder-constructor)
+  (let [^IEncoder encoder (encoder-constructor)
         mos (MemoryOutputStream.)]
     (doseq [x (take 10 input-seq)]
       (.encode encoder x))

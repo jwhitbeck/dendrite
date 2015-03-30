@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class IntPackedRunLengthEncoder extends AbstractEncoder {
+public class IntPackedRunLengthEncoder extends AEncoder {
 
   private final MemoryOutputStream intBuffer;
   private final IntFixedBitWidthPackedRunLengthEncoder rleEncoder;

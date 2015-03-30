@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class FixedLengthByteArrayPlainDecoder extends AbstractDecoder {
+public class FixedLengthByteArrayPlainDecoder extends ADecoder {
 
   private final int length;
 

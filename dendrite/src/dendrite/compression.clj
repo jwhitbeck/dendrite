@@ -9,8 +9,7 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.compression
-  (:import [dendrite.java Compressor Decompressor LZ4Compressor LZ4Decompressor
-            DeflateCompressor DeflateDecompressor]))
+  (:import [dendrite.java LZ4Compressor LZ4Decompressor DeflateCompressor DeflateDecompressor]))
 
 (set! *warn-on-reflection* true)
 

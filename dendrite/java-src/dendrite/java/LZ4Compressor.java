@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class LZ4Compressor implements Compressor {
+public class LZ4Compressor implements ICompressor {
 
   private final MemoryOutputStream inputBuffer;
   private final MemoryOutputStream outputBuffer;
@@ -23,7 +23,7 @@ public class LZ4Compressor implements Compressor {
   }
 
   @Override
-  public void compress(final OutputBuffer buffer) {
+  public void compress(final IOutputBuffer buffer) {
     buffer.writeTo(inputBuffer);
     net.jpountz.lz4.LZ4Compressor lz4Compressor = LZ4.compressor();
     outputBuffer.ensureRemainingCapacity(lz4Compressor.maxCompressedLength(inputBuffer.length()));

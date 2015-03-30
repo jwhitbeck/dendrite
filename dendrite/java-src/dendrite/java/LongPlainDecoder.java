@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class LongPlainDecoder extends AbstractDecoder {
+public class LongPlainDecoder extends ADecoder {
 
   public LongPlainDecoder(final ByteBuffer byteBuffer) {
     super(byteBuffer);

@@ -18,7 +18,7 @@
             [dendrite.striping :as striping]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java OutputBuffer]
+  (:import [dendrite.java IOutputBuffer]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel])
   (:refer-clojure :exclude [read]))
@@ -28,9 +28,9 @@
 (def target-data-page-length 1024)
 
 (deftest dremel-write-read
-  (let [w (doto ^OutputBuffer (writer target-data-page-length
-                                      helpers/default-type-store
-                                      (schema/column-specs dremel-paper-schema))
+  (let [w (doto ^IOutputBuffer (writer target-data-page-length
+                                       helpers/default-type-store
+                                       (schema/column-specs dremel-paper-schema))
             (write! dremel-paper-record1-striped)
             (write! dremel-paper-record2-striped)
             .finish)
@@ -59,9 +59,9 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema helpers/default-type-store nil) records)
-        w (doto ^OutputBuffer (writer target-data-page-length
-                                      helpers/default-type-store
-                                      (schema/column-specs test-schema))
+        w (doto ^IOutputBuffer (writer target-data-page-length
+                                       helpers/default-type-store
+                                       (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)
@@ -83,9 +83,9 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema nil helpers/default-type-store) records)
-        w (doto ^OutputBuffer (writer target-data-page-length
-                                      helpers/default-type-store
-                                      (schema/column-specs test-schema))
+        w (doto ^IOutputBuffer (writer target-data-page-length
+                                       helpers/default-type-store
+                                       (schema/column-specs test-schema))
             (#(reduce write! % striped-records))
             .finish)
         record-group-metadata (metadata w)

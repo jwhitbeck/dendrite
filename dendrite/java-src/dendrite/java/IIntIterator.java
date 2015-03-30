@@ -12,16 +12,7 @@
 
 package dendrite.java;
 
-import java.nio.ByteBuffer;
-
-public abstract class AbstractIntDecoder extends AbstractDecoder implements IntDecoder {
-
-  public AbstractIntDecoder(final ByteBuffer byteBuffer) {
-    super(byteBuffer);
-  }
-
-  @Override
-  public Object decode() {
-    return decodeInt();
-  }
+public interface IIntIterator {
+  public boolean hasNext();
+  public int next();
 }

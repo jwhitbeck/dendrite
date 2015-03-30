@@ -12,7 +12,7 @@
   (:require [dendrite.utils :as utils])
   (:import [clojure.lang Keyword Ratio]
            [dendrite.java
-            Encoder Decoder
+            IEncoder IDecoder
             BooleanPackedEncoder BooleanPackedDecoder
             IntPlainEncoder IntPlainDecoder
             IntVLQEncoder IntVLQDecoder
@@ -323,10 +323,10 @@
 (defn encoder [ts t encoding]
   (if (base-type? t)
     (base-encoder t encoding)
-    (let [^Encoder be (base-encoder (base-type ts t) encoding)
+    (let [^IEncoder be (base-encoder (base-type ts t) encoding)
           derived->base-type (derived->base-type-fn ts t)]
       (reify
-        Encoder
+        IEncoder
         (encode [_ v] (.encode be (derived->base-type v)))
         (numEncodedValues [_] (.numEncodedValues be))
         (reset [_] (.reset be))
@@ -340,9 +340,9 @@
     (base-decoder-ctor t encoding)
     (let [bdc (base-decoder-ctor (base-type ts t) encoding)
           base->derived-type (base->derived-type-fn ts t)]
-      #(let [^Decoder bd (bdc %)]
+      #(let [^IDecoder bd (bdc %)]
          (reify
-           Decoder
+           IDecoder
            (decode [_] (base->derived-type (.decode bd)))
            (numEncodedValues [_] (.numEncodedValues bd)))))))
 

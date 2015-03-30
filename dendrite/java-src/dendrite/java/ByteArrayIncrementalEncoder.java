@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public class ByteArrayIncrementalEncoder implements Encoder {
+public class ByteArrayIncrementalEncoder implements IEncoder {
 
   private byte[] previousByteArray = null;
   private final ByteArrayDeltaLengthEncoder byteArrayEncoder;

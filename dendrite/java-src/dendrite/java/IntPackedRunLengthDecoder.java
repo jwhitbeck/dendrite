@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class IntPackedRunLengthDecoder implements IntDecoder {
+public class IntPackedRunLengthDecoder implements IIntDecoder {
 
   private final IntFixedBitWidthPackedRunLengthDecoder int32Decoder;
 

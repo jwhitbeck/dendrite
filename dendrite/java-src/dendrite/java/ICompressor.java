@@ -12,20 +12,9 @@
 
 package dendrite.java;
 
-import java.nio.ByteBuffer;
+public interface ICompressor extends IOutputBuffer {
 
-public abstract class AbstractDecoder implements Decoder {
+  public int uncompressedLength();
+  public void compress(IOutputBuffer outputBuffer);
 
-  protected final ByteBuffer bb;
-  protected final int numValues;
-
-  public AbstractDecoder(final ByteBuffer byteBuffer) {
-    bb = byteBuffer.slice();
-    numValues = Bytes.readUInt(bb);
-  }
-
-  @Override
-  public int numEncodedValues() {
-    return numValues;
-  }
 }

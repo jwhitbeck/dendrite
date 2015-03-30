@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public interface Encoder extends OutputBuffer {
-  public void encode(final Object o);
+public interface IDecoder {
+  public Object decode();
   public int numEncodedValues();
 }

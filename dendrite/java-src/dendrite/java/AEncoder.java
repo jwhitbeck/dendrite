@@ -12,12 +12,12 @@
 
 package dendrite.java;
 
-public abstract class AbstractEncoder implements Encoder {
+public abstract class AEncoder implements IEncoder {
 
   protected final MemoryOutputStream mos;
   protected int numValues = 0;
 
-  public AbstractEncoder() {
+  public AEncoder() {
     this.mos = new MemoryOutputStream();
   }
 

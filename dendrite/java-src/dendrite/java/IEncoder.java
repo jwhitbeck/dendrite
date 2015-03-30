@@ -12,7 +12,7 @@
 
 package dendrite.java;
 
-public interface IntIterator {
-  public boolean hasNext();
-  public int next();
+public interface IEncoder extends IOutputBuffer {
+  public void encode(final Object o);
+  public int numEncodedValues();
 }

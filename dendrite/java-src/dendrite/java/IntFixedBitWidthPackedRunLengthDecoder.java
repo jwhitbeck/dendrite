@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class IntFixedBitWidthPackedRunLengthDecoder extends AbstractIntDecoder {
+public class IntFixedBitWidthPackedRunLengthDecoder extends AIntDecoder {
 
   private final int[] octuplet = new int[8];
   private int octupletPosition = 8;

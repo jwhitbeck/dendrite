@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public class ByteArrayDeltaLengthDecoder extends AbstractDecoder {
+public class ByteArrayDeltaLengthDecoder extends ADecoder {
 
   private final IntPackedDeltaDecoder lengthsDecoder;
 

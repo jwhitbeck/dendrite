@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public interface Decompressor {
+public interface IDecompressor {
 
   public ByteBuffer decompress(ByteBuffer byteBuffer, int compressedLength, int decompressedLength);
 

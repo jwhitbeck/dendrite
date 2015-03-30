@@ -12,6 +12,8 @@
 
 package dendrite.java;
 
-public interface IntDecoder extends Decoder {
-  public int decodeInt();
+public interface IWriteable {
+
+  public void writeTo(MemoryOutputStream os);
+
 }

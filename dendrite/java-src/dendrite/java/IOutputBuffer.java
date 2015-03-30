@@ -12,7 +12,11 @@
 
 package dendrite.java;
 
-public interface Decoder {
-  public Object decode();
-  public int numEncodedValues();
+public interface IOutputBuffer extends IWriteable {
+
+  public int length();
+  public int estimatedLength();
+  public void reset();
+  public void finish();
+
 }

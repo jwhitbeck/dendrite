@@ -14,7 +14,7 @@
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java MemoryOutputStream OutputBuffer]
+  (:import [dendrite.java MemoryOutputStream IOutputBuffer]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel FileChannel$MapMode])
   (:refer-clojure :exclude [read]))
@@ -65,25 +65,25 @@
           (throw ret)))))
   (column-specs [_]
     (map :column-spec column-chunk-writers))
-  OutputBuffer
+  IOutputBuffer
   (reset [_]
     (reset! num-records 0)
-    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+    (doseq [^IOutputBuffer column-chunk-writer column-chunk-writers]
       (.reset column-chunk-writer)))
   (finish [this]
-    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+    (doseq [^IOutputBuffer column-chunk-writer column-chunk-writers]
       (.finish column-chunk-writer)))
   (length [_]
     (->> column-chunk-writers
-         (map #(.length ^OutputBuffer %))
+         (map #(.length ^IOutputBuffer %))
          (reduce +)))
   (estimatedLength [_]
     (->> column-chunk-writers
-         (map #(.estimatedLength ^OutputBuffer %))
+         (map #(.estimatedLength ^IOutputBuffer %))
          (reduce +)))
   (writeTo [this mos]
     (.finish this)
-    (doseq [^OutputBuffer column-chunk-writer column-chunk-writers]
+    (doseq [^IOutputBuffer column-chunk-writer column-chunk-writers]
       (.writeTo column-chunk-writer mos))))
 
 (defn writer [target-data-page-length type-store column-specs]
@@ -142,7 +142,7 @@
           optimized-column-chunk-writers
             (->> record-group-writer
                  :column-chunk-writers
-                 (sort-by #(.estimatedLength ^OutputBuffer %))
+                 (sort-by #(.estimatedLength ^IOutputBuffer %))
                  reverse
                  (utils/upmap #(column-chunk/optimize! % type-store compression-threshold-map))
                  (sort-by (comp :column-index :column-spec)))]

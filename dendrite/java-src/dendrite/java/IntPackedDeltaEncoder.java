@@ -14,7 +14,7 @@ package dendrite.java;
 
 import java.util.Arrays;
 
-public class IntPackedDeltaEncoder extends AbstractEncoder {
+public class IntPackedDeltaEncoder extends AEncoder {
 
   private static final int MAX_BLOCK_LENGTH = 128;
   private static final int MAX_MINIBLOCK_LENGTH = 32;

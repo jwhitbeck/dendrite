@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.Inflater;
 import java.util.zip.DataFormatException;
 
-public class DeflateDecompressor implements Decompressor {
+public class DeflateDecompressor implements IDecompressor {
 
   @Override
   public ByteBuffer decompress(final ByteBuffer byteBuffer, final int compressedLength,
