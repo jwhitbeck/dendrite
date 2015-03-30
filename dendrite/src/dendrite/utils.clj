@@ -93,10 +93,6 @@
 (defn byte-buffer->int [^ByteBuffer bb]
   (.getInt (doto bb (.order ByteOrder/LITTLE_ENDIAN))))
 
-(defn str->byte-buffer
-  ^java.nio.ByteBuffer [^String s]
-  (ByteBuffer/wrap (.getBytes s)))
-
 (defn byte-buffer->str [^ByteBuffer bb]
   (let [length (- (.limit bb) (.position bb))
         chars (byte-array length)]
