@@ -251,11 +251,12 @@
       (is (= (map :links records) (with-open [r (file-reader tmp-filename)]
                                     (doall (read {:entrypoint [:links]} r))))))
     (testing "access a column directly"
-      (is (= (map :docid records (with-open [r (file-reader tmp-filename)]
-                                   (doall (read {:entrypoint [:docid]} r)))))))
+      (is (= (map :docid records) (with-open [r (file-reader tmp-filename)]
+                                    (doall (read {:entrypoint [:docid]} r))))))
     (testing "access a repeated column"
-      (is (= (map #(get-in [:links :backward] records) (with-open [r (file-reader tmp-filename)]
-                                                         (doall (read {:entrypoint [:links :backward]} r)))))))
+      (is (= (map #(get-in % [:links :backward]) records)
+             (with-open [r (file-reader tmp-filename)]
+               (doall (read {:entrypoint [:links :backward]} r))))))
     (io/delete-file tmp-filename)))
 
 (deftest readers

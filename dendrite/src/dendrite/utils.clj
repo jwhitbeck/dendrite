@@ -57,7 +57,7 @@
     (fi indices-set 0 coll)))
 
 (defn file-channel
-  ^FileChannel [f mode]
+  ^java.nio.channels.FileChannel [f mode]
   (let [path (-> f io/as-file .toPath)
         opts (case mode
                :write (into-array OpenOption [StandardOpenOption/WRITE
@@ -67,11 +67,11 @@
     (FileChannel/open path opts)))
 
 (defn map-file-channel
-  ^ByteBuffer [^FileChannel file-channel offset length]
+  ^java.nio.ByteBuffer [^FileChannel file-channel offset length]
   (.map file-channel FileChannel$MapMode/READ_ONLY offset length))
 
 (defn sub-byte-buffer
-  ^ByteBuffer [^ByteBuffer byte-buffer offset length]
+  ^java.nio.ByteBuffer [^ByteBuffer byte-buffer offset length]
   (let [bb (.duplicate byte-buffer)
         current-position (.position bb)]
     (doto bb
@@ -84,7 +84,7 @@
       (.position (+ offset (.position bb))))))
 
 (defn int->byte-buffer
-  ^ByteBuffer [i]
+  ^java.nio.ByteBuffer [i]
   (doto (ByteBuffer/wrap (byte-array 4))
     (.order ByteOrder/LITTLE_ENDIAN)
     (.putInt i)
@@ -94,7 +94,7 @@
   (.getInt (doto bb (.order ByteOrder/LITTLE_ENDIAN))))
 
 (defn str->byte-buffer
-  ^ByteBuffer [^String s]
+  ^java.nio.ByteBuffer [^String s]
   (ByteBuffer/wrap (.getBytes s)))
 
 (defn byte-buffer->str [^ByteBuffer bb]

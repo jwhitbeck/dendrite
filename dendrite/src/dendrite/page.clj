@@ -9,7 +9,7 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.page
-  (:require [dendrite.compression :refer [compressor decompressor-ctor]]
+  (:require [dendrite.compression :as compression]
             [dendrite.encoding :refer [levels-encoder levels-decoder encoder decoder-ctor]]
             [dendrite.estimation :as estimation]
             [dendrite.stats :as stats]
@@ -243,7 +243,7 @@
       :repetition-level-encoder (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
       :definition-level-encoder (when (pos? max-definition-level) (levels-encoder max-definition-level))
       :data-encoder (encoder type-store value-type encoding)
-      :data-compressor (compressor compression)
+      :data-compressor (compression/compressor compression)
       :finished? (atom false)}))
 
 (defrecord DictionaryPageWriter [body-length-estimator
@@ -304,7 +304,7 @@
   (map->DictionaryPageWriter
    {:body-length-estimator (estimation/ratio-estimator)
     :data-encoder (encoder type-store value-type encoding)
-    :data-compressor (compressor compression)
+    :data-compressor (compression/compressor compression)
     :finished? (atom false)}))
 
 (defprotocol IDataPageReader
@@ -355,7 +355,7 @@
       :max-repetition-level max-repetition-level
       :max-definition-level max-definition-level
       :data-decoder-ctor (decoder-ctor type-store value-type encoding)
-      :decompressor-ctor (decompressor-ctor compression)
+      :decompressor-ctor (compression/decompressor-ctor compression)
       :header (read-data-page-header bb page-type)})))
 
 (defn- data-page-readers
@@ -417,7 +417,7 @@
     (map->DictionaryPageReader
      {:byte-buffer bb
       :data-decoder-ctor (decoder-ctor type-store value-type encoding)
-      :decompressor-ctor (decompressor-ctor compression)
+      :decompressor-ctor (compression/decompressor-ctor compression)
       :header (read-dictionary-page-header bb page-type)})))
 
 (defn read-dictionary [^ByteBuffer byte-buffer type-store value-type encoding compression map-fn]

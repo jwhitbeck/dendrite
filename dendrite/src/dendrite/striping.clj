@@ -177,7 +177,7 @@
         (recur (inc i)))
       striped-array)))
 
-(defn stripe-fn [schema type-store error-handler]
+(defn stripe-fn [schema type-store err-handler]
   (let [column-specs (schema/column-specs schema)
         n (count column-specs)
         sf (let [sf* (stripe-fn* schema [] (coercion-fns-map type-store column-specs))]
@@ -189,10 +189,10 @@
                      (seq (persist-striped-array! sa)))
                    (catch Exception e
                      (throw (IllegalArgumentException. (format "Failed to stripe record '%s'" record) e)))))))]
-    (if error-handler
+    (if err-handler
       (fn [record]
         (try (sf record)
              (catch Exception e
-               (error-handler record e)
+               (err-handler record e)
                nil)))
       sf)))

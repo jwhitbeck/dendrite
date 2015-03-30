@@ -188,5 +188,5 @@
   (fressian/read byte-buffer :handlers read-handlers))
 
 (defn write
-  ^ByteBuffer [metadata]
+  ^java.nio.ByteBuffer [metadata]
   (fressian/write metadata :handlers write-handlers))

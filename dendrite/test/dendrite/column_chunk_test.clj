@@ -340,13 +340,13 @@
     (let [cs (column-spec-required :byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map seq (read reader) (map seq input-blocks))))
+      (is (= (map seq (read reader)) (map seq input-blocks)))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random byte buffers"
     (let [cs (column-spec-required :byte-buffer :plain :none)
           input-blocks (->> #(helpers/rand-byte-buffer) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map helpers/byte-buffer->seq (read reader) (map helpers/byte-buffer->seq input-blocks))))
+      (is (= (map helpers/byte-buffer->seq (read reader)) (map helpers/byte-buffer->seq input-blocks)))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random big ints"
     (let [cs (column-spec-required :bigint :plain :none)
