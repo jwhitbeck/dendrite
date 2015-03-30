@@ -27,7 +27,7 @@ preserving backwards compatibility of APIs or binary compatibility of files.
 ## Basic usage
 
 ```clojure
-[dendrite "0.2.2"]
+[dendrite "0.2.3"]
 
 (require '[dendrite.core :as d])
 
