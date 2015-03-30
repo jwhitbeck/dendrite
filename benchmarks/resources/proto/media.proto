@@ -36,6 +36,7 @@ message Media {
 }
 
 message MediaContent {
-  repeated Image image = 1;
-  optional Media media = 2;
+  required int32 id = 1;
+  repeated Image image = 2;
+  optional Media media = 3;
 }
