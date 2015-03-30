@@ -148,5 +148,4 @@ public final class MultiplexedSeq extends ASeq implements IChunkedSeq {
     return new MultiplexedSeq(meta, seqs, arraySeqs, offset, end);
   }
 
-
 }
