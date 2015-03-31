@@ -39,10 +39,13 @@
 
 (defmethod assemble-fn* :non-repeated-value
   [field]
-  (let [col-idx (-> field :column-spec :query-column-index)]
-    (if (-> field :column-spec :max-repetition-level pos?)
-      (Assembly/getNonRepeatedValueFn col-idx)
-      (Assembly/getRequiredNonRepeatedValueFn col-idx))))
+  (let [col-idx (-> field :column-spec :query-column-index)
+        ass-fn (if (-> field :column-spec :max-repetition-level pos?)
+                 (Assembly/getNonRepeatedValueFn col-idx)
+                 (Assembly/getRequiredNonRepeatedValueFn col-idx))]
+    (if-let [reader-fn (:reader-fn field)]
+      (comp-some reader-fn ass-fn)
+      ass-fn)))
 
 (defmethod assemble-fn* :repeated-value
   [field]
