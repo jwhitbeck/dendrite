@@ -178,7 +178,7 @@
                                      "cannot be read as a map.")))))
 
 (deftest entrypoints
-  (let [unparsed-schema (-> test-schema-str read-string)
+  (let [unparsed-schema (read-string test-schema-str)
         schema (parse unparsed-schema default-type-store)]
     (is (= unparsed-schema (-> schema (sub-schema-in nil) unparse)))
     (is (= (:links unparsed-schema) (-> schema (sub-schema-in [:links]) unparse)))
@@ -187,3 +187,14 @@
     (is (thrown-with-msg?
          IllegalArgumentException #"Entrypoint '\[:name :language\]' contains repeated field ':name'"
          (sub-schema-in schema [:name :language])))))
+
+(deftest plain-schema
+  (let [unparsed-schema (read-string test-schema-str)]
+    (is (= {:is-active (req 'boolean)
+            :keywords #{'string}
+            :meta {(req 'string) (req 'string)}
+            :name [{:url 'string :language [{:country 'string, :code (req 'string)}]}]
+            :links {:forward ['long] :backward '(long)}
+            :docid 'long}
+           (plain unparsed-schema)))
+    (is (= {:foo (req 'int)} (plain {:foo (req (col 'int 'vlq))})))))

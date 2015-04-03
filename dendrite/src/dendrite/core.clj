@@ -33,6 +33,7 @@
 (defalias schema impl/schema)
 
 (defalias read-schema-string schema/read-string)
+(defalias plain schema/plain)
 (defalias col schema/col)
 (defalias req schema/req)
 (defalias tag schema/tag)

@@ -451,3 +451,20 @@
   [required-field]
   (.write *out* "#req ")
   (pprint/simple-dispatch (vary-meta required-field dissoc :type)))
+
+(defn plain [unparsed-schema]
+  (cond
+    (symbol? unparsed-schema) unparsed-schema
+    (column-spec? unparsed-schema) (-> unparsed-schema :type name symbol
+                                       (cond-> (required-elem? unparsed-schema) req))
+    (map? unparsed-schema) (if (keyword? (ffirst unparsed-schema))
+                             (reduce-kv (fn [m field sub-schema]
+                                          (assoc m field (plain sub-schema)))
+                                        (empty unparsed-schema)
+                                        unparsed-schema)
+                             {(plain (-> unparsed-schema first key))
+                              (plain (-> unparsed-schema first val))})
+    (coll? unparsed-schema) (reduce (fn [coll sub-schema] (conj coll (plain sub-schema)))
+                                    (empty unparsed-schema)
+                                    unparsed-schema)
+    :else (throw (IllegalArgumentException. "Cannot parse schema element '%s' unparsed-schema"))))
