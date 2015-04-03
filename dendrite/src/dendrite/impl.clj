@@ -328,7 +328,8 @@
           record-group-writer (record-group/writer data-page-length
                                                    type-store
                                                    (schema/column-specs parsed-schema))
-          optimize? (or optimize-columns? (all-default-column-specs? parsed-schema))
+          optimize? (or optimize-columns? (and (nil? optimize-columns?)
+                                               (all-default-column-specs? parsed-schema)))
           stripe (striping/stripe-fn parsed-schema type-store invalid-input-handler)]
       (map->Writer
        {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
