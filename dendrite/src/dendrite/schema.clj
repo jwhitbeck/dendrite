@@ -451,11 +451,3 @@
   [required-field]
   (.write *out* "#req ")
   (pprint/simple-dispatch (vary-meta required-field dissoc :type)))
-
-(defn pretty
-  "Returns a pretty-printed string serialization of the provided schema. Useful for saving a schema in a
-  separate file."
-  [schema]
-  (with-open [sw (StringWriter.)]
-    (pprint/pprint schema sw)
-    (str sw)))
