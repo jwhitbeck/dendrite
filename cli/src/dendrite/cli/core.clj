@@ -3,7 +3,8 @@
             [clojure.pprint :as pprint]
             [clojure.tools.cli :as cli]
             [clojure.string :as string]
-            [dendrite.core :as d])
+            [dendrite.core :as d]
+            [dendrite.impl :refer [default-writer-options]])
   (:import [java.io BufferedReader])
   (:gen-class))
 
@@ -84,17 +85,29 @@
     :parse-fn edn/read-string]
    [nil "--metadata-file FILE" "Set the file's metadata to the contents of this file."
     :parse-fn (comp edn/read-string slurp)]
+   [nil "--data-page-length N" "The length in bytes of the data pages." :parse-fn #(Long/parseLong %)
+    :default (:data-page-length default-writer-options)]
+   [nil "--record-group-length N" "The length in bytes of each record group." :parse-fn #(Long/parseLong %)
+    :default (:record-group-length default-writer-options)]
+   [nil "--compression-thresholds MAP" "A map of compression method to the minimum compression threshold."
+    :parse-fn edn/read-string :default (:compression-thresholds default-writer-options)]
+   [nil "--optimize-columns? true/false/nil"
+    (str "If true, will optimize all columns, if false, will never optimize, and if nil will only optimize "
+         "if all columns have the default encoding & compression.")
+    :default nil :parse-fn (comp eval edn/read-string)]
    help-cli-option])
 
 (defn write-file [cli-options filename]
   (let [schema (or (:schema cli-options) (:schema-file cli-options))]
     (when-not schema
       (throw (IllegalStateException. "must specify at least one of --schema or --schema-file.")))
-    (with-open [w (d/file-writer schema filename)]
-      (doseq [record (pmap edn/read-string (line-seq (BufferedReader. *in*)))]
-        (d/write! w record))
-      (when-let [metadata (or (:metadata cli-options) (:metadata-file cli-options))]
-        (d/set-metadata! w metadata)))))
+    (let [opts (select-keys cli-options [:data-page-length :record-group-length
+                                         :compression-thresholds :optimize-columns?])]
+      (with-open [w (d/file-writer opts schema filename)]
+        (doseq [record (pmap edn/read-string (line-seq (BufferedReader. *in*)))]
+          (d/write! w record))
+        (when-let [metadata (or (:metadata cli-options) (:metadata-file cli-options))]
+          (d/set-metadata! w metadata))))))
 
 (def stats-column-order
   ["column" "record-group" "type" "encoding" "compression" "length" "num-column-chunks" "num-pages"
