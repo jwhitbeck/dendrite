@@ -17,11 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- comp-some [f g]
-  (fn [x]
-    (when-let [v (g x)]
-      (f v))))
-
 (defmulti ^:private assemble-fn*
   (fn [field]
     (if (nil? field)
@@ -44,7 +39,7 @@
                  (Assembly/getNonRepeatedValueFn col-idx)
                  (Assembly/getRequiredNonRepeatedValueFn col-idx))]
     (if-let [reader-fn (:reader-fn field)]
-      (comp-some reader-fn ass-fn)
+      (comp reader-fn ass-fn)
       ass-fn)))
 
 (defmethod assemble-fn* :repeated-value
@@ -59,7 +54,7 @@
         reader-fn (:reader-fn field)]
     (cond->> ass-fn
              (= rep-type :list) (comp seq)
-             reader-fn (comp-some reader-fn))))
+             reader-fn (comp reader-fn))))
 
 (defmethod assemble-fn* :non-repeated-record
   [field]
@@ -68,7 +63,7 @@
                                                      (map assemble-fn* (:sub-fields field)))
         ass-fn (Assembly/getNonRepeatedRecordFn record-ctor)]
     (if-let [reader-fn (:reader-fn field)]
-      (comp-some reader-fn ass-fn)
+      (comp reader-fn ass-fn)
       ass-fn)))
 
 (defmethod assemble-fn* :repeated-record
@@ -82,8 +77,8 @@
         ass-fn (Assembly/getRepeatedRecordFn non-repeated-ass-fn next-rl-col-idx rep-lvl def-lvl empty-coll)
         reader-fn (:reader-fn field)]
     (cond->> ass-fn
-             (= :list rep-type) (comp-some seq)
-             reader-fn (comp-some reader-fn))))
+             (= :list rep-type) (comp seq)
+             reader-fn (comp reader-fn))))
 
 (defmethod assemble-fn* :map
   [field]
@@ -93,7 +88,7 @@
                           (map (juxt :key :value))
                           (into {})))]
     (if-let [reader-fn (:reader-fn field)]
-      (comp-some reader-fn ass-fn)
+      (comp reader-fn ass-fn)
       ass-fn)))
 
 (defn assemble-fn [parsed-query]
