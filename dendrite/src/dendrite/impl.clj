@@ -452,9 +452,9 @@
     (.close file-channel)))
 
 (defn- record-group-readers [backend-reader record-groups-metadata type-store queried-schema]
-  (utils/pmap-1 #(record-group/byte-buffer-reader %1 %2 type-store queried-schema)
-                (record-group-byte-buffers backend-reader record-groups-metadata)
-                record-groups-metadata))
+  (map #(record-group/byte-buffer-reader %1 %2 type-store queried-schema)
+       (record-group-byte-buffers backend-reader record-groups-metadata)
+       record-groups-metadata))
 
 (defrecord Reader [backend-reader metadata type-store]
   IReader
