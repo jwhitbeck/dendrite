@@ -3,8 +3,10 @@
             [clojure.java.io :as io]
             [dendrite.core :as d]
             [dendrite.utils :as du]
-            [dendrite.benchmark.utils :as utils])
-  (:import [java.text SimpleDateFormat]
+            [dendrite.benchmark.utils :as utils]
+            [flatland.protobuf.core :refer :all])
+  (:import [dendrite.benchmarks UserEvents$User]
+           [java.text SimpleDateFormat]
            [java.util Date]))
 
 (set! *warn-on-reflection* true)
@@ -74,3 +76,11 @@
 
 (defn json-file->dendrite-file [json-filename dendrite-filename]
   (utils/json-file->dendrite-file "user_events_schema.edn" json-filename dendrite-filename))
+
+(def User (protodef UserEvents$User))
+
+(defn proto-serialize ^bytes [user]
+  (protobuf-dump (apply protobuf User (apply concat user))))
+
+(defn proto-deserialize [^bytes bs]
+  (protobuf-load User bs))

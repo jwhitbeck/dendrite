@@ -1,0 +1,69 @@
+package dendrite.benchmarks;
+
+option java_outer_classname = "UserEvents";
+option optimize_for = SPEED;
+
+message Address {
+  required string country = 1;
+  required string zip = 2;
+  required string state = 3;
+  required string city = 4;
+  required string street = 5;
+}
+
+message Personal {
+  optional string company = 1;
+  optional string gender = 2;
+  required Address address = 3;
+  required string email = 4;
+  required string first_name = 5;
+  required string last_name = 6;
+  optional string phone = 7;
+  required int32 yob = 8;
+  optional string picture = 9;
+  optional string eye_color = 10;
+}
+
+message Event {
+  optional string amount = 1;
+  required string type = 2;
+  required string at = 3;
+}
+
+message Geo {
+  required float long = 1;
+  required float lat = 2;
+}
+
+message Connection {
+  repeated Event events = 1;
+  required Geo geo = 2;
+  required string referrer = 3;
+  required string ip = 4;
+  required string at = 5;
+}
+
+message Device {
+  repeated Connection connections = 1;
+  required string mac = 2;
+  required string family = 3;
+}
+
+message Tag {
+  optional string name = 1;
+}
+
+message User {
+  required int32 id = 1;
+  required string guid = 2;
+  optional string about = 3;
+  repeated Device devices = 4;
+  required string registered_at = 5;
+  repeated Tag tags = 6;
+  required string tagline = 7;
+  required Personal personal = 8;
+  required string username = 9;
+  required bool is_active = 10;
+  required string balance = 11;
+  required string language = 12;
+}
