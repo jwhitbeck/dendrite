@@ -111,8 +111,8 @@
 
 (def stats-column-order
   ["column" "record-group" "type" "encoding" "compression" "length" "num-column-chunks" "num-pages"
-   "num-records" "num-columns" "header-length" "dictionary-header-length" "data-length" "dictionary-length"
-   "definition-levels-length" "repetition-levels-length" "num-values" "num-dictionary-values"
+   "num-records" "num-columns" "num-values" "num-dictionary-values" "header-length" "dictionary-header-length"
+   "data-length" "dictionary-length" "definition-levels-length" "repetition-levels-length"
    "max-definition-level" "max-repetition-level"])
 
 (def col-name->index (reduce-kv (fn [m i col-name] (assoc m col-name i)) {} stats-column-order))
