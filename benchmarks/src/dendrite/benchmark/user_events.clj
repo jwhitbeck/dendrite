@@ -1,5 +1,6 @@
 (ns dendrite.benchmark.user-events
-  (:require [cheshire.core :as json]
+  (:require [abracad.avro :as avro]
+            [cheshire.core :as json]
             [clojure.java.io :as io]
             [dendrite.core :as d]
             [dendrite.utils :as du]
@@ -69,13 +70,96 @@
                                               (update-in [:geo :lat] #(Float/parseFloat %))))))))))))))
 
 (defn- fix-yob [obj]
-  (update-in obj [:personal :yob] #(Integer/parseInt %)))
+  (update-in obj [:personal :yob] #(Long/parseLong %)))
+
+(defn- fix-device [device]
+  (-> device
+      (update-in [:connections] (partial map #(dissoc % :type :amount)))
+      (select-keys [:connections :mac :family])))
+
+(defn- fix-connections [obj]
+  (update-in obj [:devices] (partial map fix-device)))
 
 (defn fix-json-file [input-json-filename output-json-filename]
-  (utils/fix-json-file (comp fix-yob fix-lat-long) input-json-filename output-json-filename))
+  (utils/fix-json-file (comp fix-connections fix-yob fix-lat-long) input-json-filename output-json-filename))
 
 (defn json-file->dendrite-file [json-filename dendrite-filename]
   (utils/json-file->dendrite-file "user_events_schema.edn" json-filename dendrite-filename))
+
+(def avro-geo-type
+  {:name "geo"
+   :type "record"
+   :fields [{:name "long" :type "float"}
+            {:name "lat" :type "float"}]})
+
+(def avro-event-type
+  {:name "event"
+   :type "record"
+   :fields [{:name "amount" :type ["string" "null"]}
+            {:name "type" :type "string"}
+            {:name "at" :type "string"}]})
+
+(def avro-connection-type
+  {:name "connection"
+   :type "record"
+   :fields [{:name "events" :type {:name "event-list" :type "array" :items avro-event-type}}
+            {:name "geo" :type avro-geo-type}
+            {:name "referrer" :type "string"}
+            {:name "ip" :type "string"}
+            {:name "at" :type "string"}]})
+
+(def avro-device-type
+  {:name "device"
+   :type "record"
+   :fields [{:name "connections" :type {:name "connection-list" :type "array" :items avro-connection-type}}
+            {:name "mac" :type "string"}
+            {:name "family" :type "string"}]})
+
+(def avro-tag-type
+  {:name "tag"
+   :type "record"
+   :fields [{:name "name" :type ["string" "null"]}]})
+
+(def avro-address-type
+  {:name "address"
+   :type "record"
+   :fields [{:name "country" :type "string"}
+            {:name "zip" :type "string"}
+            {:name "state" :type "string"}
+            {:name "city" :type "string"}
+            {:name "street" :type "string"}]})
+
+(def avro-personal-type
+  {:name "personal"
+   :type "record"
+   :fields [{:name "company" :type ["string" "null"]}
+            {:name "gender" :type ["string" "null"]}
+            {:name "address" :type avro-address-type}
+            {:name "email" :type "string"}
+            {:name "first-name" :type "string"}
+            {:name "last-name" :type "string"}
+            {:name "phone" :type ["string" "null"]}
+            {:name "yob" :type "int"}
+            {:name "picture" :type ["string" "null"]}
+            {:name "eye-color" :type ["string" "null"]}]})
+
+(def avro-schema
+  (avro/parse-schema
+   {:name "user"
+    :type "record"
+    :fields [{:name "id" :type "int"}
+             {:name "guid" :type "string"}
+             {:name "about" :type ["string" "null"]}
+             {:name "devices" :type {:name "device-list" :type "array" :items avro-device-type}}
+             {:name "registered-at" :type "string"}
+             {:name "tags" :type {:name "tag-list" :type "array" :items avro-tag-type}}
+             {:name "tagline" :type "string"}
+             {:name "personal" :type avro-personal-type}
+             {:name "username" :type "string"}
+             {:name "is-active" :type "boolean"}
+             {:name "balance" :type "string"}
+             {:name "language" :type "string"}]}))
+
 
 (def User (protodef UserEvents$User))
 
