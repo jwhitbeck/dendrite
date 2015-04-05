@@ -169,7 +169,7 @@
 (defn json-file->parallel-java-objects-file [compression json-filename output-filename]
   (json-file->parallel-byte-buffer-file compression serialize-byte-buffer json-filename output-filename))
 
-(defn byte-byffer-seq [n ^ObjectInputStream ois]
+(defn byte-buffer-seq [n ^ObjectInputStream ois]
   (repeatedly n #(read-byte-buffer! ois)))
 
 (defn fressian-reader
@@ -245,7 +245,7 @@
 (defn read-byte-buffer-file [n compression parse-fn filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
-    (->> r (byte-byffer-seq n) (du/chunked-pmap parse-fn) last)))
+    (->> r (byte-buffer-seq n) (du/chunked-pmap parse-fn) last)))
 
 (defn read-fressian-file [n compression filename]
   (with-open [^FressianReader r (-> filename file-input-stream (compressed-input-stream compression)
@@ -274,7 +274,7 @@
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
     (->> r
-         (byte-byffer-seq n)
+         (byte-buffer-seq n)
          (map (comp proto-deserialize #(.array ^ByteBuffer %)))
          last)))
 
