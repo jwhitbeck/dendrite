@@ -14,7 +14,7 @@
 
 (defn- run-cmd [cli-options cmd-name cmd args]
   (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)]
-    (if (or errors (not= (count arguments) 1))
+    (if (or errors (not= (count arguments) 1) (:help options))
       (println (string/join "\n\n" (concat errors [(str "Usage: " cmd-name " [OPTIONS] <path>") summary])))
       (cmd options (first arguments)))))
 
