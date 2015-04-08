@@ -19,18 +19,21 @@
 
 (defmulti ^:private assemble-fn*
   (fn [field]
-    (if (nil? field)
-      :nil
-      (if (schema/record? field)
-        (case (:repetition field)
-          :map :map
-          (:list :vector :set) :repeated-record
-          (:optional :required) :non-repeated-record)
-        (case (:repetition field)
-          (:list :vector :set) :repeated-value
-          (:optional :required) :non-repeated-value)))))
+    (if (schema/record? field)
+      (case (:repetition field)
+        :map :map
+        (:list :vector :set) :repeated-record
+        (nil :optional :required) :non-repeated-record)
+      (case (:repetition field)
+        nil :empty-value
+        (:list :vector :set) :repeated-value
+        (:optional :required) :non-repeated-value))))
 
-(defmethod assemble-fn* :nil [field] (constantly nil))
+(defmethod assemble-fn* :empty-value
+  [field]
+  (if-let [reader-fn (:reader-fn field)]
+    (constantly (reader-fn nil))
+    (constantly nil)))
 
 (defmethod assemble-fn* :non-repeated-value
   [field]
@@ -93,5 +96,4 @@
 (defn assemble-fn [parsed-query]
   (let [ass-fn (assemble-fn* parsed-query)]
     (fn [^objects striped-record]
-      (when striped-record
-        (ass-fn striped-record)))))
+      (ass-fn striped-record))))

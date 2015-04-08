@@ -38,6 +38,9 @@ public final class StripedRecordBundleSeq extends Obj implements ISeq, Seqable, 
 
   public static StripedRecordBundleSeq create(final int partitionSize,
                                               final IPersistentCollection recordGroups) {
+    if (RT.seq(recordGroups) == null) {
+      return null;
+    }
     return new StripedRecordBundleSeq(new StripedRecordBundleGenerator(RT.seq(recordGroups), partitionSize));
   }
 

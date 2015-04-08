@@ -101,4 +101,29 @@
         (= answer (assemble stripes
                             (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
         {:meta 2} count
-        {:meta ["key2" "key1"]} keys))))
+        {:meta ["key2" "key1"]} keys)))
+  (testing "missing fields"
+    (let [query (schema/tag 'foo {:foo '_})
+          stripes nil]
+      (are [answer reader-fn]
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
+        nil identity
+        2 (constantly 2)
+        0 count))
+    (let [query {:links {:foo (schema/tag 'foo [{:bar '_}])}}
+          stripes nil]
+      (are [answer reader-fn]
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
+        nil identity
+        {:links {:foo 2}} (constantly 2)
+        {:links {:foo 0}} count))
+    (let [query {:links {:foo {:bar (schema/tag 'bar [{:baz '_}])}}}
+          stripes nil]
+      (are [answer reader-fn]
+        (= answer (assemble stripes
+                            (schema/apply-query test-schema query default-type-store true {'bar reader-fn})))
+        nil identity
+        {:links {:foo {:bar 2}}} (constantly 2)
+        {:links {:foo {:bar 0}}} count))))

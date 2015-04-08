@@ -57,4 +57,5 @@
             [10 12 14]
             [16 18]]
          (map #(.assemble ^StripedRecordBundle % (fn [^objects lva] (+ (aget lva 0) (aget lva 1))))
-                (StripedRecordBundleSeq/create 3 record-groups))))))
+              (StripedRecordBundleSeq/create 3 record-groups))))
+    (is (empty? (StripedRecordBundleSeq/create 3 [])))))

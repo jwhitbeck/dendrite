@@ -465,13 +465,17 @@
                                                      type-store
                                                      missing-fields-as-nil?
                                                      readers)
-                                 pmap-fn (update-in [:reader-fn] #(if % (comp pmap-fn %) pmap-fn)))
+                           pmap-fn (update-in [:reader-fn] #(if % (comp pmap-fn %) pmap-fn)))
           assemble (assembly/assemble-fn queried-schema)]
-      (->> (record-group-readers backend-reader (:record-groups-metadata metadata) type-store queried-schema)
-           (map record-group/read)
-           (StripedRecordBundleSeq/create 256)
-           (clojure.core/pmap (fn [^StripedRecordBundle srb] (.assemble srb assemble)))
-           utils/flatten-1)))
+      (if (seq (schema/column-specs queried-schema))
+        (->> (record-group-readers backend-reader (:record-groups-metadata metadata) type-store queried-schema)
+             (map record-group/read)
+             (StripedRecordBundleSeq/create 256)
+             (clojure.core/pmap (fn [^StripedRecordBundle srb] (.assemble srb assemble)))
+             utils/flatten-1)
+        (->> (:record-groups-metadata metadata)
+             (map #(repeat (:num-records %) (assemble nil)))
+             utils/flatten-1))))
   (foldable* [_ opts]
     (let [{:keys [query missing-fields-as-nil? readers entrypoint]} (parse-read-options opts)
           queried-schema (schema/apply-query (schema/sub-schema-in (:schema metadata) entrypoint)
@@ -489,19 +493,39 @@
                              (StripedRecordBundleSeq/create 256)
                              (clojure.core/pmap (fn [^StripedRecordBundle srb] (.assemble srb assemble)))
                              utils/flatten-1)]
-      (reify
-        clojure.core.protocols/CollReduce
-        (coll-reduce [_ f]
-          (reduce f (read-records)))
-        (coll-reduce [_ f init]
-          (reduce f init (read-records)))
-        CollFold
-        (coll-fold [_ n combinef reducef]
-          (let [init (combinef)]
-            (->> (read-record-groups)
-                 (StripedRecordBundleSeq/create n)
-                 (clojure.core/pmap (fn [^StripedRecordBundle srb] (.reduce srb reducef assemble init)))
-                 (reduce combinef init)))))))
+      (if (seq (schema/column-specs queried-schema))
+        (reify
+          clojure.core.protocols/CollReduce
+          (coll-reduce [_ f]
+            (reduce f (read-records)))
+          (coll-reduce [_ f init]
+            (reduce f init (read-records)))
+          CollFold
+          (coll-fold [_ n combinef reducef]
+            (let [init (combinef)]
+              (->> (read-record-groups)
+                   (StripedRecordBundleSeq/create n)
+                   (clojure.core/pmap (fn [^StripedRecordBundle srb] (.reduce srb reducef assemble init)))
+                   (reduce combinef init)))))
+        (let [nil-record (assemble nil)
+              read-nil-records #(->> (:record-groups-metadata metadata)
+                                     (map (fn [{:keys [num-records]}] (repeat num-records nil-record)))
+                                     utils/flatten-1)]
+          (reify
+            clojure.core.protocols/CollReduce
+            (coll-reduce [_ f]
+              (reduce f (read-nil-records)))
+            (coll-reduce [_ f init]
+              (reduce f init (read-nil-records)))
+            CollFold
+            (coll-fold [_ n combinef reducef]
+              (let [init (combinef)]
+                (->> (:record-groups-metadata metadata)
+                     (map #(let [num-records (:num-records %)]
+                             (concat (repeat (quot num-records n) (reduce reducef init (repeat n nil-record)))
+                                     (reduce reducef init (repeat (mod num-records n) nil-record)))))
+                     utils/flatten-1
+                     (reduce combinef init)))))))))
   (stats [_]
     (let [full-query (schema/apply-query (:schema metadata) '_ type-store true nil)
           all-stats (->> (record-group-readers backend-reader

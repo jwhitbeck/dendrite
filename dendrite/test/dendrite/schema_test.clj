@@ -159,6 +159,25 @@
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:missing\]"
            (throw-cause (apply-query schema {:docid '_ :missing '_} default-type-store false nil)))))
+    (testing "missing fields have empty columnspecs and are never repeated"
+      (let [missing-top-level-field-query (apply-query schema {:foo '_} default-type-store true {})]
+        (is (seq (:sub-fields missing-top-level-field-query)))
+        (is (nil? (-> missing-top-level-field-query :sub-fields first :column-spec))))
+      (let [missing-nested-field-query (apply-query schema {:links {:foo '_}} default-type-store true {})]
+        (is (seq (-> missing-nested-field-query (sub-field :links) :sub-fields)))
+        (is (nil? (-> missing-nested-field-query (sub-field :links) :sub-fields first :column-spec))))
+      (let [missing-repeated-field-query (apply-query schema {:links {:foo ['_]}} default-type-store true {})]
+        (is (empty (-> missing-repeated-field-query (sub-field :links) :sub-fields)))))
+    (testing "tags on missing fields"
+      (let [missing-top-level-field-with-tag
+             (apply-query schema {:foo (tag 'foo '_)} default-type-store true {'foo count})]
+        (is (= count (-> missing-top-level-field-with-tag (sub-field :foo) :reader-fn))))
+      (let [missing-nested-field-with-tag
+             (apply-query schema {:links {:foo (tag 'foo '_)}} default-type-store true {'foo count})]
+        (is (= count (-> missing-nested-field-with-tag (sub-field-in [:links :foo]) :reader-fn))))
+      (let [missing-repeated-field-with-tag
+              (apply-query schema {:links {:foo (tag 'foo ['_])}} default-type-store true {'foo count})]
+        (is (= count (-> missing-repeated-field-with-tag (sub-field-in [:links :foo]) :reader-fn)))))
     (testing "bad queries"
       (are [query msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                          (throw-cause (apply-query schema query default-type-store true {})))

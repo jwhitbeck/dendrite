@@ -237,6 +237,7 @@
   (testing "queries fail when missing-fields-as-nil? is false and we query a missing fields"
     (let [bb (byte-buffer! (dremel-paper-writer))]
       (is (= [nil nil] (read {:query {:foo '_}} (byte-buffer-reader bb))))
+      (is (= [nil nil] (r/reduce conj [] (foldable {:query {:foo '_}} (byte-buffer-reader bb)))))
       (is (thrown-with-msg?
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
            (helpers/throw-cause (read {:query {:foo '_}
@@ -277,7 +278,17 @@
       (is (thrown-with-msg?
            IllegalArgumentException #":reader value for tag 'foo' should be a function."
            (read {:query {:docid '_ :name (schema/tag 'foo '_)} :readers {'foo "foo"}}
-                 (byte-buffer-reader bb)))))))
+                 (byte-buffer-reader bb))))))
+  (testing "reader functions behave properly on missing fields"
+    (let [bb (byte-buffer! (dremel-paper-writer))]
+      (is (= [true true]
+             (read {:query (schema/tag 'foo {:foo '_})
+                    :readers {'foo empty?}}
+                   (byte-buffer-reader bb))))
+      (is (= [{:docid 10 :foo {:bar 0}} {:docid 20 :foo {:bar 0}}]
+             (read {:query {:docid '_ :foo {:bar (schema/tag 'bar [{:baz '_}])}}
+                    :readers {'bar count}}
+                   (byte-buffer-reader bb)))))))
 
 (deftest custom-types
   (testing "write/read custom types"

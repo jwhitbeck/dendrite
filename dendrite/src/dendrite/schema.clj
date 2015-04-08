@@ -44,6 +44,10 @@
 
 (defn- required? [{repetition :repetition}] (= repetition :required))
 
+(def ^:private empty-field (map->Field {}))
+
+(defn- empty-field? [field] (not (:repetition field)))
+
 (defn sub-field [field k] (->> field :sub-fields (filter #(= (:name %) k)) first))
 
 (defn sub-field-in [field [k & ks]]
@@ -160,16 +164,18 @@
                    (parse-map-tree (val (first coll)) :value)]})))
 
 (defn- column-indexed-schema [field current-column-index index-keyword]
-  (if (record? field)
-    (let [[indexed-sub-fields next-index]
+  (if (empty-field? field)
+    [field current-column-index]
+    (if (record? field)
+      (let [[indexed-sub-fields next-index]
             (reduce (fn [[indexed-sub-fields i] sub-field]
                       (let [[indexed-sub-field next-index] (column-indexed-schema sub-field i index-keyword)]
                         [(conj indexed-sub-fields indexed-sub-field) next-index]))
                     [[] current-column-index]
                     (:sub-fields field))]
-      [(assoc field :sub-fields indexed-sub-fields) next-index])
-    [(update-in field [:column-spec] assoc index-keyword current-column-index)
-     (inc current-column-index)]))
+        [(assoc field :sub-fields indexed-sub-fields) next-index])
+      [(update-in field [:column-spec] assoc index-keyword current-column-index)
+       (inc current-column-index)])))
 
 (defn- with-column-indices [schema index-keyword]
   (first (column-indexed-schema schema 0 index-keyword)))
@@ -209,9 +215,10 @@
 
 (defn- with-column-spec-paths* [field path]
   (let [next-path (if (:name field) (conj path (:name field)) path)]
-    (if (record? field)
-      (update-in field [:sub-fields] (partial map #(with-column-spec-paths* % next-path)))
-      (assoc-in field [:column-spec :path] next-path))))
+    (cond
+      (record? field) (update-in field [:sub-fields] (partial map #(with-column-spec-paths* % next-path)))
+      (empty-field? field) field
+      :else (assoc-in field [:column-spec :path] next-path))))
 
 (defn- with-column-spec-paths [schema]
   (with-column-spec-paths* schema []))
@@ -252,7 +259,9 @@
               (recursive-column-specs sub-field column-specs))
             previous-column-specs
             (:sub-fields field))
-    (conj previous-column-specs (:column-spec field))))
+    (if-let [cs (:column-spec field)]
+      (conj previous-column-specs (:column-spec field))
+      previous-column-specs)))
 
 (defn column-specs [schema]
   (sort-by :column-index (recursive-column-specs schema [])))
@@ -319,21 +328,21 @@
 (defmulti ^:private apply-query*
   (fn [sub-schema query readers missing-fields-as-nil? parents]
     (cond
-     (tagged? query) :tagged
-     (and (map? query) (keyword? (some-> query first key))) :record
-     (and (map? query) (pos? (count query))) :map
-     (set? query) :set
-     (vector? query) :vector
-     (list? query) :list
-     (symbol? query) :symbol
-     :else (throw (IllegalArgumentException. (format "Unable to parse query element %s." query))))))
+      (tagged? query) :tagged
+      (and (map? query) (keyword? (some-> query first key))) :record
+      (and (map? query) (pos? (count query))) :map
+      (set? query) :set
+      (vector? query) :vector
+      (list? query) :list
+      (symbol? query) :symbol
+      :else (throw (IllegalArgumentException. (format "Unable to parse query element %s." query))))))
 
 (defmethod apply-query* :tagged
   [sub-schema tagged-query readers missing-fields-as-nil? parents]
   (let [tag (-> tagged-query meta ::tag)]
     (if-let [reader-fn (get readers tag)]
       (let [sub-query (apply-query* sub-schema (untag tagged-query) readers missing-fields-as-nil? parents)]
-        (if (or (repeated? sub-query) (record? sub-query))
+        (if (or (repeated? sub-query) (record? sub-query) (empty-field? sub-query))
           (assoc sub-query :reader-fn reader-fn)
           (assoc-in sub-query [:column-spec :map-fn] reader-fn)))
       (throw (IllegalArgumentException.
@@ -341,93 +350,119 @@
 
 (defmethod apply-query* :symbol
   [sub-schema query-symbol readers missing-fields-as-nil? parents]
-  (if (= query-symbol sub-schema-selector-symbol)
-    sub-schema
-    (if (record? sub-schema)
-      (throw (IllegalArgumentException.
-              (format "Field %s is a record field in schema, not a value." (format-ks parents))))
-      (let [queried-type (keyword query-symbol)
-            schema-type (-> sub-schema :column-spec :type)]
-        (if-not (= queried-type schema-type)
-          (throw (IllegalArgumentException.
-                  (format "Mismatched column types for field %s. Asked for '%s' but schema defines '%s'."
-                          (format-ks parents) (name queried-type) (name schema-type))))
-          sub-schema)))))
+  (if-not sub-schema
+    empty-field
+    (if (= query-symbol sub-schema-selector-symbol)
+      sub-schema
+      (if (record? sub-schema)
+        (throw (IllegalArgumentException.
+                (format "Field %s is a record field in schema, not a value." (format-ks parents))))
+        (let [queried-type (keyword query-symbol)
+              schema-type (-> sub-schema :column-spec :type)]
+          (if-not (= queried-type schema-type)
+            (throw (IllegalArgumentException.
+                    (format "Mismatched column types for field %s. Asked for '%s' but schema defines '%s'."
+                            (format-ks parents) (name queried-type) (name schema-type))))
+            sub-schema))))))
 
 (defmethod apply-query* :record
   [sub-schema query-record readers missing-fields-as-nil? parents]
-  (if-not (record? sub-schema)
-    (throw (IllegalArgumentException.
-            (format "Field %s is a value field in schema, not a record." (format-ks parents))))
-    (do
-      (when-not missing-fields-as-nil?
-        (let [missing-fields (remove (->> sub-schema :sub-fields (map :name) set) (keys query-record))]
-          (when (seq missing-fields)
-            (throw (IllegalArgumentException.
-                    (format "The following fields don't exist: %s."
-                            (string/join ", " (map #(format-ks (conj parents %)) missing-fields))))))))
-      (let [sub-fields (->> (:sub-fields sub-schema)
-                            (filter (comp query-record :name))
-                            (mapv #(apply-query* % (get query-record (:name %))
-                                                 readers
-                                                 missing-fields-as-nil?
-                                                 (conj parents (:name %)))))]
-        (when (seq sub-fields)
-          (assoc sub-schema :sub-fields sub-fields))))))
+  (if-not sub-schema
+    (assoc empty-field :sub-fields (mapv (fn [[field-name sub-query]]
+                                           (assoc (apply-query* nil
+                                                                sub-query
+                                                                readers
+                                                                missing-fields-as-nil?
+                                                                (conj parents field-name))
+                                                  :name field-name))
+                                         query-record))
+    (if-not (record? sub-schema)
+      (throw (IllegalArgumentException.
+              (format "Field %s is a value field in schema, not a record." (format-ks parents))))
+      (let [available-field-name? (->> sub-schema :sub-fields (map :name) set)
+            missing-fields-query (remove (comp available-field-name? key) query-record)]
+        (when (and (not missing-fields-as-nil?) (seq missing-fields-query))
+          (throw (IllegalArgumentException.
+                  (format "The following fields don't exist: %s."
+                          (string/join ", " (map #(format-ks (conj parents %))
+                                                 (keys missing-fields-query)))))))
+        (let [missing-fields (map (fn [[field-name sub-query]]
+                                    (assoc (apply-query* nil
+                                                         sub-query
+                                                         readers
+                                                         missing-fields-as-nil?
+                                                         (conj parents field-name))
+                                           :name field-name))
+                                  missing-fields-query)
+              sub-fields (->> (:sub-fields sub-schema)
+                              (filter (comp query-record :name))
+                              (mapv #(apply-query* % (get query-record (:name %))
+                                                   readers
+                                                   missing-fields-as-nil?
+                                                   (conj parents (:name %)))))]
+          (assoc sub-schema :sub-fields (into sub-fields missing-fields)))))))
 
 (defmethod apply-query* :list
   [sub-schema query-list readers missing-fields-as-nil? parents]
-  (let [compatible-repetition-types #{:list :vector :set :map}]
-    (if-not (compatible-repetition-types (:repetition sub-schema))
-      (throw (IllegalArgumentException.
-              (format "Field %s contains a %s in the schema, cannot be read as a list."
-                      (format-ks parents) (-> sub-schema :repetition name))))
-      (-> sub-schema
-          (assoc :repetition :optional)
-          (apply-query* (first query-list) readers missing-fields-as-nil? parents)
-          (assoc :repetition :list)))))
+  (if-not sub-schema
+    empty-field
+    (let [compatible-repetition-types #{:list :vector :set :map}]
+      (if-not (compatible-repetition-types (:repetition sub-schema))
+        (throw (IllegalArgumentException.
+                (format "Field %s contains a %s in the schema, cannot be read as a list."
+                        (format-ks parents) (-> sub-schema :repetition name))))
+        (-> sub-schema
+            (assoc :repetition :optional)
+            (apply-query* (first query-list) readers missing-fields-as-nil? parents)
+            (assoc :repetition :list))))))
 
 (defmethod apply-query* :vector
   [sub-schema query-vec readers missing-fields-as-nil? parents]
-  (let [compatible-repetition-types #{:list :vector :set :map}]
-    (if-not (compatible-repetition-types (:repetition sub-schema))
-      (throw (IllegalArgumentException.
-              (format "Field %s contains a %s in the schema, cannot be read as a vector."
-                      (format-ks parents) (-> sub-schema :repetition name))))
-      (-> sub-schema
-          (assoc :repetition :optional)
-          (apply-query* (first query-vec) readers missing-fields-as-nil? parents)
-          (assoc :repetition :vector)))))
+  (if-not sub-schema
+    empty-field
+    (let [compatible-repetition-types #{:list :vector :set :map}]
+      (if-not (compatible-repetition-types (:repetition sub-schema))
+        (throw (IllegalArgumentException.
+                (format "Field %s contains a %s in the schema, cannot be read as a vector."
+                        (format-ks parents) (-> sub-schema :repetition name))))
+        (-> sub-schema
+            (assoc :repetition :optional)
+            (apply-query* (first query-vec) readers missing-fields-as-nil? parents)
+            (assoc :repetition :vector))))))
 
 (defmethod apply-query* :set
   [sub-schema query-set readers missing-fields-as-nil? parents]
-  (if-not (= :set (:repetition sub-schema))
-    (throw (IllegalArgumentException.
-            (format "Field %s contains a %s in the schema, cannot be read as a set."
-                    (format-ks parents) (-> sub-schema :repetition name))))
-    (-> sub-schema
-        (assoc :repetition :optional)
-        (apply-query* (first query-set) readers missing-fields-as-nil? parents)
-        (assoc :repetition :set))))
+  (if-not sub-schema
+    empty-field
+    (if-not (= :set (:repetition sub-schema))
+      (throw (IllegalArgumentException.
+              (format "Field %s contains a %s in the schema, cannot be read as a set."
+                      (format-ks parents) (-> sub-schema :repetition name))))
+      (-> sub-schema
+          (assoc :repetition :optional)
+          (apply-query* (first query-set) readers missing-fields-as-nil? parents)
+          (assoc :repetition :set)))))
 
 (defmethod apply-query* :map
   [sub-schema query-map readers missing-fields-as-nil? parents]
-  (if-not (= :map (:repetition sub-schema))
-    (throw (IllegalArgumentException.
-            (format "Field %s contains a %s in the schema, cannot be read as a map."
-                    (format-ks parents) (-> sub-schema :repetition name))))
-    (let [[key-query value-query] (-> query-map first ((juxt key val)))
-          key-sub-schema (apply-query* (sub-field sub-schema :key)
-                                       key-query
-                                       readers
-                                       missing-fields-as-nil?
-                                       parents)
-          value-sub-schema (apply-query* (sub-field sub-schema :value)
-                                         value-query
+  (if-not sub-schema
+    empty-field
+    (if-not (= :map (:repetition sub-schema))
+      (throw (IllegalArgumentException.
+              (format "Field %s contains a %s in the schema, cannot be read as a map."
+                      (format-ks parents) (-> sub-schema :repetition name))))
+      (let [[key-query value-query] (-> query-map first ((juxt key val)))
+            key-sub-schema (apply-query* (sub-field sub-schema :key)
+                                         key-query
                                          readers
                                          missing-fields-as-nil?
-                                         parents)]
-      (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema]))))
+                                         parents)
+            value-sub-schema (apply-query* (sub-field sub-schema :value)
+                                           value-query
+                                           readers
+                                           missing-fields-as-nil?
+                                           parents)]
+        (assoc sub-schema :sub-fields [key-sub-schema value-sub-schema])))))
 
 (defn apply-query
   [schema query type-store missing-fields-as-nil? readers]
