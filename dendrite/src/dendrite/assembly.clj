@@ -58,8 +58,7 @@
 
 (defmethod assemble-fn* :non-repeated-record
   [field]
-  (let [name-fn-map (reduce (fn [m fld] (assoc m (:name fld) (assemble-fn* fld))) {} (:sub-fields field))
-        record-ctor (Assembly/getRecordConstructorFn (map :name (:sub-fields field))
+  (let [record-ctor (Assembly/getRecordConstructorFn (map :name (:sub-fields field))
                                                      (map assemble-fn* (:sub-fields field)))
         ass-fn (Assembly/getNonRepeatedRecordFn record-ctor)]
     (if-let [reader-fn (:reader-fn field)]
