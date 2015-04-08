@@ -27,6 +27,14 @@
 
 (def target-data-page-length 1024)
 
+(defn- flat-read
+  "Returns a list of vectors corresponding to the striped records in the record-group. A record group is a seq
+  of columns that are, in turn, seqs of pages."
+  [record-group-reader]
+  (->> (read record-group-reader)
+       (map utils/flatten-1)
+       (apply map vector)))
+
 (deftest dremel-write-read
   (let [w (doto ^IOutputBuffer (writer target-data-page-length
                                        helpers/default-type-store
@@ -38,9 +46,9 @@
         bb (helpers/output-buffer->byte-buffer w)]
     (testing "full schema"
       (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
-             (read (byte-buffer-reader bb record-group-metadata
-                                       helpers/default-type-store
-                                       dremel-paper-full-query-schema)))))
+             (flat-read (byte-buffer-reader bb record-group-metadata
+                                            helpers/default-type-store
+                                            dremel-paper-full-query-schema)))))
     (testing "two fields example"
       (let [two-fields-schema (schema/apply-query dremel-paper-schema
                                                   {:docid '_ :name [{:language [{:country '_}]}]}
@@ -52,8 +60,8 @@
                   (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]]
                 [20
                  [(->LeveledValue 0 1 nil)]]]
-               (read (byte-buffer-reader bb record-group-metadata
-                                         helpers/default-type-store two-fields-schema))))))))
+               (flat-read (byte-buffer-reader bb record-group-metadata
+                                              helpers/default-type-store two-fields-schema))))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
@@ -69,15 +77,13 @@
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (testing "full schema"
       (is (= striped-records
-             (read (byte-buffer-reader bb record-group-metadata helpers/default-type-store parsed-query)))))
-    (testing "read seq is chunked"
-      (is (chunked-seq? (seq (read (byte-buffer-reader bb
+             (flat-read
+              (byte-buffer-reader bb record-group-metadata helpers/default-type-store parsed-query)))))
+    (testing "read seq is composed of columns that contain chunked pages"
+      (is (every? true? (map (partial every? chunked-seq?)
+                             (read (byte-buffer-reader bb
                                                        record-group-metadata helpers/default-type-store
-                                                       parsed-query))))))
-    (testing "read seq is composed of ArraySeqs"
-      (is (every? (partial instance? clojure.lang.ArraySeq)
-                  (read (byte-buffer-reader bb record-group-metadata
-                                            helpers/default-type-store parsed-query)))))))
+                                                       parsed-query))))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
@@ -98,7 +104,7 @@
       (is (= striped-records
              (with-open [f (utils/file-channel tmp-file :read)]
                (doall
-                (read
+                (flat-read
                  (byte-buffer-reader (utils/map-file-channel f 0 (.size f))
                                      record-group-metadata
                                      helpers/default-type-store

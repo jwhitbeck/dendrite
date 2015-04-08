@@ -20,7 +20,7 @@
 (set! *warn-on-reflection* true)
 
 (defn assemble [leveled-values query]
-  ((assemble-fn query) (seq (into-array Object leveled-values))))
+  ((assemble-fn query) (into-array Object leveled-values)))
 
 (deftest dremel-paper
   (testing "full schema"

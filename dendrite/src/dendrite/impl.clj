@@ -19,7 +19,7 @@
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java Bytes IOutputBuffer MemoryOutputStream]
+  (:import [dendrite.java Bytes IOutputBuffer MemoryOutputStream StripedRecordBundleSeq StripedRecordBundle]
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -469,8 +469,9 @@
           assemble (assembly/assemble-fn queried-schema)]
       (->> (record-group-readers backend-reader (:record-groups-metadata metadata) type-store queried-schema)
            (map record-group/read)
-           utils/flatten-1
-           (utils/chunked-pmap assemble))))
+           (StripedRecordBundleSeq/create 256)
+           (clojure.core/pmap (fn [^StripedRecordBundle srb] (.assemble srb assemble)))
+           utils/flatten-1)))
   (foldable* [_ opts]
     (let [{:keys [query missing-fields-as-nil? readers entrypoint]} (parse-read-options opts)
           queried-schema (schema/apply-query (schema/sub-schema-in (:schema metadata) entrypoint)
@@ -478,22 +479,29 @@
                                              type-store
                                              missing-fields-as-nil?
                                              readers)
-          read-striped #(->> (record-group-readers backend-reader
-                                                   (:record-groups-metadata metadata)
-                                                   type-store
-                                                   queried-schema)
-                             (map record-group/read)
-                             utils/flatten-1)
-          assemble (assembly/assemble-fn queried-schema)]
+          read-record-groups #(->> (record-group-readers backend-reader
+                                                         (:record-groups-metadata metadata)
+                                                         type-store
+                                                         queried-schema)
+                                   (map record-group/read))
+          assemble (assembly/assemble-fn queried-schema)
+          read-records #(->> (read-record-groups)
+                             (StripedRecordBundleSeq/create 256)
+                             (clojure.core/pmap (fn [^StripedRecordBundle srb] (.assemble srb assemble)))
+                             utils/flatten-1)]
       (reify
         clojure.core.protocols/CollReduce
         (coll-reduce [_ f]
-          (reduce f (utils/chunked-pmap assemble (read-striped))))
+          (reduce f (read-records)))
         (coll-reduce [_ f init]
-          (reduce f init (utils/chunked-pmap assemble (read-striped))))
+          (reduce f init (read-records)))
         CollFold
         (coll-fold [_ n combinef reducef]
-          (utils/chunked-fold n assemble reducef combinef (read-striped))))))
+          (let [init (combinef)]
+            (->> (read-record-groups)
+                 (StripedRecordBundleSeq/create n)
+                 (clojure.core/pmap (fn [^StripedRecordBundle srb] (.reduce srb reducef assemble init)))
+                 (reduce combinef init)))))))
   (stats [_]
     (let [full-query (schema/apply-query (:schema metadata) '_ type-store true nil)
           all-stats (->> (record-group-readers backend-reader

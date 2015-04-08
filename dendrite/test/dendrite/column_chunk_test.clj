@@ -91,10 +91,12 @@
         input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1100))
         reader (write-column-chunk-and-get-reader cs input-blocks)
         num-pages (-> reader :column-chunk-metadata :num-data-pages)
-        output-blocks (read reader)]
+        output-blocks (flat-read reader)]
     (testing "write/read a data colum-chunk"
       (is (helpers/roughly num-pages 4))
       (is (= input-blocks output-blocks)))
+    (testing "pages are chunked"
+      (is (every? chunked-seq? (read reader))))
     (testing "value mapping"
         (let [map-fn (partial * 2)
               mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
@@ -119,17 +121,17 @@
                        (map (comp :length page/stats))
                        helpers/avg)))]
         (is (helpers/roughly 1024 (avg-page-length 1024)))
-        (is (helpers/roughly 256 (avg-page-length 256)))))
-    (testing "read seq is chunked"
-      (is (chunked-seq? (seq (read reader)))))))
+        (is (helpers/roughly 256 (avg-page-length 256)))))))
 
 (deftest dictionary-column-chunk
   (let [cs (column-spec :int :dictionary :deflate)
         input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
         reader (write-column-chunk-and-get-reader cs input-blocks)
-        output-blocks (read reader)]
+        output-blocks (flat-read reader)]
     (testing "write/read a dictionary colum-chunk"
       (is (= input-blocks output-blocks)))
+    (testing "pages are chunked"
+      (is (every? chunked-seq? (read reader))))
     (testing "value mapping"
       (let [map-fn (partial * 2)
             mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
@@ -148,14 +150,16 @@
   (let [cs (column-spec :int :frequency :deflate)
         input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (rand-blocks cs) (take 1000))
         reader (write-column-chunk-and-get-reader cs input-blocks)
-        output-blocks (read reader)]
+        output-blocks (flat-read reader)]
     (testing "write/read a frequency colum-chunk"
       (is (= input-blocks output-blocks)))
+    (testing "pages are chunked"
+      (is (every? chunked-seq? (read reader))))
     (testing "value mapping"
       (let [map-fn (partial * 2)
             mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
-               (->> mapped-reader read flatten (map #(.value ^LeveledValue %)))))))
+               (->> mapped-reader flat-read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
       (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
         (write-blocks! w input-blocks)
@@ -172,13 +176,13 @@
     (let [cs (column-spec-required :boolean :plain :none)
           input-blocks (->> helpers/rand-bool repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "mostly true booleans"
     (let [cs (column-spec-required :boolean :plain :none)
           input-blocks (->> #(helpers/rand-biased-bool 0.99) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-int-encodings
@@ -186,39 +190,39 @@
     (let [cs (column-spec-required :int :plain :none)
           input-blocks (->> helpers/rand-int repeatedly (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "random ints (non-repeated)"
     (let [cs (column-spec-non-repeated :int :plain :none)
           input-blocks (->> helpers/rand-int repeatedly (helpers/rand-map 0.2 (constantly nil)) (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "random small ints"
     (let [cs (column-spec-required :int :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 10) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :packed-run-length (find-best-encoding* reader)))))
   (testing "increasing ints"
     (let [cs (column-spec-required :int :plain :none)
           input-blocks (->> (range) (map int) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
   (testing "small selection of random ints"
     (let [cs (column-spec-required :int :plain :none)
           random-ints (repeatedly 100 helpers/rand-int)
           input-blocks (->> #(rand-nth random-ints) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader)))))
   (testing "skewed selection of random ints"
     (let [cs (column-spec-required :int :plain :none)
           input-blocks (concat (->> helpers/rand-int repeatedly (take 255))
                                (apply interleave (repeatedly 10 #(take 100 (repeat (helpers/rand-int))))))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :frequency (find-best-encoding reader (* 100 1024))))))
   (testing "small random signed ints with an occasional large one."
     (let [cs (column-spec-required :int :plain :none)
@@ -227,7 +231,7 @@
                             (helpers/rand-map 0.1 (constantly (helpers/rand-int-bits 24)))
                             (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :vlq (find-best-encoding* reader)))))
   (testing "small random signed ints with an occasional large one."
     (let [cs (column-spec-required :int :plain :none)
@@ -238,13 +242,13 @@
                             (map unchecked-int)
                             (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :zig-zag (find-best-encoding* reader)))))
   (testing "small selection of chars"
     (let [cs (column-spec-required :char :plain :none)
           input-blocks (->> #(rand-nth [\c \return \u1111]) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-long-encodings
@@ -252,13 +256,13 @@
     (let [cs (column-spec-required :long :plain :none)
           input-blocks (->> helpers/rand-long repeatedly (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "random small longs"
     (let [cs (column-spec-required :long :plain :none)
           input-blocks (->> #(helpers/rand-long-bits 10) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
   (testing "small random longs with an occasional large one."
     (let [cs (column-spec-required :long :plain :none)
@@ -267,7 +271,7 @@
                             (helpers/rand-map 0.1 (constantly (helpers/rand-long-bits 24)))
                             (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :vlq (find-best-encoding* reader)))))
   (testing "small random signed longs with an occasional large one."
     (let [cs (column-spec-required :long :plain :none)
@@ -277,32 +281,32 @@
                             (map * (repeatedly helpers/rand-sign))
                             (take 100))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :zig-zag (find-best-encoding* reader)))))
   (testing "increasing longs"
     (let [cs (column-spec-required :long :plain :none)
           input-blocks (->> (range) (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
   (testing "increasing timestamps"
     (let [cs (column-spec-required :long :plain :none)
           input-blocks (->> #(System/nanoTime) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :delta (find-best-encoding* reader)))))
   (testing "incrementing dates as a custom-type"
     (let [cs (column-spec-required :inst :plain :none)
           input-blocks (->> (days-seq "2014-01-01") (take 1000))]
       (let [reader (write-column-chunk-and-get-reader cs input-blocks)]
-        (is (= (read reader) input-blocks))
+        (is (= (flat-read reader) input-blocks))
         (is (= :delta (find-best-encoding* reader))))))
   (testing "small selection of random longs"
     (let [cs (column-spec-required :long :plain :none)
           random-ints (repeatedly 100 helpers/rand-long)
           input-blocks (->> #(rand-nth random-ints) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-float-encodings
@@ -310,14 +314,14 @@
     (let [cs (column-spec-required :float :plain :none)
           input-blocks (->> helpers/rand-float repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "small selection of random floats"
     (let [cs (column-spec-required :float :plain :none)
           random-floats (repeatedly 100 helpers/rand-float)
           input-blocks (->> #(rand-nth random-floats) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-double-encodings
@@ -325,14 +329,14 @@
     (let [cs (column-spec-required :double :plain :none)
           input-blocks (->> helpers/rand-double repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "small selection of random doubles"
     (let [cs (column-spec-required :double :plain :none)
           random-doubles (repeatedly 100 helpers/rand-double)
           input-blocks (->> #(rand-nth random-doubles) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-byte-array-encodings
@@ -340,31 +344,32 @@
     (let [cs (column-spec-required :byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map seq (read reader)) (map seq input-blocks)))
+      (is (= (map seq (flat-read reader)) (map seq input-blocks)))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random byte buffers"
     (let [cs (column-spec-required :byte-buffer :plain :none)
           input-blocks (->> #(helpers/rand-byte-buffer) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map helpers/byte-buffer->seq (read reader)) (map helpers/byte-buffer->seq input-blocks)))
+      (is (= (map helpers/byte-buffer->seq (flat-read reader))
+             (map helpers/byte-buffer->seq input-blocks)))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random big ints"
     (let [cs (column-spec-required :bigint :plain :none)
           input-blocks (->> #(helpers/rand-bigint 100) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :delta-length (find-best-encoding* reader)))))
   (testing "random big decimals"
     (let [cs (column-spec-required :bigdec :plain :none)
           input-blocks (->> #(helpers/rand-bigdec 40) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :incremental (find-best-encoding* reader)))))
   (testing "random ratios"
     (let [cs (column-spec-required :ratio :plain :none)
           input-blocks (->> #(helpers/rand-ratio 40) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :incremental (find-best-encoding* reader)))))
   (testing "incrementing dates"
     (let [cs (column-spec-required :date-str :plain :none)
@@ -375,19 +380,19 @@
                                                       :from-base-type-fn #(locking simple-date-format
                                                                             (.parse simple-date-format %))}})]
       (let [reader (write-column-chunk-and-get-reader cs test-target-data-page-length type-store input-blocks)]
-        (is (= (read reader) input-blocks))
+        (is (= (flat-read reader) input-blocks))
         (is (= :incremental (find-best-encoding* reader))))))
   (testing "small set of keywords"
     (let [cs (column-spec-required :keyword :plain :none)
           input-blocks (->> #(rand-nth [:foo ::bar :baz]) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader)))))
   (testing "small set of symbols"
     (let [cs (column-spec-required :symbol :plain :none)
           input-blocks (->> #(rand-nth ['foo 'bar 'baz]) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-fixed-length-byte-array-encodings
@@ -395,20 +400,20 @@
     (let [cs (column-spec-required :fixed-length-byte-array :plain :none)
           input-blocks (->> #(helpers/rand-byte-array 16) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map seq (read reader)) (map seq input-blocks)))
+      (is (= (map seq (flat-read reader)) (map seq input-blocks)))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "UUIDs"
     (let [cs (column-spec-required :uuid :plain :none)
           input-blocks (->> helpers/rand-uuid repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (read reader) input-blocks))
+      (is (= (flat-read reader) input-blocks))
       (is (= :plain (find-best-encoding* reader)))))
   (testing "small selection of random byte arrays"
     (let [cs (column-spec-required :fixed-length-byte-array :plain :none)
           rand-byte-arrays (repeatedly 10 #(helpers/rand-byte-array 16))
           input-blocks (->> #(rand-nth rand-byte-arrays) repeatedly (take 1000))
           reader (write-column-chunk-and-get-reader cs input-blocks)]
-      (is (= (map seq (read reader)) (map seq input-blocks)))
+      (is (= (map seq (flat-read reader)) (map seq input-blocks)))
       (is (= :dictionary (find-best-encoding* reader))))))
 
 (deftest find-best-compression-types
@@ -449,4 +454,4 @@
         optimized-w (optimize! w helpers/default-type-store {:lz4 1.2 :deflate 2})]
     (is (= {:type :string :encoding :dictionary :compression :none}
            (-> optimized-w :column-spec (select-keys [:type :encoding :compression]))))
-    (is (= input-blocks (read (writer->reader! optimized-w helpers/default-type-store))))))
+    (is (= input-blocks (flat-read (writer->reader! optimized-w helpers/default-type-store))))))

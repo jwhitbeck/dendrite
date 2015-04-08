@@ -323,7 +323,8 @@
 (deftest folding
   (let [byte-buffer (byte-buffer! (dremel-paper-writer))]
     (= 30 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/fold +)))
-    (= 30 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/reduce +)))))
+    (= 30 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/reduce +)))
+    (= 40 (->> byte-buffer byte-buffer-reader foldable (r/map :docid) (r/reduce + 10)))))
 
 (deftest invalid-options-are-caught
   (testing "writer options"

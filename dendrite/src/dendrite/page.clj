@@ -374,10 +374,9 @@
 (defn read-data-pages
   [^ByteBuffer byte-buffer num-data-pages max-repetition-level max-definition-level type-store value-type
    encoding compression map-fn]
-  (->> (data-page-readers byte-buffer num-data-pages max-repetition-level max-definition-level
-                          type-store value-type encoding compression)
-       (utils/pmap-1 #(read % map-fn))
-       utils/flatten-1))
+  (utils/pmap-1 #(read % map-fn)
+                (data-page-readers byte-buffer num-data-pages max-repetition-level max-definition-level
+                                   type-store value-type encoding compression)))
 
 (defn read-data-page-headers
   [^ByteBuffer byte-buffer num-data-pages]

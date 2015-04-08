@@ -93,7 +93,6 @@
 
 (defn assemble-fn [parsed-query]
   (let [ass-fn (assemble-fn* parsed-query)]
-    (fn [^ArraySeq striped-record]
+    (fn [^objects striped-record]
       (when striped-record
-        (let [lva (.array striped-record)]
-          (ass-fn lva))))))
+        (ass-fn striped-record)))))

@@ -101,9 +101,7 @@
 (defrecord RecordGroupReader [num-records column-chunk-readers]
   IRecordGroupReader
   (read [_]
-    (if-not (seq column-chunk-readers)
-      (repeat num-records nil)
-      (utils/multiplex (pmap column-chunk/read column-chunk-readers))))
+    (pmap column-chunk/read column-chunk-readers))
   (stats [_]
     (let [column-chunks-stats (map column-chunk/stats column-chunk-readers)]
       {:record-group (stats/column-chunks->record-group-stats num-records column-chunks-stats)

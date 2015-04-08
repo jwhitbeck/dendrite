@@ -189,6 +189,8 @@
 
 (declare writer->reader!)
 
+(defn flat-read [reader] (utils/flatten-1 (read reader)))
+
 (defrecord FrequencyColumnChunkWriter [^HashMap reverse-dictionary
                                        ^HashMap index-frequencies
                                        ^DictionaryPageWriter dictionary-writer
@@ -261,7 +263,7 @@
         (.reset dictionary-writer)
         (doseq [e sorted-dictionnary-array]
           (page/write-entry! dictionary-writer e))
-        (doseq [v (read (writer->reader! buffer-column-chunk-writer type-store))]
+        (doseq [v (flat-read (writer->reader! buffer-column-chunk-writer type-store))]
           (if (pos? (:max-repetition-level column-spec))
             (->> v
                  (map (fn [^LeveledValue leveled-value]
@@ -381,7 +383,7 @@
 
 (defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length type-store]
   (let [^IOutputBuffer w (writer target-data-page-length type-store new-colum-spec)]
-    (doseq [lv (read column-chunk-reader)]
+    (doseq [lv (flat-read column-chunk-reader)]
       (write! w lv))
     (.finish w)
     (if (and (#{:dictionary :frequency} (:encoding new-colum-spec))
@@ -456,4 +458,6 @@
                                    :type
                                    column-type)
         derived-type-rdr (assoc-in base-type-rdr [:column-spec :type] column-type)]
-    (reduce write! (writer target-data-page-length type-store optimal-column-spec) (read derived-type-rdr))))
+    (reduce write!
+            (writer target-data-page-length type-store optimal-column-spec)
+            (flat-read derived-type-rdr))))

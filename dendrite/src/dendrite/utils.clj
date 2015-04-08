@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java Singleton PersistentLinkedSeq MultiplexedSeq]
+           [dendrite.java Singleton PersistentLinkedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -99,8 +99,6 @@
     (.get bb chars)
     (String. chars)))
 
-(definline multiplex [seqs] `(MultiplexedSeq/create ~seqs))
-
 (definline single [x] `(Singleton. ~x))
 
 (definline transient-linked-seq [] `(PersistentLinkedSeq/newEmptyTransient))
@@ -151,46 +149,15 @@
        (when (seq coll)
          (step (future (f (first coll))) (rest coll)))))
   ([f c1 c2]
-     (pmap-1 (partial apply f) (multiplex [c1 c2]))))
-
-(defn- chunk-take [n coll]
-  (when-let [s (seq coll)]
-    (when (pos? n)
-      (let [c (chunk-first s)]
-        (chunk-cons c (chunk-take (- n (count c)) (chunk-rest s)))))))
-
-(defn- chunk-nthrest
-  [coll n]
-  (loop [n n xs coll]
-    (if (pos? n)
-      (when-let [s (seq xs)]
-        (let [c (chunk-first s)]
-          (recur (- n (count c)) (chunk-rest s))))
-      xs)))
-
-(defn- chunk-partition-all
-  [n coll]
-  (lazy-seq
-   (when-let [s (seq coll)]
-     (if (chunked-seq? s)
-       (let [seg (doall (chunk-take n s))]
-         (cons seg (chunk-partition-all n (chunk-nthrest s n))))
-       (let [seg (doall (take n s))]
-         (cons seg (chunk-partition-all n (nthrest s n))))))))
+    (pmap-1 (partial apply f) (map vector c1 c2))))
 
 (defn chunked-pmap
   ([f coll]
-     (chunked-pmap f 255 coll))
+     (chunked-pmap f 256 coll))
   ([f chunk-size coll]
-     (->> coll
-          (chunk-partition-all chunk-size)
-          (pmap (comp doall (partial map f)))
-          flatten-1)))
-
-(defn chunked-fold [n mapf reducef combinef coll]
-  (->> coll
-       (chunk-partition-all n)
-       (pmap #(->> % (map mapf) (reduce reducef (combinef))))
-       (reduce combinef (combinef))))
+   (->> coll
+        (partition-all chunk-size)
+        (pmap (comp doall (partial map f)))
+        flatten-1)))
 
 (defn boolean? [b] (or (true? b) (false? b)))
