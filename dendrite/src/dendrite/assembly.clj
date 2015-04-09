@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private assemble-fn*
+(defmulti assemble-fn
   (fn [field]
     (if (schema/record? field)
       (case (:repetition field)
@@ -29,13 +29,13 @@
         (:list :vector :set) :repeated-value
         (:optional :required) :non-repeated-value))))
 
-(defmethod assemble-fn* :empty-value
+(defmethod assemble-fn :empty-value
   [field]
   (if-let [reader-fn (:reader-fn field)]
     (constantly (reader-fn nil))
     (constantly nil)))
 
-(defmethod assemble-fn* :non-repeated-value
+(defmethod assemble-fn :non-repeated-value
   [field]
   (let [col-idx (-> field :column-spec :query-column-index)
         ass-fn (if (-> field :column-spec :max-repetition-level pos?)
@@ -45,7 +45,7 @@
       (comp reader-fn ass-fn)
       ass-fn)))
 
-(defmethod assemble-fn* :repeated-value
+(defmethod assemble-fn :repeated-value
   [field]
   (let [cs (:column-spec field)
         col-idx (:query-column-index cs)
@@ -59,22 +59,22 @@
              (= rep-type :list) (comp seq)
              reader-fn (comp reader-fn))))
 
-(defmethod assemble-fn* :non-repeated-record
+(defmethod assemble-fn :non-repeated-record
   [field]
   (let [record-ctor (Assembly/getRecordConstructorFn (map :name (:sub-fields field))
-                                                     (map assemble-fn* (:sub-fields field)))
+                                                     (map assemble-fn (:sub-fields field)))
         ass-fn (Assembly/getNonRepeatedRecordFn record-ctor)]
     (if-let [reader-fn (:reader-fn field)]
       (comp reader-fn ass-fn)
       ass-fn)))
 
-(defmethod assemble-fn* :repeated-record
+(defmethod assemble-fn :repeated-record
   [field]
   (let [next-rl-col-idx (-> field schema/column-specs last :query-column-index)
         rep-lvl (:repetition-level field)
         def-lvl (:definition-level field)
         rep-type (:repetition field)
-        non-repeated-ass-fn (assemble-fn* (assoc field :repetition :optional :reader-fn nil))
+        non-repeated-ass-fn (assemble-fn (assoc field :repetition :optional :reader-fn nil))
         empty-coll (if (= :set rep-type) #{} [])
         ass-fn (Assembly/getRepeatedRecordFn non-repeated-ass-fn next-rl-col-idx rep-lvl def-lvl empty-coll)
         reader-fn (:reader-fn field)]
@@ -82,9 +82,9 @@
              (= :list rep-type) (comp seq)
              reader-fn (comp reader-fn))))
 
-(defmethod assemble-fn* :map
+(defmethod assemble-fn :map
   [field]
-  (let [as-list-ass-fn (assemble-fn* (assoc field :repetition :list :reader-fn nil))
+  (let [as-list-ass-fn (assemble-fn (assoc field :repetition :list :reader-fn nil))
         ass-fn (fn [^objects leveled-values-array]
                  (some->> (as-list-ass-fn leveled-values-array)
                           (map (juxt :key :value))
@@ -92,8 +92,3 @@
     (if-let [reader-fn (:reader-fn field)]
       (comp reader-fn ass-fn)
       ass-fn)))
-
-(defn assemble-fn [parsed-query]
-  (let [ass-fn (assemble-fn* parsed-query)]
-    (fn [^objects striped-record]
-      (ass-fn striped-record))))

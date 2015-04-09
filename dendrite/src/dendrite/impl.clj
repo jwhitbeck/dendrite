@@ -483,11 +483,11 @@
                                              type-store
                                              missing-fields-as-nil?
                                              readers)
-          read-record-groups #(->> (record-group-readers backend-reader
+          read-record-groups #(map record-group/read
+                                   (record-group-readers backend-reader
                                                          (:record-groups-metadata metadata)
                                                          type-store
-                                                         queried-schema)
-                                   (map record-group/read))
+                                                         queried-schema))
           assemble (assembly/assemble-fn queried-schema)
           read-records #(->> (read-record-groups)
                              (StripedRecordBundleSeq/create 256)
