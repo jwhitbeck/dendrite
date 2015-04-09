@@ -1,4 +1,4 @@
-(ns dendrite.benchmark.utils
+(ns dendrite.benchmarks.utils
   (:require [abracad.avro :as avro]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -6,7 +6,7 @@
             [cheshire.core :as json]
             [dendrite.core :as d]
             [dendrite.utils :as du]
-            [org.httpkit.client :as http]
+            [clj-http.client :as http]
             [ring.util.codec :as codec]
             [taoensso.nippy :as nippy])
   (:import [net.jpountz.lz4 LZ4BlockInputStream LZ4BlockOutputStream]
@@ -84,7 +84,6 @@
   (-> (format "http://www.mockaroo.com/api/generate.json?count=%d&key=%s&columns=%s"
               n mockaroo-api-key (-> mockaroo-columns json/generate-string codec/url-encode))
       http/get
-      deref
       :body
       codec/url-decode
       (json/parse-string keyword)))
@@ -110,6 +109,16 @@
       (doseq [rec records]
         (.write w (str rec))
         (.newLine w )))))
+
+(defn json-file->json-file [compression json-filename-input json-filename-output]
+  (let [open-writer (case compression
+                      :gzip (comp buffered-writer gzip-output-stream file-output-stream)
+                      :lz4 (comp buffered-writer lz4-output-stream file-output-stream))]
+    (with-open [r (-> json-filename-input file-input-stream gzip-input-stream buffered-reader)
+                ^BufferedWriter w (open-writer json-filename-output)]
+      (doseq [obj (line-seq r)]
+        (.write w (str obj))
+        (.newLine w)))))
 
 (defn json-file->edn-file [compression json-filename edn-filename]
   (let [open-writer (case compression
@@ -166,6 +175,10 @@
     (doseq [byte-buffer (->> r line-seq (map (comp serialize-fn #(json/parse-string % true))))]
       (write-byte-buffer! w byte-buffer))))
 
+(defn json-file->smile-file [compression json-filename output-filename]
+  (json-file->parallel-byte-buffer-file compression #(ByteBuffer/wrap (json/generate-smile %))
+                                        json-filename output-filename))
+
 (defn json-file->parallel-java-objects-file [compression json-filename output-filename]
   (json-file->parallel-byte-buffer-file compression serialize-byte-buffer json-filename output-filename))
 
@@ -202,7 +215,9 @@
 
 (defn json-file->avro-file [compression schema json-filename avro-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-              w (avro/data-file-writer (if (= compression :gzip) "deflate" "snappy") schema avro-filename)]
+              w (avro/data-file-writer (case compression :deflate "deflate" :snappy "snappy")
+                                       schema
+                                       avro-filename)]
     (doseq [obj (->> r line-seq (map #(json/parse-string % true)))]
       (.append w obj))))
 
@@ -246,6 +261,17 @@
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
     (->> r (byte-buffer-seq n) (du/chunked-pmap parse-fn) last)))
+
+(defn read-smile-file [n compression keywordize? filename]
+  (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
+                    buffered-input-stream object-input-stream)]
+    (->> r
+         (byte-buffer-seq n)
+         (map #(json/parse-smile (.array ^ByteBuffer %) keywordize?))
+         last)))
+
+(defn read-smile-file-parallel [n compression keywordize? filename]
+  (read-byte-buffer-file n compression #(json/parse-smile (.array ^ByteBuffer %) keywordize?) filename))
 
 (defn read-fressian-file [n compression filename]
   (with-open [^FressianReader r (-> filename file-input-stream (compressed-input-stream compression)
@@ -297,3 +323,204 @@
                   :read-times (vec (repeatedly 20 #(time-with-gc (read-fn benchmarked-filename))))}]
       (-> benchmarked-filename io/as-file .delete)
       result)))
+
+(defn json-benchmarks []
+  [{:name "json-gz"
+    :description "json + gzip"
+    :family "json"
+    :create-fn io/copy
+    :bench-fn #(read-json-file :gzip false %)}
+   {:name "json-kw-gz"
+    :description "json + gzip with keyword keys"
+    :family "json"
+    :create-fn io/copy
+    :bench-fn #(read-json-file :gzip true %)}
+   {:name "json-lz4"
+    :description "json + lz4"
+    :family "json"
+    :create-fn #(json-file->json-file :lz4 %1 %2)
+    :bench-fn #(read-json-file :lz4 false %)}
+   {:name "json-kw-lz4"
+    :description "json + lz4"
+    :family "json"
+    :create-fn #(json-file->json-file :lz4 %1 %2)
+    :bench-fn #(read-json-file :lz4 true %)}
+   {:name "json-gz-par"
+    :description "json + gzip with parallel deserialization"
+    :family "json"
+    :create-fn io/copy
+    :bench-fn #(read-json-file-parallel :gzip false %)}
+   {:name "json-kw-gz-par"
+    :description "json + gzip with keyword keys and parallel deserialization"
+    :family "json"
+    :create-fn io/copy
+    :bench-fn #(read-json-file-parallel :gzip true %)}
+   {:name "json-lz4-par"
+    :description "json + lz4 with parallel deserialization"
+    :family "json"
+    :create-fn #(json-file->json-file :lz4 %1 %2)
+    :bench-fn #(read-json-file-parallel :lz4 false %)}
+   {:name "json-kw-lz4-par"
+    :description "json + lz4 with parallel deserialization"
+    :family "json"
+    :create-fn #(json-file->json-file :lz4 %1 %2)
+    :bench-fn #(read-json-file-parallel :lz4 true %)}])
+
+(defn smile-benchmarks [num-records]
+  [{:name "smile-gz"
+    :description "smile + gzip"
+    :family "smile"
+    :create-fn #(json-file->smile-file :gzip %1 %2)
+    :bench-fn #(read-smile-file num-records :gzip false %)}
+   {:name "smile-kw-gz"
+    :description "smile + gzip with keyword keys"
+    :family "smile"
+    :create-fn #(json-file->smile-file :gzip %1 %2)
+    :bench-fn #(read-smile-file num-records :gzip true %)}
+   {:name "smile-lz4"
+    :description "smile + lz4"
+    :family "smile"
+    :create-fn #(json-file->smile-file :lz4 %1 %2)
+    :bench-fn #(read-smile-file num-records :lz4 false %)}
+   {:name "smile-kw-lz4"
+    :description "smile + lz4"
+    :family "smile"
+    :create-fn #(json-file->smile-file :lz4 %1 %2)
+    :bench-fn #(read-smile-file num-records :lz4 true %)}
+   {:name "smile-gz-par"
+    :description "smile + gzip with parallel deserialization"
+    :family "smile"
+    :create-fn #(json-file->smile-file :gzip %1 %2)
+    :bench-fn #(read-smile-file-parallel num-records :gzip false %)}
+   {:name "smile-kw-gz-par"
+    :description "smile + gzip with keyword keys and parallel deserialization"
+    :family "smile"
+    :create-fn #(json-file->smile-file :gzip %1 %2)
+    :bench-fn #(read-smile-file-parallel num-records :gzip true %)}
+   {:name "smile-lz4-par"
+    :description "smile + lz4 with parallel deserialization"
+    :family "smile"
+    :create-fn #(json-file->smile-file :lz4 %1 %2)
+    :bench-fn #(read-smile-file-parallel num-records :lz4 false %)}
+   {:name "smile-kw-lz4-par"
+    :description "smile + lz4 with parallel deserialization"
+    :family "smile"
+    :create-fn #(json-file->smile-file :lz4 %1 %2)
+    :bench-fn #(read-smile-file-parallel num-records :lz4 true %)}])
+
+(defn edn-benchmarks []
+  [{:name "edn-gz"
+    :description "edn + gzip"
+    :family "edn"
+    :create-fn #(json-file->edn-file :gzip %1 %2)
+    :bench-fn #(read-edn-file :gzip %)}
+   {:name "edn-lz4"
+    :description "edn + lz4"
+    :family "edn"
+    :create-fn #(json-file->edn-file :lz4 %1 %2)
+    :bench-fn #(read-edn-file :lz4 %)}
+   {:name "edn-gz-par"
+    :description "edn + gzip with parallel deserialization"
+    :family "edn"
+    :create-fn #(json-file->edn-file :gzip %1 %2)
+    :bench-fn #(read-edn-file-parallel :gzip %)}
+   {:name "edn-lz4-par"
+    :description "edn + lz4 with parallel deserialization"
+    :family "edn"
+    :create-fn #(json-file->edn-file :lz4 %1 %2)
+    :bench-fn #(read-edn-file-parallel :lz4 %)}])
+
+(defn fressian-benchmarks [num-records]
+  [{:name "fressian-gz"
+    :description "fressian + gzip"
+    :family "fressian"
+    :create-fn #(json-file->fressian-file :gzip %1 %2)
+    :bench-fn #(read-fressian-file num-records :gzip %)}
+   {:name "fressian-lz4"
+    :description "fressian + lz4"
+    :family "fressian"
+    :create-fn #(json-file->fressian-file :lz4 %1 %2)
+    :bench-fn #(read-fressian-file num-records :lz4 %)}
+   {:name "fressian-gz-par"
+    :description "fressian + gzip with parallel deserialization"
+    :family "fressian"
+    :create-fn #(json-file->parallel-fressian-file :gzip %1 %2)
+    :bench-fn #(read-fressian-file-parallel num-records :gzip %)}
+   {:name "fressian-lz4-par"
+    :description "fressian + lz4 with parallel deserialization"
+    :family "fressian"
+    :create-fn #(json-file->parallel-fressian-file :lz4 %1 %2)
+    :bench-fn #(read-fressian-file-parallel num-records :lz4 %)}])
+
+(defn nippy-benchmarks [num-records]
+  [{:name "nippy-gz"
+    :description "nippy + gzip"
+    :family "nippy"
+    :create-fn #(json-file->nippy-file :gzip %1 %2)
+    :bench-fn #(read-nippy-file num-records :gzip %)}
+   {:name "nippy-lz4"
+    :description "nippy + lz4"
+    :family "nippy"
+    :create-fn #(json-file->nippy-file :lz4 %1 %2)
+    :bench-fn #(read-nippy-file num-records :lz4 %)}
+   {:name "nippy-gz-par"
+    :description "nippy + gzip with parallel deserialization"
+    :family "nippy"
+    :create-fn #(json-file->parallel-nippy-file :gzip %1 %2)
+    :bench-fn #(read-nippy-file-parallel num-records :gzip %)}
+   {:name "nippy-lz4-par"
+    :description "nippy + lz4 with parallel deserialization"
+    :family "nippy"
+    :create-fn #(json-file->parallel-nippy-file :lz4 %1 %2)
+    :bench-fn #(read-nippy-file-parallel num-records :lz4 %)}])
+
+(defn avro-benchmarks [num-records avro-schema]
+  [{:name "avro-deflate"
+    :description "avro + deflate"
+    :family "avro"
+    :create-fn #(json-file->avro-file :deflate avro-schema %1 %2)
+    :bench-fn #(read-avro-file %)}
+   {:name "avro-snappy"
+    :description "avro + snappy"
+    :family "avro"
+    :create-fn #(json-file->avro-file :snappy avro-schema %1 %2)
+    :bench-fn #(read-avro-file %)}
+   {:name "avro-gz-par"
+    :description "avro + gzip with parallel deserialization"
+    :family "avro"
+    :create-fn #(json-file->parallel-avro-file :gzip avro-schema %1 %2)
+    :bench-fn #(read-avro-file-parallel num-records :gzip avro-schema %)}
+   {:name "avro-lz4-par"
+    :description "avro + lz4 with parallel deserialization"
+    :family "avro"
+    :create-fn #(json-file->parallel-avro-file :lz4 avro-schema %1 %2)
+    :bench-fn #(read-avro-file-parallel num-records :lz4 avro-schema %)}])
+
+(defn protobuf-benchmarks [num-records proto-serialize proto-deserialize]
+  [{:name "protobuf-gz"
+    :description "protobuf + gzip"
+    :family "protobuf"
+    :create-fn #(json-file->protobuf-file :gzip proto-serialize %1 %2)
+    :bench-fn #(read-protobuf-file num-records :gzip proto-deserialize %)}
+   {:name "protobuf-lz4"
+    :description "protobuf + lz4"
+    :family "protobuf"
+    :create-fn #(json-file->protobuf-file :lz4 proto-serialize %1 %2)
+    :bench-fn #(read-protobuf-file num-records :lz4 proto-serialize %)}
+   {:name "protobuf-gz-par"
+    :description "protobuf + gzip with parallel deserialization"
+    :family "protobuf"
+    :create-fn #(json-file->protobuf-file :gzip proto-serialize %1 %2)
+    :bench-fn #(read-protobuf-file-parallel num-records :gzip proto-deserialize %)}
+   {:name "protobuf-lz4-par"
+    :description "protobuf + lz4 with parallel deserialization"
+    :family "protobuf"
+    :create-fn #(json-file->protobuf-file :lz4 proto-serialize %1 %2)
+    :bench-fn #(read-protobuf-file-parallel num-records :lz4 proto-deserialize %)}])
+
+(defn dendrite-benchmarks [schema-resource]
+  [{:name "dendrite-defaults"
+    :description "dendrite with defauls parameters"
+    :family "dendrite"
+    :create-fn #(json-file->dendrite-file schema-resource %1 %2)
+    :bench-fn read-dendrite-file}])

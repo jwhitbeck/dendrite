@@ -1,6 +1,6 @@
-(ns dendrite.benchmark.media-content
+(ns dendrite.benchmarks.media-content
   (:require [abracad.avro :as avro]
-            [dendrite.benchmark.utils :as utils]
+            [dendrite.benchmarks.utils :as utils]
             [flatland.protobuf.core :refer :all])
   (:import [dendrite.benchmarks V22LiteMedia$MediaContent]))
 
@@ -92,3 +92,16 @@
 
 (defn proto-deserialize [^bytes bs]
   (protobuf-load MediaContent bs))
+
+(def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.fr/media_content.json.gz")
+
+(def full-schema-benchmarks
+  (let [n 401000]
+    (concat (utils/json-benchmarks)
+            (utils/smile-benchmarks n)
+            (utils/edn-benchmarks)
+            (utils/fressian-benchmarks n)
+            (utils/nippy-benchmarks n)
+            (utils/avro-benchmarks n avro-schema)
+            (utils/protobuf-benchmarks n proto-deserialize proto-deserialize)
+            (utils/dendrite-benchmarks "media_content_schema.edn"))))

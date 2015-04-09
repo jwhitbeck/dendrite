@@ -1,10 +1,10 @@
-(ns dendrite.benchmark.user-events
+(ns dendrite.benchmarks.user-events
   (:require [abracad.avro :as avro]
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [dendrite.core :as d]
             [dendrite.utils :as du]
-            [dendrite.benchmark.utils :as utils]
+            [dendrite.benchmarks.utils :as utils]
             [flatland.protobuf.core :refer :all])
   (:import [dendrite.benchmarks UserEvents$User]
            [java.text SimpleDateFormat]
@@ -168,3 +168,16 @@
 
 (defn proto-deserialize [^bytes bs]
   (protobuf-load User bs))
+
+(def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.fr/user_events.json.gz")
+
+(def full-schema-benchmarks
+  (let [n 31000]
+    (concat (utils/json-benchmarks)
+            (utils/smile-benchmarks n)
+            (utils/edn-benchmarks)
+            (utils/fressian-benchmarks n)
+            (utils/nippy-benchmarks n)
+            (utils/avro-benchmarks n avro-schema)
+            (utils/protobuf-benchmarks n proto-deserialize proto-deserialize)
+            (utils/dendrite-benchmarks "user_events_schema.edn"))))
