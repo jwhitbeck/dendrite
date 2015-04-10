@@ -20,32 +20,32 @@ import java.util.Iterator;
 
 public final class LeveledValues {
 
-  public static IPersistentCollection assemble(final IIntDecoder repetitionLevelsDecoder,
-                                               final IIntDecoder definitionLevelsDecoder,
-                                               final IDecoder dataDecoder,
-                                               final int maxDefinitionLevel,
-                                               final IFn fn) {
+  public static IPersistentCollection read(final IIntDecoder repetitionLevelsDecoder,
+                                           final IIntDecoder definitionLevelsDecoder,
+                                           final IDecoder dataDecoder,
+                                           final int maxDefinitionLevel,
+                                           final IFn fn) {
     if (repetitionLevelsDecoder == null) {
       if (definitionLevelsDecoder == null) {
         if (fn == null) {
-          return assembleRequired(dataDecoder);
+          return readRequired(dataDecoder);
         }
-        return assembleRequiredFn(dataDecoder, fn);
+        return readRequiredFn(dataDecoder, fn);
       }
       if (fn == null) {
-        return assembleNonRepeatedValue(definitionLevelsDecoder, dataDecoder, maxDefinitionLevel);
+        return readNonRepeatedValue(definitionLevelsDecoder, dataDecoder, maxDefinitionLevel);
       }
-      return assembleNonRepeatedValueFn(definitionLevelsDecoder, dataDecoder, maxDefinitionLevel, fn);
+      return readNonRepeatedValueFn(definitionLevelsDecoder, dataDecoder, maxDefinitionLevel, fn);
     }
     if (fn == null) {
-      return assembleDefault(repetitionLevelsDecoder, definitionLevelsDecoder, dataDecoder,
-                             maxDefinitionLevel);
+      return readDefault(repetitionLevelsDecoder, definitionLevelsDecoder, dataDecoder,
+                         maxDefinitionLevel);
     }
-    return assembleDefaultFn(repetitionLevelsDecoder, definitionLevelsDecoder, dataDecoder,
-                             maxDefinitionLevel, fn);
+    return readDefaultFn(repetitionLevelsDecoder, definitionLevelsDecoder, dataDecoder,
+                         maxDefinitionLevel, fn);
   }
 
-  private static IPersistentCollection assembleRequired(final IDecoder dataDecoder) {
+  private static IPersistentCollection readRequired(final IDecoder dataDecoder) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     int i = 0;
     int n = dataDecoder.numEncodedValues();
@@ -56,7 +56,7 @@ public final class LeveledValues {
     return vs.persistent();
   }
 
-  private static IPersistentCollection assembleRequiredFn(final IDecoder dataDecoder, final IFn fn) {
+  private static IPersistentCollection readRequiredFn(final IDecoder dataDecoder, final IFn fn) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     int i = 0;
     int n = dataDecoder.numEncodedValues();
@@ -67,9 +67,9 @@ public final class LeveledValues {
     return vs.persistent();
   }
 
-  private static IPersistentCollection assembleNonRepeatedValue(final IIntDecoder definitionLevelsDecoder,
-                                                                final IDecoder dataDecoder,
-                                                                final int maxDefinitionLevel) {
+  private static IPersistentCollection readNonRepeatedValue(final IIntDecoder definitionLevelsDecoder,
+                                                            final IDecoder dataDecoder,
+                                                            final int maxDefinitionLevel) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     int i = 0;
     int n = definitionLevelsDecoder.numEncodedValues();
@@ -84,10 +84,10 @@ public final class LeveledValues {
     return vs.persistent();
   }
 
-  private static IPersistentCollection assembleNonRepeatedValueFn(final IIntDecoder definitionLevelsDecoder,
-                                                                  final IDecoder dataDecoder,
-                                                                  final int maxDefinitionLevel,
-                                                                  final IFn fn) {
+  private static IPersistentCollection readNonRepeatedValueFn(final IIntDecoder definitionLevelsDecoder,
+                                                              final IDecoder dataDecoder,
+                                                              final int maxDefinitionLevel,
+                                                              final IFn fn) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     int i = 0;
     int n = definitionLevelsDecoder.numEncodedValues();
@@ -102,10 +102,10 @@ public final class LeveledValues {
     return vs.persistent();
   }
 
-  private static IPersistentCollection assembleDefault(final IIntDecoder repetitionLevelsDecoder,
-                                                       final IIntDecoder definitionLevelsDecoder,
-                                                       final IDecoder dataDecoder,
-                                                       final int maxDefinitionLevel) {
+  private static IPersistentCollection readDefault(final IIntDecoder repetitionLevelsDecoder,
+                                                   final IIntDecoder definitionLevelsDecoder,
+                                                   final IDecoder dataDecoder,
+                                                   final int maxDefinitionLevel) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
     boolean seenFirstValue = false;
@@ -132,11 +132,11 @@ public final class LeveledValues {
     return vs.persistent();
   }
 
-  private static IPersistentCollection assembleDefaultFn(final IIntDecoder repetitionLevelsDecoder,
-                                                         final IIntDecoder definitionLevelsDecoder,
-                                                         final IDecoder dataDecoder,
-                                                         final int maxDefinitionLevel,
-                                                         final IFn fn) {
+  private static IPersistentCollection readDefaultFn(final IIntDecoder repetitionLevelsDecoder,
+                                                     final IIntDecoder definitionLevelsDecoder,
+                                                     final IDecoder dataDecoder,
+                                                     final int maxDefinitionLevel,
+                                                     final IFn fn) {
     ITransientCollection vs = PersistentLinkedSeq.newEmptyTransient();
     ITransientCollection rv = PersistentLinkedSeq.newEmptyTransient();
     boolean seenFirstValue = false;

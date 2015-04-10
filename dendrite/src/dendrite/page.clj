@@ -337,11 +337,11 @@
                                           (:uncompressed-data-length header))
                              data-byte-buffer)
           data-decoder (data-decoder-ctor data-byte-buffer)]
-      (LeveledValues/assemble repetition-levels-decoder
-                              definition-levels-decoder
-                              data-decoder
-                              max-definition-level
-                              map-fn)))
+      (LeveledValues/read repetition-levels-decoder
+                          definition-levels-decoder
+                          data-decoder
+                          max-definition-level
+                          map-fn)))
   (skip [_]
     (utils/skip byte-buffer (body-length header))))
 
