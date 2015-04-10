@@ -50,10 +50,9 @@
    [nil "--query-file FILE" "Read the query from this file." :parse-fn (comp edn/read-string slurp)]
    [nil "--entrypoint ENTRYPOINT" "Path to begining of sub-schema. Should be a valid EDN vector."
     :parse-fn edn/read-string]
-   [nil "--map-fn FN" (str "Map this function over all records before printing them to stdout "
-                           "(default pr-str). Any expression evaluating to a function using only "
-                           "clojure.core functions will work.")
-    :default pr-str :parse-fn (comp eval read-string)]
+   [nil "--map-fn FN" (str "Map this function over all records before writing them to stdout. Any expression "
+                           "evaluating to a function using only clojure.core functions will work.")
+    :default nil :parse-fn (comp eval read-string)]
    help-cli-option])
 
 (defn read-file [cli-options filename]
@@ -62,14 +61,18 @@
                  (:query cli-options) (assoc :query (:query cli-options))
                  (:query-file cli-options) (assoc :query (:query-file cli-options))
                  (:entrypoint cli-options) (assoc :entrypoint (:entrypoint cli-options)))
-          map-fn (if (:pretty cli-options)
-                   #(with-out-str (pprint/pprint %))
-                   (:map-fn cli-options))
+          str-fn (if-let [map-fn (:map-fn cli-options)]
+                   (if (:pretty cli-options)
+                     #(with-out-str (pprint/pprint (map-fn %)))
+                     (comp str map-fn))
+                   (if (:pretty cli-options)
+                     #(with-out-str (pprint/pprint %))
+                     str))
           print-fn (if (:pretty cli-options) print println)
           record-strs (cond
-                        (:head cli-options) (map map-fn (take (:head cli-options) (d/read opts r)))
-                        (:tail cli-options) (map map-fn (take-last (:tail cli-options) (d/read opts r)))
-                        :else (d/pmap opts map-fn r))]
+                        (:head cli-options) (map str-fn (take (:head cli-options) (d/read opts r)))
+                        (:tail cli-options) (map str-fn (take-last (:tail cli-options) (d/read opts r)))
+                        :else (d/pmap opts str-fn r))]
       (doseq [s record-strs]
         (when (.checkError System/out)
           (System/exit 1))
