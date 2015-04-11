@@ -130,14 +130,13 @@
         (.write w (str obj))
         (.newLine w)))))
 
-(defn json-file->dendrite-file [schema-resource json-filename dendrite-filename]
-  (let [schema (-> schema-resource io/resource slurp d/read-schema-string)]
-    (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-                w (d/file-writer schema dendrite-filename)]
-      (->> r
-           line-seq
-           (map #(json/parse-string % true))
-           (reduce d/write! w)))))
+(defn json-file->dendrite-file [schema json-filename dendrite-filename]
+  (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
+              w (d/file-writer schema dendrite-filename)]
+    (->> r
+         line-seq
+         (map #(json/parse-string % true))
+         (reduce d/write! w))))
 
 (defn json-file->java-objects-file [compression json-filename output-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
@@ -518,9 +517,9 @@
     :create-fn #(json-file->protobuf-file :lz4 proto-serialize %1 %2)
     :bench-fn #(read-protobuf-file-parallel num-records :lz4 proto-deserialize %)}])
 
-(defn dendrite-benchmarks [schema-resource]
+(defn dendrite-benchmarks [schema]
   [{:name "dendrite-defaults"
     :description "dendrite with defauls parameters"
     :family "dendrite"
-    :create-fn #(json-file->dendrite-file schema-resource %1 %2)
+    :create-fn #(json-file->dendrite-file schema %1 %2)
     :bench-fn read-dendrite-file}])

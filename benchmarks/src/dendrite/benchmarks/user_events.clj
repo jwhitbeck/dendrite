@@ -172,7 +172,8 @@
 (def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.fr/user_events.json.gz")
 
 (def full-schema-benchmarks
-  (let [n 31000]
+  (let [n 31000
+        dendrite-schema (-> "user_events_schema.edn" io/resource slurp d/read-schema-string)]
     (concat (utils/json-benchmarks)
             (utils/smile-benchmarks n)
             (utils/edn-benchmarks)
@@ -180,4 +181,4 @@
             (utils/nippy-benchmarks n)
             (utils/avro-benchmarks n avro-schema)
             (utils/protobuf-benchmarks n proto-deserialize proto-deserialize)
-            (utils/dendrite-benchmarks "user_events_schema.edn"))))
+            (utils/dendrite-benchmarks dendrite-schema))))
