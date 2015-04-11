@@ -16,8 +16,7 @@
             [dendrite.utils :refer [defenum] :as utils])
   (:import [dendrite.java Bytes ICompressor IDecompressor Dictionary IEncoder LeveledValue LeveledValues
             MemoryOutputStream IOutputBuffer IWriteable]
-           [java.nio ByteBuffer])
-  (:refer-clojure :exclude [read type]))
+           [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,123 +40,131 @@
         (format "Page type %s is not a supported dictionary page type" dictionary-page-type))))
     dictionary-page-type))
 
-(defprotocol IPageHeader
-  (type [this])
-  (header-length [this])
-  (body-length [this])
-  (byte-offset-body [this])
-  (stats [_]))
+(definterface IPageHeader
+  (type [])
+  (^long headerLength [])
+  (^long bodyLength [])
+  (^long byteOffsetBody [])
+  (stats []))
 
-(defprotocol IDataPageHeader
-  (has-repetition-levels? [this])
-  (has-definition-levels? [this])
-  (byte-offset-repetition-levels [this])
-  (byte-offset-definition-levels [this]))
+(definterface IDataPageHeader
+  (^boolean hasRepetitionLevels [])
+  (^boolean hasDefinitionLevels [])
+  (^long byteOffsetRepetitionLevels [])
+  (^long byteOffsetDefinitionLevels []))
 
-(defn- uints32-encoded-length [coll]
-  (reduce #(+ %1 (Bytes/getNumUIntBytes %2)) 0 coll))
-
-(defn- encode-uints32! [^MemoryOutputStream mos coll]
-  (doseq [item coll]
-    (Bytes/writeUInt mos item)))
-
-(defrecord DataPageHeader [encoded-page-type
-                           num-values
-                           repetition-levels-length
-                           definition-levels-length
-                           compressed-data-length
-                           uncompressed-data-length]
+(deftype DataPageHeader [^long encoded-page-type
+                         ^long num-values
+                         ^long repetition-levels-length
+                         ^long definition-levels-length
+                         ^long compressed-data-length
+                         ^long uncompressed-data-length]
   IPageHeader
   (type [this]
     (int->page-type encoded-page-type))
-  (header-length [this]
-    (uints32-encoded-length (vals this)))
-  (body-length [_]
+  (headerLength [this]
+    (+ (Bytes/getNumUIntBytes encoded-page-type)
+       (Bytes/getNumUIntBytes num-values)
+       (Bytes/getNumUIntBytes repetition-levels-length)
+       (Bytes/getNumUIntBytes definition-levels-length)
+       (Bytes/getNumUIntBytes compressed-data-length)
+       (Bytes/getNumUIntBytes uncompressed-data-length)))
+  (bodyLength [_]
     (+ repetition-levels-length definition-levels-length compressed-data-length))
-  (byte-offset-body [_]
+  (byteOffsetBody [_]
     (+ repetition-levels-length definition-levels-length))
   (stats [this]
     (stats/map->PageStats
      {:num-values num-values
-      :length (+ (header-length this) (body-length this))
-      :byte-stats (stats/map->ByteStats {:header-length (header-length this)
+      :length (+ (.headerLength this) (.bodyLength this))
+      :byte-stats (stats/map->ByteStats {:header-length (.headerLength this)
                                          :repetition-levels-length repetition-levels-length
                                          :definition-levels-length definition-levels-length
                                          :data-length compressed-data-length})}))
   IDataPageHeader
-  (has-repetition-levels? [_]
+  (hasRepetitionLevels [_]
     (pos? repetition-levels-length))
-  (has-definition-levels? [_]
+  (hasDefinitionLevels [_]
     (pos? definition-levels-length))
-  (byte-offset-repetition-levels [_]
+  (byteOffsetRepetitionLevels [_]
     0)
-  (byte-offset-definition-levels [_]
+  (byteOffsetDefinitionLevels [_]
     repetition-levels-length)
   IWriteable
   (writeTo [this mos]
-    (encode-uints32! mos (vals this))))
+    (Bytes/writeUInt mos encoded-page-type)
+    (Bytes/writeUInt mos num-values)
+    (Bytes/writeUInt mos repetition-levels-length)
+    (Bytes/writeUInt mos definition-levels-length)
+    (Bytes/writeUInt mos compressed-data-length)
+    (Bytes/writeUInt mos uncompressed-data-length)))
 
-(defn- read-data-page-header [^ByteBuffer bb data-page-type]
-  (map->DataPageHeader
-   {:encoded-page-type (page-type->int data-page-type)
-    :num-values (Bytes/readUInt bb)
-    :repetition-levels-length (Bytes/readUInt bb)
-    :definition-levels-length (Bytes/readUInt bb)
-    :compressed-data-length (Bytes/readUInt bb)
-    :uncompressed-data-length (Bytes/readUInt bb)}))
+(defn- read-data-page-header
+  ^DataPageHeader [^ByteBuffer bb data-page-type]
+  (DataPageHeader. (page-type->int data-page-type)
+                   (Bytes/readUInt bb)
+                   (Bytes/readUInt bb)
+                   (Bytes/readUInt bb)
+                   (Bytes/readUInt bb)
+                   (Bytes/readUInt bb)))
 
-(defrecord DictionaryPageHeader [encoded-page-type
-                                 num-values
-                                 compressed-data-length
-                                 uncompressed-data-length]
+(deftype DictionaryPageHeader [^long encoded-page-type
+                               ^long num-values
+                               ^long compressed-data-length
+                               ^long uncompressed-data-length]
   IPageHeader
   (type [this]
     (int->page-type encoded-page-type))
-  (header-length [this]
-    (uints32-encoded-length (vals this)))
-  (body-length [_]
+  (headerLength [this]
+    (+ (Bytes/getNumUIntBytes encoded-page-type)
+       (Bytes/getNumUIntBytes num-values)
+       (Bytes/getNumUIntBytes compressed-data-length)
+       (Bytes/getNumUIntBytes uncompressed-data-length)))
+  (bodyLength [_]
     compressed-data-length)
-  (byte-offset-body [_]
+  (byteOffsetBody [_]
     0)
   (stats [this]
     (stats/map->PageStats
      {:num-values num-values
-      :length (+ (header-length this) (body-length this))
-      :byte-stats (stats/map->ByteStats {:dictionary-header-length (header-length this)
+      :length (+ (.headerLength this) (.bodyLength this))
+      :byte-stats (stats/map->ByteStats {:dictionary-header-length (.headerLength this)
                                          :dictionary-length compressed-data-length})}))
   IWriteable
   (writeTo [this mos]
-    (encode-uints32! mos (vals this))))
+    (Bytes/writeUInt mos encoded-page-type)
+    (Bytes/writeUInt mos num-values)
+    (Bytes/writeUInt mos compressed-data-length)
+    (Bytes/writeUInt mos uncompressed-data-length)))
 
 (defn- read-dictionary-page-header [^ByteBuffer bb dictionary-page-type]
-  (map->DictionaryPageHeader
-   {:encoded-page-type (page-type->int dictionary-page-type)
-    :num-values (Bytes/readUInt bb)
-    :compressed-data-length (Bytes/readUInt bb)
-    :uncompressed-data-length (Bytes/readUInt bb)}))
+  (DictionaryPageHeader. (page-type->int dictionary-page-type)
+                         (Bytes/readUInt bb)
+                         (Bytes/readUInt bb)
+                         (Bytes/readUInt bb)))
 
-(defprotocol IPageWriter
-  (num-values [this]))
+(definterface IPageWriter
+  (^long numValues []))
 
-(defprotocol IDataPageWriter
-  (write! [this values]))
+(definterface IDataPageWriter
+  (^dendrite.page.IDataPageWriter write [values]))
 
-(defprotocol IDictionaryPageWriter
-  (write-entry! [this entry]))
+(definterface IDictionaryPageWriter
+  (^dendrite.page.IDictionaryPageWriter writeEntry [entry]))
 
-(defprotocol IPageWriterImpl
-  (provisional-header [this])
-  (header [this]))
+(definterface IPageWriterImpl
+  (^dendrite.page.IPageHeader provisionalHeader [])
+  (^dendrite.page.IPageHeader header []))
 
-(defrecord DataPageWriter
+(deftype DataPageWriter
     [body-length-estimator
      ^IEncoder repetition-level-encoder
      ^IEncoder definition-level-encoder
      ^IEncoder data-encoder
      ^ICompressor data-compressor
-     finished?]
+     ^{:unsynchronized-mutable true :tag boolean} finished?]
   IDataPageWriter
-  (write! [this v]
+  (write [this v]
     (if repetition-level-encoder
       (doseq [^LeveledValue lv v]
         (let [v (.value lv)]
@@ -173,32 +180,28 @@
         (.encode data-encoder v)))
     this)
   IPageWriter
-  (num-values [_]
+  (numValues [_]
     (if definition-level-encoder
       (.numEncodedValues definition-level-encoder)
       (.numEncodedValues data-encoder)))
   IPageWriterImpl
-  (provisional-header [this]
-    (map->DataPageHeader
-     {:encoded-page-type (page-type->int :data)
-      :num-values (num-values this)
-      :repetition-levels-length (if repetition-level-encoder (.estimatedLength repetition-level-encoder) 0)
-      :definition-levels-length (if definition-level-encoder (.estimatedLength definition-level-encoder) 0)
-      :compressed-data-length (.estimatedLength data-encoder)
-      :uncompressed-data-length (.estimatedLength data-encoder)}))
+  (provisionalHeader [this]
+    (DataPageHeader. (page-type->int :data)
+                     (.numValues this)
+                     (if repetition-level-encoder (.estimatedLength repetition-level-encoder) 0)
+                     (if definition-level-encoder (.estimatedLength definition-level-encoder) 0)
+                     (.estimatedLength data-encoder)
+                     (.estimatedLength data-encoder)))
   (header [this]
-    (map->DataPageHeader
-     {:encoded-page-type (page-type->int :data)
-      :num-values (num-values this)
-      :repetition-levels-length (if repetition-level-encoder (.length repetition-level-encoder) 0)
-      :definition-levels-length (if definition-level-encoder (.length definition-level-encoder) 0)
-      :compressed-data-length (if data-compressor
-                                   (.length data-compressor)
-                                   (.length data-encoder))
-      :uncompressed-data-length (.length data-encoder)}))
+    (DataPageHeader. (page-type->int :data)
+                     (.numValues this)
+                     (if repetition-level-encoder (.length repetition-level-encoder) 0)
+                     (if definition-level-encoder (.length definition-level-encoder) 0)
+                     (if data-compressor (.length data-compressor) (.length data-encoder))
+                     (.length data-encoder)))
   IOutputBuffer
   (reset [_]
-    (reset! finished? false)
+    (set! finished? (boolean false))
     (when repetition-level-encoder
       (.reset repetition-level-encoder))
     (when definition-level-encoder
@@ -207,8 +210,8 @@
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (when-not @finished?
-      (let [estimated-body-length (-> this provisional-header body-length)]
+    (when-not finished?
+      (let [estimated-body-length (-> this .provisionalHeader .bodyLength)]
         (when repetition-level-encoder
           (.finish repetition-level-encoder))
         (when definition-level-encoder
@@ -217,18 +220,18 @@
         (when data-compressor
           (.compress data-compressor data-encoder))
         (estimation/update! body-length-estimator
-                            (-> this header body-length) estimated-body-length))
-      (reset! finished? true)))
+                            (-> this .header .bodyLength) estimated-body-length))
+      (set! finished? (boolean true))))
   (length [this]
-    (let [h (header this)]
-      (+ (header-length h) (body-length h))))
+    (let [h (.header this)]
+      (+ (.headerLength h) (.bodyLength h))))
   (estimatedLength [this]
-    (let [provisional-header (provisional-header this)]
-      (+ (header-length provisional-header)
-         (estimation/correct body-length-estimator (body-length provisional-header)))))
+    (let [provisional-header (.provisionalHeader this)]
+      (+ (.headerLength provisional-header)
+         (estimation/correct body-length-estimator (.bodyLength provisional-header)))))
   (writeTo [this mos]
     (.finish this)
-    (.writeTo ^IWriteable (header this) mos)
+    (.writeTo ^IWriteable (.header this) mos)
     (when repetition-level-encoder
       (.writeTo repetition-level-encoder mos))
     (when definition-level-encoder
@@ -237,104 +240,103 @@
       (.writeTo data-compressor mos)
       (.writeTo data-encoder mos))))
 
-(defn data-page-writer [max-repetition-level max-definition-level type-store value-type encoding compression]
-  (map->DataPageWriter
-     {:body-length-estimator (estimation/ratio-estimator)
-      :repetition-level-encoder (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
-      :definition-level-encoder (when (pos? max-definition-level) (levels-encoder max-definition-level))
-      :data-encoder (encoder type-store value-type encoding)
-      :data-compressor (compression/compressor compression)
-      :finished? (atom false)}))
+(defn data-page-writer
+  ^dendrite.page.DataPageWriter
+  [max-repetition-level max-definition-level type-store value-type encoding compression]
+  (DataPageWriter. (estimation/ratio-estimator)
+                   (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
+                   (when (pos? max-definition-level) (levels-encoder max-definition-level))
+                   (encoder type-store value-type encoding)
+                   (compression/compressor compression)
+                   false))
 
-(defrecord DictionaryPageWriter [body-length-estimator
-                                 ^IEncoder data-encoder
-                                 ^ICompressor data-compressor
-                                 finished?]
+(deftype DictionaryPageWriter [body-length-estimator
+                               ^IEncoder data-encoder
+                               ^ICompressor data-compressor
+                               ^{:unsynchronized-mutable true :tag boolean} finished?]
   IDictionaryPageWriter
-  (write-entry! [this v]
+  (writeEntry [this v]
     (.encode data-encoder v)
     this)
   IPageWriter
-  (num-values [_] (.numEncodedValues data-encoder))
+  (numValues [_] (.numEncodedValues data-encoder))
   IPageWriterImpl
-  (provisional-header [this]
-    (map->DictionaryPageHeader
-     {:encoded-page-type (page-type->int :dictionary)
-      :num-values (num-values this)
-      :compressed-data-length (.estimatedLength data-encoder)
-      :uncompressed-data-length (.estimatedLength data-encoder)}))
+  (provisionalHeader [this]
+    (DictionaryPageHeader. (page-type->int :dictionary)
+                           (.numValues this)
+                           (.estimatedLength data-encoder)
+                           (.estimatedLength data-encoder)))
   (header [this]
-    (map->DictionaryPageHeader
-     {:encoded-page-type (page-type->int :dictionary)
-      :num-values (num-values this)
-      :compressed-data-length (if data-compressor
-                                   (.length data-compressor)
-                                   (.length data-encoder))
-      :uncompressed-data-length (.length data-encoder)}))
+    (DictionaryPageHeader. (page-type->int :dictionary)
+                           (.numValues this)
+                           (if data-compressor (.length data-compressor) (.length data-encoder))
+                           (.length data-encoder)))
   IOutputBuffer
   (reset [_]
-    (reset! finished? false)
+    (set! finished? (boolean false))
     (.reset data-encoder)
     (when data-compressor
       (.reset data-compressor)))
   (finish [this]
-    (when-not @finished?
-      (let [estimated-body-length (-> this provisional-header body-length)]
+    (when-not finished?
+      (let [estimated-body-length (-> this .provisionalHeader .bodyLength)]
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
         (estimation/update! body-length-estimator
-                            (-> this header body-length) estimated-body-length))
-      (reset! finished? true)))
+                            (-> this .header .bodyLength) estimated-body-length))
+      (set! finished? (boolean true))))
   (length [this]
-    (let [h (header this)]
-      (+ (header-length h) (body-length h))))
+    (let [h (.header this)]
+      (+ (.headerLength h) (.bodyLength h))))
   (estimatedLength [this]
-    (let [provisional-header (provisional-header this)]
-      (+ (header-length provisional-header)
-         (estimation/correct body-length-estimator (body-length provisional-header)))))
+    (let [provisional-header (.provisionalHeader this)]
+      (+ (.headerLength provisional-header)
+         (estimation/correct body-length-estimator (.bodyLength provisional-header)))))
   (writeTo [this mos]
     (.finish this)
-    (.writeTo ^IWriteable (header this) mos)
+    (.writeTo ^IWriteable (.header this) mos)
     (if data-compressor
       (.writeTo data-compressor mos)
       (.writeTo data-encoder mos))))
 
-(defn dictionary-page-writer [type-store value-type encoding compression]
-  (map->DictionaryPageWriter
-   {:body-length-estimator (estimation/ratio-estimator)
-    :data-encoder (encoder type-store value-type encoding)
-    :data-compressor (compression/compressor compression)
-    :finished? (atom false)}))
+(defn dictionary-page-writer
+  ^dendrite.page.DictionaryPageWriter
+  [type-store value-type encoding compression]
+  (DictionaryPageWriter. (estimation/ratio-estimator)
+                         (encoder type-store value-type encoding)
+                         (compression/compressor compression)
+                         false))
 
-(defprotocol IDataPageReader
-  (read [_] [_ map-fn])
-  (skip [_]))
+(definterface IDataPageReader
+  (read [])
+  (read [map-fn])
+  (skip []))
 
-(defrecord DataPageReader [^ByteBuffer byte-buffer
-                           max-repetition-level
-                           max-definition-level
-                           data-decoder-ctor
-                           decompressor-ctor
-                           header]
+(deftype DataPageReader [^ByteBuffer byte-buffer
+                         ^long max-repetition-level
+                         ^long max-definition-level
+                         data-decoder-ctor
+                         decompressor-ctor
+                         ^DataPageHeader header]
   IDataPageReader
   (read [this]
-    (read this nil))
+    (.read this nil))
   (read [this map-fn]
-    (let [repetition-levels-decoder (when (has-repetition-levels? header)
+    (let [repetition-levels-decoder (when (.hasRepetitionLevels header)
                                       (-> byte-buffer
-                                          (utils/skip (byte-offset-repetition-levels header))
+                                          (utils/skip (.byteOffsetRepetitionLevels header))
                                           (levels-decoder max-repetition-level)))
-          definition-levels-decoder (when (has-definition-levels? header)
+          definition-levels-decoder (when (.hasDefinitionLevels header)
                                       (-> byte-buffer
-                                          (utils/skip (byte-offset-definition-levels header))
+                                          (utils/skip (.byteOffsetDefinitionLevels header))
                                           (levels-decoder max-definition-level)))
-          data-byte-buffer (utils/skip byte-buffer (byte-offset-body header))
+          data-byte-buffer (utils/skip byte-buffer (.byteOffsetBody header))
           data-byte-buffer (if-let [^IDecompressor decompressor (decompressor-ctor)]
                              (.decompress decompressor
                                           data-byte-buffer
-                                          (:compressed-data-length header)
-                                          (:uncompressed-data-length header))
+                                          (.compressed-data-length header)
+                                          (.uncompressed-data-length header))
                              data-byte-buffer)
           data-decoder (data-decoder-ctor data-byte-buffer)]
       (LeveledValues/read repetition-levels-decoder
@@ -343,20 +345,20 @@
                           max-definition-level
                           map-fn)))
   (skip [_]
-    (utils/skip byte-buffer (body-length header))))
+    (utils/skip byte-buffer (.bodyLength header))))
 
 (defn data-page-reader
+  ^dendrite.page.DataPageReader
   [^ByteBuffer byte-buffer max-repetition-level max-definition-level type-store value-type encoding
    compression]
   (let [bb (.duplicate byte-buffer)
         page-type (read-next-data-page-type bb)]
-    (map->DataPageReader
-     {:byte-buffer bb
-      :max-repetition-level max-repetition-level
-      :max-definition-level max-definition-level
-      :data-decoder-ctor (decoder-ctor type-store value-type encoding)
-      :decompressor-ctor (compression/decompressor-ctor compression)
-      :header (read-data-page-header bb page-type)})))
+    (DataPageReader. bb
+                     max-repetition-level
+                     max-definition-level
+                     (decoder-ctor type-store value-type encoding)
+                     (compression/decompressor-ctor compression)
+                     (read-data-page-header bb page-type))))
 
 (defn- data-page-readers
   [^ByteBuffer byte-buffer num-data-pages max-repetition-level max-definition-level type-store value-type
@@ -368,13 +370,13 @@
                                                      max-definition-level type-store value-type
                                                      encoding compression)]
          (cons next-data-page-reader
-               (data-page-readers (skip next-data-page-reader) (dec num-data-pages) max-repetition-level
+               (data-page-readers (.skip next-data-page-reader) (dec num-data-pages) max-repetition-level
                                   max-definition-level type-store value-type encoding compression)))))))
 
 (defn read-data-pages
   [^ByteBuffer byte-buffer num-data-pages max-repetition-level max-definition-level type-store value-type
    encoding compression map-fn]
-  (utils/pmap-1 #(read % map-fn)
+  (utils/pmap-1 #(.read ^DataPageReader % map-fn)
                 (data-page-readers byte-buffer num-data-pages max-repetition-level max-definition-level
                                    type-store value-type encoding compression)))
 
@@ -386,41 +388,42 @@
      (when (pos? num-data-pages)
        (let [page-type (read-next-data-page-type bb)
              next-header (read-data-page-header bb page-type)
-             next-byte-array-reader (utils/skip bb (body-length next-header))]
+             next-byte-array-reader (utils/skip bb (.bodyLength next-header))]
          (cons next-header (read-data-page-headers next-byte-array-reader (dec num-data-pages))))))))
 
-(defprotocol IDictionaryPageReader
-  (read-array [_] [_ map-fn]))
+(definterface IDictionaryPageReader
+  (readArray [])
+  (readArray [map-fn]))
 
-(defrecord DictionaryPageReader [^ByteBuffer byte-buffer
-                                 data-decoder-ctor
-                                 decompressor-ctor
-                                 header]
+(deftype DictionaryPageReader [^ByteBuffer byte-buffer
+                               data-decoder-ctor
+                               decompressor-ctor
+                               ^DictionaryPageHeader header]
   IDictionaryPageReader
-  (read-array [this]
-    (read-array this nil))
-  (read-array [_ map-fn]
-    (let [data-byte-buffer (utils/skip byte-buffer (byte-offset-body header))
+  (readArray [this]
+    (.readArray this nil))
+  (readArray [_ map-fn]
+    (let [data-byte-buffer (utils/skip byte-buffer (.byteOffsetBody header))
           data-byte-buffer (if-let [^IDecompressor decompressor (decompressor-ctor)]
                              (.decompress decompressor
                                           data-byte-buffer
-                                          (:compressed-data-length header)
-                                          (:uncompressed-data-length header))
+                                          (.compressed-data-length header)
+                                          (.uncompressed-data-length header))
                               data-byte-buffer)]
       (Dictionary/read (data-decoder-ctor data-byte-buffer) map-fn))))
 
 (defn dictionary-page-reader
+  ^dendrite.page.DictionaryPageReader
   [^ByteBuffer byte-buffer type-store value-type encoding compression]
   (let [bb (.duplicate byte-buffer)
         page-type (read-next-dictionary-page-type bb)]
-    (map->DictionaryPageReader
-     {:byte-buffer bb
-      :data-decoder-ctor (decoder-ctor type-store value-type encoding)
-      :decompressor-ctor (compression/decompressor-ctor compression)
-      :header (read-dictionary-page-header bb page-type)})))
+    (DictionaryPageReader. bb
+                           (decoder-ctor type-store value-type encoding)
+                           (compression/decompressor-ctor compression)
+                           (read-dictionary-page-header bb page-type))))
 
 (defn read-dictionary [^ByteBuffer byte-buffer type-store value-type encoding compression map-fn]
-  (read-array (dictionary-page-reader byte-buffer type-store value-type encoding compression) map-fn))
+  (.readArray (dictionary-page-reader byte-buffer type-store value-type encoding compression) map-fn))
 
 (defn read-dictionary-header [^ByteBuffer byte-buffer]
   (let [bb (.duplicate byte-buffer)

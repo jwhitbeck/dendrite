@@ -18,6 +18,7 @@
             [dendrite.stats :as stats]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java LeveledValue IOutputBuffer]
+           [dendrite.page IPageHeader]
            [java.util Date Calendar]
            [java.text SimpleDateFormat])
   (:refer-clojure :exclude [read]))
@@ -118,7 +119,7 @@
                   (->> (page/read-data-page-headers (:byte-buffer reader) num-data-pages)
                        rest                      ; the first page is always inaccurate
                        butlast                   ; the last page can have any length
-                       (map (comp :length page/stats))
+                       (map (comp :length #(.stats ^IPageHeader %)))
                        helpers/avg)))]
         (is (helpers/roughly 1024 (avg-page-length 1024)))
         (is (helpers/roughly 256 (avg-page-length 256)))))))

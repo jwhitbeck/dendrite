@@ -14,7 +14,7 @@
             [dendrite.leveled-value :as lv]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java MemoryOutputStream IOutputBuffer])
+  (:import [dendrite.java MemoryOutputStream])
   (:refer-clojure :exclude [read type]))
 
 (set! *warn-on-reflection* true)
@@ -24,49 +24,32 @@
    input-values & {:keys [map-fn]}]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
                                       helpers/default-type-store value-type encoding compression)
-        page-reader-ctor #(data-page-reader % max-repetition-level max-definition-level
-                                            helpers/default-type-store value-type encoding compression)]
-    (-> page-writer
-        (write! input-values)
-        helpers/output-buffer->byte-buffer
-        page-reader-ctor
-        (read map-fn)
-        utils/flatten-1)))
-
-(defn- write-values! [data-page-writer values]
-  (doseq [v values]
-    (write! data-page-writer v))
-  data-page-writer)
+        bb (helpers/output-buffer->byte-buffer (.write page-writer input-values))
+        page-reader (data-page-reader bb max-repetition-level max-definition-level
+                                      helpers/default-type-store value-type encoding compression)]
+    (utils/flatten-1 (.read page-reader map-fn))))
 
 (defn- write-read-single-non-repeated-data-page
   [{:keys [max-definition-level max-repetition-level]} value-type encoding compression
    input-values & {:keys [map-fn]}]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
-                                      helpers/default-type-store value-type encoding compression)
-        page-reader-ctor #(data-page-reader % max-repetition-level max-definition-level
-                                            helpers/default-type-store value-type encoding compression)]
-    (-> page-writer
-        (write-values! input-values)
-        helpers/output-buffer->byte-buffer
-        page-reader-ctor
-        (read map-fn))))
-
-(defn- write-entries! [dictionary-page-writer entries]
-  (doseq [entry entries]
-    (write-entry! dictionary-page-writer entry))
-  dictionary-page-writer)
+                                      helpers/default-type-store value-type encoding compression)]
+    (doseq [v input-values]
+      (.write page-writer v))
+    (let [bb (helpers/output-buffer->byte-buffer page-writer)
+          page-reader (data-page-reader bb max-repetition-level max-definition-level
+                                        helpers/default-type-store value-type encoding compression)]
+      (.read page-reader map-fn))))
 
 (defn- write-read-single-dictionary-page
   [value-type encoding compression input-values & {:keys [map-fn]}]
-  (let [page-writer (dictionary-page-writer helpers/default-type-store value-type encoding compression)
-        page-reader-ctor #(dictionary-page-reader % helpers/default-type-store
-                                                  value-type encoding compression)]
-    (-> page-writer
-        (write-entries! input-values)
-        helpers/output-buffer->byte-buffer
-        page-reader-ctor
-        (read-array map-fn)
-        seq)))
+  (let [page-writer (dictionary-page-writer helpers/default-type-store value-type encoding compression)]
+    (doseq [entry input-values]
+      (.writeEntry page-writer entry))
+    (let [bb (helpers/output-buffer->byte-buffer page-writer)
+          page-reader (dictionary-page-reader bb helpers/default-type-store
+                                              value-type encoding compression)]
+      (seq (.readArray page-reader map-fn)))))
 
 (deftest data-page
   (testing "write/read a data page"
@@ -112,11 +95,11 @@
     (testing "repeatable writes"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
-            ^IOutputBuffer output-buffer (doto (data-page-writer (:max-repetition-level spec)
-                                                                 (:max-definition-level spec)
-                                                                 helpers/default-type-store
-                                                                 :int :plain :none)
-                                           (write! input-values))
+            output-buffer (doto (data-page-writer (:max-repetition-level spec)
+                                                  (:max-definition-level spec)
+                                                  helpers/default-type-store
+                                                  :int :plain :none)
+                            (.write input-values))
             mos1 (MemoryOutputStream. 10)
             mos2 (MemoryOutputStream. 10)]
         (.writeTo output-buffer mos1)
@@ -128,13 +111,13 @@
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
             page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
                                               helpers/default-type-store :int :plain :none)
-                            (write! input-values))
+                            (.write input-values))
             page-reader (-> page-writer
                             helpers/output-buffer->byte-buffer
                             (data-page-reader (:max-repetition-level spec) (:max-definition-level spec)
                                               helpers/default-type-store
                                               :int :plain :none))]
-        (is (= (read page-reader) (read page-reader)))))
+        (is (= (.read page-reader) (.read page-reader)))))
     (testing "read seq is chunked"
       (let [spec {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
@@ -162,40 +145,42 @@
         (is (nil? output-values))))
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            ^IOutputBuffer output-buffer (doto (dictionary-page-writer helpers/default-type-store
-                                                                       :int :plain :none)
-                                           (write-entries! input-values))
-            mos1 (MemoryOutputStream. 10)
-            mos2 (MemoryOutputStream. 10)]
-        (.writeTo output-buffer mos1)
-        (.writeTo output-buffer mos2)
-        (is (= (-> mos1 helpers/output-buffer->byte-buffer .array seq)
-               (-> mos2 helpers/output-buffer->byte-buffer .array seq)))))
+            page-writer (dictionary-page-writer helpers/default-type-store :int :plain :none)]
+        (doseq [entry input-values]
+          (.writeEntry page-writer entry))
+        (let [mos1 (MemoryOutputStream. 10)
+              mos2 (MemoryOutputStream. 10)]
+          (.writeTo page-writer mos1)
+          (.writeTo page-writer mos2)
+          (is (= (-> mos1 helpers/output-buffer->byte-buffer .array seq)
+                 (-> mos2 helpers/output-buffer->byte-buffer .array seq))))))
     (testing "repeatable reads"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            page-writer (-> (dictionary-page-writer helpers/default-type-store :int :plain :none)
-                            (write-entries! input-values))
-            page-reader (-> page-writer
-                            helpers/output-buffer->byte-buffer
-                            (dictionary-page-reader helpers/default-type-store :int :plain :none))]
-        (is (every? true? (map = (read-array page-reader) (read-array page-reader))))))))
+            page-writer (dictionary-page-writer helpers/default-type-store :int :plain :none)]
+        (doseq [entry input-values]
+          (.writeEntry page-writer entry))
+        (let [page-reader (-> page-writer
+                              helpers/output-buffer->byte-buffer
+                              (dictionary-page-reader helpers/default-type-store :int :plain :none))]
+          (is (every? true? (map = (.readArray page-reader) (.readArray page-reader)))))))))
 
 (deftest incompatible-pages
   (testing "read incompatible page types throws an exception"
     (let [spec {:max-definition-level 1 :max-repetition-level 1}
           data-buffer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
                                                      helpers/default-type-store :int :plain :none)
-                          (write! (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100)))
+                          (.write (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100)))
                           helpers/output-buffer->byte-buffer)
-          dict-buffer (-> (dictionary-page-writer helpers/default-type-store :int :plain :none)
-                          (write-entries! (map int (range 100)))
-                          helpers/output-buffer->byte-buffer)]
-      (is (data-page-reader data-buffer 1 1 helpers/default-type-store :int :plain :none))
-      (is (thrown-with-msg?
-           IllegalArgumentException #":dictionary is not a supported data page type"
-           (data-page-reader dict-buffer (:max-repetition-level spec) (:max-definition-level spec)
-                             helpers/default-type-store :int :plain :none)))
-      (is (dictionary-page-reader dict-buffer helpers/default-type-store :int :plain :none))
-      (is (thrown-with-msg?
-           IllegalArgumentException #":data is not a supported dictionary page type"
-           (dictionary-page-reader data-buffer helpers/default-type-store :int :plain :none))))))
+          dict-writer (dictionary-page-writer helpers/default-type-store :int :plain :none)]
+      (doseq [entry (map int (range 100))]
+        (.writeEntry dict-writer entry))
+      (let [dict-buffer (helpers/output-buffer->byte-buffer dict-writer)]
+        (is (data-page-reader data-buffer 1 1 helpers/default-type-store :int :plain :none))
+        (is (thrown-with-msg?
+             IllegalArgumentException #":dictionary is not a supported data page type"
+             (data-page-reader dict-buffer (:max-repetition-level spec) (:max-definition-level spec)
+                               helpers/default-type-store :int :plain :none)))
+        (is (dictionary-page-reader dict-buffer helpers/default-type-store :int :plain :none))
+        (is (thrown-with-msg?
+             IllegalArgumentException #":data is not a supported dictionary page type"
+             (dictionary-page-reader data-buffer helpers/default-type-store :int :plain :none)))))))

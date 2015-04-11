@@ -17,7 +17,7 @@
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
   (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer]
-           [dendrite.page DataPageWriter DictionaryPageWriter]
+           [dendrite.page DataPageWriter DictionaryPageWriter IPageHeader]
            [java.nio ByteBuffer]
            [java.util HashMap])
   (:refer-clojure :exclude [read]))
@@ -51,20 +51,20 @@
                                   ^DataPageWriter page-writer]
   IColumnChunkWriter
   (write! [this v]
-    (when (>= (page/num-values page-writer) @next-num-values-for-page-length-check)
+    (when (>= (.numValues page-writer) @next-num-values-for-page-length-check)
       (let [estimated-page-length (.estimatedLength page-writer)]
         (if (>= estimated-page-length target-data-page-length)
           (flush-data-page-writer! this)
           (reset! next-num-values-for-page-length-check
-                  (estimation/next-threshold-check (page/num-values page-writer) estimated-page-length
+                  (estimation/next-threshold-check (.numValues page-writer) estimated-page-length
                                                    target-data-page-length)))))
     ;; Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are fully
     ;; realized when read, this can lead to memory issues when deserializng so we cap the total number of
     ;; values in a page here.
     (let [max-num-values-per-page target-data-page-length]
-      (when (>= (page/num-values page-writer) max-num-values-per-page)
+      (when (>= (.numValues page-writer) max-num-values-per-page)
         (flush-data-page-writer! this)))
-    (page/write! page-writer v)
+    (.write page-writer v)
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
@@ -76,10 +76,10 @@
     target-data-page-length)
   IDataColumnChunkWriter
   (flush-data-page-writer! [_]
-    (when (pos? (page/num-values page-writer))
+    (when (pos? (.numValues page-writer))
       (.writeTo page-writer memory-output-stream)
       (swap! num-pages inc)
-      (reset! next-num-values-for-page-length-check (int (/ (page/num-values page-writer) 2)))
+      (reset! next-num-values-for-page-length-check (int (/ (.numValues page-writer) 2)))
       (.reset page-writer)))
   IOutputBuffer
   (reset [_]
@@ -87,7 +87,7 @@
     (.reset memory-output-stream)
     (.reset page-writer))
   (finish [this]
-    (when (pos? (page/num-values page-writer))
+    (when (pos? (.numValues page-writer))
       (let [estimated-length (+ (.length memory-output-stream) (.estimatedLength page-writer))]
         (flush-data-page-writer! this)
         (estimation/update! length-estimator (.length this) estimated-length))))
@@ -153,7 +153,7 @@
       (or (.get reverse-dictionary k)
           (let [idx (.size reverse-dictionary)]
             (.put reverse-dictionary k idx)
-            (page/write-entry! dictionary-writer v)
+            (.writeEntry dictionary-writer v)
             idx))))
   IOutputBuffer
   (reset [_]
@@ -225,7 +225,7 @@
           i (or (.get reverse-dictionary k)
                 (let [idx (.size reverse-dictionary)]
                   (.put reverse-dictionary k idx)
-                  (page/write-entry! dictionary-writer v)
+                  (.writeEntry dictionary-writer v)
                   idx))]
       (.put index-frequencies i (inc (or (.get index-frequencies i) 0)))
       i))
@@ -245,7 +245,7 @@
                                  reverse
                                  (map vector (range))
                                  (reduce (fn [^ints a [oi di]] (do (aset a (int oi) (int di)) a))
-                                         (make-array Integer/TYPE (page/num-values dictionary-writer))))
+                                         (make-array Integer/TYPE (.numValues dictionary-writer))))
             ^objects dictionary-array (let [mos (MemoryOutputStream.)]
                                         (.writeTo dictionary-writer mos)
                                         (page/read-dictionary (.byteBuffer mos)
@@ -262,7 +262,7 @@
                                                   (object-array (alength dictionary-array))))]
         (.reset dictionary-writer)
         (doseq [e sorted-dictionnary-array]
-          (page/write-entry! dictionary-writer e))
+          (.writeEntry dictionary-writer e))
         (doseq [v (flat-read (writer->reader! buffer-column-chunk-writer type-store))]
           (if (pos? (:max-repetition-level column-spec))
             (->> v
@@ -313,7 +313,7 @@
 
 (defn stats [column-chunk-reader]
   (->> (page-headers column-chunk-reader)
-       (map page/stats)
+       (map #(.stats ^IPageHeader %))
        (stats/pages->column-chunk-stats (:column-spec column-chunk-reader))))
 
 (defrecord DataColumnChunkReader [^ByteBuffer byte-buffer
