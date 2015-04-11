@@ -35,18 +35,15 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
   private final static PersistentFixedKeysHashMap EMPTY =
     new PersistentFixedKeysHashMap(null, KeywordIndexHashMap.EMPTY, new Object[]{});
 
-
   private final KeywordIndexHashMap hm;
   private final Object[] ovs;
   private final int cnt;
-  private final Keyword[] kws;
   private final IPersistentMap _meta;
 
   PersistentFixedKeysHashMap(final IPersistentMap meta, final KeywordIndexHashMap hashMap,
                              final Object[] orderedValues) {
     hm = hashMap;
     ovs = orderedValues;
-    kws = hm.kws;
     _meta = meta;
     int c = 0;
     for (int i=0; i<ovs.length; ++i) {
@@ -93,7 +90,7 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
         if (ovs[i] == UNDEFINED) {
           return null;
         }
-        return new MapEntry(kws[i], ovs[i]);
+        return new MapEntry(hm.kws[i], ovs[i]);
       }
       return null;
     }
@@ -122,7 +119,7 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
   @Override
   public ISeq seq() {
     if (cnt > 0) {
-      return new Seq(kws, ovs, cnt, 0, 0);
+      return new Seq(hm.kws, ovs, cnt, 0, 0);
     }
     return null;
   }
@@ -163,7 +160,7 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
         while (ovs [i] == UNDEFINED) {
           i += 1;
         }
-        MapEntry me = new MapEntry(kws[i], ovs[i]);
+        MapEntry me = new MapEntry(hm.kws[i], ovs[i]);
         i += 1;
         c += 1;
         return me;
@@ -191,7 +188,6 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
     public PersistentFixedKeysHashMap create(Object [] orderedValues) {
       return new PersistentFixedKeysHashMap(null, hm, orderedValues);
     }
-
   }
 
   public final static class KeywordIndexHashMap {
@@ -316,5 +312,4 @@ public class PersistentFixedKeysHashMap extends APersistentMap {
       return new Seq(meta, kws, ovs, cnt, i, c);
     }
   }
-
 }
