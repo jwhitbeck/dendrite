@@ -24,7 +24,7 @@
    input-values & {:keys [map-fn]}]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
                                       helpers/default-type-store value-type encoding compression)
-        bb (helpers/output-buffer->byte-buffer (.write page-writer input-values))
+        bb (helpers/output-buffer->byte-buffer (.write page-writer [input-values]))
         page-reader (data-page-reader bb max-repetition-level max-definition-level
                                       helpers/default-type-store value-type encoding compression)]
     (utils/flatten-1 (.read page-reader map-fn))))
@@ -33,13 +33,11 @@
   [{:keys [max-definition-level max-repetition-level]} value-type encoding compression
    input-values & {:keys [map-fn]}]
   (let [page-writer (data-page-writer max-repetition-level max-definition-level
+                                      helpers/default-type-store value-type encoding compression)
+        bb (helpers/output-buffer->byte-buffer (.write page-writer input-values))
+        page-reader (data-page-reader bb max-repetition-level max-definition-level
                                       helpers/default-type-store value-type encoding compression)]
-    (doseq [v input-values]
-      (.write page-writer v))
-    (let [bb (helpers/output-buffer->byte-buffer page-writer)
-          page-reader (data-page-reader bb max-repetition-level max-definition-level
-                                        helpers/default-type-store value-type encoding compression)]
-      (.read page-reader map-fn))))
+    (.read page-reader map-fn)))
 
 (defn- write-read-single-dictionary-page
   [value-type encoding compression input-values & {:keys [map-fn]}]
@@ -99,7 +97,7 @@
                                                   (:max-definition-level spec)
                                                   helpers/default-type-store
                                                   :int :plain :none)
-                            (.write input-values))
+                            (.write [input-values]))
             mos1 (MemoryOutputStream. 10)
             mos2 (MemoryOutputStream. 10)]
         (.writeTo output-buffer mos1)
@@ -111,7 +109,7 @@
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 1000))
             page-writer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
                                               helpers/default-type-store :int :plain :none)
-                            (.write input-values))
+                            (.write [input-values]))
             page-reader (-> page-writer
                             helpers/output-buffer->byte-buffer
                             (data-page-reader (:max-repetition-level spec) (:max-definition-level spec)
@@ -169,7 +167,7 @@
     (let [spec {:max-definition-level 1 :max-repetition-level 1}
           data-buffer (-> (data-page-writer (:max-repetition-level spec) (:max-definition-level spec)
                                                      helpers/default-type-store :int :plain :none)
-                          (.write (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100)))
+                          (.write (->> (repeatedly helpers/rand-int) (helpers/leveled spec) (take 100) vector))
                           helpers/output-buffer->byte-buffer)
           dict-writer (dictionary-page-writer helpers/default-type-store :int :plain :none)]
       (doseq [entry (map int (range 100))]

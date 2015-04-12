@@ -148,7 +148,7 @@
   (^long numValues []))
 
 (definterface IDataPageWriter
-  (^dendrite.page.IDataPageWriter write [values]))
+  (^dendrite.page.IDataPageWriter write [striped-values]))
 
 (definterface IDictionaryPageWriter
   (^dendrite.page.IDictionaryPageWriter writeEntry [entry]))
@@ -163,28 +163,31 @@
      ^IEncoder definition-level-encoder
      ^IEncoder data-encoder
      ^ICompressor data-compressor
-     ^{:unsynchronized-mutable true :tag boolean} finished?]
+     ^{:unsynchronized-mutable true :tag boolean} finished?
+     ^{:unsynchronized-mutable true :tag long} num-stripes]
   IDataPageWriter
-  (write [this v]
+  (write [this striped-values]
     (if repetition-level-encoder
-      (doseq [^LeveledValue lv v]
+      (doseq [repeated-values striped-values
+              ^LeveledValue lv repeated-values]
         (let [v (.value lv)]
           (when-not (nil? v)
             (.encode data-encoder v)))
         (.encode repetition-level-encoder (.repetitionLevel lv))
         (.encode definition-level-encoder (.definitionLevel lv)))
       (if definition-level-encoder
-        (if (nil? v)
-          (.encode definition-level-encoder (int 0))
-          (do (.encode definition-level-encoder (int 1))
-              (.encode data-encoder v)))
-        (.encode data-encoder v)))
+        (doseq [v striped-values]
+          (if (nil? v)
+            (.encode definition-level-encoder (int 0))
+            (do (.encode definition-level-encoder (int 1))
+                (.encode data-encoder v))))
+        (doseq [v striped-values]
+          (.encode data-encoder v))))
+    (set! num-stripes (+ num-stripes (count striped-values)))
     this)
   IPageWriter
   (numValues [_]
-    (if definition-level-encoder
-      (.numEncodedValues definition-level-encoder)
-      (.numEncodedValues data-encoder)))
+    num-stripes)
   IPageWriterImpl
   (provisionalHeader [this]
     (DataPageHeader. (page-type->int :data)
@@ -203,6 +206,7 @@
   IOutputBuffer
   (reset [_]
     (set! finished? (boolean false))
+    (set! num-stripes 0)
     (when repetition-level-encoder
       (.reset repetition-level-encoder))
     (when definition-level-encoder
@@ -248,7 +252,8 @@
                    (when (pos? max-definition-level) (levels-encoder max-definition-level))
                    (encoder type-store value-type encoding)
                    (compression/compressor compression)
-                   false))
+                   false
+                   0))
 
 (deftype DictionaryPageWriter [^Estimator body-length-estimator
                                ^IEncoder data-encoder
