@@ -36,13 +36,12 @@
        (apply map vector)))
 
 (deftest dremel-write-read
-  (let [w (doto ^IOutputBuffer (writer target-data-page-length
-                                       helpers/default-type-store
-                                       (schema/column-specs dremel-paper-schema))
-            (write! dremel-paper-record1-striped)
-            (write! dremel-paper-record2-striped)
+  (let [w (doto (writer target-data-page-length
+                        helpers/default-type-store
+                        (schema/column-specs dremel-paper-schema))
+            (.write (map vector dremel-paper-record1-striped dremel-paper-record2-striped))
             .finish)
-        record-group-metadata (metadata w)
+        record-group-metadata (.metadata w)
         bb (helpers/output-buffer->byte-buffer w)]
     (testing "full schema"
       (is (= [dremel-paper-record1-striped dremel-paper-record2-striped]
@@ -67,12 +66,13 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema helpers/default-type-store nil) records)
-        w (doto ^IOutputBuffer (writer target-data-page-length
-                                       helpers/default-type-store
-                                       (schema/column-specs test-schema))
-            (#(reduce write! % striped-records))
+        record-stripes (apply map vector striped-records)
+        w (doto (writer target-data-page-length
+                        helpers/default-type-store
+                        (schema/column-specs test-schema))
+            (.write record-stripes)
             .finish)
-        record-group-metadata (metadata w)
+        record-group-metadata (.metadata w)
         bb (helpers/output-buffer->byte-buffer w)
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (testing "full schema"
@@ -89,17 +89,18 @@
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
         records (take 1000 (helpers/rand-test-records))
         striped-records (map (striping/stripe-fn test-schema nil helpers/default-type-store) records)
-        w (doto ^IOutputBuffer (writer target-data-page-length
-                                       helpers/default-type-store
-                                       (schema/column-specs test-schema))
-            (#(reduce write! % striped-records))
+        record-stripes (apply map vector striped-records)
+        w (doto (writer target-data-page-length
+                        helpers/default-type-store
+                        (schema/column-specs test-schema))
+            (.write record-stripes)
             .finish)
-        record-group-metadata (metadata w)
+        record-group-metadata (.metadata w)
         tmp-file "target/tmp_file"
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (with-open [f (utils/file-channel tmp-file :write)]
-      (flush-to-file-channel! w f)
-      (await-io-completion w))
+      (.flushToFileChannel w f)
+      (.awaitIOCompletion w))
     (testing "full schema"
       (is (= striped-records
              (with-open [f (utils/file-channel tmp-file :read)]
