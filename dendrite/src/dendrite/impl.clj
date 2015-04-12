@@ -13,13 +13,13 @@
             [dendrite.assembly :as assembly]
             [dendrite.striping :as striping]
             [dendrite.encoding :as encoding]
-            [dendrite.estimation :as estimation]
             [dendrite.metadata :as metadata]
             [dendrite.record-group :as record-group]
             [dendrite.schema :as schema]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java Bytes IOutputBuffer MemoryOutputStream StripedRecordBundleSeq StripedRecordBundle]
+  (:import [dendrite.java Bytes Estimator IOutputBuffer MemoryOutputStream StripedRecordBundleSeq
+            StripedRecordBundle]
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -240,9 +240,9 @@
           (if (and optimize? (not optimized?))
             (let [^IOutputBuffer optimized-rg-writer
                   (record-group/optimize! rg-writer compression-threshold-map)]
-              (recur (estimation/next-threshold-check (record-group/num-records optimized-rg-writer)
-                                                      (.estimatedLength optimized-rg-writer)
-                                                      target-record-group-length)
+              (recur (Estimator/nextCheckThreshold (record-group/num-records optimized-rg-writer)
+                                                   (.estimatedLength optimized-rg-writer)
+                                                   target-record-group-length)
                      record-groups-metadata
                      true
                      optimized-rg-writer
@@ -254,9 +254,9 @@
                      optimized?
                      rg-writer
                      striped-recs)))
-          (recur (estimation/next-threshold-check (record-group/num-records rg-writer)
-                                                  estimated-length
-                                                  target-record-group-length)
+          (recur (Estimator/nextCheckThreshold (record-group/num-records rg-writer)
+                                               estimated-length
+                                               target-record-group-length)
                  record-groups-metadata
                  optimized?
                  rg-writer

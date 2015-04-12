@@ -9,14 +9,13 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.column-chunk
-  (:require [dendrite.estimation :as estimation]
-            [dendrite.encoding :as encoding]
+  (:require [dendrite.encoding :as encoding]
             [dendrite.leveled-value :as lv]
             [dendrite.metadata :as metadata]
             [dendrite.page :as page]
             [dendrite.stats :as stats]
             [dendrite.utils :as utils])
-  (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer]
+  (:import [dendrite.java Estimator LeveledValue MemoryOutputStream IOutputBuffer]
            [dendrite.page DataPageWriter DictionaryPageWriter IPageHeader]
            [java.nio ByteBuffer]
            [java.util HashMap])
@@ -45,7 +44,7 @@
 (defrecord DataColumnChunkWriter [next-num-values-for-page-length-check
                                   num-pages
                                   target-data-page-length
-                                  length-estimator
+                                  ^Estimator length-estimator
                                   column-spec
                                   ^MemoryOutputStream memory-output-stream
                                   ^DataPageWriter page-writer]
@@ -56,8 +55,8 @@
         (if (>= estimated-page-length target-data-page-length)
           (flush-data-page-writer! this)
           (reset! next-num-values-for-page-length-check
-                  (estimation/next-threshold-check (.numValues page-writer) estimated-page-length
-                                                   target-data-page-length)))))
+                  (Estimator/nextCheckThreshold (.numValues page-writer) estimated-page-length
+                                                target-data-page-length)))))
     ;; Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are fully
     ;; realized when read, this can lead to memory issues when deserializng so we cap the total number of
     ;; values in a page here.
@@ -90,11 +89,11 @@
     (when (pos? (.numValues page-writer))
       (let [estimated-length (+ (.length memory-output-stream) (.estimatedLength page-writer))]
         (flush-data-page-writer! this)
-        (estimation/update! length-estimator (.length this) estimated-length))))
+        (.update length-estimator (.length this) estimated-length))))
   (length [_]
     (.length memory-output-stream))
   (estimatedLength [this]
-    (estimation/correct length-estimator (+ (.length memory-output-stream) (.estimatedLength page-writer))))
+    (.correct length-estimator (+ (.length memory-output-stream) (.estimatedLength page-writer))))
   (writeTo [this mos]
     (.finish this)
     (.writeTo memory-output-stream mos)))
@@ -105,7 +104,7 @@
      {:next-num-values-for-page-length-check (atom 10)
       :num-pages (atom 0)
       :target-data-page-length target-data-page-length
-      :length-estimator (estimation/ratio-estimator)
+      :length-estimator (Estimator.)
       :memory-output-stream (MemoryOutputStream.)
       :column-spec column-spec
       :page-writer (page/data-page-writer max-repetition-level max-definition-level type-store type

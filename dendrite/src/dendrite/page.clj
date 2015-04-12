@@ -11,11 +11,10 @@
 (ns dendrite.page
   (:require [dendrite.compression :as compression]
             [dendrite.encoding :refer [levels-encoder levels-decoder encoder decoder-ctor]]
-            [dendrite.estimation :as estimation]
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum] :as utils])
-  (:import [dendrite.java Bytes ICompressor IDecompressor Dictionary IEncoder LeveledValue LeveledValues
-            MemoryOutputStream IOutputBuffer IWriteable]
+  (:import [dendrite.java Bytes Estimator ICompressor IDecompressor Dictionary IEncoder
+            LeveledValue LeveledValues MemoryOutputStream IOutputBuffer IWriteable]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -157,7 +156,7 @@
   (^dendrite.page.IPageHeader header []))
 
 (deftype DataPageWriter
-    [body-length-estimator
+    [^Estimator body-length-estimator
      ^IEncoder repetition-level-encoder
      ^IEncoder definition-level-encoder
      ^IEncoder data-encoder
@@ -219,8 +218,7 @@
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
-        (estimation/update! body-length-estimator
-                            (-> this .header .bodyLength) estimated-body-length))
+        (.update body-length-estimator (-> this .header .bodyLength) estimated-body-length))
       (set! finished? (boolean true))))
   (length [this]
     (let [h (.header this)]
@@ -228,7 +226,7 @@
   (estimatedLength [this]
     (let [provisional-header (.provisionalHeader this)]
       (+ (.headerLength provisional-header)
-         (estimation/correct body-length-estimator (.bodyLength provisional-header)))))
+         (.correct body-length-estimator (.bodyLength provisional-header)))))
   (writeTo [this mos]
     (.finish this)
     (.writeTo ^IWriteable (.header this) mos)
@@ -243,14 +241,14 @@
 (defn data-page-writer
   ^dendrite.page.DataPageWriter
   [max-repetition-level max-definition-level type-store value-type encoding compression]
-  (DataPageWriter. (estimation/ratio-estimator)
+  (DataPageWriter. (Estimator.)
                    (when (pos? max-repetition-level) (levels-encoder max-repetition-level))
                    (when (pos? max-definition-level) (levels-encoder max-definition-level))
                    (encoder type-store value-type encoding)
                    (compression/compressor compression)
                    false))
 
-(deftype DictionaryPageWriter [body-length-estimator
+(deftype DictionaryPageWriter [^Estimator body-length-estimator
                                ^IEncoder data-encoder
                                ^ICompressor data-compressor
                                ^{:unsynchronized-mutable true :tag boolean} finished?]
@@ -283,8 +281,7 @@
         (.finish data-encoder)
         (when data-compressor
           (.compress data-compressor data-encoder))
-        (estimation/update! body-length-estimator
-                            (-> this .header .bodyLength) estimated-body-length))
+        (.update body-length-estimator (-> this .header .bodyLength) estimated-body-length))
       (set! finished? (boolean true))))
   (length [this]
     (let [h (.header this)]
@@ -292,7 +289,7 @@
   (estimatedLength [this]
     (let [provisional-header (.provisionalHeader this)]
       (+ (.headerLength provisional-header)
-         (estimation/correct body-length-estimator (.bodyLength provisional-header)))))
+         (.correct body-length-estimator (.bodyLength provisional-header)))))
   (writeTo [this mos]
     (.finish this)
     (.writeTo ^IWriteable (.header this) mos)
@@ -303,7 +300,7 @@
 (defn dictionary-page-writer
   ^dendrite.page.DictionaryPageWriter
   [type-store value-type encoding compression]
-  (DictionaryPageWriter. (estimation/ratio-estimator)
+  (DictionaryPageWriter. (Estimator.)
                          (encoder type-store value-type encoding)
                          (compression/compressor compression)
                          false))
