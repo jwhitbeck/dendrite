@@ -64,7 +64,7 @@
         (if (instance? Exception ret)
           (throw ret)))))
   (column-specs [_]
-    (map :column-spec column-chunk-writers))
+    (map column-chunk/column-spec column-chunk-writers))
   IOutputBuffer
   (reset [_]
     (reset! num-records 0)
@@ -143,5 +143,5 @@
                  (sort-by #(.estimatedLength ^IOutputBuffer %))
                  reverse
                  (utils/upmap #(column-chunk/optimize! % type-store compression-threshold-map))
-                 (sort-by (comp :column-index :column-spec)))]
+                 (sort-by (comp :column-index column-chunk/column-spec)))]
       (assoc record-group-writer :column-chunk-writers optimized-column-chunk-writers))))

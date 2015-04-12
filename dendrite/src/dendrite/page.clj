@@ -46,6 +46,8 @@
   (^long byteOffsetBody [])
   (stats []))
 
+(defn stats [^IPageHeader header] (.stats header))
+
 (definterface IDataPageHeader
   (^boolean hasRepetitionLevels [])
   (^boolean hasDefinitionLevels [])
