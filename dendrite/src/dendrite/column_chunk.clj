@@ -24,7 +24,7 @@
 (set! *warn-on-reflection* true)
 
 (definterface IColumnChunkWriter
-  (write [leveled-values])
+  (write [striped-values])
   (metadata [])
   (columnSpec [])
   (^long targetDataPageLength []))
@@ -61,21 +61,25 @@
      ^MemoryOutputStream memory-output-stream
      ^DataPageWriter page-writer]
   IColumnChunkWriter
-  (write [this v]
-    (when (>= (.numValues page-writer) next-num-values-for-page-length-check)
-      (let [estimated-page-length (.estimatedLength page-writer)]
-        (if (>= estimated-page-length target-data-page-length)
-          (.flushDataPageWriter this)
-          (set! next-num-values-for-page-length-check
-                (Estimator/nextCheckThreshold (.numValues page-writer) estimated-page-length
-                                              target-data-page-length)))))
+  (write [this striped-values]
     ;; Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are fully
     ;; realized when read, this can lead to memory issues when deserializng so we cap the total number of
     ;; values in a page here.
     (let [max-num-values-per-page target-data-page-length]
       (when (>= (.numValues page-writer) max-num-values-per-page)
         (.flushDataPageWriter this)))
-    (.write page-writer v)
+    (let [num-values-before-next-check (- next-num-values-for-page-length-check (.numValues page-writer))]
+      (if (>= num-values-before-next-check (count striped-values))
+        (.write page-writer striped-values)
+        (let [[current-batch next-batch] (split-at num-values-before-next-check striped-values)]
+          (.write page-writer current-batch)
+          (let [estimated-page-length (.estimatedLength page-writer)]
+            (if (>= estimated-page-length target-data-page-length)
+              (.flushDataPageWriter this)
+              (set! next-num-values-for-page-length-check
+                    (Estimator/nextCheckThreshold (.numValues page-writer) estimated-page-length
+                                                  target-data-page-length))))
+          (.write this next-batch))))
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
@@ -139,16 +143,17 @@
                                       ^DataColumnChunkWriter data-column-chunk-writer
                                       column-spec]
   IColumnChunkWriter
-  (write [this v]
+  (write [this striped-values]
     (if (pos? (:max-repetition-level column-spec))
-      (->> v
-           (map (fn [^LeveledValue leveled-value]
-                  (let [v (.value leveled-value)]
-                    (if (nil? v)
-                      leveled-value
-                      (.assoc leveled-value (.valueIndex this v))))))
-           (.write data-column-chunk-writer))
-      (.write data-column-chunk-writer (when-not (nil? v) (.valueIndex this v))))
+      (.write data-column-chunk-writer (map (fn [striped-value]
+                                              (map (fn [^LeveledValue leveled-value]
+                                                     (let [v (.value leveled-value)]
+                                                       (if (nil? v)
+                                                         leveled-value
+                                                         (.assoc leveled-value (.valueIndex this v)))))
+                                                   striped-value))
+                                            striped-values))
+      (.write data-column-chunk-writer (map (fn [v] (when-not (nil? v) (.valueIndex this v))) striped-values)))
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
@@ -211,16 +216,18 @@
                                      type-store
                                      ^{:unsynchronized-mutable true :tag boolean} finished?]
   IColumnChunkWriter
-  (write [this v]
+  (write [this striped-values]
     (if (pos? (:max-repetition-level column-spec))
-      (->> v
-           (map (fn [^LeveledValue leveled-value]
-                  (let [v (.value leveled-value)]
-                    (if (nil? v)
-                      leveled-value
-                      (.assoc leveled-value (.valueIndex this v))))))
-           (.write buffer-column-chunk-writer))
-      (.write buffer-column-chunk-writer (when-not (nil? v) (.valueIndex this v))))
+      (.write buffer-column-chunk-writer (map (fn [striped-value]
+                                                (map (fn [^LeveledValue leveled-value]
+                                                       (let [v (.value leveled-value)]
+                                                         (if (nil? v)
+                                                           leveled-value
+                                                           (.assoc leveled-value (.valueIndex this v)))))
+                                                     striped-value))
+                                              striped-values))
+      (.write buffer-column-chunk-writer
+              (map (fn [v] (when-not (nil? v) (.valueIndex this v))) striped-values)))
     this)
   (metadata [this]
     (metadata/map->ColumnChunkMetadata {:length (.length this)
@@ -275,16 +282,18 @@
         (.reset dictionary-writer)
         (doseq [e sorted-dictionnary-array]
           (.writeEntry dictionary-writer e))
-        (doseq [v (flat-read (writer->reader! buffer-column-chunk-writer type-store))]
+        (let [striped-values (flat-read (writer->reader! buffer-column-chunk-writer type-store))]
           (if (pos? (:max-repetition-level column-spec))
-            (->> v
-                 (map (fn [^LeveledValue leveled-value]
-                        (let [oi (.value leveled-value)]
-                          (if (nil? oi)
-                            leveled-value
-                            (.assoc leveled-value (aget index-map oi))))))
-                 (.write data-column-chunk-writer))
-            (.write data-column-chunk-writer (when-not (nil? v) (aget index-map v))))))
+            (.write data-column-chunk-writer (map (fn [striped-value]
+                                                    (map (fn [^LeveledValue leveled-value]
+                                                           (let [oi (.value leveled-value)]
+                                                             (if (nil? oi)
+                                                               leveled-value
+                                                               (.assoc leveled-value (aget index-map oi)))))
+                                                         striped-value))
+                                                  striped-values))
+            (.write data-column-chunk-writer
+                    (map (fn [v] (when-not (nil? v) (aget index-map v))) striped-values)))))
       (set! finished? (boolean true)))
     (.finish dictionary-writer)
     (.finish data-column-chunk-writer))
@@ -396,9 +405,8 @@
     (DataColumnChunkReader. byte-buffer column-chunk-metadata type-store column-spec)))
 
 (defn- compute-length-for-column-spec [column-chunk-reader new-colum-spec target-data-page-length type-store]
-  (let [^IColumnChunkWriter  w (writer target-data-page-length type-store new-colum-spec)]
-    (doseq [lv (flat-read column-chunk-reader)]
-      (.write w lv))
+  (let [w (writer target-data-page-length type-store new-colum-spec)]
+    (.write w (flat-read column-chunk-reader))
     (.finish ^IOutputBuffer w)
     (if (and (#{:dictionary :frequency} (:encoding new-colum-spec))
              (> (-> w .metadata :data-page-offset) target-data-page-length))
@@ -477,6 +485,5 @@
                                    column-type)
         derived-type-rdr (assoc-in base-type-rdr [:column-spec :type] column-type)
         new-colum-chunk-writer (writer target-data-page-length type-store optimal-column-spec)]
-    (doseq [v (flat-read derived-type-rdr)]
-      (.write new-colum-chunk-writer v))
+    (.write new-colum-chunk-writer (flat-read derived-type-rdr))
     new-colum-chunk-writer))

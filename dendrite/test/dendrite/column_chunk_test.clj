@@ -28,17 +28,13 @@
 
 (def test-target-data-page-length 1000)
 
-(defn write-blocks! [^IColumnChunkWriter column-chunk-writer blocks]
-  (doseq [block blocks]
-    (.write column-chunk-writer block)))
-
 (defn write-column-chunk-and-get-reader
   (^IColumnChunkReader [column-spec input-blocks]
      (write-column-chunk-and-get-reader column-spec test-target-data-page-length
                                         helpers/default-type-store input-blocks))
   (^IColumnChunkReader [column-spec target-data-page-length type-store input-blocks]
    (let [w (writer target-data-page-length type-store column-spec)]
-     (write-blocks! w input-blocks)
+     (.write w input-blocks)
      (reader (helpers/output-buffer->byte-buffer w) (.metadata w) type-store column-spec))))
 
 (def ^SimpleDateFormat simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
@@ -103,8 +99,8 @@
           (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                  (->> mapped-reader .read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
-        (write-blocks! w input-blocks)
+      (let [w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (.write w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
           (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
@@ -138,8 +134,8 @@
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
                (->> mapped-reader .read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
-        (write-blocks! w input-blocks)
+      (let [w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (.write w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
           (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
@@ -159,10 +155,10 @@
       (let [map-fn (partial * 2)
             mapped-reader (write-column-chunk-and-get-reader (assoc cs :map-fn map-fn) input-blocks)]
         (is (= (->> input-blocks flatten (map #(some-> (.value ^LeveledValue %) map-fn)))
-               (->> mapped-reader flat-read flatten (map #(.value ^LeveledValue %)))))))
+               (->> mapped-reader .read flatten (map #(.value ^LeveledValue %)))))))
     (testing "repeatable writes"
-      (let [^IOutputBuffer w (writer test-target-data-page-length helpers/default-type-store cs)]
-        (write-blocks! w input-blocks)
+      (let [w (writer test-target-data-page-length helpers/default-type-store cs)]
+        (.write w input-blocks)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
           (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
@@ -451,8 +447,7 @@
   (let [cs (colspec-required :string :plain :none)
         input-blocks (->> #(rand-nth ["foo" "bar" "baz"]) repeatedly (take 1000))
         w (writer test-target-data-page-length helpers/default-type-store cs)]
-    (doseq [block input-blocks]
-      (.write w block))
+    (.write w input-blocks)
     (let [optimized-w (optimize! w helpers/default-type-store {:lz4 1.2 :deflate 2})]
       (is (= {:type :string :encoding :dictionary :compression :none}
              (-> optimized-w column-spec (select-keys [:type :encoding :compression]))))
