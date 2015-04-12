@@ -20,7 +20,7 @@
 (set! *warn-on-reflection* true)
 
 (defn assemble [leveled-values query]
-  ((assemble-fn query) (into-array Object leveled-values)))
+  ((assemble-fn query) (object-array leveled-values)))
 
 (deftest dremel-paper
   (testing "full schema"
@@ -61,7 +61,7 @@
                                  (schema/apply-query test-schema '_ default-type-store true {})))))
   (testing "queries"
     (are [answer query column-indices]
-      (let [stripes (mapv (partial aget (.array test-record-striped)) column-indices)]
+      (let [stripes (mapv (partial aget test-record-striped) column-indices)]
         (= answer (assemble stripes (schema/apply-query test-schema query default-type-store true {}))))
       {:docid 10} {:docid '_} [0]
       {:links {:backward (list 1 2 3) :forward [4 5]}} {:links '_} [1 2]
@@ -72,7 +72,7 @@
 (deftest tagging
   (testing "repeated value"
     (let [query {:links {:backward (schema/tag 'foo '_)}}
-          stripes (mapv (partial aget (.array test-record-striped)) [1])]
+          stripes (mapv (partial aget test-record-striped) [1])]
       (are [answer reader-fn]
         (= answer (assemble stripes
                             (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
@@ -80,7 +80,7 @@
         {:links {:backward ["1" "2" "3"]}} (partial map str))))
   (testing "non-repeated record"
     (let [query {:links (schema/tag 'foo '_)}
-          stripes (mapv (partial aget (.array test-record-striped)) [1 2])]
+          stripes (mapv (partial aget test-record-striped) [1 2])]
       (are [answer reader-fn]
         (= answer (assemble stripes
                             (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
@@ -88,7 +88,7 @@
         {:links 2} (comp count keys))))
   (testing "repeated record"
     (let [query {:name (schema/tag 'foo '_)}
-          stripes (mapv (partial aget (.array test-record-striped)) [3 4 5])]
+          stripes (mapv (partial aget test-record-striped) [3 4 5])]
       (are [answer reader-fn]
         (= answer (assemble stripes
                             (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))
@@ -96,7 +96,7 @@
         {:name [nil]} (partial take 1))))
   (testing "map"
     (let [query {:meta (schema/tag 'foo '_)}
-          stripes (mapv (partial aget (.array test-record-striped)) [6 7])]
+          stripes (mapv (partial aget test-record-striped) [6 7])]
       (are [answer reader-fn]
         (= answer (assemble stripes
                             (schema/apply-query test-schema query default-type-store true {'foo reader-fn})))

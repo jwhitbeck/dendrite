@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (defn stripe-record [record schema]
-  ((stripe-fn schema helpers/default-type-store nil) record))
+  (seq ((stripe-fn schema helpers/default-type-store nil) record)))
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"

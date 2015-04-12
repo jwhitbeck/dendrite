@@ -186,7 +186,7 @@
                  (try
                    (do
                      (sf* sa record false 0 0)
-                     (seq (persist-striped-array! sa)))
+                     (persist-striped-array! sa))
                    (catch Exception e
                      (throw (IllegalArgumentException. (format "Failed to stripe record '%s'" record) e)))))))]
     (if err-handler
