@@ -53,7 +53,11 @@
                          "key2" "value2"}
                   :keywords #{"lorem" "ipsum"}})
 
-(def ^clojure.lang.ArraySeq test-record-striped ((stripe-fn test-schema default-type-store nil) test-record))
+(def test-record-striped
+  (let [n (count (schema/column-specs test-schema))
+        a (object-array n)]
+    ((stripe-fn test-schema default-type-store nil) test-record a)
+    a))
 
 (deftest repetition-types
   (testing "full schema"

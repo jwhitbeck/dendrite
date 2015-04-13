@@ -13,9 +13,17 @@
             [dendrite.utils :as utils]
             [dendrite.test-helpers :as helpers])
   (:import [clojure.lang ISeq]
-           [dendrite.java StripedRecordBundle StripedRecordBundleSeq]))
+           [dendrite.java StripedRecordBundle StripedRecordBundleSeq]
+           [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
+
+(deftest bundle-striping
+  (let [stripe (fn [record ^objects array] (Arrays/fill array record))
+        striped-record-bundle (StripedRecordBundle/stripe (range 10) stripe 4)]
+    (is (= (seq striped-record-bundle)
+           [(range 10) (range 10) (range 10) (range 10)]))
+    (is (every? chunked-seq? (seq striped-record-bundle)))))
 
 (deftest bundle-assembly
   (testing "assembly"
@@ -36,6 +44,22 @@
           striped-record-bundle (StripedRecordBundle. column-values-seqs-array 10)]
       (is (= (->> (range 10) (map (partial * 2)) (reduce + 10))
              (.reduce striped-record-bundle + (fn [^objects lva] (+ (aget lva 0) (aget lva 1))) 10))))))
+
+(deftest stripe-and-assemble
+  (let [num-columns 10
+        assemble (fn [^objects a] (into [] a))
+        stripe (fn [record ^objects a]
+                 (dotimes [i (count record)]
+                   (aset a i (get record i))))]
+    (testing "single record"
+      (let [array (object-array num-columns)
+            record (vec (repeatedly num-columns helpers/rand-int))]
+        (stripe record array)
+        (is (= record (assemble array)))))
+    (testing "bundled records"
+      (let [records (repeatedly 100 #(vec (repeatedly num-columns helpers/rand-int)))
+            striped-record-bundle (StripedRecordBundle/stripe records stripe num-columns)]
+        (is (= records (.assemble striped-record-bundle assemble)))))))
 
 (deftest multiplexing
   (let [page (seq (vec (range 10)))

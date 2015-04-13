@@ -12,12 +12,17 @@
 
 package dendrite.java;
 
+import clojure.lang.ArraySeq;
 import clojure.lang.IFn;
 import clojure.lang.ISeq;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ITransientCollection;
+import clojure.lang.RT;
+import clojure.lang.Seqable;
 
-public final class StripedRecordBundle {
+import java.util.Arrays;
+
+public final class StripedRecordBundle implements Seqable {
 
   private final ISeq[] columnValueSeq;
   private final Object[] leveledValuesArray;
@@ -59,5 +64,37 @@ public final class StripedRecordBundle {
       ret = reduceFn.invoke(ret, getNextRecord(assemblyFn));
     }
     return ret;
+  }
+
+  public static StripedRecordBundle stripe(final IPersistentCollection records, final IFn stripeFn,
+                                           final int numColumns) {
+    Object[] buffer = new Object[numColumns];
+    ITransientCollection[] transientColumnValueSeq = new ITransientCollection[numColumns];
+    ISeq[] columnValueSeq = new ISeq[numColumns];
+    for(int i=0; i<numColumns; ++i) {
+      transientColumnValueSeq[i] = PersistentLinkedSeq.newEmptyTransient();
+    }
+    int numRecords = 0;
+    Object record = null;
+    ISeq recordSeq = RT.seq(records);
+    while (recordSeq != null ){
+      record = recordSeq.first();
+      Arrays.fill(buffer, null);
+      stripeFn.invoke(record, buffer);
+      numRecords += 1;
+      for(int i=0; i<numColumns; ++i) {
+        transientColumnValueSeq[i] = transientColumnValueSeq[i].conj(buffer[i]);
+      }
+      recordSeq = recordSeq.next();
+    }
+    for(int i=0; i<numColumns; ++i) {
+      columnValueSeq[i] = RT.seq(transientColumnValueSeq[i].persistent());
+    }
+    return new StripedRecordBundle(columnValueSeq, numRecords);
+  }
+
+  @Override
+  public ISeq seq() {
+    return ArraySeq.create((Object[])columnValueSeq);
   }
 }

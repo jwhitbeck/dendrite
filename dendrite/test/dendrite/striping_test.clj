@@ -19,7 +19,10 @@
 (set! *warn-on-reflection* true)
 
 (defn stripe-record [record schema]
-  (seq ((stripe-fn schema helpers/default-type-store nil) record)))
+  (let [n (count (s/column-specs schema))
+        a (object-array n)]
+    ((stripe-fn schema helpers/default-type-store nil) record a)
+    (seq a)))
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
