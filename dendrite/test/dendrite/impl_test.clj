@@ -162,7 +162,7 @@
 
 (deftest record-group-lengths
   (letfn [(avg-record-group-length [target-length]
-            (let [records (take 1000 (helpers/rand-test-records))
+            (let [records (take 10000 (helpers/rand-test-records))
                   writer (->> (byte-buffer-writer {:record-group-length target-length}
                                                    (-> helpers/test-schema-str schema/read-string))
                               (#(reduce write! % records)))
@@ -175,8 +175,8 @@
                    (map :length)
                    helpers/avg)))]
     (testing "record-group lengths are approximately equal to record-group-length"
-      (is (helpers/roughly (* 3 1024) (avg-record-group-length (* 3 1024))))
-      (is (helpers/roughly 1024 (avg-record-group-length 1024))))))
+      (is (helpers/roughly (* 300 1024) (avg-record-group-length (* 300 1024))))
+      (is (helpers/roughly (* 100 1024) (avg-record-group-length (* 100 1024)))))))
 
 (defn- throw-foo-fn [& args] (throw (Exception. "foo")))
 

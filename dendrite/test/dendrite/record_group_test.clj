@@ -18,7 +18,7 @@
             [dendrite.striping :as striping]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java IOutputBuffer]
+  (:import [dendrite.java IOutputBuffer StripedRecordBundle]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel])
   (:refer-clojure :exclude [read]))
@@ -64,19 +64,21 @@
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
+        num-columns (count (schema/column-specs test-schema))
         records (take 1000 (helpers/rand-test-records))
-        striped-records (map (striping/stripe-fn test-schema helpers/default-type-store nil) records)
+        stripe (striping/stripe-fn test-schema helpers/default-type-store nil)
+        striped-records (StripedRecordBundle/stripe records stripe num-columns)
         record-stripes (apply map vector striped-records)
         w (doto (writer target-data-page-length
                         helpers/default-type-store
                         (schema/column-specs test-schema))
-            (.write record-stripes)
+            (.write striped-records)
             .finish)
         record-group-metadata (.metadata w)
         bb (helpers/output-buffer->byte-buffer w)
         parsed-query (schema/apply-query test-schema '_ helpers/default-type-store true {})]
     (testing "full schema"
-      (is (= striped-records
+      (is (= record-stripes
              (flat-read
               (byte-buffer-reader bb record-group-metadata helpers/default-type-store parsed-query)))))
     (testing "read seq is composed of columns that contain chunked pages"
@@ -87,13 +89,15 @@
 
 (deftest file-random-records-write-read
   (let [test-schema (-> helpers/test-schema-str schema/read-string (schema/parse helpers/default-type-store))
+        num-columns (count (schema/column-specs test-schema))
         records (take 1000 (helpers/rand-test-records))
-        striped-records (map (striping/stripe-fn test-schema nil helpers/default-type-store) records)
+        stripe (striping/stripe-fn test-schema nil helpers/default-type-store)
+        striped-records (StripedRecordBundle/stripe records stripe num-columns)
         record-stripes (apply map vector striped-records)
         w (doto (writer target-data-page-length
                         helpers/default-type-store
                         (schema/column-specs test-schema))
-            (.write record-stripes)
+            (.write striped-records)
             .finish)
         record-group-metadata (.metadata w)
         tmp-file "target/tmp_file"
@@ -102,7 +106,7 @@
       (.flushToFileChannel w f)
       (.awaitIOCompletion w))
     (testing "full schema"
-      (is (= striped-records
+      (is (= record-stripes
              (with-open [f (utils/file-channel tmp-file :read)]
                (doall
                 (flat-read

@@ -76,14 +76,17 @@ public final class StripedRecordBundle implements Seqable {
     }
     int numRecords = 0;
     Object record = null;
+    boolean success = false;
     ISeq recordSeq = RT.seq(records);
     while (recordSeq != null ){
       record = recordSeq.first();
       Arrays.fill(buffer, null);
-      stripeFn.invoke(record, buffer);
-      numRecords += 1;
-      for(int i=0; i<numColumns; ++i) {
-        transientColumnValueSeq[i] = transientColumnValueSeq[i].conj(buffer[i]);
+      success = (boolean) stripeFn.invoke(record, buffer);
+      if (success) { // striping succeeded
+        numRecords += 1;
+        for(int i=0; i<numColumns; ++i) {
+          transientColumnValueSeq[i] = transientColumnValueSeq[i].conj(buffer[i]);
+        }
       }
       recordSeq = recordSeq.next();
     }

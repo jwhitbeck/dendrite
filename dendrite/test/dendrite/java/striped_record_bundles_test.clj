@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest bundle-striping
-  (let [stripe (fn [record ^objects array] (Arrays/fill array record))
+  (let [stripe (fn [record ^objects array] (Arrays/fill array record) true)
         striped-record-bundle (StripedRecordBundle/stripe (range 10) stripe 4)]
     (is (= (seq striped-record-bundle)
            [(range 10) (range 10) (range 10) (range 10)]))
@@ -50,7 +50,8 @@
         assemble (fn [^objects a] (into [] a))
         stripe (fn [record ^objects a]
                  (dotimes [i (count record)]
-                   (aset a i (get record i))))]
+                   (aset a i (get record i)))
+                 true)]
     (testing "single record"
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]

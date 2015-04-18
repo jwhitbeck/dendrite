@@ -20,6 +20,7 @@
             [dendrite.utils :as utils])
   (:import [dendrite.java Bytes Estimator IOutputBuffer MemoryOutputStream StripedRecordBundleSeq
             StripedRecordBundle]
+           [dendrite.record_group RecordGroupWriter]
            [java.io Closeable]
            [java.nio ByteBuffer]
            [java.nio.channels FileChannel]
@@ -163,10 +164,10 @@
   (schema [_]
     "Returns this reader's schema."))
 
-(defprotocol IBackendWriter
-  (flush-record-group! [_ record-group-writer])
-  (finish! [_ metadata])
-  (close-writer! [_]))
+(definterface IBackendWriter
+  (flushRecordGroup [^dendrite.record_group.RecordGroupWriter record-group-writer])
+  (finish [metadata])
+  (close []))
 
 (def ^:private queue-poison ::poison)
 
@@ -182,35 +183,35 @@
 (defn- done? [fut]
   (.isDone ^Future fut))
 
-(defrecord MemoryOutputStreamBackendWriter [^MemoryOutputStream memory-output-stream]
+(deftype MemoryOutputStreamBackendWriter [^MemoryOutputStream memory-output-stream]
   IBackendWriter
-  (flush-record-group! [_ record-group-writer]
-    (.writeTo ^IOutputBuffer record-group-writer memory-output-stream))
-  (finish! [_ metadata]
+  (flushRecordGroup [_ record-group-writer]
+    (.writeTo record-group-writer memory-output-stream))
+  (finish [_ metadata]
     (let [mbb (metadata/write metadata)]
       (.write memory-output-stream (.array mbb) (.position mbb) (.limit mbb) )
       (Bytes/writeFixedInt memory-output-stream (.limit mbb))
       (.write memory-output-stream magic-bytes)))
-  (close-writer! [_]))
+  (close [_]))
 
 (defn- memory-output-stream-backend-writer []
-  (->MemoryOutputStreamBackendWriter (doto (MemoryOutputStream.) (.write magic-bytes))))
+  (MemoryOutputStreamBackendWriter. (doto (MemoryOutputStream.) (.write magic-bytes))))
 
-(defrecord FileChannelBackendWriter [^FileChannel file-channel]
+(deftype FileChannelBackendWriter [^FileChannel file-channel]
   IBackendWriter
-  (flush-record-group! [_ record-group-writer]
-    (record-group/flush-to-file-channel! record-group-writer file-channel))
-  (finish! [_ metadata]
+  (flushRecordGroup [_ record-group-writer]
+    (.flushToFileChannel record-group-writer file-channel))
+  (finish [_ metadata]
     (let [metadata-byte-buffer (metadata/write metadata)]
       (.write file-channel metadata-byte-buffer)
       (.write file-channel (utils/int->byte-buffer (.limit metadata-byte-buffer)))
       (.write file-channel (ByteBuffer/wrap magic-bytes))))
-  (close-writer! [_]
+  (close [_]
     (.close file-channel)))
 
 (defn- file-channel-backend-writer [filename]
-  (->FileChannelBackendWriter (doto (utils/file-channel filename :write)
-                                (.write (ByteBuffer/wrap magic-bytes)))))
+  (FileChannelBackendWriter. (doto (utils/file-channel filename :write)
+                               (.write (ByteBuffer/wrap magic-bytes)))))
 
 (defn- is-default-column-spec? [column-spec]
   (and (= (:encoding column-spec) :plain)
@@ -219,94 +220,82 @@
 (defn- all-default-column-specs? [schema]
   (every? is-default-column-spec? (schema/column-specs schema)))
 
-(defn- complete-record-group! [backend-writer ^IOutputBuffer record-group-writer]
+(defn- complete-record-group! [^IBackendWriter backend-writer ^RecordGroupWriter record-group-writer]
   (.finish record-group-writer)
-  (let [metadata (record-group/metadata record-group-writer)]
-    (flush-record-group! backend-writer record-group-writer)
+  (let [metadata (.metadata record-group-writer)]
+    (.flushRecordGroup backend-writer record-group-writer)
     (.reset record-group-writer)
     metadata))
 
 (defn- write-striped-records
-  [^IOutputBuffer record-group-writer backend-writer target-record-group-length
-   optimize? compression-threshold-map striped-records]
-  (loop [next-num-records-for-length-check 10
-         record-groups-metadata []
-         optimized? (not optimize?)
-         rg-writer record-group-writer
-         striped-recs striped-records]
-    (if (>= (record-group/num-records rg-writer) next-num-records-for-length-check)
-      (let [estimated-length (.estimatedLength rg-writer)]
-        (if (>= estimated-length target-record-group-length)
-          (if (and optimize? (not optimized?))
-            (let [^IOutputBuffer optimized-rg-writer
-                  (record-group/optimize! rg-writer compression-threshold-map)]
-              (recur (Estimator/nextCheckThreshold (record-group/num-records optimized-rg-writer)
-                                                   (.estimatedLength optimized-rg-writer)
-                                                   target-record-group-length)
-                     record-groups-metadata
-                     true
-                     optimized-rg-writer
-                     striped-recs))
-            (let [metadata (complete-record-group! backend-writer rg-writer)
-                  next-threshold-check (long (/ (:num-records metadata) 2))]
-              (recur next-threshold-check
-                     (conj record-groups-metadata metadata)
-                     optimized?
-                     rg-writer
-                     striped-recs)))
-          (recur (Estimator/nextCheckThreshold (record-group/num-records rg-writer)
-                                               estimated-length
-                                               target-record-group-length)
-                 record-groups-metadata
-                 optimized?
-                 rg-writer
-                 striped-recs)))
-      (if-let [striped-record (first striped-recs)]
-        (do (record-group/write! rg-writer striped-record)
-            (recur next-num-records-for-length-check
-                   record-groups-metadata
-                   optimized?
-                   rg-writer
-                   (rest striped-recs)))
-        (let [final-rg-writer (if (and optimize? (not optimized?))
-                                (record-group/optimize! rg-writer compression-threshold-map)
-                                rg-writer)
-              final-rg-metadata (if (pos? (record-group/num-records final-rg-writer))
-                                  (conj record-groups-metadata
-                                        (complete-record-group! backend-writer final-rg-writer))
-                                  record-groups-metadata)]
-          (record-group/await-io-completion final-rg-writer)
-          {:record-groups-metadata final-rg-metadata
-           :column-specs (record-group/column-specs final-rg-writer)})))))
+  [^RecordGroupWriter record-group-writer backend-writer target-record-group-length optimize-count
+   compression-threshold-map ^LinkedBlockingQueue striped-record-bundles-queue]
+  (with-local-vars [rgw record-group-writer
+                    ocnt optimize-count
+                    record-groups-metadata []
+                    next-num-records-for-length-check 10]
+    (loop []
+      (if (>= (.numRecords ^RecordGroupWriter @rgw) @next-num-records-for-length-check)
+        (let [estimated-length (.estimatedLength ^RecordGroupWriter @rgw)]
+          (if (>= estimated-length target-record-group-length)
+            (if (pos? @ocnt)
+              (let [^RecordGroupWriter orgw (record-group/optimize! @rgw compression-threshold-map)]
+                (var-set rgw orgw)
+                (var-set ocnt (dec @ocnt))
+                (recur))
+              (let [metadata (complete-record-group! backend-writer @rgw)]
+                (var-set record-groups-metadata (conj @record-groups-metadata metadata))
+                (var-set next-num-records-for-length-check (quot (:num-records metadata) 2))
+                (recur)))
+            (do (var-set next-num-records-for-length-check
+                         (Estimator/nextCheckThreshold (.numRecords ^RecordGroupWriter @rgw)
+                                                       estimated-length
+                                                       target-record-group-length))
+                (recur))))
+        (let [obj (.take striped-record-bundles-queue)]
+          (if-not (= obj queue-poison)
+            (do (.write ^RecordGroupWriter @rgw ^StripedRecordBundle obj)
+                (recur))
+            (do (when (pos? @ocnt)
+                  (var-set rgw (record-group/optimize! @rgw compression-threshold-map)))
+                (when (pos? (.numRecords ^RecordGroupWriter @rgw))
+                  (var-set record-groups-metadata
+                           (conj @record-groups-metadata (complete-record-group! backend-writer @rgw))))
+                (.awaitIOCompletion ^RecordGroupWriter @rgw)
+                {:record-groups-metadata @record-groups-metadata
+                 :column-specs (.columnSpecs ^RecordGroupWriter @rgw)})))))))
 
 (defrecord Writer
-    [metadata-atom ^LinkedBlockingQueue writing-queue write-thread backend-writer custom-types closed]
+    [metadata-atom record-bundle-atom ^LinkedBlockingQueue record-bundle-queue striping-thread
+     writing-thread ^IBackendWriter backend-writer custom-types closed]
   IWriter
   (write! [this record]
-    (if (done? write-thread)
-      (if (instance? Exception @write-thread)
-        (throw @write-thread)
-        (throw (IllegalStateException. "Cannot write to closed writer.")))
-      (.put writing-queue (if (nil? record) ::nil-record record)))
+    (if (or (done? striping-thread) (done? writing-thread))
+      (cond
+        (instance? Exception @striping-thread) (throw @striping-thread)
+        (instance? Exception @writing-thread) (throw @writing-thread)
+        :else (throw (IllegalStateException. "Cannot write to closed writer.")))
+      (do (when (> (count @record-bundle-atom) 255)
+            (do (.put record-bundle-queue @record-bundle-atom)
+                (reset! record-bundle-atom [])))
+          (swap! record-bundle-atom conj record)))
     this)
   Closeable
   (close [_]
     (when-not @closed
-      (close-queue! writing-queue)
-      (let [{:keys [record-groups-metadata column-specs error]} @write-thread]
-        (if error
-          (try (close-writer! backend-writer)
-               (finally (throw error)))
-          (try (let [metadata (-> @metadata-atom
-                                  (assoc :record-groups-metadata record-groups-metadata
-                                         :custom-types custom-types)
-                                  (update-in [:schema] schema/with-optimal-column-specs column-specs))]
-                 (finish! backend-writer metadata))
-               (catch Exception e
-                 (throw e))
-               (finally
-                 (close-writer! backend-writer)))))
-      (reset! closed true))))
+      (.put record-bundle-queue @record-bundle-atom)
+      (close-queue! record-bundle-queue)
+      (try @striping-thread
+           (let [{:keys [record-groups-metadata column-specs writing-error]} @writing-thread
+                 metadata (-> @metadata-atom
+                              (assoc :record-groups-metadata record-groups-metadata
+                                     :custom-types custom-types)
+                              (update-in [:schema] schema/with-optimal-column-specs column-specs))]
+             (.finish backend-writer metadata))
+           (catch Exception e
+             (throw e))
+           (finally (.close backend-writer)
+                    (reset! closed true))))))
 
 (defn set-metadata!
   "Sets the user-defined metadata of the provided writer."
@@ -324,26 +313,36 @@
     (let [parsed-custom-types (keywordize-custom-types custom-types)
           type-store (encoding/type-store parsed-custom-types)
           parsed-schema (schema/parse schema type-store)
+          record-bundle-queue (LinkedBlockingQueue. 100)
           writing-queue (LinkedBlockingQueue. 100)
+          column-specs (schema/column-specs parsed-schema)
+          num-columns (count column-specs)
           record-group-writer (record-group/writer data-page-length
                                                    type-store
-                                                   (schema/column-specs parsed-schema))
+                                                   column-specs)
           optimize? (or optimize-columns? (and (nil? optimize-columns?)
                                                (all-default-column-specs? parsed-schema)))
-          stripe (striping/stripe-fn parsed-schema type-store invalid-input-handler)]
+          stripe (striping/stripe-fn parsed-schema type-store invalid-input-handler)
+          stripe-bundle #(StripedRecordBundle/stripe % stripe num-columns)]
       (map->Writer
        {:metadata-atom (atom (metadata/map->Metadata {:schema parsed-schema}))
+        :record-bundle-atom (atom [])
         :writing-queue writing-queue
-        :write-thread (future (->> writing-queue
-                                   blocking-queue-seq
-                                   (utils/chunked-pmap stripe)
-                                   ; nil striped records are invalid inputs that have been handled
-                                   (remove nil?)
-                                   (write-striped-records record-group-writer
-                                                          backend-writer
-                                                          record-group-length
-                                                          optimize?
-                                                          compression-thresholds)))
+        :record-bundle-queue record-bundle-queue
+        :striping-thread (future (try (doseq [striped-record-bundle (->> record-bundle-queue
+                                                                         blocking-queue-seq
+                                                                         (clojure.core/pmap stripe-bundle))]
+                                        (.put writing-queue striped-record-bundle))
+                                      (catch Exception e
+                                        (throw e))
+                                      (finally
+                                        (close-queue! writing-queue))))
+        :writing-thread (future (write-striped-records record-group-writer
+                                                       backend-writer
+                                                       record-group-length
+                                                       (if optimize? 1 0)
+                                                       compression-thresholds
+                                                       writing-queue))
         :backend-writer backend-writer
         :custom-types parsed-custom-types
         :closed (atom false)}))))
@@ -358,10 +357,13 @@
 (defn byte-buffer!
   "Closes a byte-buffer writer and returns a java.nio.ByteBuffer containing the full dendrite serialization."
   ^java.nio.ByteBuffer [^Closeable writer]
-  (if-let [^MemoryOutputStream memory-output-stream (get-in writer [:backend-writer :memory-output-stream])]
-    (do (.close writer)
-        (.byteBuffer memory-output-stream))
-    (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers."))))
+  (let [backend-writer (:backend-writer writer)
+        ^MemoryOutputStream memory-output-stream
+          (if (instance? MemoryOutputStreamBackendWriter backend-writer)
+            (.memory-output-stream ^MemoryOutputStreamBackendWriter backend-writer)
+            (throw (UnsupportedOperationException. "byte-buffer! is only supported on byte-buffer writers.")))]
+    (.close writer)
+    (.byteBuffer memory-output-stream)))
 
 (defn file-writer
   "Returns a dendrite writer that outputs to a file. schema should be a valid dendrite schema and filename
