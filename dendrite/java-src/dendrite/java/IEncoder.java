@@ -13,6 +13,6 @@
 package dendrite.java;
 
 public interface IEncoder extends IOutputBuffer {
-  public void encode(final Object o);
+  public void encode(Object o);
   public int numEncodedValues();
 }
