@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java Singleton PersistentLinkedSeq]
+           [dendrite.java PersistentLinkedSeq]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -98,8 +98,6 @@
         chars (byte-array length)]
     (.get bb chars)
     (String. chars)))
-
-(definline single [x] `(Singleton. ~x))
 
 (definline transient-linked-seq [] `(PersistentLinkedSeq/newEmptyTransient))
 

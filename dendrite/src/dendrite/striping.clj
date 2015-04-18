@@ -12,7 +12,7 @@
   (:require [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]
-            [dendrite.utils :refer [format-ks single transient-linked-seq transient?]]))
+            [dendrite.utils :refer [format-ks transient-linked-seq transient?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +69,7 @@
                        (catch Exception e
                          (throw (IllegalArgumentException.
                                  (format "Could not coerce value in %s" (format-ks path)) e))))))]
-          (append-repeated! striped-record-array column-index (single lv)))))))
+          (append-repeated! striped-record-array column-index [lv]))))))
 
 (defmethod stripe-fn* :optional-value
   [field parents coercion-fns-map]
@@ -92,9 +92,9 @@
                     (catch Exception e
                       (throw (IllegalArgumentException.
                               (format "Could not coerce value in %s" (format-ks path)) e)))))
-              lvs (single (->LeveledValue repetition-level
-                                          (if (nil? v) definition-level max-definition-level)
-                                          v))]
+              lvs [(->LeveledValue repetition-level
+                                   (if (nil? v) definition-level max-definition-level)
+                                   v)]]
           (append-repeated! striped-record-array column-index lvs))))))
 
 (defmethod stripe-fn* :repeated-value
@@ -105,7 +105,7 @@
         append-fn (if (= 1 max-repetition-level) append-non-repeated! append-repeated!)]
     (fn [striped-record-array record nil-parent? repetition-level definition-level]
       (let [lvs (if (empty? record)
-                  (single (->LeveledValue repetition-level definition-level nil))
+                  [(->LeveledValue repetition-level definition-level nil)]
                   (try
                     (mapv (fn [v rl] (->LeveledValue rl max-definition-level (coercion-fn v)))
                           record
