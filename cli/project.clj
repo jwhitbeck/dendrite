@@ -5,6 +5,6 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main dendrite.cli.core
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [dendrite "0.2.4-SNAPSHOT"]
+                 [dendrite "0.3.0-SNAPSHOT"]
                  [org.clojure/tools.cli "0.3.1"]]
   :profiles {:uberjar {:aot :all}})
