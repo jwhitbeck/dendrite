@@ -84,13 +84,18 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
 
   @Override
   public void write(final byte[] bytes, final int offset, final int length) {
-    int bufferLength = buffer.length;
-    while (position + length > bufferLength) {
-      grow();
-      bufferLength <<= 1;
-    }
+    ensureRemainingCapacity(length);
     System.arraycopy(bytes, offset, buffer, position, length);
     position += length;
+  }
+
+  public void write(final ByteBuffer bb) {
+    bb.mark();
+    int length = bb.limit() - bb.position();
+    ensureRemainingCapacity(length);
+    bb.get(buffer, position, length);
+    position += length;
+    bb.reset();
   }
 
   public ByteBuffer byteBuffer() {

@@ -518,4 +518,43 @@ public final class Bytes {
     }
   }
 
+  public static void writeByteArray(final MemoryOutputStream os, final byte[] bytes) {
+    if (bytes == null) {
+      writeSInt(os, -1);
+    } else {
+      writeSInt(os, bytes.length);
+      os.write(bytes);
+    }
+  }
+
+  public static byte[] readByteArray(final ByteBuffer bb) {
+    int length = readSInt(bb);
+    if (length < 0){
+      return null;
+    }
+    byte[] bytes = new byte[length];
+    bb.get(bytes);
+    return bytes;
+  }
+
+  public static void writeByteBuffer(final MemoryOutputStream os, final ByteBuffer bb) {
+    if (bb == null) {
+      writeSInt(os, -1);
+    } else {
+      writeSInt(os, bb.limit() - bb.position());
+      os.write(bb);
+    }
+  }
+
+  public static ByteBuffer readByteBuffer(final ByteBuffer bb) {
+    int length = readSInt(bb);
+    if (length < 0) {
+      return null;
+    }
+    ByteBuffer byteBuffer = bb.duplicate();
+    byteBuffer.limit(byteBuffer.position() + length);
+    bb.position(bb.position() + length);
+    return byteBuffer;
+  }
+
 }

@@ -11,7 +11,7 @@
 (ns dendrite.java.bytes-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Bytes MemoryOutputStream]
+  (:import [dendrite.java Bytes Encodings MemoryOutputStream]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -181,3 +181,36 @@
                                             longs)
                                          rand-long-arrays)]
         (is (= (map seq read-long-arrays) (map seq rand-long-arrays)))))))
+
+(deftest read-write-byte-arrays
+  (testing "random byte arrays"
+    (let [rand-byte-arrays (repeatedly 100 helpers/rand-byte-array)
+          read-byte-arrays (write-read #(Bytes/writeByteArray %1 %2)
+                                       #(Bytes/readByteArray %)
+                                       rand-byte-arrays)]
+      (is (= (map seq rand-byte-arrays) (map seq read-byte-arrays)))))
+  (testing "nil and empty byte arrays"
+    (let [byte-arrays [nil (byte-array 0) (helpers/rand-byte-array)]
+          read-byte-arrays (write-read #(Bytes/writeByteArray %1 %2)
+                                       #(Bytes/readByteArray %)
+                                       byte-arrays)]
+      (is (nil? (first read-byte-arrays)))
+      (is (= (map seq byte-arrays) (map seq read-byte-arrays))))))
+
+(defn- byte-buffer->seq [byte-buffer] (seq (Encodings/byteBufferToByteArray byte-buffer)))
+
+(deftest read-write-byte-buffers
+  (testing "random byte buffers"
+    (let [rand-byte-buffers (repeatedly 100 helpers/rand-byte-buffer)
+          read-byte-buffers (write-read #(Bytes/writeByteBuffer %1 %2)
+                                        #(Bytes/readByteBuffer %)
+                                        rand-byte-buffers)]
+      (is (= (map helpers/byte-buffer->seq rand-byte-buffers)
+             (map helpers/byte-buffer->seq read-byte-buffers)))))
+  (testing "nil and empty byte buffers"
+    (let [byte-buffers [nil (ByteBuffer/wrap (byte-array 0)) (helpers/rand-byte-buffer)]
+          read-byte-buffers (write-read #(Bytes/writeByteBuffer %1 %2)
+                                        #(Bytes/readByteBuffer %)
+                                        byte-buffers)]
+      (is (nil? (first read-byte-buffers)))
+      (is (= (map helpers/byte-buffer->seq byte-buffers) (map helpers/byte-buffer->seq read-byte-buffers))))))
