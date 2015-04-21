@@ -185,7 +185,9 @@
 (defn byte-buffer->bytes [^ByteBuffer bb]
   (let [n (- (.limit bb) (.position bb))
         bs (byte-array n)]
-    (System/arraycopy (.array bb) (.arrayOffset bb) bs 0 n)
+    (.mark bb)
+    (.get bb bs)
+    (.reset bb)
     bs))
 
 (defn bytes->byte-buffer [^bytes bs]
