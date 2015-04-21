@@ -12,10 +12,8 @@
 
 package dendrite.java;
 
-public final class Compressions {
+import java.nio.ByteBuffer;
 
-  public final static int NONE = 0;
-  public final static int DEFLATE = 1;
-  public final static int LZ4 = 2;
-
+public interface IDecoderFactory {
+  public IDecoder create(ByteBuffer bb);
 }

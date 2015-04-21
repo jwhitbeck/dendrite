@@ -12,7 +12,7 @@
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java Encodings MemoryOutputStream IOutputBuffer]
+  (:import [dendrite.java MemoryOutputStream IOutputBuffer Types]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -63,7 +63,7 @@
   (ByteBuffer/wrap (rand-byte-array 32) (clojure.core/rand-int 10) (clojure.core/rand-int 22)))
 
 (defn byte-buffer->seq [^ByteBuffer bb]
-  (seq (Encodings/byteBufferToByteArray bb)))
+  (seq (Types/toByteArray bb)))
 
 (defn rand-uuid [] (UUID/randomUUID))
 

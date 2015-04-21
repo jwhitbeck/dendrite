@@ -13,11 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.Keyword;
-import clojure.lang.IMapEntry;
-import clojure.lang.IPersistentMap;
 import clojure.lang.ITransientCollection;
-import clojure.lang.ITransientMap;
-import clojure.lang.PersistentHashMap;
 import clojure.lang.Util;
 
 import java.nio.ByteBuffer;
@@ -27,11 +23,10 @@ public final class FileMetadata implements IWriteable {
 
   public final List recordGroupsMetadata;
   public final Field schema;
-  public final IPersistentMap customTypes;
+  public final List customTypes;
   public final ByteBuffer metadata;
 
-  public FileMetadata(List recordGroupsMetadata, Field schema, IPersistentMap customTypes,
-                      ByteBuffer metadata) {
+  public FileMetadata(List recordGroupsMetadata, Field schema, List customTypes, ByteBuffer metadata) {
     this.recordGroupsMetadata = recordGroupsMetadata;
     this.schema = schema;
     this.customTypes = customTypes;
@@ -65,27 +60,23 @@ public final class FileMetadata implements IWriteable {
     if (customTypes == null) {
       Bytes.writeUInt(mos, 0);
     } else {
-      Bytes.writeUInt(mos, customTypes.count());
-      for (Object entry : customTypes) {
-        Keyword customType = (Keyword)((IMapEntry)entry).key();
-        Keyword baseType = (Keyword)((IMapEntry)entry).val();
-        Bytes.writeByteArray(mos, Encodings.stringToUFT8Bytes(Encodings.keywordToString(customType)));
-        Bytes.writeByteArray(mos, Encodings.stringToUFT8Bytes(Encodings.keywordToString(baseType)));
+      Bytes.writeUInt(mos, customTypes.size());
+      for (Object customType : customTypes) {
+        ((CustomType)customType).writeTo(mos);
       }
     }
   }
 
-  private static IPersistentMap readCustomTypes(ByteBuffer bb) {
+  private static List readCustomTypes(ByteBuffer bb) {
     int n = Bytes.readUInt(bb);
     if (n == 0) {
       return null;
     }
-    ITransientMap customTypes = PersistentHashMap.EMPTY.asTransient();
+    ITransientCollection customTypes = PersistentLinkedSeq.newEmptyTransient();
     for (int i=0; i<n; ++i) {
-      customTypes.assoc(Encodings.stringToKeyword(Encodings.UTF8BytesToString(Bytes.readByteArray(bb))),
-                        Encodings.stringToKeyword(Encodings.UTF8BytesToString(Bytes.readByteArray(bb))));
+      customTypes = customTypes.conj(CustomType.read(bb));
     }
-    return customTypes.persistent();
+    return (List) customTypes.persistent();
   }
 
   @Override

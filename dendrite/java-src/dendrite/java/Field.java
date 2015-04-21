@@ -23,12 +23,13 @@ import java.util.List;
 
 public final class Field implements IWriteable {
 
-  public final static int OPTIONAL = 0;
-  public final static int REQUIRED = 1;
-  public final static int VECTOR = 2;
-  public final static int LIST = 3;
-  public final static int SET = 4;
-  public final static int MAP = 5;
+  public final static int
+    OPTIONAL = 0,
+    REQUIRED = 1,
+    VECTOR = 2,
+    LIST = 3,
+    SET = 4,
+    MAP = 5;
 
   public final Keyword name;
   public final int repetition;
@@ -72,8 +73,7 @@ public final class Field implements IWriteable {
 
   @Override
   public void writeTo(MemoryOutputStream mos) {
-    byte[] nameBytes = (name == null)? new byte[]{}
-      : Encodings.stringToUFT8Bytes(Encodings.keywordToString(name));
+    byte[] nameBytes = (name == null)? new byte[]{} : Types.toByteArray(Types.toString(name));
     Bytes.writeByteArray(mos, nameBytes);
     Bytes.writeUInt(mos, repetition);
     Bytes.writeUInt(mos, repetitionLevel);
@@ -101,7 +101,7 @@ public final class Field implements IWriteable {
   }
 
   public static Field read(ByteBuffer bb) {
-    return new Field(Encodings.stringToKeyword(Encodings.UTF8BytesToString(Bytes.readByteArray(bb))),
+    return new Field(Types.toKeyword(Types.toString(Bytes.readByteArray(bb))),
                      Bytes.readUInt(bb),
                      Bytes.readUInt(bb),
                      Bytes.readUInt(bb),

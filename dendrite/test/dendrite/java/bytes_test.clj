@@ -11,7 +11,7 @@
 (ns dendrite.java.bytes-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Bytes Encodings MemoryOutputStream]
+  (:import [dendrite.java Bytes MemoryOutputStream]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -196,8 +196,6 @@
                                        byte-arrays)]
       (is (nil? (first read-byte-arrays)))
       (is (= (map seq byte-arrays) (map seq read-byte-arrays))))))
-
-(defn- byte-buffer->seq [byte-buffer] (seq (Encodings/byteBufferToByteArray byte-buffer)))
 
 (deftest read-write-byte-buffers
   (testing "random byte buffers"

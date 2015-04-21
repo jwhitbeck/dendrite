@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 
 public final class ColumnSpec implements IWriteable {
 
-  public final Keyword type;
+  public final int type;
   public final int encoding;
   public final int compression;
   public final int columnIndex;
@@ -31,10 +31,11 @@ public final class ColumnSpec implements IWriteable {
   public final IFn mapFn;
   public final IPersistentVector path;
 
-  private final static int NULL = 0;
-  private final static int PRESENT = 1;
+  private final static int
+    NULL = 0,
+    PRESENT = 1;
 
-  public ColumnSpec(Keyword type, int encoding, int compression, int columnIndex, int queryColumnIndex,
+  public ColumnSpec(int type, int encoding, int compression, int columnIndex, int queryColumnIndex,
                     int maxRepetitionLevel, int maxDefinitionLevel, IFn mapFn, IPersistentVector path) {
     this.type = type;
     this.encoding = encoding;
@@ -50,7 +51,7 @@ public final class ColumnSpec implements IWriteable {
   @Override
   public void writeTo(MemoryOutputStream mos) {
     mos.write(PRESENT); // ColumSpec can be null. If so, the first byte will be 0;
-    Bytes.writeByteArray(mos, Encodings.stringToUFT8Bytes(Encodings.keywordToString(type)));
+    Bytes.writeSInt(mos, type);
     Bytes.writeUInt(mos, encoding);
     Bytes.writeUInt(mos, compression);
     Bytes.writeUInt(mos, columnIndex);
@@ -82,7 +83,7 @@ public final class ColumnSpec implements IWriteable {
     if (bb.get() == NULL) {
       return null;
     }
-    return new ColumnSpec(Encodings.stringToKeyword(Encodings.UTF8BytesToString(Bytes.readByteArray(bb))),
+    return new ColumnSpec(Bytes.readSInt(bb),
                           Bytes.readUInt(bb),
                           Bytes.readUInt(bb),
                           Bytes.readUInt(bb),

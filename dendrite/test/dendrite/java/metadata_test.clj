@@ -11,14 +11,14 @@
 (ns dendrite.java.metadata-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ColumnChunkMetadata ColumnSpec Field FileMetadata MemoryOutputStream
+  (:import [dendrite.java ColumnChunkMetadata ColumnSpec CustomType Field FileMetadata MemoryOutputStream
             RecordGroupMetadata]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
 (defn rand-column-spec []
-  (ColumnSpec. (rand-nth [:int :long :string]) (rand-int 10) (rand-int 2) (rand-int 10) 0
+  (ColumnSpec. (- (rand-int 10) 4) (rand-int 10) (rand-int 2) (rand-int 10) 0
                (rand-int 10) (rand-int 10) nil nil))
 
 (deftest column-spec
@@ -83,18 +83,23 @@
             read-record-group-metadatas (repeatedly 100 #(RecordGroupMetadata/read bb))]
         (is (= read-record-group-metadatas rand-record-group-metadatas))))))
 
-(defn rand-custom-types []
-  (let [base-types [:int :long :string]
-        custom-types [:foo :bar :baz]]
-    (some->> (map vector (repeatedly #(rand-nth custom-types)) (repeatedly #(rand-nth base-types)))
-             (take (rand-int 4))
-             seq
-             (into {}))))
+(defn rand-custom-type []
+  (CustomType. (rand-int 100) (rand-int 100) (rand-nth ['foo 'bar 'baz])))
+
+(deftest custom-type
+  (testing "serialization-deserialization"
+    (let [mos (MemoryOutputStream.)
+          rand-custom-types (repeatedly 100 rand-custom-type)]
+      (doseq [^CustomType custom-type rand-custom-types]
+        (.writeTo custom-type mos))
+      (let [bb (.byteBuffer mos)
+            read-custom-types (repeatedly 100 #(CustomType/read bb))]
+        (is (= read-custom-types rand-custom-types))))))
 
 (defn rand-file-metadata []
   (FileMetadata. (seq (repeatedly (rand-int 5) rand-record-group-metadata))
                  (rand-field)
-                 (rand-custom-types)
+                 (seq (repeatedly (rand-int 5) rand-custom-type))
                  (helpers/rand-byte-buffer)))
 
 (deftest file-metadata
