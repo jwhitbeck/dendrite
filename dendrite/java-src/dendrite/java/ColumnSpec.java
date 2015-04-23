@@ -13,9 +13,6 @@
 package dendrite.java;
 
 import clojure.lang.Keyword;
-import clojure.lang.IFn;
-import clojure.lang.IPersistentVector;
-import clojure.lang.Util;
 
 import java.nio.ByteBuffer;
 
@@ -25,27 +22,21 @@ public final class ColumnSpec implements IWriteable {
   public final int encoding;
   public final int compression;
   public final int columnIndex;
-  public final int queryColumnIndex;
   public final int maxRepetitionLevel;
   public final int maxDefinitionLevel;
-  public final IFn mapFn;
-  public final IPersistentVector path;
 
   private final static int
     NULL = 0,
     PRESENT = 1;
 
-  public ColumnSpec(int type, int encoding, int compression, int columnIndex, int queryColumnIndex,
-                    int maxRepetitionLevel, int maxDefinitionLevel, IFn mapFn, IPersistentVector path) {
+  public ColumnSpec(int type, int encoding, int compression, int columnIndex, int maxRepetitionLevel,
+                    int maxDefinitionLevel) {
     this.type = type;
     this.encoding = encoding;
     this.compression = compression;
     this.columnIndex = columnIndex;
-    this.queryColumnIndex = queryColumnIndex;
     this.maxRepetitionLevel = maxRepetitionLevel;
     this.maxDefinitionLevel = maxDefinitionLevel;
-    this.mapFn = mapFn;
-    this.path = path;
   }
 
   @Override
@@ -65,14 +56,11 @@ public final class ColumnSpec implements IWriteable {
       return false;
     }
     ColumnSpec cs = (ColumnSpec) o;
-    return Util.equiv(type, cs.type) &&
+    return type == cs.type &&
       encoding == cs.encoding &&
       compression == cs.compression &&
-      queryColumnIndex == cs.queryColumnIndex &&
       maxRepetitionLevel == cs.maxRepetitionLevel &&
-      maxDefinitionLevel == cs.maxDefinitionLevel &&
-      mapFn == cs.mapFn &&
-      Util.equiv(path, cs.path);
+      maxDefinitionLevel == cs.maxDefinitionLevel;
   }
 
   public static void writeNullTo(MemoryOutputStream mos) {
@@ -87,11 +75,8 @@ public final class ColumnSpec implements IWriteable {
                           Bytes.readUInt(bb),
                           Bytes.readUInt(bb),
                           Bytes.readUInt(bb),
-                          0,
                           Bytes.readUInt(bb),
-                          Bytes.readUInt(bb),
-                          null,
-                          null);
+                          Bytes.readUInt(bb));
   }
 
 }

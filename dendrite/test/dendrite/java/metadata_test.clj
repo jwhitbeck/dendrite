@@ -18,8 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (defn rand-column-spec []
-  (ColumnSpec. (- (rand-int 10) 4) (rand-int 10) (rand-int 2) (rand-int 10) 0
-               (rand-int 10) (rand-int 10) nil nil))
+  (ColumnSpec. (- (rand-int 10) 4) (rand-int 10) (rand-int 2) (rand-int 10) (rand-int 10) (rand-int 10)))
 
 (deftest column-spec
   (testing "serialization-deserialization"
