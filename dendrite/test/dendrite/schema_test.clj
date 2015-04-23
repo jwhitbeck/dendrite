@@ -112,7 +112,7 @@
     (testing "select sub-schema from query"
       (are [query sub-schema] (= (unparse (apply-query schema query default-type-store true {})) sub-schema)
            '_ (unparse schema)
-           {:docid '_} {:docid (req (col 'long 'delta 'lz4))}
+           {:docid '_} {:docid (req (col 'long 'delta 'deflate))}
            {:links '_} {:links {:backward (list 'long)
                                 :forward [(col 'long 'delta)]}}
            {:links {:backward ['long]}} {:links {:backward ['long]}}

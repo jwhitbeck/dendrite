@@ -127,32 +127,20 @@
                           (.getCompression types 'foo)))))
 
 (deftest custom-types
-  (testing "invalid configuration"
-    (is (thrown-with-msg? IllegalArgumentException #"Custom-type ':foo' is not a symbol."
-                          (Types/create {:foo {}} nil)))
-    (is (thrown-with-msg? IllegalArgumentException #"Required field :base-type is missing."
-                          (helpers/throw-cause (Types/create {'foo {}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #"Base type ':int' is not a symbol"
-                          (helpers/throw-cause (Types/create {'foo {:base-type :int}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #"Unknown base type 'in'"
-                          (helpers/throw-cause (Types/create {'foo {:base-type 'in}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #"Key ':invalid' is not a valid custom-type field"
-                          (helpers/throw-cause (Types/create {'foo {:base-type 'int
-                                                                    :invalid nil}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #":coercion-fn expects a function"
-                          (helpers/throw-cause (Types/create {'foo {:base-type 'int
-                                                                    :coercion-fn 2}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #":to-base-type-fn expects a function"
-                          (helpers/throw-cause (Types/create {'foo {:base-type 'int
-                                                                    :to-base-type-fn 2}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #":from-base-type-fn expects a function"
-                          (helpers/throw-cause (Types/create {'foo {:base-type 'int
-                                                                    :from-base-type-fn 2}} nil))))
-    (is (thrown-with-msg? IllegalArgumentException #"Loop detected for custom-type 'bar'"
-                          (Types/create {'foo {:base-type 'bar}
-                                         'bar {:base-type 'foo}} nil)))
-    (is (thrown-with-msg? IllegalArgumentException #"Loop detected for custom-type 'foo'"
-                          (Types/create {'foo {:base-type 'foo}} nil))))
+  (testing "invalid configurations"
+    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex (Types/create custom-types nil))
+         {:foo {}} #"Custom-type ':foo' is not a symbol."
+         {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'bar'"
+         {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'")
+    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex
+                                                (helpers/throw-cause (Types/create custom-types nil)))
+         {'foo {}} #"Required field :base-type is missing."
+         {'foo {:base-type :int}} #"Base type ':int' is not a symbol"
+         {'foo {:base-type 'in}} #"Unknown base type 'in'"
+         {'foo {:base-type 'int :invalid nil}} #"Key ':invalid' is not a valid custom-type field"
+         {'foo {:base-type 'int :coercion-fn 2}} #":coercion-fn expects a function"
+         {'foo {:base-type 'int :to-base-type-fn 2}} #":to-base-type-fn expects a function"
+         {'foo {:base-type 'int :from-base-type-fn 2}} #":from-base-type-fn expects a function"))
   (testing "custom-types work"
     (let [my-types (Types/create {'foo {:base-type 'int
                                         :coercion-fn int

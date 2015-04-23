@@ -39,7 +39,7 @@ public final class RecordGroupMetadata implements IWriteable {
     } else {
       Bytes.writeUInt(mos, columnChunksMetadata.size());
       for (Object ccm : columnChunksMetadata) {
-        ((ColumnChunkMetadata)ccm).writeTo(mos);
+        mos.write((ColumnChunkMetadata)ccm);
       }
     }
   }
@@ -51,7 +51,7 @@ public final class RecordGroupMetadata implements IWriteable {
     }
     ITransientCollection columnChunksMetadata = PersistentLinkedSeq.newEmptyTransient();
     for (int i=0; i<n; ++i) {
-      columnChunksMetadata = columnChunksMetadata.conj(ColumnChunkMetadata.read(bb));
+      columnChunksMetadata.conj(ColumnChunkMetadata.read(bb));
     }
     return (List) columnChunksMetadata.persistent();
   }

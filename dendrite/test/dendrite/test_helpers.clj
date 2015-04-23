@@ -107,7 +107,7 @@
     (.byteBuffer mos)))
 
 (def test-schema-str
-  "{:docid #req #col [long delta lz4]
+  "{:docid #req #col [long delta deflate]
     :links {:backward (long)
             :forward [#col [long delta]]}
     :name [{:language [{:code #req string

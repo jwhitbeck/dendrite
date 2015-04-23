@@ -22,11 +22,11 @@ import java.util.List;
 public final class FileMetadata implements IWriteable {
 
   public final List recordGroupsMetadata;
-  public final Field schema;
+  public final SchemaNode schema;
   public final List customTypes;
   public final ByteBuffer metadata;
 
-  public FileMetadata(List recordGroupsMetadata, Field schema, List customTypes, ByteBuffer metadata) {
+  public FileMetadata(List recordGroupsMetadata, SchemaNode schema, List customTypes, ByteBuffer metadata) {
     this.recordGroupsMetadata = recordGroupsMetadata;
     this.schema = schema;
     this.customTypes = customTypes;
@@ -39,7 +39,7 @@ public final class FileMetadata implements IWriteable {
     } else {
       Bytes.writeUInt(mos, recordGroupsMetadata.size());
       for (Object recordGroupMetadata : recordGroupsMetadata) {
-        ((RecordGroupMetadata)recordGroupMetadata).writeTo(mos);
+        mos.write((RecordGroupMetadata)recordGroupMetadata);
       }
     }
   }
@@ -51,7 +51,7 @@ public final class FileMetadata implements IWriteable {
     }
     ITransientCollection recordGroupsMetadata = PersistentLinkedSeq.newEmptyTransient();
     for (int i=0; i<n; ++i) {
-      recordGroupsMetadata = recordGroupsMetadata.conj(RecordGroupMetadata.read(bb));
+      recordGroupsMetadata.conj(RecordGroupMetadata.read(bb));
     }
     return (List) recordGroupsMetadata.persistent();
   }
@@ -62,7 +62,7 @@ public final class FileMetadata implements IWriteable {
     } else {
       Bytes.writeUInt(mos, customTypes.size());
       for (Object customType : customTypes) {
-        ((CustomType)customType).writeTo(mos);
+        mos.write((CustomType)customType);
       }
     }
   }
@@ -74,7 +74,7 @@ public final class FileMetadata implements IWriteable {
     }
     ITransientCollection customTypes = PersistentLinkedSeq.newEmptyTransient();
     for (int i=0; i<n; ++i) {
-      customTypes = customTypes.conj(CustomType.read(bb));
+      customTypes.conj(CustomType.read(bb));
     }
     return (List) customTypes.persistent();
   }
@@ -82,7 +82,7 @@ public final class FileMetadata implements IWriteable {
   @Override
   public void writeTo(MemoryOutputStream mos) {
     writeRecordGroupsMetadataTo(mos);
-    schema.writeTo(mos);
+    mos.write(schema);
     writeCustomTypesTo(mos);
     Bytes.writeByteBuffer(mos, metadata);
   }
@@ -101,7 +101,7 @@ public final class FileMetadata implements IWriteable {
 
   public static FileMetadata read(ByteBuffer bb) {
     return new FileMetadata(readRecordGroupsMetadata(bb),
-                            Field.read(bb),
+                            SchemaNode.read(bb),
                             readCustomTypes(bb),
                             Bytes.readByteBuffer(bb));
   }

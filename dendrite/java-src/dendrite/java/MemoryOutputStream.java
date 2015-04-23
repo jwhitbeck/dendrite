@@ -26,7 +26,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
     buffer = new byte[DEFAULT_BUFFER_LENGTH];
   }
 
-  public MemoryOutputStream(final int length) {
+  public MemoryOutputStream(int length) {
     buffer = new byte[length];
   }
 
@@ -49,7 +49,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   }
 
   @Override
-  public void writeTo(final MemoryOutputStream mos) {
+  public void writeTo(MemoryOutputStream mos) {
     mos.write(buffer, 0, position);
   }
 
@@ -59,7 +59,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
     buffer = newBuffer;
   }
 
-  void ensureRemainingCapacity(final int capacity) {
+  void ensureRemainingCapacity(int capacity) {
     if (buffer.length - position < capacity) {
       grow();
       ensureRemainingCapacity(capacity);
@@ -67,7 +67,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   }
 
   @Override
-  public void write(final int b) {
+  public void write(int b) {
     if (position == buffer.length) {
       grow();
       write(b);
@@ -78,24 +78,28 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   }
 
   @Override
-  public void write(final byte[] bytes) {
+  public void write(byte[] bytes) {
     write(bytes, 0, bytes.length);
   }
 
   @Override
-  public void write(final byte[] bytes, final int offset, final int length) {
+  public void write(byte[] bytes, int offset, int length) {
     ensureRemainingCapacity(length);
     System.arraycopy(bytes, offset, buffer, position, length);
     position += length;
   }
 
-  public void write(final ByteBuffer bb) {
+  public void write(ByteBuffer bb) {
     bb.mark();
     int length = bb.limit() - bb.position();
     ensureRemainingCapacity(length);
     bb.get(buffer, position, length);
     position += length;
     bb.reset();
+  }
+
+  public void write(IWriteable writable) {
+    writable.writeTo(this);
   }
 
   public ByteBuffer byteBuffer() {

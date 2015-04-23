@@ -472,9 +472,11 @@ public final class Types {
   private final static Symbol[] encodingSymbols;
   private final static HashMap<Symbol,Integer> encodings;
 
+  final static Symbol PLAIN_SYM = Symbol.intern("plain");
+
   static {
     encodingSymbols = new Symbol[DELTA_LENGTH+1];
-    encodingSymbols[PLAIN] = Symbol.intern("plain");
+    encodingSymbols[PLAIN] = PLAIN_SYM;
     encodingSymbols[DICTIONARY] = Symbol.intern("dictionary");
     encodingSymbols[FREQUENCY] = Symbol.intern("frequency");
     encodingSymbols[VLQ] = Symbol.intern("vlq");
@@ -648,7 +650,7 @@ public final class Types {
     NONE = 0,
     DEFLATE = 1;
 
-  private final static Symbol
+  final static Symbol
     NONE_SYM = Symbol.intern("none"),
     DEFLATE_SYM = Symbol.intern("deflate");
 
@@ -1100,7 +1102,7 @@ public final class Types {
       public void finish() { enc.finish(); }
       public int length() { return enc.length(); }
       public int estimatedLength() { return enc.estimatedLength(); }
-      public void writeTo(MemoryOutputStream mos) { enc.writeTo(mos); }
+      public void writeTo(MemoryOutputStream mos) { mos.write(enc); }
     };
   }
 
