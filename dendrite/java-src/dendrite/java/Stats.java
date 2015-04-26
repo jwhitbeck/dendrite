@@ -13,14 +13,14 @@
 package dendrite.java;
 
 import clojure.lang.Keyword;
+import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;
+import clojure.lang.ISeq;
 import clojure.lang.ITransientMap;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
-
-import java.util.List;
 
 public final class Stats {
 
@@ -76,7 +76,7 @@ public final class Stats {
       });
   }
 
-  public final static IPersistentMap columnChunkStats(List pageStatsList) {
+  public final static IPersistentMap columnChunkStats(IPersistentCollection pageStatsList) {
     int numPages = RT.count(pageStatsList);
     int numValues = 0;
     int numDictionaryValues = 0;
@@ -89,8 +89,8 @@ public final class Stats {
     int dictionaryLength = 0;
 
     if (numPages > 0) {
-      for (Object o : pageStatsList) {
-        IPersistentMap pageStats = (IPersistentMap)o;
+      for (ISeq s = RT.seq(pageStatsList); s != null; s = s.next()) {
+        IPersistentMap pageStats = (IPersistentMap)s.first();;
         length += (int)pageStats.valAt(LENGTH);
         boolean isDictionary = (int)pageStats.valAt(DICTIONARY_LENGTH) > 0;
         if (isDictionary) {
@@ -123,7 +123,8 @@ public final class Stats {
 
   public static IPersistentMap columnStats(Symbol type, Symbol encoding, Symbol compression,
                                            int maxRepetitionLevel, int maxDefinitionLevel,
-                                           IPersistentVector path, List columnChunkStatsList) {
+                                           IPersistentVector path,
+                                           IPersistentCollection columnChunkStatsList) {
     int numColumnChunks = RT.count(columnChunkStatsList);
     int length = 0;
     int numValues = 0;
@@ -137,8 +138,8 @@ public final class Stats {
     int dictionaryLength = 0;
 
     if (numColumnChunks > 0) {
-      for (Object o : columnChunkStatsList) {
-        IPersistentMap columnChunkStats = (IPersistentMap)o;
+      for (ISeq s = RT.seq(columnChunkStatsList); s != null; s = s.next()) {
+        IPersistentMap columnChunkStats = (IPersistentMap)s.first();
         length += (int)columnChunkStats.valAt(LENGTH);
         numValues += (int)columnChunkStats.valAt(NUM_VALUES);
         numDictionaryValues += (int)columnChunkStats.valAt(NUM_DICTIONARY_VALUES);
@@ -173,7 +174,7 @@ public final class Stats {
       .persistent();
   }
 
-  public static IPersistentMap recordGroupStats(int numRecords, List columnChunkStatsList) {
+  public static IPersistentMap recordGroupStats(int numRecords, IPersistentCollection columnChunkStatsList) {
 
     int numColumnChunks = RT.count(columnChunkStatsList);
     int length = 0;
@@ -185,8 +186,8 @@ public final class Stats {
     int dictionaryLength = 0;
 
     if (numColumnChunks > 0) {
-      for (Object o : columnChunkStatsList) {
-        IPersistentMap columnChunkStats = (IPersistentMap)o;
+      for (ISeq s = RT.seq(columnChunkStatsList); s != null; s = s.next()) {
+        IPersistentMap columnChunkStats = (IPersistentMap)s.first();
         length += (int)columnChunkStats.valAt(LENGTH);
         headerLength += (int)columnChunkStats.valAt(HEADER_LENGTH);
         repetitionLevelsLength += (int)columnChunkStats.valAt(REPETITION_LEVELS_LENGTH);
@@ -210,7 +211,8 @@ public final class Stats {
       .persistent();
   }
 
-  public static IPersistentMap globalStats(int length, int numColumns, List recordGroupStatsList) {
+  public static IPersistentMap globalStats(int length, int numColumns,
+                                           IPersistentCollection recordGroupStatsList) {
     int numRecordGroups = RT.count(recordGroupStatsList);
     int dataLength = 0;
     int numRecords = 0;
@@ -222,8 +224,8 @@ public final class Stats {
     int metadataLength = length;
 
     if (numRecordGroups > 0) {
-      for (Object o : recordGroupStatsList) {
-        IPersistentMap recordGroupStats = (IPersistentMap)o;
+      for (ISeq s = RT.seq(recordGroupStatsList); s != null; s = s.next()) {
+        IPersistentMap recordGroupStats = (IPersistentMap)s.first();
         metadataLength -= (int)recordGroupStats.valAt(LENGTH);
         numRecords += (int)recordGroupStats.valAt(NUM_RECORDS);
         headerLength += (int)recordGroupStats.valAt(HEADER_LENGTH);

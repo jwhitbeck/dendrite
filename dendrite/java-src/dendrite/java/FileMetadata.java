@@ -13,38 +13,37 @@
 package dendrite.java;
 
 import clojure.lang.Keyword;
+import clojure.lang.IPersistentCollection;
+import clojure.lang.ISeq;
 import clojure.lang.ITransientCollection;
+import clojure.lang.RT;
 import clojure.lang.Util;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public final class FileMetadata implements IWriteable {
 
-  public final List recordGroupsMetadata;
-  public final SchemaNode schema;
-  public final List customTypes;
+  public final ISeq recordGroupsMetadata;
+  public final Schema schema;
+  public final ISeq customTypes;
   public final ByteBuffer metadata;
 
-  public FileMetadata(List recordGroupsMetadata, SchemaNode schema, List customTypes, ByteBuffer metadata) {
-    this.recordGroupsMetadata = recordGroupsMetadata;
+  public FileMetadata(IPersistentCollection recordGroupsMetadata, Schema schema,
+                      IPersistentCollection customTypes, ByteBuffer metadata) {
+    this.recordGroupsMetadata = RT.seq(recordGroupsMetadata);
     this.schema = schema;
-    this.customTypes = customTypes;
+    this.customTypes = RT.seq(customTypes);
     this.metadata = metadata;
   }
 
   private void writeRecordGroupsMetadataTo(MemoryOutputStream mos) {
-    if (recordGroupsMetadata == null) {
-      Bytes.writeUInt(mos, 0);
-    } else {
-      Bytes.writeUInt(mos, recordGroupsMetadata.size());
-      for (Object recordGroupMetadata : recordGroupsMetadata) {
-        mos.write((RecordGroupMetadata)recordGroupMetadata);
-      }
+    Bytes.writeUInt(mos, RT.count(recordGroupsMetadata));
+    for (ISeq s = recordGroupsMetadata; s != null; s = s.next()) {
+      mos.write((RecordGroupMetadata)s.first());
     }
   }
 
-  private static List readRecordGroupsMetadata(ByteBuffer bb) {
+  private static IPersistentCollection readRecordGroupsMetadata(ByteBuffer bb) {
     int n = Bytes.readUInt(bb);
     if (n == 0) {
       return null;
@@ -53,21 +52,17 @@ public final class FileMetadata implements IWriteable {
     for (int i=0; i<n; ++i) {
       recordGroupsMetadata.conj(RecordGroupMetadata.read(bb));
     }
-    return (List) recordGroupsMetadata.persistent();
+    return recordGroupsMetadata.persistent();
   }
 
   private void writeCustomTypesTo(MemoryOutputStream mos) {
-    if (customTypes == null) {
-      Bytes.writeUInt(mos, 0);
-    } else {
-      Bytes.writeUInt(mos, customTypes.size());
-      for (Object customType : customTypes) {
-        mos.write((CustomType)customType);
-      }
+    Bytes.writeUInt(mos, RT.count(customTypes));
+    for (ISeq s = customTypes; s != null; s = s.next()) {
+      mos.write((CustomType)s.first());
     }
   }
 
-  private static List readCustomTypes(ByteBuffer bb) {
+  private static IPersistentCollection readCustomTypes(ByteBuffer bb) {
     int n = Bytes.readUInt(bb);
     if (n == 0) {
       return null;
@@ -76,7 +71,7 @@ public final class FileMetadata implements IWriteable {
     for (int i=0; i<n; ++i) {
       customTypes.conj(CustomType.read(bb));
     }
-    return (List) customTypes.persistent();
+    return customTypes.persistent();
   }
 
   @Override
@@ -101,7 +96,7 @@ public final class FileMetadata implements IWriteable {
 
   public static FileMetadata read(ByteBuffer bb) {
     return new FileMetadata(readRecordGroupsMetadata(bb),
-                            SchemaNode.read(bb),
+                            Schema.read(bb),
                             readCustomTypes(bb),
                             Bytes.readByteBuffer(bb));
   }

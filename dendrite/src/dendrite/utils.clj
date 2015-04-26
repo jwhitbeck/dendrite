@@ -155,7 +155,7 @@
   ([f chunk-size coll]
    (->> coll
         (partition-all chunk-size)
-        (pmap (comp doall (partial map f)))
+        (pmap (partial mapv f))
         flatten-1)))
 
 (defn boolean? [b] (or (true? b) (false? b)))

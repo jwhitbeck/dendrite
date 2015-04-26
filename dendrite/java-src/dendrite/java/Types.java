@@ -16,6 +16,7 @@ import clojure.lang.AFn;
 import clojure.lang.BigInt;
 import clojure.lang.IFn;
 import clojure.lang.IMapEntry;
+import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.Keyword;
@@ -31,7 +32,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.LinkedList;
 import java.util.UUID;
 
@@ -436,7 +436,7 @@ public final class Types {
   }
 
   private static void fillBuiltInLogicalTypeSymbols(HashMap<Symbol,Integer> logicalTypesMap) {
-    for(int i=0; i<builtInLogicalTypes.length; ++i) {
+    for (int i=0; i<builtInLogicalTypes.length; ++i) {
       LogicalType lt = builtInLogicalTypes[i];
       if (lt != null) {
         logicalTypesMap.put(lt.sym, i);
@@ -798,14 +798,12 @@ public final class Types {
     }
   }
 
-  private static int getMaxCustomType(List customTypes) {
+  private static int getMaxCustomType(IPersistentCollection customTypes) {
     int maxType = Integer.MIN_VALUE;
-    if (customTypes != null) {
-      for (Object o : customTypes) {
-        int type = ((CustomType)o).type;
-        if (type > maxType) {
-          maxType = type;
-        }
+    for (ISeq s = RT.seq(customTypes); s != null; s = s.next()) {
+      int type = ((CustomType)s.first()).type;
+      if (type > maxType) {
+        maxType = type;
       }
     }
     return maxType;
@@ -813,7 +811,7 @@ public final class Types {
 
   private static void fillCustomTypesConfSymbols(HashMap<Symbol, Integer> logicalTypesMap,
                                                  IPersistentMap customTypesConf,
-                                                 List customTypes) {
+                                                 IPersistentCollection customTypes) {
     int nextCustomType = Math.max(FIRST_CUSTOM_TYPE, getMaxCustomType(customTypes) + 1);
     ISeq keySeq = RT.keys(customTypesConf);
     while (keySeq != null) {
@@ -831,12 +829,10 @@ public final class Types {
   }
 
   private static void fillCustomTypesSymbols(HashMap<Symbol, Integer> logicalTypesMap,
-                                             List customTypes) {
-    if (customTypes != null) {
-      for (Object o : customTypes) {
-        CustomType ct = (CustomType)o;
-        logicalTypesMap.put(ct.sym, ct.type);
-      }
+                                             IPersistentCollection customTypes) {
+    for (ISeq s = RT.seq(customTypes); s != null; s = s.next()) {
+      CustomType ct = (CustomType)s.first();
+      logicalTypesMap.put(ct.sym, ct.type);
     }
   }
 
@@ -929,25 +925,21 @@ public final class Types {
   private static void fillCustomTypesConf(LogicalType[] logicalTypes,
                                           HashMap<Symbol, Integer> logicalTypesMap,
                                           IPersistentMap customTypesConf) {
-    if (customTypesConf != null) {
-      for (Object o : customTypesConf) {
-        IMapEntry entry = (IMapEntry)o;
-        Symbol sym = (Symbol)entry.key();
-        IPersistentMap typeConf = (IPersistentMap)entry.val();
-        Integer type = logicalTypesMap.get(sym);
-        logicalTypes[type] = parseTypeConf(logicalTypesMap, sym, typeConf);
-      }
+    for (ISeq s = RT.seq(customTypesConf); s != null; s = s.next()) {
+      IMapEntry entry = (IMapEntry)s.first();
+      Symbol sym = (Symbol)entry.key();
+      IPersistentMap typeConf = (IPersistentMap)entry.val();
+      Integer type = logicalTypesMap.get(sym);
+      logicalTypes[type] = parseTypeConf(logicalTypesMap, sym, typeConf);
     }
   }
 
   private static void fillEmptyCustomTypes(LogicalType[] logicalTypes,
-                                           List customTypes) {
-    if (customTypes != null) {
-      for (Object o : customTypes) {
-        CustomType ct = (CustomType)o;
-        if (logicalTypes[ct.type] == null) {
-          logicalTypes[ct.type] = new LogicalType(ct.sym, ct.baseType, null, null, null);
-        }
+                                           IPersistentCollection customTypes) {
+    for (ISeq s = RT.seq(customTypes); s != null; s = s.next()) {
+      CustomType ct = (CustomType)s.first();
+      if (logicalTypes[ct.type] == null) {
+        logicalTypes[ct.type] = new LogicalType(ct.sym, ct.baseType, null, null, null);
       }
     }
   }
@@ -1001,7 +993,7 @@ public final class Types {
     }
   }
 
-  public static Types create(IPersistentMap customTypesConf, List customTypes) {
+  public static Types create(IPersistentMap customTypesConf, IPersistentCollection customTypes) {
     int estimatedNumTypes = builtInLogicalTypes.length + RT.count(customTypesConf);
     HashMap<Symbol,Integer> logicalTypesMap = new HashMap<Symbol,Integer>(2 * estimatedNumTypes);
     fillBuiltInLogicalTypeSymbols(logicalTypesMap);
@@ -1054,7 +1046,7 @@ public final class Types {
   public int getEncoding(int type, Symbol sym) {
     int encoding = getEncoding(sym);
     int[] encodingsForType = listEncodingsForType(type);
-    for(int i=0; i<encodingsForType.length; ++i) {
+    for (int i=0; i<encodingsForType.length; ++i) {
       if (encodingsForType[i] == encoding) {
         return encoding;
       }

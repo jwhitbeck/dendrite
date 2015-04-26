@@ -14,37 +14,35 @@ package dendrite.java;
 
 import clojure.lang.Keyword;
 import clojure.lang.IFn;
+import clojure.lang.IPersistentCollection;
+import clojure.lang.ISeq;
 import clojure.lang.ITransientCollection;
 import clojure.lang.PersistentList;
+import clojure.lang.RT;
 import clojure.lang.Util;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public final class RecordGroupMetadata implements IWriteable {
 
   public final int length;
   public final int numRecords;
-  public final List columnChunksMetadata;
+  public final ISeq columnChunksMetadata;
 
-  public RecordGroupMetadata(int length, int numRecords, List columnChunksMetadata) {
+  public RecordGroupMetadata(int length, int numRecords, IPersistentCollection columnChunksMetadata) {
     this.length = length;
     this.numRecords = numRecords;
-    this.columnChunksMetadata = columnChunksMetadata;
+    this.columnChunksMetadata = RT.seq(columnChunksMetadata);
   }
 
   private void writeColumnChunksMetadataTo(MemoryOutputStream mos) {
-    if (columnChunksMetadata == null) {
-      Bytes.writeUInt(mos, 0);
-    } else {
-      Bytes.writeUInt(mos, columnChunksMetadata.size());
-      for (Object ccm : columnChunksMetadata) {
-        mos.write((ColumnChunkMetadata)ccm);
-      }
+    Bytes.writeUInt(mos, RT.count(columnChunksMetadata));
+    for (ISeq s = columnChunksMetadata; s != null; s = s.next()) {
+      mos.write((ColumnChunkMetadata)s.first());
     }
   }
 
-  private static List readColumnChunksMetadata(ByteBuffer bb) {
+  private static IPersistentCollection readColumnChunksMetadata(ByteBuffer bb) {
     int n = Bytes.readUInt(bb);
     if (n == 0) {
       return null;
@@ -53,7 +51,7 @@ public final class RecordGroupMetadata implements IWriteable {
     for (int i=0; i<n; ++i) {
       columnChunksMetadata.conj(ColumnChunkMetadata.read(bb));
     }
-    return (List) columnChunksMetadata.persistent();
+    return columnChunksMetadata.persistent();
   }
 
   @Override

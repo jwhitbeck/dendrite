@@ -12,31 +12,33 @@
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ColumnChunkMetadata CustomType FileMetadata MemoryOutputStream
-            RecordGroupMetadata SchemaNode SchemaNode$Leaf SchemaNode$Record SchemaNode$Collection]
+            RecordGroupMetadata Schema Schema$Leaf Schema$Field Schema$Record Schema$Collection]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 
 (defn rand-name [] (rand-nth [:foo :bar :baz]))
 
-(declare rand-schema-node)
+(declare rand-schema)
 
 (defn rand-schema-leaf []
-  (SchemaNode$Leaf. (rand-name) (rand-int 10) (rand-int 10) (rand-int 10) (- (rand-int 10) 4)
-                    (rand-int 10) (rand-int 10) (rand-int 100) nil))
+  (Schema$Leaf. (rand-int 10) (rand-int 10) (rand-int 10) (- (rand-int 10) 4)
+                (rand-int 10) (rand-int 10) (rand-int 100) nil))
+
+(defn rand-field [max-depth]
+  (Schema$Field. (rand-name) (rand-schema (dec max-depth))))
 
 (defn rand-schema-record [max-depth]
-  (SchemaNode$Record. (rand-name) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
-                      (seq (repeatedly (rand-int 3) #(rand-schema-node (dec max-depth))))
-                      nil))
+  (Schema$Record. (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
+                  (repeatedly (rand-int 3) #(rand-field max-depth))
+                  nil))
 
 (defn rand-schema-coll [max-depth]
-  (SchemaNode$Collection. (rand-name) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
-                          (rand-schema-node (dec max-depth))
-                          nil))
+  (Schema$Collection. (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
+                      (rand-schema (dec max-depth)) nil))
 
-(defn rand-schema-node
-  ([] (rand-schema-node 5))
+(defn rand-schema
+  ([] (rand-schema 5))
   ([max-depth]
    (if (zero? max-depth)
      (rand-schema-leaf)
@@ -45,14 +47,14 @@
        1 (rand-schema-record max-depth)
        2 (rand-schema-coll max-depth)))))
 
-(deftest schema-nodes
+(deftest schemas
   (let [mos (MemoryOutputStream.)
-        rand-schema-nodes (repeatedly 100 rand-schema-node)]
-    (doseq [^SchemaNode schema-node rand-schema-nodes]
-      (.write mos schema-node))
+        rand-schemas (repeatedly 100 rand-schema)]
+    (doseq [^Schema schema rand-schemas]
+      (.write mos schema))
     (let [bb (.byteBuffer mos)
-          read-schema-nodes (repeatedly 100 #(SchemaNode/read bb))]
-      (is (= read-schema-nodes rand-schema-nodes)))))
+          read-schemas (repeatedly 100 #(Schema/read bb))]
+      (is (= read-schemas rand-schemas)))))
 
 (defn rand-column-chunk-metadata []
   (ColumnChunkMetadata. (rand-int 1024) (rand-int 10) (rand-int 128) (rand-int 128)))
@@ -70,7 +72,7 @@
 (defn rand-record-group-metadata []
   (RecordGroupMetadata. (rand-int (* 1024 1024))
                         (rand-int 10000)
-                        (seq (repeatedly (rand-int 10) rand-column-chunk-metadata))))
+                        (repeatedly (rand-int 10) rand-column-chunk-metadata)))
 
 (deftest record-group-metadata
   (testing "serialization-deserialization"
@@ -96,9 +98,9 @@
         (is (= read-custom-types rand-custom-types))))))
 
 (defn rand-file-metadata []
-  (FileMetadata. (seq (repeatedly (rand-int 5) rand-record-group-metadata))
-                 (rand-schema-node)
-                 (seq (repeatedly (rand-int 5) rand-custom-type))
+  (FileMetadata. (repeatedly (rand-int 5) rand-record-group-metadata)
+                 (rand-schema)
+                 (repeatedly (rand-int 5) rand-custom-type)
                  (helpers/rand-byte-buffer)))
 
 (deftest file-metadata

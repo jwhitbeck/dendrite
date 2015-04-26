@@ -98,7 +98,7 @@
                        (doall (read r)))))))
   (testing "repeated records"
     (let [records (->> (helpers/rand-test-records) (partition 5) (take 20))]
-      (with-open [w (file-writer [(-> helpers/test-schema-str schema/read-string)] tmp-filename)]
+      (with-open [w (file-writer [(-> helpers/test-schema-str schema/read-string schema/unreq)] tmp-filename)]
         (reduce write! w records))
       (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r)))))))

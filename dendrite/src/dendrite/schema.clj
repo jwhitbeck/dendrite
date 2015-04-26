@@ -64,7 +64,7 @@
     (throw (IllegalArgumentException. "Cannot mark a field as required multiple times")))
   (vary-meta elem assoc :type ::required))
 
-(defn- unreq [elem] (vary-meta elem dissoc :type))
+(defn unreq [elem] (vary-meta elem dissoc :type))
 
 (defmethod print-method ::required
   [v ^Writer w]

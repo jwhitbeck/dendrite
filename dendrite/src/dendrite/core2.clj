@@ -10,7 +10,7 @@
 
 (ns dendrite.core2
   (:require [clojure.pprint :as pprint])
-  (:import [dendrite.java Col Schemas]
+  (:import [dendrite.java Col Schema]
            [java.io Writer]))
 
 (set! *warn-on-reflection* true)
@@ -37,30 +37,42 @@
 (defn req
   "Marks the enclosed schema element as required."
   [x]
-  (Schemas/req x))
+  (Schema/req x))
 
-(defmethod print-method Schemas/REQUIRED
+(defmethod print-method Schema/REQUIRED_TYPE
   [v ^Writer w]
   (.write w "#req ")
-  (print-method (Schemas/unreq v) w))
+  (print-method (Schema/unreq v) w))
 
-(defmethod pprint/simple-dispatch Schemas/REQUIRED
+(defmulti ^:private schema-dispatch type)
+
+(defmethod schema-dispatch Schema/REQUIRED_TYPE
   [v]
   (.write *out* "#req ")
-  (pprint/simple-dispatch (Schemas/unreq v)))
+  (pprint/simple-dispatch (Schema/unreq v)))
+
+(defmethod schema-dispatch :default
+  [v]
+  (pprint/simple-dispatch v))
+
+(defn pprint
+  "Pretty-prints the schema."
+  [schema]
+  (pprint/with-pprint-dispatch schema-dispatch
+    (pprint/pprint schema)))
 
 (defn tag
   "Tags the enclosed query element with the provided tag. Meant to be used in combination with the :readers
   option."
   [tag elem]
-  (Schemas/tag tag elem))
+  (Schema/tag tag elem))
 
-(defmethod print-method Schemas/TAGGED
+(defmethod print-method Schema/TAGGED_TYPE
   [v ^Writer w]
-  (.write w (format "#%s " (-> v Schemas/getTag name)))
-  (print-method (Schemas/untag v) w))
+  (.write w (format "#%s " (-> v Schema/getTag name)))
+  (print-method (Schema/untag v) w))
 
 (defn read-schema-string
   "Parse an edn-formatted dendrite schema string."
   [s]
-  (Schemas/readString s))
+  (Schema/readString s))
