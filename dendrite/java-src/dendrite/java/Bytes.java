@@ -551,9 +551,15 @@ public final class Bytes {
     if (length < 0) {
       return null;
     }
-    ByteBuffer byteBuffer = bb.duplicate();
-    byteBuffer.limit(byteBuffer.position() + length);
+    ByteBuffer byteBuffer = bb.slice();
+    byteBuffer.limit(length);
     bb.position(bb.position() + length);
+    return byteBuffer;
+  }
+
+  public static ByteBuffer sliceAhead(final ByteBuffer bb, final int numBytes) {
+    ByteBuffer byteBuffer = bb.slice();
+    byteBuffer.position(numBytes);
     return byteBuffer;
   }
 

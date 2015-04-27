@@ -74,7 +74,7 @@
        (cons (f (first s)) (rand-map p f (rest s)))
        (cons (first s) (rand-map p f (rest s)))))))
 
-(defn leveled [{:keys [max-definition-level max-repetition-level] :or {nested? true} :as spec} coll]
+(defn leveled [{:keys [max-definition-level max-repetition-level] :as spec} coll]
   (lazy-seq
    (let [next-value (first coll)
          rand-repetition-level (clojure.core/rand-int (inc max-repetition-level))

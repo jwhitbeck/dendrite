@@ -9,9 +9,10 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.java.encoders-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as string]
+            [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java MemoryOutputStream
+  (:import [dendrite.java MemoryOutputStream Types
             IEncoder IDecoder
             BooleanPacked$Encoder BooleanPacked$Decoder
             IntPlain$Encoder IntPlain$Decoder
@@ -28,7 +29,8 @@
             FixedLengthByteArrayPlain$Encoder FixedLengthByteArrayPlain$Decoder
             ByteArrayPlain$Encoder ByteArrayPlain$Decoder
             ByteArrayDeltaLength$Encoder ByteArrayDeltaLength$Decoder
-            ByteArrayIncremental$Encoder ByteArrayIncremental$Decoder]
+            ByteArrayIncremental$Encoder ByteArrayIncremental$Decoder
+            Dictionary$Encoder Dictionary$Decoder]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -157,3 +159,33 @@
       (is (every? true? (map = (map seq read-byte-arrays) (map seq rand-byte-arrays))))))
   (testing "incremental encoder's finish method is idempotent"
     (test-finish-idempotence #(ByteArrayIncremental$Encoder.) (repeatedly helpers/rand-byte-array))))
+
+(deftest dictionary-encoders
+  (testing "small set of integers"
+    (let [rand-int-set (repeatedly 10 helpers/rand-int)
+          n 1000
+          rand-ints (repeatedly n #(rand-nth rand-int-set))
+          enc (Dictionary$Encoder/create Types/INT nil)
+          mos (MemoryOutputStream.)]
+      (doseq [i rand-ints]
+        (.encode enc i))
+      (.write mos enc)
+      (let [dictionary (.getDictionary enc)
+            dec (Dictionary$Decoder. (IntPackedRunLength$Decoder. (.byteBuffer mos)) dictionary)
+            read-ints (repeatedly n #(.decode dec))]
+        (is (= read-ints rand-ints)))))
+  (testing "byte-array encoding"
+    (let [words (->> (string/split helpers/lorem-ipsum #"\W")
+                     (remove empty?)
+                     (map string/lower-case))
+          n 1000
+          rand-words (repeatedly n #(rand-nth words))
+          enc (Dictionary$Encoder/create Types/BYTE_ARRAY #(Types/toByteArray (str %)))
+          mos (MemoryOutputStream.)]
+      (doseq [w rand-words]
+        (.encode enc w))
+      (.write mos enc)
+      (let [dictionary (into-array (map #(Types/toString (bytes %)) (.getDictionary enc)))
+            dec (Dictionary$Decoder. (IntPackedRunLength$Decoder. (.byteBuffer mos)) dictionary)
+            read-words (repeatedly n #(.decode dec))]
+        (is (= read-words rand-words))))))

@@ -9,7 +9,7 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.compression
-  (:import [dendrite.java DeflateCompressor DeflateDecompressor]))
+  (:import [dendrite.java Deflate$Compressor Deflate$Decompressor]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,11 +20,11 @@
 (defn compressor [compression-type]
   (case compression-type
     :none nil
-    :deflate (DeflateCompressor.)
+    :deflate (Deflate$Compressor.)
     (throw (invalid-compression-type-exception compression-type))))
 
 (defn decompressor-ctor [compression-type]
   (case compression-type
     :none (constantly nil)
-    :deflate #(DeflateDecompressor.)
+    :deflate #(Deflate$Decompressor.)
     (throw (invalid-compression-type-exception compression-type))))

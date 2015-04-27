@@ -13,7 +13,7 @@
             [dendrite.test-helpers :refer [lorem-ipsum]])
   (:import [dendrite.java MemoryOutputStream
             ICompressor IDecompressor
-            DeflateCompressor DeflateDecompressor]
+            Deflate$Compressor Deflate$Decompressor]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -33,4 +33,4 @@
 
 (deftest deflate-test
   (testing "deflate compression"
-    (is (= lorem-ipsum (compress-decompress-lorum-ipsum (DeflateCompressor.) (DeflateDecompressor.))))))
+    (is (= lorem-ipsum (compress-decompress-lorum-ipsum (Deflate$Compressor.) (Deflate$Decompressor.))))))

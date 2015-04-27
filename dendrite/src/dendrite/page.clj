@@ -13,7 +13,7 @@
             [dendrite.encoding :refer [levels-encoder levels-decoder encoder decoder-ctor]]
             [dendrite.stats :as stats]
             [dendrite.utils :refer [defenum] :as utils])
-  (:import [dendrite.java Bytes Estimator ICompressor IDecompressor Dictionary IEncoder
+  (:import [dendrite.java Bytes Estimator ICompressor IDecompressor DictionaryValues IEncoder
             LeveledValue LeveledValues MemoryOutputStream IOutputBuffer IWriteable]
            [java.nio ByteBuffer]))
 
@@ -414,7 +414,7 @@
                                           (.compressed-data-length header)
                                           (.uncompressed-data-length header))
                               data-byte-buffer)]
-      (Dictionary/read (data-decoder-ctor data-byte-buffer) map-fn))))
+      (DictionaryValues/read (data-decoder-ctor data-byte-buffer) map-fn))))
 
 (defn dictionary-page-reader
   ^dendrite.page.DictionaryPageReader

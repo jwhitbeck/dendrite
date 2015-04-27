@@ -456,6 +456,10 @@ public final class Types {
     INCREMENTAL = 7,
     DELTA_LENGTH = 8;
 
+  private boolean isDictionary(int encoding) {
+    return encoding == DICTIONARY || encoding == FREQUENCY;
+  }
+
   private final static int[][] validEncodings;
 
   static {
@@ -1001,6 +1005,14 @@ public final class Types {
     };
   }
 
+  private IEncoder getDictionaryEncoder(int type) {
+    if (isPrimitive(type)) {
+      return Dictionary.Encoder.create(type, null);
+    }
+    LogicalType lt = logicalTypes[type];
+    return Dictionary.Encoder.create(lt.baseType, lt.toBaseTypeFn);
+  }
+
   public IDecoderFactory getDecoderFactory(int type, int encoding) {
     if (isPrimitive(type)) {
       return getPrimitiveDecoderFactory(type, encoding);
@@ -1017,6 +1029,30 @@ public final class Types {
         };
       }
     };
+  }
+
+  public IDecoderFactory getDictionaryDecoderFactory(Object[] dictionary, int encoding) {
+    IDecoderFactory intDecoderFactory;
+    if (encoding == DICTIONARY) {
+      intDecoderFactory = IntPackedRunLength.decoderFactory;
+    } else /* if (encoding == FREQUENCY) */ {
+      intDecoderFactory = IntVLQ.decoderFactory;
+    }
+    return new Dictionary.Factory(dictionary, intDecoderFactory);
+  }
+
+  public ICompressor getCompressor(int compression) {
+    if (compression == DEFLATE) {
+      return new Deflate.Compressor();
+    }
+    return null;
+  }
+
+  public IDecompressorFactory getDecompressorFactory(int compression) {
+    if (compression == DEFLATE) {
+      return Deflate.decompressorFactory;
+    }
+    return null;
   }
 
   public IFn getCoercionFn(final int type) {
