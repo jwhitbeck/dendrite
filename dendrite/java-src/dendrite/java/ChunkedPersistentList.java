@@ -19,40 +19,42 @@ import clojure.lang.IChunk;
 import clojure.lang.IChunkedSeq;
 import clojure.lang.IHashEq;
 import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentList;
 import clojure.lang.IPersistentMap;
+import clojure.lang.IPersistentStack;
 import clojure.lang.ITransientCollection;
 import clojure.lang.ISeq;
 import clojure.lang.PersistentList;
 
 import java.io.Serializable;
 
-public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
+public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IPersistentList {
 
   private final Node head;
   private final int cnt;
   private final int idx;
   private final int offset;
 
-  static PersistentLinkedSeq create(final Node h, final int c, final int i, final int o) {
-    if (c == 0) {
+  static ChunkedPersistentList create(Node head, int cnt, int idx, int offset) {
+    if (cnt == 0) {
       return null;
     }
-    return new PersistentLinkedSeq(h, c, i, o);
+    return new ChunkedPersistentList(head, cnt, idx, offset);
   }
 
-  PersistentLinkedSeq(final Node h, final int c, final int i, final int o) {
-    head = h;
-    cnt = c;
-    idx = i;
-    offset = o;
+  ChunkedPersistentList(Node head, int cnt, int idx, int offset) {
+    this.head = head;
+    this.cnt = cnt;
+    this.idx = idx;
+    this.offset = offset;
   }
 
-  PersistentLinkedSeq(final IPersistentMap meta, final Node h, final int c, final int i, final int o) {
+  ChunkedPersistentList(IPersistentMap meta, Node head, int cnt, int idx, int offset) {
     super(meta);
-    head = h;
-    cnt = c;
-    idx = i;
-    offset = o;
+    this.head = head;
+    this.cnt = cnt;
+    this.idx = idx;
+    this.offset = offset;
   }
 
   @Override
@@ -69,7 +71,7 @@ public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
   @Override
   public ISeq chunkedNext() {
     if (head.next != null) {
-      return new PersistentLinkedSeq(head.next, cnt, idx+1, 0);
+      return new ChunkedPersistentList(head.next, cnt, idx+1, 0);
     }
     return null;
   }
@@ -84,8 +86,8 @@ public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
   }
 
   @Override
-  public PersistentLinkedSeq withMeta(IPersistentMap meta){
-    return new PersistentLinkedSeq(meta, head, cnt, idx, offset);
+  public ChunkedPersistentList withMeta(IPersistentMap meta){
+    return new ChunkedPersistentList(meta, head, cnt, idx, offset);
   }
 
   @Override
@@ -96,8 +98,18 @@ public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
   @Override
   public ISeq next(){
     if(offset + 1 < head.cnt)
-      return new PersistentLinkedSeq(head, cnt, idx, offset+1);
+      return new ChunkedPersistentList(head, cnt, idx, offset+1);
     return chunkedNext();
+  }
+
+  @Override
+  public IPersistentStack pop() {
+    return (IPersistentStack)next();
+  }
+
+  @Override
+  public Object peek() {
+    return head.array[offset];
   }
 
   private final static class Node implements Serializable {
@@ -112,11 +124,11 @@ public final class PersistentLinkedSeq extends ASeq implements IChunkedSeq {
     }
   }
 
-  public static TransientLinkedSeq newEmptyTransient() {
-    return new TransientLinkedSeq();
+  public static ITransientCollection newEmptyTransient() {
+    return new TransientChunkedList();
   }
 
-  public static class TransientLinkedSeq implements ITransientCollection {
+  private static class TransientChunkedList implements ITransientCollection {
 
     private Node head = null;
     private Node tail = null;

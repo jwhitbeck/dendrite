@@ -47,7 +47,7 @@ public final class RecordGroupMetadata implements IWriteable {
     if (n == 0) {
       return null;
     }
-    ITransientCollection columnChunksMetadata = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection columnChunksMetadata = ChunkedPersistentList.newEmptyTransient();
     for (int i=0; i<n; ++i) {
       columnChunksMetadata.conj(ColumnChunkMetadata.read(bb));
     }

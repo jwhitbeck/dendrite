@@ -12,7 +12,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [clojure.lang ITransientCollection]
-           [dendrite.java PersistentLinkedSeq]
+           [dendrite.java ChunkedPersistentList]
            [java.io BufferedWriter]
            [java.nio ByteBuffer ByteOrder]
            [java.nio.file StandardOpenOption OpenOption]
@@ -99,7 +99,7 @@
     (.get bb chars)
     (String. chars)))
 
-(definline transient-linked-seq [] `(PersistentLinkedSeq/newEmptyTransient))
+(definline transient-list [] `(ChunkedPersistentList/newEmptyTransient))
 
 (defn transient? [x] (instance? ITransientCollection x))
 

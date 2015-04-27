@@ -12,7 +12,7 @@
   (:require [dendrite.encoding :as encoding]
             [dendrite.leveled-value :refer [->LeveledValue]]
             [dendrite.schema :as schema]
-            [dendrite.utils :refer [format-ks transient-linked-seq transient?]]))
+            [dendrite.utils :refer [format-ks transient-list transient?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
   (aset ^objects striped-record-array (int column-index) value))
 
 (defn- append-repeated! [striped-record-array column-index leveled-values]
-  (let [tr (or (aget ^objects striped-record-array (int column-index)) (transient-linked-seq))]
+  (let [tr (or (aget ^objects striped-record-array (int column-index)) (transient-list))]
     (aset ^objects striped-record-array (int column-index) (reduce conj! tr leveled-values))))
 
 (defmethod stripe-fn* :required-value

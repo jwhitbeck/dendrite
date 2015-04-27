@@ -354,7 +354,7 @@ public abstract class Schema implements IWriteable {
       if (n == 0) {
         return null;
       }
-      ITransientCollection fields = PersistentLinkedSeq.newEmptyTransient();
+      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
       for (int i=0; i<n; ++i) {
         fields.conj(Field.read(bb));
       }
@@ -533,7 +533,7 @@ public abstract class Schema implements IWriteable {
                                      LinkedList<Leaf> leaves, IPersistentMap record) {
     int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
     int repetition = isRequired(record)? REQUIRED : OPTIONAL;
-    ITransientCollection fields = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
     for (Object o : record) {
       IMapEntry e = (IMapEntry)o;
       Keyword name = (Keyword)e.key();
@@ -751,7 +751,7 @@ public abstract class Schema implements IWriteable {
   private static Schema _applyQueryRecord(QueryContext context, Schema schema, IPersistentMap query,
                                           PersistentVector parents) {
     if (schema == null) {
-      ITransientCollection fields = PersistentLinkedSeq.newEmptyTransient();
+      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
       for (ISeq s = RT.seq(query); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());
@@ -768,7 +768,7 @@ public abstract class Schema implements IWriteable {
       if (!context.isMissingFieldsAsNil && RT.seq(missingFieldsQuery) != null) {
         throw new IllegalArgumentException(missingFieldsErrorMessage(parents, RT.keys(missingFieldsQuery)));
       }
-      ITransientCollection fields = PersistentLinkedSeq.newEmptyTransient();
+      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
       for (ISeq s = RT.seq(missingFieldsQuery); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());

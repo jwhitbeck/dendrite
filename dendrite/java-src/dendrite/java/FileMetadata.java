@@ -48,7 +48,7 @@ public final class FileMetadata implements IWriteable {
     if (n == 0) {
       return null;
     }
-    ITransientCollection recordGroupsMetadata = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection recordGroupsMetadata = ChunkedPersistentList.newEmptyTransient();
     for (int i=0; i<n; ++i) {
       recordGroupsMetadata.conj(RecordGroupMetadata.read(bb));
     }
@@ -67,7 +67,7 @@ public final class FileMetadata implements IWriteable {
     if (n == 0) {
       return null;
     }
-    ITransientCollection customTypes = PersistentLinkedSeq.newEmptyTransient();
+    ITransientCollection customTypes = ChunkedPersistentList.newEmptyTransient();
     for (int i=0; i<n; ++i) {
       customTypes.conj(CustomType.read(bb));
     }
