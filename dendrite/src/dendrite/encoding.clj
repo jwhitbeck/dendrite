@@ -13,23 +13,23 @@
   (:import [clojure.lang Keyword Ratio]
            [dendrite.java
             IEncoder IDecoder
-            BooleanPackedEncoder BooleanPackedDecoder
-            IntPlainEncoder IntPlainDecoder
-            IntVLQEncoder IntVLQDecoder
-            IntZigZagEncoder IntZigZagDecoder
-            IntPackedDeltaEncoder IntPackedDeltaDecoder
-            IntFixedBitWidthPackedRunLengthEncoder IntFixedBitWidthPackedRunLengthDecoder
-            IntPackedRunLengthEncoder IntPackedRunLengthDecoder
-            LongPlainEncoder LongPlainDecoder
-            LongVLQEncoder LongVLQDecoder
-            LongZigZagEncoder LongZigZagDecoder
-            LongPackedDeltaEncoder LongPackedDeltaDecoder
-            FloatPlainEncoder FloatPlainDecoder
-            DoublePlainEncoder DoublePlainDecoder
-            FixedLengthByteArrayPlainEncoder FixedLengthByteArrayPlainDecoder
-            ByteArrayPlainEncoder ByteArrayPlainDecoder
-            ByteArrayIncrementalEncoder ByteArrayIncrementalDecoder
-            ByteArrayDeltaLengthEncoder ByteArrayDeltaLengthDecoder
+            BooleanPacked$Encoder BooleanPacked$Decoder
+            IntPlain$Encoder IntPlain$Decoder
+            IntVLQ$Encoder IntVLQ$Decoder
+            IntZigZag$Encoder IntZigZag$Decoder
+            IntPackedDelta$Encoder IntPackedDelta$Decoder
+            IntFixedBitWidthPackedRunLength$Encoder IntFixedBitWidthPackedRunLength$Decoder
+            IntPackedRunLength$Encoder IntPackedRunLength$Decoder
+            LongPlain$Encoder LongPlain$Decoder
+            LongVLQ$Encoder LongVLQ$Decoder
+            LongZigZag$Encoder LongZigZag$Decoder
+            LongPackedDelta$Encoder LongPackedDelta$Decoder
+            FloatPlain$Encoder FloatPlain$Decoder
+            DoublePlain$Encoder DoublePlain$Decoder
+            FixedLengthByteArrayPlain$Encoder FixedLengthByteArrayPlain$Decoder
+            ByteArrayPlain$Encoder ByteArrayPlain$Decoder
+            ByteArrayIncremental$Encoder ByteArrayIncremental$Decoder
+            ByteArrayDeltaLength$Encoder ByteArrayDeltaLength$Decoder
             Bytes]
            [java.nio ByteBuffer]
            [java.nio.charset Charset]
@@ -58,53 +58,53 @@
 
 (defn- base-decoder-ctor [base-type encoding]
   (case base-type
-    :boolean #(BooleanPackedDecoder. %)
+    :boolean #(BooleanPacked$Decoder. %)
     :int (case encoding
-           :plain #(IntPlainDecoder. %)
-           :vlq #(IntVLQDecoder. %)
-           :zig-zag #(IntZigZagDecoder. %)
-           :packed-run-length #(IntPackedRunLengthDecoder. %)
-           :delta #(IntPackedDeltaDecoder. %))
+           :plain #(IntPlain$Decoder. %)
+           :vlq #(IntVLQ$Decoder. %)
+           :zig-zag #(IntZigZag$Decoder. %)
+           :packed-run-length #(IntPackedRunLength$Decoder. %)
+           :delta #(IntPackedDelta$Decoder. %))
     :long (case encoding
-            :plain #(LongPlainDecoder. %)
-            :vlq #(LongVLQDecoder. %)
-            :zig-zag #(LongZigZagDecoder. %)
-            :delta #(LongPackedDeltaDecoder. %))
-    :float #(FloatPlainDecoder. %)
-    :double #(DoublePlainDecoder. %)
+            :plain #(LongPlain$Decoder. %)
+            :vlq #(LongVLQ$Decoder. %)
+            :zig-zag #(LongZigZag$Decoder. %)
+            :delta #(LongPackedDelta$Decoder. %))
+    :float #(FloatPlain$Decoder. %)
+    :double #(DoublePlain$Decoder. %)
     :byte-array (case encoding
-                  :plain #(ByteArrayPlainDecoder. %)
-                  :incremental #(ByteArrayIncrementalDecoder. %)
-                  :delta-length #(ByteArrayDeltaLengthDecoder. %))
-    :fixed-length-byte-array #(FixedLengthByteArrayPlainDecoder. %)))
+                  :plain #(ByteArrayPlain$Decoder. %)
+                  :incremental #(ByteArrayIncremental$Decoder. %)
+                  :delta-length #(ByteArrayDeltaLength$Decoder. %))
+    :fixed-length-byte-array #(FixedLengthByteArrayPlain$Decoder. %)))
 
 (defn- base-encoder [base-type encoding]
   (case base-type
-    :boolean (BooleanPackedEncoder.)
+    :boolean (BooleanPacked$Encoder.)
     :int (case encoding
-           :plain (IntPlainEncoder.)
-           :vlq (IntVLQEncoder.)
-           :zig-zag (IntZigZagEncoder.)
-           :packed-run-length (IntPackedRunLengthEncoder.)
-           :delta (IntPackedDeltaEncoder.))
+           :plain (IntPlain$Encoder.)
+           :vlq (IntVLQ$Encoder.)
+           :zig-zag (IntZigZag$Encoder.)
+           :packed-run-length (IntPackedRunLength$Encoder.)
+           :delta (IntPackedDelta$Encoder.))
     :long (case encoding
-            :plain (LongPlainEncoder.)
-            :vlq (LongVLQEncoder.)
-            :zig-zag (LongZigZagEncoder.)
-            :delta (LongPackedDeltaEncoder.))
-    :float (FloatPlainEncoder.)
-    :double (DoublePlainEncoder.)
+            :plain (LongPlain$Encoder.)
+            :vlq (LongVLQ$Encoder.)
+            :zig-zag (LongZigZag$Encoder.)
+            :delta (LongPackedDelta$Encoder.))
+    :float (FloatPlain$Encoder.)
+    :double (DoublePlain$Encoder.)
     :byte-array (case encoding
-                  :plain (ByteArrayPlainEncoder.)
-                  :incremental (ByteArrayIncrementalEncoder.)
-                  :delta-length (ByteArrayDeltaLengthEncoder.))
-    :fixed-length-byte-array (FixedLengthByteArrayPlainEncoder.)))
+                  :plain (ByteArrayPlain$Encoder.)
+                  :incremental (ByteArrayIncremental$Encoder.)
+                  :delta-length (ByteArrayDeltaLength$Encoder.))
+    :fixed-length-byte-array (FixedLengthByteArrayPlain$Encoder.)))
 
 (defn levels-encoder [max-level]
-  (IntFixedBitWidthPackedRunLengthEncoder. (Bytes/getBitWidth (int max-level))))
+  (IntFixedBitWidthPackedRunLength$Encoder. (Bytes/getBitWidth (int max-level))))
 
 (defn levels-decoder [^ByteBuffer byte-buffer max-level]
-  (IntFixedBitWidthPackedRunLengthDecoder. byte-buffer (Bytes/getBitWidth (int max-level))))
+  (IntFixedBitWidthPackedRunLength$Decoder. byte-buffer (Bytes/getBitWidth (int max-level))))
 
 (def ^{:private true :tag Charset} utf8-charset (Charset/forName "UTF-8"))
 

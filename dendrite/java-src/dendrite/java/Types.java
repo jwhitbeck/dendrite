@@ -492,155 +492,58 @@ public final class Types {
     }
   }
 
-  private static final IDecoderFactory
-    booleanPackedDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new BooleanPackedDecoder(bb);
-        }
-      },
-
-    intPlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new IntPlainDecoder(bb);
-        }
-      },
-
-    intVLQDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new IntVLQDecoder(bb);
-        }
-      },
-
-    intZigZagDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new IntZigZagDecoder(bb);
-        }
-      },
-
-    intPackedRunLengthDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new IntPackedRunLengthDecoder(bb);
-        }
-      },
-
-    intPackedDeltaDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new IntPackedDeltaDecoder(bb);
-        }
-      },
-
-    longPlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new LongPlainDecoder(bb);
-        }
-      },
-
-    longVLQDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new LongVLQDecoder(bb);
-        }
-      },
-
-    longZigZagDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new LongZigZagDecoder(bb);
-        }
-      },
-
-    longPackedDeltaDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new LongPackedDeltaDecoder(bb);
-        }
-      },
-
-    floatPlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new FloatPlainDecoder(bb);
-        }
-      },
-
-    doublePlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new DoublePlainDecoder(bb);
-        }
-      },
-
-    byteArrayPlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new ByteArrayPlainDecoder(bb);
-        }
-      },
-
-    byteArrayIncrementalDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new ByteArrayIncrementalDecoder(bb);
-        }
-      },
-
-    byteArrayDeltaLengthDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new ByteArrayDeltaLengthDecoder(bb);
-        }
-      },
-
-    fixedLengthByteArrayPlainDecoderFactory = new IDecoderFactory() {
-        public IDecoder create(ByteBuffer bb) {
-          return new FixedLengthByteArrayPlainDecoder(bb);
-        }
-      };
-
   private static IDecoderFactory getPrimitiveDecoderFactory(int type, int encoding) {
     switch (type) {
-    case BOOLEAN: return booleanPackedDecoderFactory;
+    case BOOLEAN: return BooleanPacked.decoderFactory;
     case INT: switch (encoding) {
-      case PLAIN: return intPlainDecoderFactory;
-      case VLQ: return intVLQDecoderFactory;
-      case ZIG_ZAG: return intZigZagDecoderFactory;
-      case PACKED_RUN_LENGTH: return intPackedRunLengthDecoderFactory;
-      case DELTA: return intPackedDeltaDecoderFactory;
+      case PLAIN: return IntPlain.decoderFactory;
+      case VLQ: return IntVLQ.decoderFactory;
+      case ZIG_ZAG: return IntZigZag.decoderFactory;
+      case PACKED_RUN_LENGTH: return IntPackedRunLength.decoderFactory;
+      case DELTA: return IntPackedDelta.decoderFactory;
       }
     case LONG: switch (encoding) {
-      case PLAIN: return longPlainDecoderFactory;
-      case VLQ: return longVLQDecoderFactory;
-      case ZIG_ZAG: return longZigZagDecoderFactory;
-      case DELTA: return longPackedDeltaDecoderFactory;
+      case PLAIN: return LongPlain.decoderFactory;
+      case VLQ: return LongVLQ.decoderFactory;
+      case ZIG_ZAG: return LongZigZag.decoderFactory;
+      case DELTA: return LongPackedDelta.decoderFactory;
       }
-    case FLOAT: return floatPlainDecoderFactory;
-    case DOUBLE: return doublePlainDecoderFactory;
+    case FLOAT: return FloatPlain.decoderFactory;
+    case DOUBLE: return DoublePlain.decoderFactory;
     case BYTE_ARRAY: switch (encoding) {
-      case PLAIN: return byteArrayPlainDecoderFactory;
-      case INCREMENTAL: return byteArrayIncrementalDecoderFactory;
-      case DELTA_LENGTH: return byteArrayDeltaLengthDecoderFactory;
+      case PLAIN: return ByteArrayPlain.decoderFactory;
+      case INCREMENTAL: return ByteArrayIncremental.decoderFactory;
+      case DELTA_LENGTH: return ByteArrayDeltaLength.decoderFactory;
       }
-    case FIXED_LENGTH_BYTE_ARRAY: return fixedLengthByteArrayPlainDecoderFactory;
+    case FIXED_LENGTH_BYTE_ARRAY: return FixedLengthByteArrayPlain.decoderFactory;
     default: return null; // never reaches here
     }
   }
 
   private static IEncoder getPrimitiveEncoder(int type, int encoding) {
     switch (type) {
-    case BOOLEAN: return new BooleanPackedEncoder();
+    case BOOLEAN: return new BooleanPacked.Encoder();
     case INT: switch (encoding) {
-      case PLAIN: return new IntPlainEncoder();
-      case VLQ: return new IntVLQEncoder();
-      case ZIG_ZAG: return new IntZigZagEncoder();
-      case PACKED_RUN_LENGTH: return new IntPackedRunLengthEncoder();
-      case DELTA: return new IntPackedDeltaEncoder();
+      case PLAIN: return new IntPlain.Encoder();
+      case VLQ: return new IntVLQ.Encoder();
+      case ZIG_ZAG: return new IntZigZag.Encoder();
+      case PACKED_RUN_LENGTH: return new IntPackedRunLength.Encoder();
+      case DELTA: return new IntPackedDelta.Encoder();
       }
     case LONG: switch (encoding) {
-      case PLAIN: return new LongPlainEncoder();
-      case VLQ: return new LongVLQEncoder();
-      case ZIG_ZAG: return new LongZigZagEncoder();
-      case DELTA: return new LongPackedDeltaEncoder();
+      case PLAIN: return new LongPlain.Encoder();
+      case VLQ: return new LongVLQ.Encoder();
+      case ZIG_ZAG: return new LongZigZag.Encoder();
+      case DELTA: return new LongPackedDelta.Encoder();
       }
-    case FLOAT: return new FloatPlainEncoder();
-    case DOUBLE: return new DoublePlainEncoder();
+    case FLOAT: return new FloatPlain.Encoder();
+    case DOUBLE: return new DoublePlain.Encoder();
     case BYTE_ARRAY: switch (encoding) {
-      case PLAIN: return new ByteArrayPlainEncoder();
-      case INCREMENTAL: return new ByteArrayIncrementalEncoder();
-      case DELTA_LENGTH: return new ByteArrayDeltaLengthEncoder();
+      case PLAIN: return new ByteArrayPlain.Encoder();
+      case INCREMENTAL: return new ByteArrayIncremental.Encoder();
+      case DELTA_LENGTH: return new ByteArrayDeltaLength.Encoder();
       }
-    case FIXED_LENGTH_BYTE_ARRAY: return new FixedLengthByteArrayPlainEncoder();
+    case FIXED_LENGTH_BYTE_ARRAY: return new FixedLengthByteArrayPlain.Encoder();
     default: return null; // never reaches here
     }
   }
@@ -655,11 +558,11 @@ public final class Types {
     DEFLATE_SYM = Symbol.intern("deflate");
 
   public static IEncoder levelsEncoder(int maxLevel) {
-    return new IntFixedBitWidthPackedRunLengthEncoder(Bytes.getBitWidth(maxLevel));
+    return new IntFixedBitWidthPackedRunLength.Encoder(Bytes.getBitWidth(maxLevel));
   }
 
   public static IIntDecoder levelsDecoder(ByteBuffer bb, int maxLevel) {
-    return new IntFixedBitWidthPackedRunLengthDecoder(bb, Bytes.getBitWidth(maxLevel));
+    return new IntFixedBitWidthPackedRunLength.Decoder(bb, Bytes.getBitWidth(maxLevel));
   }
 
   final static Charset utf8Charset = Charset.forName("UTF-8");
