@@ -61,12 +61,13 @@
   (testing "base types"
     (is (= 'int (-> "int" read-string str read-string)))
     (is (= 'int (-> "int" read-string (parse default-type-store) unparse)))
-    (is (= (req (col 'int 'plain 'lz4)) (-> "#req #col [int plain lz4]" read-string pr-str read-string)))
+    (is (= (req (col 'int 'plain 'deflate))
+           (-> "#req #col [int plain deflate]" read-string pr-str read-string)))
     (is (= 'byte-array (-> "byte-array" read-string str read-string))))
   (testing "repeated"
     (is (= ['int] (-> "[int]" read-string str read-string)))
     (is (= ['int] (-> "[int]" read-string (parse default-type-store) unparse)))
-    (is (= [(col 'int 'plain 'lz4)] (-> "[#col [int plain lz4]]" read-string pr-str read-string)))))
+    (is (= [(col 'int 'plain 'deflate)] (-> "[#col [int plain deflate]]" read-string pr-str read-string)))))
 
 (deftest invalid-schemas
   (testing "unsupported types"

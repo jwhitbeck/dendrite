@@ -135,7 +135,7 @@
         (is (= output-values (map map-fn input-values)))))
     (testing "compressed"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            output-values (write-read-single-dictionary-page :int :plain :lz4 input-values)]
+            output-values (write-read-single-dictionary-page :int :plain :deflate input-values)]
         (is (= output-values input-values))))
     (testing "empty page"
       (let [input-values []

@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defenum compression-type [:none :lz4 :deflate])
+(defenum compression-type [:none :deflate])
 
 (defenum repetition-type [:optional :required :list :vector :map :set])
 

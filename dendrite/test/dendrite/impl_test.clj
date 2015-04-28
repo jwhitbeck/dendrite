@@ -357,9 +357,9 @@
          ":data-page-length expects a positive integer but got '-1.5'."
          {:optimize-columns? "foo"}
          ":optimize-columns\\? expects either true, false, or nil but got 'foo'"
-         {:compression-thresholds :lz4}
+         {:compression-thresholds :deflate}
          ":compression-thresholds expects a map."
-         {:compression-thresholds {:lz4 -0.2}}
+         {:compression-thresholds {:deflate -0.2}}
          ":compression-thresholds expects compression-type/compression-threshold map entries"
          {:invalid-input-handler "foo"}
          ":invalid-input-handler expects a function."

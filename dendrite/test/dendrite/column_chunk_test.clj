@@ -422,9 +422,8 @@
                                                                     test-target-data-page-length
                                                                     cmp-thresholds-map))
              :none {}
-             :deflate {:lz4 1.0 :deflate 1.5}
-             :lz4 {:lz4 1.0 :deflate 5}
-             :none {:lz4 2 :deflate 5}))
+             :deflate {:deflate 1.5}
+             :none {:deflate 5}))
       (testing "unsupported compression types throw proper exceptions"
         (is (thrown-with-msg? IllegalArgumentException #"is not a valid compression-type"
                               (find-best-compression reader test-target-data-page-length {:lzo 0.8})))))))
@@ -441,14 +440,14 @@
       (is (= (assoc cs
                :encoding :delta-length
                :compression :deflate)
-             (find-best-column-spec reader test-target-data-page-length {:lz4 0.8 :deflate 0.5}))))))
+             (find-best-column-spec reader test-target-data-page-length {:deflate 0.5}))))))
 
 (deftest optimization
   (let [cs (colspec-required :string :plain :none)
         input-blocks (->> #(rand-nth ["foo" "bar" "baz"]) repeatedly (take 1000))
         w (writer test-target-data-page-length helpers/default-type-store cs)]
     (.write w input-blocks)
-    (let [optimized-w (optimize! w helpers/default-type-store {:lz4 1.2 :deflate 2})]
+    (let [optimized-w (optimize! w helpers/default-type-store {:deflate 2})]
       (is (= {:type :string :encoding :dictionary :compression :none}
              (-> optimized-w column-spec (select-keys [:type :encoding :compression]))))
       (is (= input-blocks (flat-read (writer->reader! optimized-w helpers/default-type-store)))))))

@@ -41,7 +41,7 @@
   {:record-group-length (* 128 1024 1024) ; 128 MB
    :data-page-length (* 256 1024)         ; 256 KB
    :optimize-columns? nil
-   :compression-thresholds {:lz4 1.2 :deflate 1.5}
+   :compression-thresholds {:deflate 1.5}
    :invalid-input-handler nil
    :custom-types nil})
 
@@ -83,10 +83,10 @@
     (if-not (map? v)
       (throw (IllegalArgumentException. ":compression-thresholds expects a map."))
       (reduce-kv (fn [m c t]
-                   (if-not (and (#{:lz4 :deflate} c) (number? t) (pos? (double t)))
+                   (if-not (and (#{:deflate} c) (number? t) (pos? (double t)))
                      (throw (IllegalArgumentException.
                              (str ":compression-thresholds expects compression-type/compression-threshold "
-                                  "map entries, where the compression-type is either :lz4 or :deflate, and "
+                                  "map entries, where the compression-type is :deflate, and "
                                   "the compression threshold is a double value strictly greater than 0.")))
                      (assoc m c (double t))))
                  {}
@@ -376,9 +376,9 @@
                              select the most efficient one (subject to the :compression-thresholds).
                              If nil (default), will only optimize if all the columns are in the default
                              encoding/compression. If false, will never optimize the columns.
-  :compression-thresholds  - a map of compression method (e.g., :lz4) to the minimum compression ratio
+  :compression-thresholds  - a map of compression method (e.g., :deflate) to the minimum compression ratio
                              (e.g., 2) below which the overhead of compression is not not deemed worthwhile.
-                             Default: {:lz4 1.2 :deflate 1.5}
+                             Default: {:deflate 1.5}
   :invalid-input-handler   - a function with two arguments: record and exception. If an input record does
                              not conform to the schema, it will be passed to this function along with the
                              exception it triggered. By default, this option is nil and exceptions
