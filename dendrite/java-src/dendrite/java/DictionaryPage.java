@@ -48,8 +48,7 @@ public final class DictionaryPage {
       return compressedDataLength;
     }
 
-    @Override
-    public int byteOffsetBody() {
+    public int byteOffsetData() {
       return 0;
     }
 
@@ -80,7 +79,7 @@ public final class DictionaryPage {
 
   }
 
-  public final static class Writer implements IOutputBuffer {
+  public final static class Writer implements IPageWriter {
 
     final IEncoder dataEncoder;
     final ICompressor compressor;
@@ -91,22 +90,24 @@ public final class DictionaryPage {
       this.compressor = compressor;
     }
 
-    public static Writer create(Types types, int type, int encoding, int compression) {
-      return new Writer(types.getEncoder(type, encoding),
-                        types.getCompressor(compression));
+    public static Writer create(IEncoder dataEncoder, ICompressor compressor) {
+      return new Writer(dataEncoder, compressor);
     }
 
+    @Override
     public int numValues() {
       return dataEncoder.numEncodedValues();
     }
 
+    @Override
     public void write(IPersistentCollection values) {
       for (ISeq s = RT.seq(values); s != null; s = s.next()) {
         dataEncoder.encode(s.first());
       }
     }
 
-    private Header header() {
+    @Override
+    public Header header() {
       int length = dataEncoder.length();
       return new Header(numValues(), (compressor != null)? compressor.length() : length, length);
     }
@@ -155,7 +156,7 @@ public final class DictionaryPage {
 
   }
 
-  public final static class Reader {
+  public final static class Reader implements IPageReader {
 
     final ByteBuffer bb;
     final IDecoderFactory decoderFactory;
@@ -170,16 +171,20 @@ public final class DictionaryPage {
       this.header = header;
     }
 
-    public static Reader create(Types types, ByteBuffer bb, int type, int encoding, int compression) {
+    public static Reader create(ByteBuffer bb, IDecoderFactory decoderFactory,
+                                IDecompressorFactory decompressorFactory) {
       ByteBuffer byteBuffer = bb.slice();
       Header header = Header.read(byteBuffer);
-      IDecoderFactory decoderFactory = types.getDecoderFactory(type, encoding);
-      IDecompressorFactory decompressorFactory = types.getDecompressorFactory(compression);
       return new Reader(byteBuffer, decoderFactory, decompressorFactory, header);
     }
 
+    @Override
+    public ByteBuffer next() {
+      return Bytes.sliceAhead(bb, header.bodyLength());
+    }
+
     IDecoder getDecoder() {
-      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetBody());
+      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();
         byteBuffer = decompressor.decompress(byteBuffer,

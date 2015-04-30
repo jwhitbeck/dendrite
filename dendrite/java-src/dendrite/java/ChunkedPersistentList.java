@@ -62,7 +62,11 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
 
   @Override
   public IChunk chunkedFirst() {
-    return new ArrayChunk(head.array, offset, head.cnt);
+    if (cnt > (head.cnt - offset)) {
+      return new ArrayChunk(head.array, offset, head.cnt);
+    } else {
+      return new ArrayChunk(head.array, offset, offset + cnt);
+    }
   }
 
   @Override
@@ -122,6 +126,9 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
   }
 
   public ChunkedPersistentList drop(int n) {
+    if (n == cnt) {
+      return null;
+    }
     Node node = head;
     int off = offset;
     int remaining = n;
@@ -132,7 +139,7 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
         remaining -= numValues;
         off = 0;
       } else {
-        off = remaining;
+        off += remaining;
         remaining = 0;
       }
     }
@@ -183,6 +190,9 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
 
     @Override
     public IPersistentCollection persistent() {
+      if (cnt == 0) {
+        return null;
+      }
       return create(head, cnt, 0);
     }
   }

@@ -55,8 +55,7 @@ public final class DataPage {
       return repetitionLevelsLength + definitionLevelsLength + compressedDataLength;
     }
 
-    @Override
-    public int byteOffsetBody() {
+    public int byteOffsetData() {
       return repetitionLevelsLength + definitionLevelsLength;
     }
 
@@ -107,7 +106,7 @@ public final class DataPage {
 
   }
 
-  public abstract static class Writer implements IOutputBuffer {
+  public abstract static class Writer implements IPageWriter {
 
     final IEncoder repetitionLevelEncoder;
     final IEncoder definitionLevelEncoder;
@@ -127,11 +126,8 @@ public final class DataPage {
       this.compressor = compressor;
     }
 
-    public static Writer create(Types types, int maxRepetitionLevel, int maxDefinitionLevel, int type,
-                                int encoding, int compression) {
-      IEncoder dataEncoder = types.getEncoder(type, encoding);
-      IDecoderFactory dataDecoderFactory = types.getDecoderFactory(type, encoding);
-      ICompressor compressor = types.getCompressor(compression);
+    public static Writer create(int maxRepetitionLevel, int maxDefinitionLevel, IEncoder dataEncoder,
+                                IDecoderFactory dataDecoderFactory, ICompressor compressor) {
       if (maxDefinitionLevel == 0) {
         return new RequiredValuesWriter(dataEncoder, dataDecoderFactory, compressor);
       } else if (maxRepetitionLevel == 0) {
@@ -146,11 +142,10 @@ public final class DataPage {
       }
     }
 
+    @Override
     public int numValues() {
       return numValues;
     }
-
-    public abstract void write(IPersistentCollection values, int n);
 
     private double getCompressionRatio() {
       if (compressor == null) {
@@ -184,7 +179,8 @@ public final class DataPage {
                         estimatedDataLength);
     }
 
-    private Header header() {
+    @Override
+    public Header header() {
       int length = dataEncoder.length();
       return new Header(numValues,
                         (repetitionLevelEncoder != null)? repetitionLevelEncoder.length() : 0,
@@ -264,13 +260,9 @@ public final class DataPage {
     }
 
     @Override
-    public void write(IPersistentCollection values, int n) {
-      ISeq s = RT.seq(values);
-      int i = 0;
-      while (i < n) {
+    public void write(IPersistentCollection values) {
+      for (ISeq s = RT.seq(values); s != null; s = s.next()) {
         dataEncoder.encode(s.first());
-        i += 1;
-        s = s.next();
       }
     }
   }
@@ -282,10 +274,8 @@ public final class DataPage {
     }
 
     @Override
-    public void write(IPersistentCollection values, int n) {
-      ISeq s = RT.seq(values);
-      int i = 0;
-      while (i < n) {
+    public void write(IPersistentCollection values) {
+      for (ISeq s = RT.seq(values); s != null; s = s.next()) {
         Object v = s.first();
         if (v == null) {
           definitionLevelEncoder.encode(0);
@@ -293,8 +283,6 @@ public final class DataPage {
           definitionLevelEncoder.encode(1);
           dataEncoder.encode(v);
         }
-        i += 1;
-        s = s.next();
       }
     }
   }
@@ -306,23 +294,19 @@ public final class DataPage {
     }
 
     @Override
-    public void write(IPersistentCollection leveledValues, int n) {
-      ISeq s = RT.seq(leveledValues);
-      int i = 0;
-      while (i < n) {
+    public void write(IPersistentCollection leveledValues) {
+      for (ISeq s = RT.seq(leveledValues); s != null; s = s.next()) {
         LeveledValue lv = (LeveledValue)s.first();
         if (lv.value != null) {
           dataEncoder.encode(lv.value);
         }
         repetitionLevelEncoder.encode(lv.repetitionLevel);
         definitionLevelEncoder.encode(lv.definitionLevel);
-        i += 1;
-        s = s.next();
       }
     }
   }
 
-  public abstract static class Reader {
+  public abstract static class Reader implements IPageReader {
 
     final ByteBuffer bb;
     final IDecoderFactory decoderFactory;
@@ -341,24 +325,23 @@ public final class DataPage {
       this.maxDefinitionLevel = maxDefinitionLevel;
     }
 
-    public static Reader create(Types types, ByteBuffer bb, int maxRepetitionLevel, int maxDefinitionLevel,
-                                int type, int encoding, int compression) {
+    public static Reader create(ByteBuffer bb, int maxRepetitionLevel, int maxDefinitionLevel,
+                                IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory) {
       ByteBuffer byteBuffer = bb.slice();
       Header header = Header.read(byteBuffer);
-      IDecoderFactory decoderFactory = types.getDecoderFactory(type, encoding);
-      IDecompressorFactory decompressorFactory = types.getDecompressorFactory(compression);
       if (maxDefinitionLevel == 0) {
         return new RequiredValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
                                         maxRepetitionLevel, maxDefinitionLevel);
       } else if (maxRepetitionLevel == 0) {
-         return new NonRepeatedValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
-                                            maxRepetitionLevel, maxDefinitionLevel);
+        return new NonRepeatedValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
+                                           maxRepetitionLevel, maxDefinitionLevel);
       } else {
         return new RepeatedValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
                                         maxRepetitionLevel, maxDefinitionLevel);
       }
     }
 
+    @Override
     public ByteBuffer next() {
       return Bytes.sliceAhead(bb, header.bodyLength());
     }
@@ -374,7 +357,7 @@ public final class DataPage {
     }
 
     IDecoder getDataDecoder() {
-      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetBody());
+      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();
         byteBuffer = decompressor.decompress(byteBuffer,

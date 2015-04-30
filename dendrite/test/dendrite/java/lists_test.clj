@@ -31,4 +31,6 @@
     (is (= (seq (take 101 cs)) (seq (.take cs 101))))))
 
 (deftest concatenation
-  (is (= (Concat. (range 10) (range 10)) (concat (range 10) (range 10)))))
+  (is (= (Concat/concat (range 10) (range 10)) (concat (range 10) (range 10))))
+  (is (= (Concat/concat (range 10) (list)) (range 10)))
+  (is (nil? (Concat/concat (list) (list)))))

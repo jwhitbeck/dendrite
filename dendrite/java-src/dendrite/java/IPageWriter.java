@@ -12,11 +12,10 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
+import clojure.lang.IPersistentCollection;
 
-public interface IPageHeader {
-  public int type();
-  public int headerLength();
-  public int bodyLength();
-  public IPersistentMap stats();
+public interface IPageWriter extends IOutputBuffer {
+  public void write(IPersistentCollection values);
+  public int numValues();
+  public IPageHeader header();
 }

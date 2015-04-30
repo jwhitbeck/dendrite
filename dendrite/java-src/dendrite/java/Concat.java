@@ -13,6 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.ASeq;
+import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.RT;
@@ -22,15 +23,24 @@ public final class Concat extends ASeq {
   private final ISeq head;
   private final ISeq tail;
 
-  public Concat(ISeq head, ISeq tail) {
+  private Concat(ISeq head, ISeq tail) {
     this.head = head;
     this.tail = tail;
   }
 
-  public Concat(IPersistentMap meta, ISeq head, ISeq tail) {
+  private Concat(IPersistentMap meta, ISeq head, ISeq tail) {
     super(meta);
     this.head = head;
     this.tail = tail;
+  }
+
+  public static ISeq concat(Object head, Object tail) {
+    if (RT.seq(head) == null) {
+      return RT.seq(tail);
+    } else if (RT.seq(tail) == null) {
+      return RT.seq(head);
+    }
+    return new Concat(RT.seq(head), RT.seq(tail));
   }
 
   @Override
@@ -52,7 +62,7 @@ public final class Concat extends ASeq {
   public ISeq next() {
     ISeq next = head.next();
     if (next == null) {
-      return tail;
+      return RT.seq(tail);
     }
     return new Concat(next, tail);
   }

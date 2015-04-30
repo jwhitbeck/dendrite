@@ -12,11 +12,8 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
+import java.nio.ByteBuffer;
 
-public interface IPageHeader {
-  public int type();
-  public int headerLength();
-  public int bodyLength();
-  public IPersistentMap stats();
+public interface IPageReader {
+  public ByteBuffer next();
 }

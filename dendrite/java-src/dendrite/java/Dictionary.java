@@ -248,11 +248,11 @@ public final class Dictionary {
     }
   }
 
-  public final static class Factory implements IDecoderFactory {
+  public final static class DecoderFactory implements IDecoderFactory {
     final Object[] dictionary;
     final IDecoderFactory intDecoderFactory;
 
-    public Factory(Object[] dictionary, IDecoderFactory intDecoderFactory) {
+    public DecoderFactory(Object[] dictionary, IDecoderFactory intDecoderFactory) {
       this.dictionary = dictionary;
       this.intDecoderFactory = intDecoderFactory;
     }
