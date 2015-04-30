@@ -25,6 +25,7 @@ import clojure.lang.IPersistentStack;
 import clojure.lang.ITransientCollection;
 import clojure.lang.ISeq;
 import clojure.lang.PersistentList;
+import clojure.lang.RT;
 
 import java.io.Serializable;
 
@@ -32,36 +33,32 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
 
   private final Node head;
   private final int cnt;
-  private final int idx;
   private final int offset;
 
-  static ChunkedPersistentList create(Node head, int cnt, int idx, int offset) {
+  static ChunkedPersistentList create(Node head, int cnt, int offset) {
     if (cnt == 0) {
       return null;
     }
-    return new ChunkedPersistentList(head, cnt, idx, offset);
+    return new ChunkedPersistentList(head, cnt, offset);
   }
 
-  ChunkedPersistentList(Node head, int cnt, int idx, int offset) {
+  ChunkedPersistentList(Node head, int cnt, int offset) {
     this.head = head;
     this.cnt = cnt;
-    this.idx = idx;
     this.offset = offset;
   }
 
-  ChunkedPersistentList(IPersistentMap meta, Node head, int cnt, int idx, int offset) {
+  ChunkedPersistentList(IPersistentMap meta, Node head, int cnt, int offset) {
     super(meta);
     this.head = head;
     this.cnt = cnt;
-    this.idx = idx;
     this.offset = offset;
   }
 
   @Override
   public int count() {
-    return cnt - (32 * idx + offset);
+    return cnt;
   }
-
 
   @Override
   public IChunk chunkedFirst() {
@@ -69,9 +66,9 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
   }
 
   @Override
-  public ISeq chunkedNext() {
-    if (head.next != null) {
-      return new ChunkedPersistentList(head.next, cnt, idx+1, 0);
+  public ChunkedPersistentList chunkedNext() {
+    if (head.next != null && cnt > (head.cnt - offset)) {
+      return new ChunkedPersistentList(head.next, cnt - head.cnt + offset, 0);
     }
     return null;
   }
@@ -87,7 +84,7 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
 
   @Override
   public ChunkedPersistentList withMeta(IPersistentMap meta){
-    return new ChunkedPersistentList(meta, head, cnt, idx, offset);
+    return new ChunkedPersistentList(meta, head, cnt, offset);
   }
 
   @Override
@@ -96,20 +93,53 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
   }
 
   @Override
-  public ISeq next(){
-    if(offset + 1 < head.cnt)
-      return new ChunkedPersistentList(head, cnt, idx, offset+1);
-    return chunkedNext();
+  public ChunkedPersistentList next(){
+    if (cnt > 1) {
+      if(offset + 1 < head.cnt) {
+        return new ChunkedPersistentList(head, cnt-1, offset+1);
+      } else {
+        return chunkedNext();
+      }
+    }
+    return null;
   }
 
   @Override
-  public IPersistentStack pop() {
-    return (IPersistentStack)next();
+  public ChunkedPersistentList pop() {
+    return next();
   }
 
   @Override
   public Object peek() {
     return head.array[offset];
+  }
+
+  public ChunkedPersistentList take(int n) {
+    if (n > 0) {
+      return new ChunkedPersistentList(head, n, offset);
+    }
+    return null;
+  }
+
+  public ChunkedPersistentList drop(int n) {
+    Node node = head;
+    int off = offset;
+    int remaining = n;
+    while (node != null && remaining > 0) {
+      int numValues = node.cnt - off;
+      if (numValues <= remaining) {
+        node = node.next;
+        remaining -= numValues;
+        off = 0;
+      } else {
+        off = remaining;
+        remaining = 0;
+      }
+    }
+    if (node == null) {
+      return null;
+    }
+    return new ChunkedPersistentList(node, cnt - n, off);
   }
 
   private final static class Node implements Serializable {
@@ -153,7 +183,7 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
 
     @Override
     public IPersistentCollection persistent() {
-      return create(head, cnt, 0, 0);
+      return create(head, cnt, 0);
     }
   }
 }
