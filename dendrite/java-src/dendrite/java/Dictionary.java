@@ -62,8 +62,8 @@ public final class Dictionary {
     final HashMap<Object, DictionaryIndex> dictionaryIndex;
     final IEncoder indicesEncoder;
 
-    Encoder() {
-      indicesEncoder = new IntVLQ.Encoder();
+    Encoder(IEncoder indicesEncoder) {
+      this.indicesEncoder = indicesEncoder;
       this.dictionaryIndex = new HashMap<Object, DictionaryIndex>();
     }
 
@@ -160,32 +160,13 @@ public final class Dictionary {
       }
     }
 
-    public static Encoder create(int type, IFn fn) {
+    public static Encoder create(int type, int indicesEncoding) {
+      IEncoder indicesEncoder = Types.getPrimitiveEncoder(Types.INT, indicesEncoding);
       if (type == Types.BYTE_ARRAY) {
-        if (fn == null) {
-          return new ByteArrayEncoder();
-        } else {
-          return new ByteArrayEncoderWithFn(fn);
-        }
-      } else if (fn == null) {
-        return new Encoder();
-      } else /* if (fn != null) */ {
-        return new EncoderWithFn(fn);
+        return new ByteArrayEncoder(indicesEncoder);
+      } else {
+        return new Encoder(indicesEncoder);
       }
-    }
-  }
-
-  private final static class EncoderWithFn extends Encoder {
-    final IFn fn;
-
-    EncoderWithFn(IFn fn) {
-      this.fn = fn;
-    }
-
-    @Override
-    public void encode(Object o) {
-      int idx = getIndex(fn.invoke(o));
-      indicesEncoder.encode(idx);
     }
   }
 
@@ -212,28 +193,9 @@ public final class Dictionary {
   }
 
   private final static class ByteArrayEncoder extends Encoder {
-    @Override
-    Object wrap(Object o) {
-      return new HashableByteArray((byte[])o);
-    }
 
-    @Override
-    Object unwrap(Object o) {
-      return ((HashableByteArray)o).array;
-    }
-  }
-
-  private final static class ByteArrayEncoderWithFn extends Encoder {
-    final IFn fn;
-
-    ByteArrayEncoderWithFn(IFn fn) {
-      this.fn = fn;
-    }
-
-    @Override
-    public void encode(Object o) {
-      int idx = getIndex(fn.invoke(o));
-      indicesEncoder.encode(idx);
+    ByteArrayEncoder(IEncoder indicesEncoder) {
+      super(indicesEncoder);
     }
 
     @Override

@@ -111,33 +111,29 @@ public final class DataPage {
     final IEncoder repetitionLevelEncoder;
     final IEncoder definitionLevelEncoder;
     final IEncoder dataEncoder;
-    final IDecoderFactory dataDecoderFactory;
     final ICompressor compressor;
     double compressionRatio = 0;
     boolean isFinished = false;
     int numValues = 0;
 
     Writer(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder, IEncoder dataEncoder,
-           IDecoderFactory dataDecoderFactory, ICompressor compressor) {
+           ICompressor compressor) {
       this.repetitionLevelEncoder = repetitionLevelEncoder;
       this.definitionLevelEncoder = definitionLevelEncoder;
       this.dataEncoder = dataEncoder;
-      this.dataDecoderFactory = dataDecoderFactory;
       this.compressor = compressor;
     }
 
     public static Writer create(int maxRepetitionLevel, int maxDefinitionLevel, IEncoder dataEncoder,
-                                IDecoderFactory dataDecoderFactory, ICompressor compressor) {
+                                ICompressor compressor) {
       if (maxDefinitionLevel == 0) {
-        return new RequiredValuesWriter(dataEncoder, dataDecoderFactory, compressor);
+        return new RequiredValuesWriter(dataEncoder, compressor);
       } else if (maxRepetitionLevel == 0) {
-        return new NonRepeatedValuesWriter(Types.levelsEncoder(maxDefinitionLevel), dataEncoder,
-                                           dataDecoderFactory, compressor);
+        return new NonRepeatedValuesWriter(Types.levelsEncoder(maxDefinitionLevel), dataEncoder, compressor);
       } else {
         return new RepeatedValuesWriter(Types.levelsEncoder(maxRepetitionLevel),
                                         Types.levelsEncoder(maxDefinitionLevel),
                                         dataEncoder,
-                                        dataDecoderFactory,
                                         compressor);
       }
     }
@@ -153,18 +149,7 @@ public final class DataPage {
       } else if (compressionRatio > 0) {
         return compressionRatio;
       } else if (dataEncoder.numEncodedValues() > 0) {
-        MemoryOutputStream mos = new MemoryOutputStream();
-        mos.write(dataEncoder);
-        compressor.compress(mos);
-        compressionRatio = (double)compressor.length() / (double)compressor.uncompressedLength();
-        compressor.reset();
-        IDecoder dataDecoder = dataDecoderFactory.create(mos.byteBuffer());
-        int n = dataEncoder.numEncodedValues();
-        dataEncoder.reset();
-        for (int i=0; i<n; ++i) {
-          dataEncoder.encode(dataDecoder.decode());
-        }
-        return compressionRatio;
+        return 0.5; // default compression ratio guess when we don't have any data.
       } else {
         return 0;
       }
@@ -255,8 +240,8 @@ public final class DataPage {
   }
 
   private final static class RequiredValuesWriter extends Writer {
-    RequiredValuesWriter(IEncoder dataEncoder, IDecoderFactory dataDecoderFactory, ICompressor compressor) {
-      super(null, null, dataEncoder, dataDecoderFactory, compressor);
+    RequiredValuesWriter(IEncoder dataEncoder, ICompressor compressor) {
+      super(null, null, dataEncoder, compressor);
     }
 
     @Override
@@ -264,13 +249,13 @@ public final class DataPage {
       for (ISeq s = RT.seq(values); s != null; s = s.next()) {
         dataEncoder.encode(s.first());
       }
+      numValues += RT.count(values);
     }
   }
 
   private final static class NonRepeatedValuesWriter extends Writer {
-    NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder,
-                            IDecoderFactory dataDecoderFactory, ICompressor compressor) {
-      super(null, definitionLevelEncoder, dataEncoder, dataDecoderFactory, compressor);
+    NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder, ICompressor compressor) {
+      super(null, definitionLevelEncoder, dataEncoder, compressor);
     }
 
     @Override
@@ -284,13 +269,14 @@ public final class DataPage {
           dataEncoder.encode(v);
         }
       }
+      numValues += RT.count(values);
     }
   }
 
   private final static class RepeatedValuesWriter extends Writer {
     RepeatedValuesWriter(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder,
-                         IEncoder dataEncoder, IDecoderFactory dataDecoderFactory, ICompressor compressor) {
-      super(repetitionLevelEncoder, definitionLevelEncoder, dataEncoder, dataDecoderFactory, compressor);
+                         IEncoder dataEncoder, ICompressor compressor) {
+      super(repetitionLevelEncoder, definitionLevelEncoder, dataEncoder, compressor);
     }
 
     @Override
@@ -303,6 +289,7 @@ public final class DataPage {
         repetitionLevelEncoder.encode(lv.repetitionLevel);
         definitionLevelEncoder.encode(lv.definitionLevel);
       }
+      numValues += RT.count(leveledValues);
     }
   }
 

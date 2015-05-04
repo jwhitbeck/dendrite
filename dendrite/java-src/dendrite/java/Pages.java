@@ -275,6 +275,9 @@ public final class Pages {
                                               IDecoderFactory decoderFactory,
                                               IDecompressorFactory decompressorFactory,
                                               IFn fn) {
+    if (n == 0) {
+      return null;
+    }
     return new PartitionedDataPageSeq(readAndPartititionFirstDataPageFuture(bb, n, partitionLength,
                                                                             maxRepetitionLevel,
                                                                             maxDefinitionLevel,
@@ -289,6 +292,9 @@ public final class Pages {
                                                             IDecoderFactory indicesDecoderFactory,
                                                             IDecompressorFactory decompressorFactory,
                                                             IFn fn) {
+    if (n == 0) {
+      return null;
+    }
     return new PartitionedDataPageSeq
       (readAndPartititionFirstDataPageWithDictionaryFuture(bb, n,
                                                            partitionLength,

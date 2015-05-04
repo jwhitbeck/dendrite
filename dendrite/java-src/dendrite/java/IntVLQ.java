@@ -29,7 +29,6 @@ public final class IntVLQ {
 
   }
 
-
   public final static class Encoder extends AEncoder {
 
     @Override
@@ -39,7 +38,6 @@ public final class IntVLQ {
     }
 
   }
-
 
   public final static IDecoderFactory decoderFactory = new IDecoderFactory() {
       @Override

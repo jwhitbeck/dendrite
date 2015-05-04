@@ -29,7 +29,6 @@ public final class IntPlain {
 
   }
 
-
   public final static class Encoder extends AEncoder {
 
     @Override

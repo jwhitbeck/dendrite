@@ -165,7 +165,7 @@
     (let [rand-int-set (repeatedly 10 helpers/rand-int)
           n 1000
           rand-ints (repeatedly n #(rand-nth rand-int-set))
-          enc (Dictionary$Encoder/create Types/INT nil)
+          enc (Dictionary$Encoder/create Types/INT Types/VLQ)
           mos (MemoryOutputStream.)]
       (doseq [i rand-ints]
         (.encode enc i))
@@ -175,17 +175,15 @@
             read-ints (repeatedly n #(.decode dec))]
         (is (= read-ints rand-ints)))))
   (testing "byte-array encoding"
-    (let [words (->> (string/split helpers/lorem-ipsum #"\W")
-                     (remove empty?)
-                     (map string/lower-case))
+    (let [byte-arrays (repeatedly 10 helpers/rand-byte-array)
           n 1000
-          rand-words (repeatedly n #(rand-nth words))
-          enc (Dictionary$Encoder/create Types/BYTE_ARRAY #(Types/toByteArray (str %)))
+          rand-byte-arrays (repeatedly n #(rand-nth byte-arrays))
+          enc (Dictionary$Encoder/create Types/BYTE_ARRAY Types/VLQ)
           mos (MemoryOutputStream.)]
-      (doseq [w rand-words]
-        (.encode enc w))
+      (doseq [ba rand-byte-arrays]
+        (.encode enc ba))
       (.write mos enc)
-      (let [dictionary (into-array (map #(Types/toString (bytes %)) (.getDictionary enc)))
+      (let [dictionary (into-array (.getDictionary enc))
             dec (Dictionary$Decoder. (IntVLQ$Decoder. (.byteBuffer mos)) dictionary)
-            read-words (repeatedly n #(.decode dec))]
-        (is (= read-words rand-words))))))
+            read-byte-arrays (repeatedly n #(.decode dec))]
+        (is (= (map seq read-byte-arrays) (map seq rand-byte-arrays)))))))

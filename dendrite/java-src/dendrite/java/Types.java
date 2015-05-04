@@ -496,7 +496,7 @@ public final class Types {
     }
   }
 
-  private static IDecoderFactory getPrimitiveDecoderFactory(int type, int encoding) {
+  static IDecoderFactory getPrimitiveDecoderFactory(int type, int encoding) {
     switch (type) {
     case BOOLEAN: return BooleanPacked.decoderFactory;
     case INT: switch (encoding) {
@@ -524,7 +524,7 @@ public final class Types {
     }
   }
 
-  private static IEncoder getPrimitiveEncoder(int type, int encoding) {
+  static IEncoder getPrimitiveEncoder(int type, int encoding) {
     switch (type) {
     case BOOLEAN: return new BooleanPacked.Encoder();
     case INT: switch (encoding) {
@@ -1003,14 +1003,6 @@ public final class Types {
       public int estimatedLength() { return enc.estimatedLength(); }
       public void writeTo(MemoryOutputStream mos) { mos.write(enc); }
     };
-  }
-
-  private IEncoder getDictionaryEncoder(int type) {
-    if (isPrimitive(type)) {
-      return Dictionary.Encoder.create(type, null);
-    }
-    LogicalType lt = logicalTypes[type];
-    return Dictionary.Encoder.create(lt.baseType, lt.toBaseTypeFn);
   }
 
   public IDecoderFactory getDecoderFactory(int type, int encoding) {
