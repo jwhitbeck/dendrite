@@ -220,7 +220,7 @@
           reader (write-column-chunk-and-get-reader cs input-blocks)]
       (is (= (flat-read reader) input-blocks))
       (is (= :frequency (find-best-encoding reader (* 100 1024))))))
-  (testing "small random signed ints with an occasional large one."
+  (testing "small random unsigned ints with an occasional large one."
     (let [cs (colspec-required :int :plain :none)
           input-blocks (->> #(helpers/rand-int-bits 7)
                             repeatedly
