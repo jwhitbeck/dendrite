@@ -464,7 +464,7 @@ public final class Types {
 
   static {
     validEncodings = new int[-FIXED_LENGTH_BYTE_ARRAY][];
-    validEncodings[i(BOOLEAN)] = new int[] {PLAIN, DICTIONARY, FREQUENCY};
+    validEncodings[i(BOOLEAN)] = new int[] {PLAIN, DICTIONARY};
     validEncodings[i(INT)] = new int[] {PLAIN, VLQ, ZIG_ZAG, PACKED_RUN_LENGTH, DELTA, DICTIONARY, FREQUENCY};
     validEncodings[i(LONG)] = new int[] {PLAIN, VLQ, ZIG_ZAG, DELTA, DICTIONARY, FREQUENCY};
     validEncodings[i(FLOAT)] = new int[] {PLAIN, DICTIONARY, FREQUENCY};
