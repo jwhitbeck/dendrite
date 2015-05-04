@@ -63,7 +63,7 @@ public final class Dictionary {
     final IEncoder indicesEncoder;
 
     Encoder() {
-      indicesEncoder = new IntPackedRunLength.Encoder();
+      indicesEncoder = new IntVLQ.Encoder();
       this.dictionaryIndex = new HashMap<Object, DictionaryIndex>();
     }
 
@@ -222,7 +222,6 @@ public final class Dictionary {
       return ((HashableByteArray)o).array;
     }
   }
-
 
   private final static class ByteArrayEncoderWithFn extends Encoder {
     final IFn fn;

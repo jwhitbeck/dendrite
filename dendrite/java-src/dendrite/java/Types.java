@@ -1031,14 +1031,8 @@ public final class Types {
     };
   }
 
-  public IDecoderFactory getDictionaryDecoderFactory(Object[] dictionary, int encoding) {
-    IDecoderFactory intDecoderFactory;
-    if (encoding == DICTIONARY) {
-      intDecoderFactory = IntPackedRunLength.decoderFactory;
-    } else /* if (encoding == FREQUENCY) */ {
-      intDecoderFactory = IntVLQ.decoderFactory;
-    }
-    return new Dictionary.Factory(dictionary, intDecoderFactory);
+  public IDecoderFactory getDictionaryDecoderFactory(Object[] dictionary, int indicesEncoding) {
+    return new Dictionary.DecoderFactory(dictionary, getPrimitiveDecoderFactory(INT, indicesEncoding));
   }
 
   public ICompressor getCompressor(int compression) {

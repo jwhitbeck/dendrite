@@ -171,7 +171,7 @@
         (.encode enc i))
       (.write mos enc)
       (let [dictionary (.getDictionary enc)
-            dec (Dictionary$Decoder. (IntPackedRunLength$Decoder. (.byteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.byteBuffer mos)) dictionary)
             read-ints (repeatedly n #(.decode dec))]
         (is (= read-ints rand-ints)))))
   (testing "byte-array encoding"
@@ -186,6 +186,6 @@
         (.encode enc w))
       (.write mos enc)
       (let [dictionary (into-array (map #(Types/toString (bytes %)) (.getDictionary enc)))
-            dec (Dictionary$Decoder. (IntPackedRunLength$Decoder. (.byteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.byteBuffer mos)) dictionary)
             read-words (repeatedly n #(.decode dec))]
         (is (= read-words rand-words))))))
