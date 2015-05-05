@@ -49,7 +49,7 @@
             levels {:max-definition-level 3 :max-repetition-level 2 :f f}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
             output-values (write-read-data-page levels input-values)]
-        (is (= output-values (map (fn [^LeveledValue lv] (.apply lv f)) input-values)))))
+        (is (= output-values (helpers/map-leveled f input-values)))))
     (testing "all nils"
       (let [levels {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeat nil) (helpers/leveled levels) (take 1000))
@@ -212,7 +212,7 @@
                                                                (.getDecompressorFactory types Types/NONE)
                                                                f)]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
-        (is (= (utils/flatten-1 (repeat num-pages (map (fn [^LeveledValue lv] (.apply lv f)) input-values)))
+        (is (= (utils/flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
                (mapcat utils/flatten-1 partitioned-values)))))
     (testing "trying to read dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a dictionary page type"
@@ -259,7 +259,7 @@
                                (.getDictionaryDecoderFactory types dictionary Types/PLAIN)
                                (.getDecompressorFactory types Types/NONE))]
         (is (= (->> input-indices
-                    (map (fn [^LeveledValue lv] (.apply lv #(when % (aget dictionary (int %))))))
+                    (helpers/map-leveled #(when % (aget dictionary (int %))))
                     (repeat num-pages))
                (for [^DataPage$Reader rdr data-page-readers]
                  (utils/flatten-1 (.read rdr)))))))
@@ -277,7 +277,7 @@
                                 nil)]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
-                    (map (fn [^LeveledValue lv] (.apply lv #(when % (aget dictionary (int %))))))
+                    (helpers/map-leveled #(when % (aget dictionary (int %))))
                     (repeat num-pages)
                     utils/flatten-1)
                (mapcat utils/flatten-1 partitioned-values)))))
@@ -296,7 +296,7 @@
                                 f)]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
-                    (map (fn [^LeveledValue lv] (.apply lv #(f (when % (aget dictionary (int %)))))))
+                    (helpers/map-leveled #(f (when % (aget dictionary (int %)))))
                     (repeat num-pages)
                     utils/flatten-1)
                (mapcat utils/flatten-1 partitioned-values)))))

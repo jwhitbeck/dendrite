@@ -10,9 +10,8 @@
 
 (ns dendrite.test-helpers
   (:require [clojure.string :as string]
-            [dendrite.encoding :as encoding]
-            [dendrite.leveled-value :refer [->LeveledValue]])
-  (:import [dendrite.java MemoryOutputStream IOutputBuffer Types]
+            [dendrite.encoding :as encoding])
+  (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer Types]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -81,10 +80,20 @@
          rand-definition-level
            (clojure.core/rand-int (if next-value (inc max-definition-level) max-definition-level))]
      (if (or (not next-value) (= rand-definition-level max-definition-level))
-       (cons (->LeveledValue rand-repetition-level rand-definition-level (first coll))
+       (cons (LeveledValue. rand-repetition-level rand-definition-level (first coll))
              (leveled spec (rest coll)))
-       (cons (->LeveledValue rand-repetition-level rand-definition-level nil)
+       (cons (LeveledValue. rand-repetition-level rand-definition-level nil)
              (leveled spec coll))))))
+
+(defn partition-by-record [leveled-values]
+  (lazy-seq
+   (when-let [coll (seq leveled-values)]
+     (let [fst (first coll)
+           [in-record remaining] (split-with (fn [^LeveledValue lv] (pos? (.repetitionLevel lv))) (next coll))]
+       (cons (cons fst in-record) (partition-by-record remaining))))))
+
+(defn map-leveled [f leveled-values]
+  (map (fn [^LeveledValue lv] (.apply lv f)) leveled-values))
 
 (defn avg [coll] (/ (reduce + coll) (count coll)))
 
