@@ -26,14 +26,14 @@ public final class DictionaryColumnChunk {
     private final ByteBuffer bb;
     private final ColumnChunkMetadata columnChunkMetadata;
     private final Types types;
-    private final Schema.Leaf schemaLeaf;
+    private final Schema.Column column;
 
     public Reader(Types types, ByteBuffer bb, ColumnChunkMetadata columnChunkMetadata,
-                  Schema.Leaf schemaLeaf) {
+                  Schema.Column column) {
       this.types = types;
       this.bb = bb;
       this.columnChunkMetadata = columnChunkMetadata;
-      this.schemaLeaf = schemaLeaf;
+      this.column = column;
     }
 
     @Override
@@ -42,12 +42,12 @@ public final class DictionaryColumnChunk {
         (Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
          columnChunkMetadata.numDataPages,
          partitionLength,
-         schemaLeaf.repetitionLevel,
-         schemaLeaf.definitionLevel,
-         types.getDecoderFactory(schemaLeaf.type, Types.PLAIN),
+         column.repetitionLevel,
+         column.definitionLevel,
+         types.getDecoderFactory(column.type, Types.PLAIN),
          types.getDecoderFactory(Types.INT, Types.PACKED_RUN_LENGTH),
-         types.getDecompressorFactory(schemaLeaf.compression),
-         schemaLeaf.fn);
+         types.getDecompressorFactory(column.compression),
+         column.fn);
     }
 
     @Override
@@ -65,29 +65,29 @@ public final class DictionaryColumnChunk {
 
   public final static class Writer implements IColumnChunkWriter {
 
-    final Schema.Leaf schemaLeaf;
+    final Schema.Column column;
     final Dictionary.Encoder dictEncoder;
     final DictionaryPage.Writer dictPageWriter;
     final DataColumnChunk.Writer indicesColumnChunkWriter;
     double bytesPerDictionaryValue = -1.0;
     int dictionaryHeaderLength = -1;
 
-    Writer(Types types, Schema.Leaf schemaLeaf, int targetDataPageLength) {
-      this.dictEncoder = Dictionary.Encoder.create(schemaLeaf.type, Types.PACKED_RUN_LENGTH);
-      Schema.Leaf indicesSchemaLeaf = getIndicesSchemaLeaf(schemaLeaf);
-      DataPage.Writer indicesPageWriter = DataPage.Writer.create(schemaLeaf.repetitionLevel,
-                                                                 schemaLeaf.definitionLevel,
+    Writer(Types types, Schema.Column column, int targetDataPageLength) {
+      this.dictEncoder = Dictionary.Encoder.create(column.type, Types.PACKED_RUN_LENGTH);
+      Schema.Column indicesSchemaLeaf = getIndicesSchemaLeaf(column);
+      DataPage.Writer indicesPageWriter = DataPage.Writer.create(column.repetitionLevel,
+                                                                 column.definitionLevel,
                                                                  dictEncoder,
                                                                  null);
       this.indicesColumnChunkWriter
-        = DataColumnChunk.Writer.create(indicesPageWriter, schemaLeaf, targetDataPageLength);
-      this.schemaLeaf = schemaLeaf;
-      this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(schemaLeaf.type, Types.PLAIN),
-                                                         types.getCompressor(schemaLeaf.compression));
+        = DataColumnChunk.Writer.create(indicesPageWriter, column, targetDataPageLength);
+      this.column = column;
+      this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(column.type, Types.PLAIN),
+                                                         types.getCompressor(column.compression));
     }
 
-    public static Writer create(Types types, Schema.Leaf schemaLeaf, int targetDataPageLength) {
-      return new Writer(types, schemaLeaf, targetDataPageLength);
+    public static Writer create(Types types, Schema.Column column, int targetDataPageLength) {
+      return new Writer(types, column, targetDataPageLength);
     }
 
     @Override
@@ -96,8 +96,8 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
-    public Schema.Leaf schemaLeaf() {
-      return schemaLeaf;
+    public Schema.Column column() {
+      return column;
     }
 
     @Override
@@ -173,9 +173,9 @@ public final class DictionaryColumnChunk {
       dictPageWriter.finish();
     }
 
-    static Schema.Leaf getIndicesSchemaLeaf(Schema.Leaf schemaLeaf) {
-      return new Schema.Leaf(schemaLeaf.repetition, schemaLeaf.repetitionLevel, schemaLeaf.definitionLevel,
-                             Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, schemaLeaf.columnIndex, null);
+    static Schema.Column getIndicesSchemaLeaf(Schema.Column column) {
+      return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
+                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex, null);
     }
   }
 }

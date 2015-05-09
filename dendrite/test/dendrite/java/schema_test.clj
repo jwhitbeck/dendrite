@@ -12,7 +12,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.core2] ; for the print-method
             [dendrite.test-helpers :refer [test-schema-str throw-cause]])
-  (:import [dendrite.java Col Schema Schema$Leaf Schema$Collection Schema$Record Schema$Field Types]))
+  (:import [dendrite.java Col Schema Schema$Column Schema$Collection Schema$Record Schema$Field Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -95,11 +95,11 @@
          [:keywords nil] Schema/OPTIONAL 1 1
          [:is-active] Schema/REQUIRED 0 0))
   (testing "leaves are properly configured in test schema"
-    (are [ks t enc com col-idx] (let [^Schema$Leaf leaf (sub-schema-in test-schema ks)]
-                                  (and (= t (.type leaf))
-                                       (= enc (.encoding leaf))
-                                       (= com (.compression leaf))
-                                       (= col-idx (.columnIndex leaf))))
+    (are [ks t enc com col-idx] (let [^Schema$Column column (sub-schema-in test-schema ks)]
+                                  (and (= t (.type column))
+                                       (= enc (.encoding column))
+                                       (= com (.compression column))
+                                       (= col-idx (.columnIndex column))))
          [:docid] Types/LONG Types/DELTA Types/DEFLATE 0
          [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1
          [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2
@@ -154,7 +154,7 @@
   (are [entrypoint regex] (thrown-with-msg? IllegalArgumentException regex
                                             (Schema/subSchema entrypoint test-schema))
        [:name :language] #"Entrypoint '\[:name :language\]' contains repeated field ':name'"
-       [:docid :foo] #"Entrypoint '\[:docid :foo\]' contains leaf node at ':docid'"))
+       [:docid :foo] #"Entrypoint '\[:docid :foo\]' contains column node at ':docid'"))
 
 (deftest queries
   (testing "read from string"

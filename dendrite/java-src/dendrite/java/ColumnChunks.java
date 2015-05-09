@@ -16,20 +16,20 @@ import java.nio.ByteBuffer;
 
 public final class ColumnChunks {
 
-  public static IColumnChunkWriter createWriter(Types types, Schema.Leaf schemaLeaf,
+  public static IColumnChunkWriter createWriter(Types types, Schema.Column column,
                                                 int targetDataPageLength) {
-    switch (schemaLeaf.encoding) {
-    case Types.DICTIONARY: return DictionaryColumnChunk.Writer.create(types, schemaLeaf, targetDataPageLength);
-    default: return DataColumnChunk.Writer.create(types, schemaLeaf, targetDataPageLength);
+    switch (column.encoding) {
+    case Types.DICTIONARY: return DictionaryColumnChunk.Writer.create(types, column, targetDataPageLength);
+    default: return DataColumnChunk.Writer.create(types, column, targetDataPageLength);
     }
   }
 
   public static IColumnChunkReader createReader(Types types, ByteBuffer bb,
                                                 ColumnChunkMetadata columnChunkMetadata,
-                                                Schema.Leaf schemaLeaf) {
-    switch (schemaLeaf.encoding) {
-    case Types.DICTIONARY: return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, schemaLeaf);
-    default: return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, schemaLeaf);
+                                                Schema.Column column) {
+    switch (column.encoding) {
+    case Types.DICTIONARY: return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, column);
+    default: return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, column);
     }
   }
 }

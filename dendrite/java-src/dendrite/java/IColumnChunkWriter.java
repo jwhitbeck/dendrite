@@ -14,7 +14,7 @@ package dendrite.java;
 
 public interface IColumnChunkWriter extends IOutputBuffer {
   public void write(ChunkedPersistentList values);
-  public Schema.Leaf schemaLeaf();
+  public Schema.Column column();
   public ColumnChunkMetadata metadata();
   public IColumnChunkWriter optimize();
 }

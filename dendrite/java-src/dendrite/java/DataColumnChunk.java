@@ -25,14 +25,14 @@ public final class DataColumnChunk {
     private final ByteBuffer bb;
     private final ColumnChunkMetadata columnChunkMetadata;
     private final Types types;
-    private final Schema.Leaf schemaLeaf;
+    private final Schema.Column column;
 
     public Reader(Types types, ByteBuffer bb, ColumnChunkMetadata columnChunkMetadata,
-                  Schema.Leaf schemaLeaf) {
+                  Schema.Column column) {
       this.types = types;
       this.bb = bb;
       this.columnChunkMetadata = columnChunkMetadata;
-      this.schemaLeaf = schemaLeaf;
+      this.column = column;
     }
 
     @Override
@@ -40,11 +40,11 @@ public final class DataColumnChunk {
       return Pages.readDataPagesPartitioned(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
                                             columnChunkMetadata.numDataPages,
                                             partitionLength,
-                                            schemaLeaf.repetitionLevel,
-                                            schemaLeaf.definitionLevel,
-                                            types.getDecoderFactory(schemaLeaf.type, schemaLeaf.encoding),
-                                            types.getDecompressorFactory(schemaLeaf.compression),
-                                            schemaLeaf.fn);
+                                            column.repetitionLevel,
+                                            column.definitionLevel,
+                                            types.getDecoderFactory(column.type, column.encoding),
+                                            types.getDecompressorFactory(column.compression),
+                                            column.fn);
     }
 
     @Override
@@ -64,33 +64,33 @@ public final class DataColumnChunk {
     int nextNumValuesForPageLengthCheck;
     int numPages;
     final int targetDataPageLength;
-    final Schema.Leaf schemaLeaf;
+    final Schema.Column column;
     final MemoryOutputStream mos;
     final DataPage.Writer pageWriter;
 
-    Writer(DataPage.Writer pageWriter, Schema.Leaf schemaLeaf, int targetDataPageLength) {
+    Writer(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
       this.mos = new MemoryOutputStream();
       this.pageWriter = pageWriter;
-      this.schemaLeaf = schemaLeaf;
+      this.column = column;
       this.targetDataPageLength = targetDataPageLength;
       this.numPages = 0;
       this.nextNumValuesForPageLengthCheck = 100;
     }
 
-    public static Writer create(Types types, Schema.Leaf schemaLeaf, int targetDataPageLength) {
+    public static Writer create(Types types, Schema.Column column, int targetDataPageLength) {
       DataPage.Writer pageWriter
-        = DataPage.Writer.create(schemaLeaf.repetitionLevel,
-                                 schemaLeaf.definitionLevel,
-                                 types.getEncoder(schemaLeaf.type, schemaLeaf.encoding),
-                                 types.getCompressor(schemaLeaf.compression));
-      return create(pageWriter, schemaLeaf, targetDataPageLength);
+        = DataPage.Writer.create(column.repetitionLevel,
+                                 column.definitionLevel,
+                                 types.getEncoder(column.type, column.encoding),
+                                 types.getCompressor(column.compression));
+      return create(pageWriter, column, targetDataPageLength);
     }
 
-    public static Writer create(DataPage.Writer pageWriter, Schema.Leaf schemaLeaf, int targetDataPageLength) {
-      if (schemaLeaf.repetitionLevel == 0) {
-        return new NonRepeatedWriter(pageWriter, schemaLeaf, targetDataPageLength);
+    public static Writer create(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
+      if (column.repetitionLevel == 0) {
+        return new NonRepeatedWriter(pageWriter, column, targetDataPageLength);
       } else {
-        return new RepeatedWriter(pageWriter, schemaLeaf, targetDataPageLength);
+        return new RepeatedWriter(pageWriter, column, targetDataPageLength);
       }
     }
 
@@ -98,8 +98,8 @@ public final class DataColumnChunk {
     public abstract void write(ChunkedPersistentList values);
 
     @Override
-    public Schema.Leaf schemaLeaf() {
-      return schemaLeaf;
+    public Schema.Column column() {
+      return column;
     }
 
     @Override
@@ -151,8 +151,8 @@ public final class DataColumnChunk {
   }
 
   private final static class NonRepeatedWriter extends Writer {
-    NonRepeatedWriter(DataPage.Writer pageWriter, Schema.Leaf schemaLeaf, int targetDataPageLength) {
-      super(pageWriter, schemaLeaf, targetDataPageLength);
+    NonRepeatedWriter(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
+      super(pageWriter, column, targetDataPageLength);
     }
 
     @Override
@@ -183,8 +183,8 @@ public final class DataColumnChunk {
   }
 
   private final static class RepeatedWriter extends Writer {
-    RepeatedWriter(DataPage.Writer pageWriter, Schema.Leaf schemaLeaf, int targetDataPageLength) {
-      super(pageWriter, schemaLeaf, targetDataPageLength);
+    RepeatedWriter(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
+      super(pageWriter, column, targetDataPageLength);
     }
 
     @Override

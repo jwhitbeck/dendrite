@@ -14,7 +14,7 @@
             [dendrite.test-helpers :as helpers :refer [leveled partition-by-record]]
             [dendrite.utils :as utils])
   (:import [dendrite.java LeveledValue ColumnChunks ChunkedPersistentList DataColumnChunk$Reader
-            DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader Schema$Leaf Types]
+            DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader Schema$Column Types]
            [java.util Date Calendar]
            [java.text SimpleDateFormat]))
 
@@ -26,49 +26,50 @@
 
 (defn write-column-chunk-and-get-reader
   (^IColumnChunkReader
-   [leaf input-values]
-   (write-column-chunk-and-get-reader leaf test-target-data-page-length types input-values))
+   [column input-values]
+   (write-column-chunk-and-get-reader column test-target-data-page-length types input-values))
   (^IColumnChunkReader
-   [leaf target-data-page-length types input-values]
-   (let [w (ColumnChunks/createWriter types leaf target-data-page-length)]
+   [column target-data-page-length types input-values]
+   (let [w (ColumnChunks/createWriter types column target-data-page-length)]
      (.write w input-values)
-     (ColumnChunks/createReader types (helpers/output-buffer->byte-buffer w) (.metadata w) leaf))))
+     (ColumnChunks/createReader types (helpers/output-buffer->byte-buffer w) (.metadata w) column))))
 
-(defn- leaf-repeated ^Schema$Leaf [type encoding compression]
-  (Schema$Leaf. 0 2 3 type encoding compression 0 nil))
+(defn- column-repeated ^Schema$Column [type encoding compression]
+  (Schema$Column. 0 2 3 type encoding compression 0 nil))
 
-(defn- leaf-non-repeated ^Schema$Leaf [type encoding compression]
-  (Schema$Leaf. 0 0 3 type encoding compression 0 nil))
+(defn- column-non-repeated ^Schema$Column [type encoding compression]
+  (Schema$Column. 0 0 3 type encoding compression 0 nil))
 
-(defn- leaf-required ^Schema$Leaf [type encoding compression]
-  (Schema$Leaf. 0 0 0 type encoding compression 0 nil))
+(defn- column-required ^Schema$Column [type encoding compression]
+  (Schema$Column. 0 0 0 type encoding compression 0 nil))
 
 (defn- as-chunked-list [coll]
   (persistent! (reduce conj! (ChunkedPersistentList/newEmptyTransient) coll)))
 
-(defn- rand-repeated-values [^Schema$Leaf leaf n coll]
+(defn- rand-repeated-values [^Schema$Column column n coll]
   (->> coll
-       (leveled {:max-definition-level (.definitionLevel leaf) :max-repetition-level (.repetitionLevel leaf)})
+       (leveled {:max-definition-level (.definitionLevel column)
+                 :max-repetition-level (.repetitionLevel column)})
        partition-by-record
        (take n)
        (map as-chunked-list)
        as-chunked-list))
 
 (deftest data-column-chunk
-  (let [leaf (leaf-repeated Types/INT Types/PLAIN Types/DEFLATE)
-        input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values leaf 1000))
-        reader (write-column-chunk-and-get-reader leaf input-values)
+  (let [column (column-repeated Types/INT Types/PLAIN Types/DEFLATE)
+        input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values column 1000))
+        reader (write-column-chunk-and-get-reader column input-values)
         output-values (utils/flatten-1 (.readPartitioned reader 100))]
     (testing "write/read a data colum-chunk"
       (is (= (-> reader .metadata .numDataPages) 4))
       (is (= input-values output-values)))
     (testing "value mapping"
       (let [^clojure.lang.IFn f (fnil (partial * 2) 1)
-            reader-with-f (write-column-chunk-and-get-reader (.withFn leaf f) input-values)]
+            reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
         (is (= (map (partial helpers/map-leveled f) input-values)
                (-> reader-with-f (.readPartitioned 100) utils/flatten-1)))))
     (testing "repeatable writes"
-      (let [w (ColumnChunks/createWriter types leaf test-target-data-page-length)]
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]
@@ -77,7 +78,7 @@
       (is (= (.readPartitioned reader 100) (.readPartitioned reader 100))))
     (testing "Page length estimation converges"
       (letfn [(avg-page-length [target-length]
-                (let [reader (write-column-chunk-and-get-reader leaf target-length types input-values)]
+                (let [reader (write-column-chunk-and-get-reader column target-length types input-values)]
                   (->> (.getPageHeaders reader)
                        rest    ; the first page is always inaccurate
                        butlast ; the last page can have any length
@@ -88,19 +89,19 @@
         (is (helpers/roughly 256 (avg-page-length 256)))))))
 
 (deftest dictionary-column-chunk
-  (let [leaf (leaf-repeated Types/INT Types/DICTIONARY Types/DEFLATE)
-        input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values leaf 1000))
-        reader (write-column-chunk-and-get-reader leaf input-values)
+  (let [column (column-repeated Types/INT Types/DICTIONARY Types/DEFLATE)
+        input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values column 1000))
+        reader (write-column-chunk-and-get-reader column input-values)
         output-values (utils/flatten-1 (.readPartitioned reader 100))]
     (testing "write/read a dictionary colum-chunk"
       (is (= input-values output-values)))
     (testing "value mapping"
       (let [^clojure.lang.IFn f #(if % (int (* 2 %)) %)
-            reader-with-f (write-column-chunk-and-get-reader (.withFn leaf f) input-values)]
+            reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
         (is (= (map (partial helpers/map-leveled f) input-values)
                (-> reader-with-f (.readPartitioned 100) utils/flatten-1)))))
     (testing "repeatable writes"
-      (let [w (ColumnChunks/createWriter types leaf test-target-data-page-length)]
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
         (let [bb1 (helpers/output-buffer->byte-buffer w)
               bb2 (helpers/output-buffer->byte-buffer w)]

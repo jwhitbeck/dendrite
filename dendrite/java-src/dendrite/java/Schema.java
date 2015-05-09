@@ -62,7 +62,7 @@ public abstract class Schema implements IWriteable {
   }
 
   private final static int
-    LEAF = 0,
+    COLUMN = 0,
     RECORD = 1,
     COLLECTION = 2;
 
@@ -218,22 +218,22 @@ public abstract class Schema implements IWriteable {
   public static Schema read(ByteBuffer bb) {
     int type = bb.get();
     switch (type) {
-    case LEAF: return Leaf.read(bb);
+    case COLUMN: return Column.read(bb);
     case RECORD: return Record.read(bb);
     case COLLECTION: return Collection.read(bb);
     default: throw new IllegalStateException("Unknown schema type: " + type);
     }
   }
 
-  public static final class Leaf extends Schema {
+  public static final class Column extends Schema {
 
     public final int type;
     public final int encoding;
     public final int compression;
     public final int columnIndex;
 
-    public Leaf(int repetition, int repetitionLevel, int definitionLevel, int type, int encoding,
-                int compression, int columnIndex, IFn fn) {
+    public Column(int repetition, int repetitionLevel, int definitionLevel, int type, int encoding,
+                  int compression, int columnIndex, IFn fn) {
       super(repetition, repetitionLevel, definitionLevel, fn);
       this.type = type;
       this.encoding = encoding;
@@ -241,19 +241,19 @@ public abstract class Schema implements IWriteable {
       this.columnIndex = columnIndex;
     }
 
-    public static Leaf missing() {
-      return new Leaf(-REQUIRED, -1, -1, -1, -1, -1, -1, null);
+    public static Column missing() {
+      return new Column(-REQUIRED, -1, -1, -1, -1, -1, -1, null);
     }
 
     @Override
-    public Leaf withFn(IFn aFn) {
-      return new Leaf(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
-                      columnIndex, aFn);
+    public Column withFn(IFn aFn) {
+      return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
+                        columnIndex, aFn);
     }
 
     @Override
     public void writeTo(MemoryOutputStream mos) {
-      mos.write(LEAF);
+      mos.write(COLUMN);
       writeCommonFieldsTo(mos, this);
       Bytes.writeSInt(mos, type);
       Bytes.writeUInt(mos, encoding);
@@ -263,25 +263,25 @@ public abstract class Schema implements IWriteable {
 
     @Override
     public boolean equals(Object o) {
-      if (!super.equals(o) || !(o instanceof Leaf)) {
+      if (!super.equals(o) || !(o instanceof Column)) {
         return false;
       }
-      Leaf l = (Leaf)o;
-      return type == l.type &&
-        encoding == l.encoding &&
-        compression == l.compression &&
-        columnIndex == l.columnIndex;
+      Column col = (Column)o;
+      return type == col.type &&
+        encoding == col.encoding &&
+        compression == col.compression &&
+        columnIndex == col.columnIndex;
     }
 
-    public static Leaf read(ByteBuffer bb) {
-      return new Leaf(Bytes.readUInt(bb),
-                      Bytes.readUInt(bb),
-                      Bytes.readUInt(bb),
-                      Bytes.readSInt(bb),
-                      Bytes.readUInt(bb),
-                      Bytes.readUInt(bb),
-                      Bytes.readUInt(bb),
-                      null);
+    public static Column read(ByteBuffer bb) {
+      return new Column(Bytes.readUInt(bb),
+                        Bytes.readUInt(bb),
+                        Bytes.readUInt(bb),
+                        Bytes.readSInt(bb),
+                        Bytes.readUInt(bb),
+                        Bytes.readUInt(bb),
+                        Bytes.readUInt(bb),
+                        null);
     }
   }
 
@@ -490,16 +490,16 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema _parse(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                               LinkedList<Leaf> leaves, Object o) {
+                               LinkedList<Column> columns, Object o) {
     try {
       if (isCol(o)) {
-        return _parseCol(types, parents, repLvl, defLvl, leaves, asCol(o));
+        return _parseCol(types, parents, repLvl, defLvl, columns, asCol(o));
       } else if (isRecord(o)) {
-        return _parseRecord(types, parents, repLvl, defLvl, leaves, (IPersistentMap)o);
+        return _parseRecord(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentMap) {
-        return _parseMap(types, parents, repLvl, defLvl, leaves, (IPersistentMap)o);
+        return _parseMap(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentCollection) {
-        return _parseRepeated(types, parents, repLvl, defLvl, leaves, (IPersistentCollection)o);
+        return _parseRepeated(types, parents, repLvl, defLvl, columns, (IPersistentCollection)o);
       }
       throw new IllegalArgumentException(String.format("Unsupported schema element '%s'", o));
     } catch (SchemaParseException e) {
@@ -510,36 +510,36 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema _parseCol(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                  LinkedList<Leaf> leaves, Col col) {
+                                  LinkedList<Column> columns, Col col) {
     int type = types.getType(col.type);
-    Leaf leaf = new Leaf(isRequired(col)? REQUIRED : OPTIONAL,
-                         repLvl,
-                         isRequired(col)? defLvl : defLvl + 1,
-                         type,
-                         types.getEncoding(type, col.encoding),
-                         types.getCompression(col.compression),
-                         leaves.size(),
-                         null);
-    leaves.add(leaf);
-    return leaf;
+    Column column = new Column(isRequired(col)? REQUIRED : OPTIONAL,
+                               repLvl,
+                               isRequired(col)? defLvl : defLvl + 1,
+                               type,
+                               types.getEncoding(type, col.encoding),
+                               types.getCompression(col.compression),
+                               columns.size(),
+                               null);
+    columns.add(column);
+    return column;
   }
 
   // this works because we are doing a DFS
-  private static int getLeafColumnIndex(LinkedList<Leaf> leaves) {
-    return leaves.getLast().columnIndex;
+  private static int getLeafColumnIndex(LinkedList<Column> columns) {
+    return columns.getLast().columnIndex;
   }
 
   private static Schema _parseRecord(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                     LinkedList<Leaf> leaves, IPersistentMap record) {
+                                     LinkedList<Column> columns, IPersistentMap record) {
     int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
     int repetition = isRequired(record)? REQUIRED : OPTIONAL;
     ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
     for (Object o : record) {
       IMapEntry e = (IMapEntry)o;
       Keyword name = (Keyword)e.key();
-      fields.conj(new Field(name, _parse(types, parents.cons(name), repLvl, curDefLvl, leaves, e.val())));
+      fields.conj(new Field(name, _parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val())));
     }
-    int leafColumnIndex = getLeafColumnIndex(leaves);
+    int leafColumnIndex = getLeafColumnIndex(columns);
     return new Record(repetition, repLvl, curDefLvl, leafColumnIndex, fields.persistent(), null);
   }
 
@@ -555,7 +555,7 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema _parseRepeated(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                       LinkedList<Leaf> leaves, IPersistentCollection coll) {
+                                       LinkedList<Column> columns, IPersistentCollection coll) {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
@@ -563,30 +563,30 @@ public abstract class Schema implements IWriteable {
     if (isRequired(elem)) {
       throw new IllegalArgumentException("Repeated element cannot also be required.");
     }
-    Schema repeatedSchema = _parse(types, parents.cons(null), repLvl + 1, defLvl, leaves, elem);
+    Schema repeatedSchema = _parse(types, parents.cons(null), repLvl + 1, defLvl, columns, elem);
     return new Collection(getRepeatedRepetition(coll),
                           repLvl + 1,
                           defLvl,
-                          getLeafColumnIndex(leaves),
+                          getLeafColumnIndex(columns),
                           repeatedSchema,
                           null);
   }
 
   private static Schema _parseMap(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                  LinkedList<Leaf> leaves, IPersistentMap map) {
+                                  LinkedList<Column> columns, IPersistentMap map) {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
     int curRepLvl = repLvl + 1;
     IMapEntry e = (IMapEntry)RT.first(map);
-    Schema keyValueRecord = _parseRecord(types, parents.cons(null), curRepLvl, defLvl, leaves,
+    Schema keyValueRecord = _parseRecord(types, parents.cons(null), curRepLvl, defLvl, columns,
                                          new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()}));
-    return new Collection(MAP, curRepLvl, defLvl, getLeafColumnIndex(leaves), keyValueRecord, null);
+    return new Collection(MAP, curRepLvl, defLvl, getLeafColumnIndex(columns), keyValueRecord, null);
   }
 
   public static Schema parse(Types types, Object unparsedSchema) {
     try {
-      return _parse(types, PersistentVector.EMPTY, 0, 0, new LinkedList<Leaf>(), unparsedSchema);
+      return _parse(types, PersistentVector.EMPTY, 0, 0, new LinkedList<Column>(), unparsedSchema);
     } catch (SchemaParseException e) {
       String msg = String.format("Failed to parse schema '%s'. %s.", unparsedSchema, e.getMessage());
       throw new IllegalArgumentException(msg, e.getCause());
@@ -600,8 +600,8 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Object _unparse(Types types, boolean asPlain, Schema schema) {
-    if (schema instanceof Leaf) {
-      return _unparseLeaf(types, asPlain, (Leaf)schema);
+    if (schema instanceof Column) {
+      return _unparseColumn(types, asPlain, (Column)schema);
     } else if (schema instanceof Record) {
       return _unparseRecord(types, asPlain, (Record)schema);
     } else /* if (schema instanceof Schema.Collection) */ {
@@ -620,15 +620,15 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Object _unparseLeaf(Types types, boolean asPlain, Leaf leaf) {
-    if (asPlain || (leaf.encoding == Types.PLAIN && leaf.compression == Types.NONE)) {
-      return wrapWithRepetition(types.getTypeSymbol(leaf.type), leaf.repetition);
+  private static Object _unparseColumn(Types types, boolean asPlain, Column column) {
+    if (asPlain || (column.encoding == Types.PLAIN && column.compression == Types.NONE)) {
+      return wrapWithRepetition(types.getTypeSymbol(column.type), column.repetition);
     }
-    Col col = new Col(types.getTypeSymbol(leaf.type),
-                      types.getEncodingSymbol(leaf.encoding),
-                      types.getCompressionSymbol(leaf.compression));
+    Col col = new Col(types.getTypeSymbol(column.type),
+                      types.getEncodingSymbol(column.encoding),
+                      types.getCompressionSymbol(column.compression));
 
-    return wrapWithRepetition(col, leaf.repetition);
+    return wrapWithRepetition(col, column.repetition);
   }
 
   private static Object _unparseRecord(Types types, boolean asPlain, Record record) {
@@ -656,8 +656,8 @@ public abstract class Schema implements IWriteable {
       if (s instanceof Collection) {
         throw new IllegalArgumentException(String.format("Entrypoint '%s' contains repeated field '%s'.",
                                                          entrypoint, parent));
-      } else if (s instanceof Leaf) {
-        throw new IllegalArgumentException(String.format("Entrypoint '%s' contains leaf node at '%s'.",
+      } else if (s instanceof Column) {
+        throw new IllegalArgumentException(String.format("Entrypoint '%s' contains column node at '%s'.",
                                                          entrypoint, parent));
       } else /* if (s instanceof Record) */{
         parent = (Keyword)ks.first();
@@ -861,7 +861,7 @@ public abstract class Schema implements IWriteable {
   private static Schema _applyQuerySymbol(QueryContext context, Schema schema, Symbol query,
                                           PersistentVector parents) {
     if (schema == null) {
-      return Leaf.missing();
+      return Column.missing();
     } else if (query.equals(SUB_SCHEMA)) {
       return schema;
     } else if (schema instanceof Record) {
@@ -871,15 +871,15 @@ public abstract class Schema implements IWriteable {
       throw new IllegalArgumentException(String.format("Element at path %s is a collection, not a value.",
                                                        parents));
     } else {
-      Leaf leaf = (Leaf)schema;
+      Column column = (Column)schema;
       int queriedType = context.types.getType(query);
-      if (leaf.type != queriedType) {
+      if (column.type != queriedType) {
         throw new IllegalArgumentException(String.format("Mismatched column types at path %s. " +
                                                          "Asked for '%s' but schema defines '%s'.",
                                                          parents, query,
-                                                         context.types.getTypeSymbol(leaf.type)));
+                                                         context.types.getTypeSymbol(column.type)));
       }
-      return leaf;
+      return column;
     }
   }
 

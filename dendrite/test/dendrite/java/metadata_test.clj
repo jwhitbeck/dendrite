@@ -12,7 +12,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java ColumnChunkMetadata CustomType FileMetadata MemoryOutputStream
-            RecordGroupMetadata Schema Schema$Leaf Schema$Field Schema$Record Schema$Collection]
+            RecordGroupMetadata Schema Schema$Column Schema$Field Schema$Record Schema$Collection]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -21,9 +21,9 @@
 
 (declare rand-schema)
 
-(defn rand-schema-leaf []
-  (Schema$Leaf. (rand-int 10) (rand-int 10) (rand-int 10) (- (rand-int 10) 4)
-                (rand-int 10) (rand-int 10) (rand-int 100) nil))
+(defn rand-schema-column []
+  (Schema$Column. (rand-int 10) (rand-int 10) (rand-int 10) (- (rand-int 10) 4)
+                  (rand-int 10) (rand-int 10) (rand-int 100) nil))
 
 (defn rand-field [max-depth]
   (Schema$Field. (rand-name) (rand-schema (dec max-depth))))
@@ -41,9 +41,9 @@
   ([] (rand-schema 5))
   ([max-depth]
    (if (zero? max-depth)
-     (rand-schema-leaf)
+     (rand-schema-column)
      (case (int (rand-int 3))
-       0 (rand-schema-leaf)
+       0 (rand-schema-column)
        1 (rand-schema-record max-depth)
        2 (rand-schema-coll max-depth)))))
 
