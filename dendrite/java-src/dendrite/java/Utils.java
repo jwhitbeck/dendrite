@@ -13,9 +13,14 @@
 package dendrite.java;
 
 import clojure.lang.AFn;
+import clojure.lang.ASeq;
 import clojure.lang.IFn;
+import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentMap;
+import clojure.lang.ISeq;
+import clojure.lang.RT;
 
-public final class Functions {
+public final class Utils {
 
   public static IFn comp(final IFn f, final IFn g) {
     return new AFn() {
@@ -54,4 +59,55 @@ public final class Functions {
       };
     }
   }
+
+  private final static class Concat extends ASeq {
+
+    private final ISeq head;
+    private final ISeq tail;
+
+    private Concat(ISeq head, ISeq tail) {
+      this.head = head;
+      this.tail = tail;
+    }
+
+    private Concat(IPersistentMap meta, ISeq head, ISeq tail) {
+      super(meta);
+      this.head = head;
+      this.tail = tail;
+    }
+
+    @Override
+    public Concat withMeta(IPersistentMap meta){
+      return new Concat(meta, head, tail);
+    }
+
+    @Override
+    public int count() {
+      return RT.count(head) + RT.count(tail);
+    }
+
+    @Override
+    public Object first() {
+      return head.first();
+    }
+
+    @Override
+    public ISeq next() {
+      ISeq next = head.next();
+      if (next == null) {
+        return RT.seq(tail);
+      }
+      return new Concat(next, tail);
+    }
+  }
+
+  public static ISeq concat(Object head, Object tail) {
+    if (RT.seq(head) == null) {
+      return RT.seq(tail);
+    } else if (RT.seq(tail) == null) {
+      return RT.seq(head);
+    }
+    return new Concat(RT.seq(head), RT.seq(tail));
+  }
+
 }

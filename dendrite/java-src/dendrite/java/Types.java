@@ -889,8 +889,8 @@ public final class Types {
     logicalTypes[type] = new LogicalType(logicalType.sym,
                                          baseType,
                                          logicalType.coercionFn,
-                                         Functions.comp(toBaseTypeFns.toArray(new IFn[]{})),
-                                         Functions.comp(fromBaseTypeFns.toArray(new IFn[]{})));
+                                         Utils.comp(toBaseTypeFns.toArray(new IFn[]{})),
+                                         Utils.comp(fromBaseTypeFns.toArray(new IFn[]{})));
   }
 
   private static void flattenLogicalTypes(LogicalType[] logicalTypes) {

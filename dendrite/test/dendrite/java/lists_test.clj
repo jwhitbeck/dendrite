@@ -10,7 +10,7 @@
 
 (ns dendrite.java.lists-test
   (:require [clojure.test :refer :all])
-  (:import [dendrite.java Concat ChunkedPersistentList]))
+  (:import [dendrite.java Utils ChunkedPersistentList]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,6 +31,6 @@
     (is (= (seq (take 101 cs)) (seq (.take cs 101))))))
 
 (deftest concatenation
-  (is (= (Concat/concat (range 10) (range 10)) (concat (range 10) (range 10))))
-  (is (= (Concat/concat (range 10) (list)) (range 10)))
-  (is (nil? (Concat/concat (list) (list)))))
+  (is (= (Utils/concat (range 10) (range 10)) (concat (range 10) (range 10))))
+  (is (= (Utils/concat (range 10) (list)) (range 10)))
+  (is (nil? (Utils/concat (list) (list)))))

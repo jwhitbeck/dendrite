@@ -132,10 +132,10 @@ public final class Pages {
     int numUnfinished = RT.count(unfinishedPartition);
     if (numUnfinished > 0) {
       if (numUnfinished + RT.count(values) < partitionLength) {
-        return new DataPageReadResult(null, Concat.concat(unfinishedPartition, values), dataPageReaders.next(),
+        return new DataPageReadResult(null, Utils.concat(unfinishedPartition, values), dataPageReaders.next(),
                                       fn, nullValue, partitionLength);
       } else {
-        partitions.conj(Concat.concat(unfinishedPartition, values.take(partitionLength - numUnfinished)));
+        partitions.conj(Utils.concat(unfinishedPartition, values.take(partitionLength - numUnfinished)));
         values = values.drop(partitionLength - numUnfinished);
       }
     }
@@ -257,13 +257,13 @@ public final class Pages {
         if (RT.seq(res.fullPartitions) == null) {
           return null;
         } else if (RT.seq(res.unfinishedPartition) != null) {
-          return Concat.concat(res.fullPartitions.next(),
-                               ArraySeq.create(new Object[]{res.unfinishedPartition}));
+          return Utils.concat(res.fullPartitions.next(),
+                              ArraySeq.create(new Object[]{res.unfinishedPartition}));
         } else {
           return res.fullPartitions.next();
         }
       } else if (RT.seq(res.fullPartitions) != null) {
-        return Concat.concat(res.fullPartitions.next(), next);
+        return Utils.concat(res.fullPartitions.next(), next);
       } else {
         return next.next();
       }
