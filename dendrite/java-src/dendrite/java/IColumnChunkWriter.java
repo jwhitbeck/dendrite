@@ -16,5 +16,4 @@ public interface IColumnChunkWriter extends IOutputBuffer {
   public void write(ChunkedPersistentList values);
   public Schema.Column column();
   public ColumnChunkMetadata metadata();
-  public IColumnChunkWriter optimize();
 }

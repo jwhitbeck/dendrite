@@ -108,3 +108,25 @@
           (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
     (testing "repeatable reads"
       (is (= (.readPartitioned reader 100) (.readPartitioned reader 100))))))
+
+
+(deftest frequency-column-chunk
+  (let [column (column-repeated Types/INT Types/FREQUENCY Types/DEFLATE)
+        input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values column 1000))
+        reader (write-column-chunk-and-get-reader column input-values)
+        output-values (utils/flatten-1 (.readPartitioned reader 100))]
+    (testing "write/read a frequency colum-chunk"
+      (is (= input-values output-values)))
+    (testing "value mapping"
+      (let [^clojure.lang.IFn f #(if % (int (* 2 %)) %)
+            reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
+        (is (= (map (partial helpers/map-leveled f) input-values)
+               (-> reader-with-f (.readPartitioned 100) utils/flatten-1)))))
+    (testing "repeatable writes"
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
+        (.write w input-values)
+        (let [bb1 (helpers/output-buffer->byte-buffer w)
+              bb2 (helpers/output-buffer->byte-buffer w)]
+          (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
+    (testing "repeatable reads"
+      (is (= (.readPartitioned reader 100) (.readPartitioned reader 100))))))

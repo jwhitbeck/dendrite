@@ -104,8 +104,6 @@ public final class Utils {
   public static ISeq concat(Object head, Object tail) {
     if (RT.seq(head) == null) {
       return RT.seq(tail);
-    } else if (RT.seq(tail) == null) {
-      return RT.seq(head);
     }
     return new Concat(RT.seq(head), RT.seq(tail));
   }

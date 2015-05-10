@@ -119,10 +119,8 @@ public final class Dictionary {
       return dict;
     }
 
-    public int[] getIndicesByFrequency() {
-      DictionaryIndex[] indices = dictionaryIndex.values().toArray(new DictionaryIndex[]{});
-      Arrays.sort(indices, new Comparator<DictionaryIndex>() {
-          public int compare(DictionaryIndex dia, DictionaryIndex dib) {
+    final static Comparator<DictionaryIndex> mostFrequentFirst = new Comparator<DictionaryIndex>() {
+      public int compare(DictionaryIndex dia, DictionaryIndex dib) {
             if (dia.cnt > dib.cnt) {
               return -1; // sort by descending cnt
             } else if (dia.cnt < dib.cnt) {
@@ -131,12 +129,26 @@ public final class Dictionary {
               return 0;
             }
           }
-        });
+    };
+
+    public int[] getIndicesByFrequency() {
+      DictionaryIndex[] indices = dictionaryIndex.values().toArray(new DictionaryIndex[]{});
+      Arrays.sort(indices, mostFrequentFirst);
       int[] indicesByFrequency = new int[indices.length];
       for (int i=0; i<indices.length; ++i) {
-        indicesByFrequency[i] = indices[i].idx;
+        indicesByFrequency[indices[i].idx] = i;
       }
       return indicesByFrequency;
+    }
+
+    public Object[] getDictionaryByFrequency() {
+      Object[] dictionary = getDictionary();
+      int[] indicesByFrequency = getIndicesByFrequency();
+      Object[] dictByFrequency = new Object[dictionaryIndex.size()];
+      for (int i=0; i<dictionary.length; ++i) {
+        dictByFrequency[indicesByFrequency[i]] = dictionary[i];
+      }
+      return dictByFrequency;
     }
 
     Object wrap(Object o) { return o; }

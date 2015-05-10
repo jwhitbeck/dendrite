@@ -12,14 +12,16 @@
 
 package dendrite.java;
 
+import clojure.lang.AFn;
 import clojure.lang.ArraySeq;
+import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ISeq;
 import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
 
-public final class DictionaryColumnChunk {
+public final class FrequencyColumnChunk {
 
   public final static class Reader implements IColumnChunkReader {
 
@@ -45,7 +47,7 @@ public final class DictionaryColumnChunk {
          column.repetitionLevel,
          column.definitionLevel,
          types.getDecoderFactory(column.type, Types.PLAIN),
-         types.getDecoderFactory(Types.INT, Types.PACKED_RUN_LENGTH),
+         types.getDecoderFactory(Types.INT, Types.VLQ),
          types.getDecompressorFactory(column.compression),
          column.fn);
     }
@@ -68,19 +70,23 @@ public final class DictionaryColumnChunk {
     final Schema.Column column;
     final Dictionary.Encoder dictEncoder;
     final DictionaryPage.Writer dictPageWriter;
-    final DataColumnChunk.Writer indicesColumnChunkWriter;
+    final DataColumnChunk.Writer tempIndicesColumnChunkWriter;
+    final DataColumnChunk.Writer frequencyIndicesColumnChunkWriter;
     double bytesPerDictionaryValue = -1.0;
     int dictionaryHeaderLength = -1;
+    boolean isFinished = false;
 
     Writer(Types types, Schema.Column column, int targetDataPageLength) {
-      this.dictEncoder = Dictionary.Encoder.create(column.type, Types.PACKED_RUN_LENGTH);
+      this.dictEncoder = Dictionary.Encoder.create(column.type, Types.VLQ);
       Schema.Column indicesColumn = getIndicesColumn(column);
       DataPage.Writer indicesPageWriter = DataPage.Writer.create(column.repetitionLevel,
                                                                  column.definitionLevel,
                                                                  dictEncoder,
                                                                  null);
-      this.indicesColumnChunkWriter
+      this.tempIndicesColumnChunkWriter
         = DataColumnChunk.Writer.create(indicesPageWriter, indicesColumn, targetDataPageLength);
+      this.frequencyIndicesColumnChunkWriter
+        = DataColumnChunk.Writer.create(types, indicesColumn, targetDataPageLength);
       this.column = column;
       this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(column.type, Types.PLAIN),
                                                          types.getCompressor(column.compression));
@@ -92,7 +98,7 @@ public final class DictionaryColumnChunk {
 
     @Override
     public void write(ChunkedPersistentList values) {
-      indicesColumnChunkWriter.write(values);
+      tempIndicesColumnChunkWriter.write(values);
     }
 
     @Override
@@ -103,7 +109,7 @@ public final class DictionaryColumnChunk {
     @Override
     public ColumnChunkMetadata metadata() {
       return new ColumnChunkMetadata(length(),
-                                     indicesColumnChunkWriter.metadata().numDataPages,
+                                     frequencyIndicesColumnChunkWriter.metadata().numDataPages,
                                      dictionaryLength(),
                                      0);
     }
@@ -115,23 +121,50 @@ public final class DictionaryColumnChunk {
       dictionaryHeaderLength = h.headerLength();
     }
 
+    IFn getFrequencyIndexMappingFn() {
+      final int[] indicesByFrequency = dictEncoder.getIndicesByFrequency();
+      return new AFn() {
+        public Object invoke(Object i) {
+          return indicesByFrequency[RT.intCast(i)];
+        }
+      };
+    }
+
     @Override
     public void finish() {
-      encodeDictionaryPage();
-      updateDictionaryLengthEstimates();
-      indicesColumnChunkWriter.finish();
+      if (!isFinished) {
+        tempIndicesColumnChunkWriter.finish();
+        ISeq dataPageReaders = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.mos.byteBuffer(),
+                                                        tempIndicesColumnChunkWriter.metadata().numDataPages,
+                                                        column.repetitionLevel,
+                                                        column.definitionLevel,
+                                                        Types.getPrimitiveDecoderFactory(Types.INT, Types.VLQ),
+                                                        null);
+        IFn frequencyIndexMappingFn = getFrequencyIndexMappingFn();
+        for (ISeq s = dataPageReaders; s != null; s = s.next()) {
+          DataPage.Reader reader = (DataPage.Reader)s.first();
+          ChunkedPersistentList values
+            = (ChunkedPersistentList)reader.readWith(frequencyIndexMappingFn, null);
+          frequencyIndicesColumnChunkWriter.write(values);
+        }
+        frequencyIndicesColumnChunkWriter.finish();
+        encodeDictionaryPage();
+        updateDictionaryLengthEstimates();
+        isFinished = true;
+      }
     }
 
     @Override
     public void reset() {
       dictEncoder.reset();
       dictPageWriter.reset();
-      indicesColumnChunkWriter.reset();
+      tempIndicesColumnChunkWriter.reset();
+      frequencyIndicesColumnChunkWriter.reset();
     }
 
     @Override
     public int length() {
-      return dictionaryLength() + indicesColumnChunkWriter.length();
+      return dictionaryLength() + frequencyIndicesColumnChunkWriter.length();
     }
 
     int dictionaryLength() {
@@ -140,7 +173,7 @@ public final class DictionaryColumnChunk {
 
     @Override
     public int estimatedLength() {
-      return estimatedDictionaryLength() + indicesColumnChunkWriter.estimatedLength();
+      return estimatedDictionaryLength() + tempIndicesColumnChunkWriter.estimatedLength();
     }
 
     int estimatedDictionaryLength() {
@@ -159,18 +192,18 @@ public final class DictionaryColumnChunk {
     public void writeTo(MemoryOutputStream memoryOutputStream) {
       finish();
       Pages.writeTo(memoryOutputStream, dictPageWriter);
-      memoryOutputStream.write(indicesColumnChunkWriter);
+      memoryOutputStream.write(frequencyIndicesColumnChunkWriter);
     }
 
     void encodeDictionaryPage() {
       dictPageWriter.reset();
-      dictPageWriter.write(ArraySeq.create(dictEncoder.getDictionary()));
+      dictPageWriter.write(ArraySeq.create(dictEncoder.getDictionaryByFrequency()));
       dictPageWriter.finish();
     }
 
     static Schema.Column getIndicesColumn(Schema.Column column) {
       return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
-                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex, null);
+                               Types.INT, Types.VLQ, Types.NONE, column.columnIndex, null);
     }
   }
 }

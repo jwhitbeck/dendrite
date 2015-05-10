@@ -20,6 +20,7 @@ public final class ColumnChunks {
                                                 int targetDataPageLength) {
     switch (column.encoding) {
     case Types.DICTIONARY: return DictionaryColumnChunk.Writer.create(types, column, targetDataPageLength);
+    case Types.FREQUENCY: return FrequencyColumnChunk.Writer.create(types, column, targetDataPageLength);
     default: return DataColumnChunk.Writer.create(types, column, targetDataPageLength);
     }
   }
@@ -29,6 +30,7 @@ public final class ColumnChunks {
                                                 Schema.Column column) {
     switch (column.encoding) {
     case Types.DICTIONARY: return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, column);
+    case Types.FREQUENCY: return new FrequencyColumnChunk.Reader(types, bb, columnChunkMetadata, column);
     default: return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, column);
     }
   }

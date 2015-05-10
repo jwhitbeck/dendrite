@@ -108,11 +108,6 @@ public final class DataColumnChunk {
     }
 
     @Override
-    public IColumnChunkWriter optimize() {
-      return this;
-    }
-
-    @Override
     public void finish() {
       flushDataPageWriter();
     }
