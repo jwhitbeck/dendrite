@@ -63,6 +63,14 @@ public final class Pages {
       });
   }
 
+  public static IPersistentCollection getPagesStats(ISeq headers) {
+    ITransientCollection coll = ChunkedPersistentList.newEmptyTransient();
+    for (ISeq s = headers; s != null; s = s.next()) {
+      coll.conj(((IPageHeader)s.first()).stats());
+    }
+    return coll.persistent();
+  }
+
   public static DataPage.Reader getDataPageReader(ByteBuffer bb, int maxRepetitionLevel,
                                                   int maxDefinitionLevel, IDecoderFactory decoderFactory,
                                                   IDecompressorFactory decompressorFactory) {

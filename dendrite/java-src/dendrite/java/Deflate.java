@@ -33,8 +33,8 @@ public final class Deflate {
     }
 
     @Override
-    public void compress(IOutputBuffer buffer) {
-      buffer.writeTo(inputBuffer);
+    public void compress(IWriteable writeable) {
+      inputBuffer.write(writeable);
       deflater.setInput(inputBuffer.buffer, 0, inputBuffer.length());
       deflater.finish();
       outputBuffer.ensureRemainingCapacity(inputBuffer.length());

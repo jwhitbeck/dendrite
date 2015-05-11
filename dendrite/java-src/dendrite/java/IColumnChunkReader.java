@@ -12,10 +12,13 @@
 
 package dendrite.java;
 
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 
 public interface IColumnChunkReader {
   public ISeq readPartitioned(int partitionLength);
   public ISeq getPageHeaders();
+  public Schema.Column column();
+  public IPersistentMap stats();
   public ColumnChunkMetadata metadata();
 }

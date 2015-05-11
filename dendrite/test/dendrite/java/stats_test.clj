@@ -18,12 +18,13 @@
 
 (deftest data-page-stats
   (is (= {:num-values 1
+          :num-non-nil-values 1
           :length 2
           :header-length 3
           :repetition-levels-length 4
           :definition-levels-length 5
           :data-length 6}
-         (Stats/dataPageStats 1 2 3 4 5 6))))
+         (Stats/dataPageStats 1 1 2 3 4 5 6))))
 
 (deftest dictionary-page-stats
   (is (= {:num-values 1
@@ -33,7 +34,8 @@
          (Stats/dictionaryPageStats 1 2 3 4))))
 
 (defn rand-data-page-stats []
-  (Stats/dataPageStats (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)))
+  (Stats/dataPageStats (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
+                       (rand-int 10) (rand-int 10)))
 
 (defn rand-dictionary-page-stats []
   (Stats/dictionaryPageStats (rand-int 10) (rand-int 10) (inc (rand-int 10)) (inc (rand-int 10))))
@@ -47,6 +49,7 @@
             :data-length 0
             :dictionary-length 0
             :num-values 0
+            :num-non-nil-values 0
             :length 0
             :num-dictionary-values 0
             :dictionary-header-length 0
@@ -58,6 +61,7 @@
     (let [pages-stats (rand-pages-stats)]
       (is (= {:num-pages (count pages-stats)
               :num-values (->> pages-stats next (map :num-values) (reduce +))
+              :num-non-nil-values (->> pages-stats next (map :num-non-nil-values) (reduce +))
               :length (->> pages-stats (map :length) (reduce +))
               :header-length (->> pages-stats next (map :header-length) (reduce +))
               :repetition-levels-length (->> pages-stats next (map :repetition-levels-length) (reduce +))
@@ -83,6 +87,7 @@
             :num-column-chunks 0
             :dictionary-length 0
             :num-values 0
+            :num-non-nil-values 0
             :num-dictionary-values 0
             :length 0
             :dictionary-header-length 0
@@ -101,6 +106,7 @@
               :path [:foo :bar]
               :length (->> column-chunks (map :length) (reduce +))
               :num-values (->> column-chunks (map :num-values) (reduce +))
+              :num-non-nil-values (->> column-chunks (map :num-non-nil-values) (reduce +))
               :num-dictionary-values (->> column-chunks (map :num-dictionary-values) (reduce +))
               :num-column-chunks (count column-chunks)
               :num-pages (->> column-chunks (map :num-pages) (reduce +))

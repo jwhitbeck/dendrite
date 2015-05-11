@@ -24,7 +24,7 @@ import clojure.lang.Symbol;
 
 public final class Stats {
 
-  private final static Keyword
+  public final static Keyword
     HEADER_LENGTH = Keyword.intern("header-length"),
     REPETITION_LEVELS_LENGTH = Keyword.intern("repetition-levels-length"),
     DEFINITION_LEVELS_LENGTH = Keyword.intern("definition-levels-length"),
@@ -33,6 +33,7 @@ public final class Stats {
     DICTIONARY_HEADER_LENGTH = Keyword.intern("dictionary-header-length"),
     DICTIONARY_LENGTH = Keyword.intern("dictionary-length"),
     NUM_VALUES = Keyword.intern("num-values"),
+    NUM_NON_NIL_VALUES = Keyword.intern("num-non-nil-values"),
     LENGTH = Keyword.intern("length"),
     NUM_PAGES = Keyword.intern("num-pages"),
     NUM_DICTIONARY_VALUES = Keyword.intern("num-dictionary-values"),
@@ -47,11 +48,13 @@ public final class Stats {
     NUM_COLUMN_CHUNKS = Keyword.intern("num-column-chunks"),
     NUM_COLUMNS = Keyword.intern("num-columns");
 
-  public final static IPersistentMap dataPageStats(int numValues, int length, int headerLength,
+  public final static IPersistentMap dataPageStats(int numValues, int numNonNilValues,
+                                                   int length, int headerLength,
                                                    int repetitionLevelsLength, int definitionLevelLength,
                                                    int dataLength) {
     return new PersistentArrayMap(new Object[]{
         NUM_VALUES, numValues,
+        NUM_NON_NIL_VALUES, numNonNilValues,
         LENGTH, length,
         HEADER_LENGTH, headerLength,
         REPETITION_LEVELS_LENGTH, repetitionLevelsLength,
@@ -73,6 +76,7 @@ public final class Stats {
   public final static IPersistentMap columnChunkStats(IPersistentCollection pageStatsList) {
     int numPages = RT.count(pageStatsList);
     int numValues = 0;
+    int numNonNilValues = 0;
     int numDictionaryValues = 0;
     int length = 0;
     int dataHeaderLength = 0;
@@ -93,6 +97,7 @@ public final class Stats {
           dictionaryLength += (int)pageStats.valAt(DICTIONARY_LENGTH);
         } else {
           numValues += (int)pageStats.valAt(NUM_VALUES);
+          numNonNilValues += (int)pageStats.valAt(NUM_NON_NIL_VALUES);
           dataHeaderLength += (int)pageStats.valAt(HEADER_LENGTH);
           dataLength += (int)pageStats.valAt(DATA_LENGTH);
           repetitionLevelsLength += (int)pageStats.valAt(REPETITION_LEVELS_LENGTH);
@@ -104,6 +109,7 @@ public final class Stats {
     return PersistentArrayMap.EMPTY.asTransient()
       .assoc(NUM_PAGES, numPages)
       .assoc(NUM_VALUES, numValues)
+      .assoc(NUM_NON_NIL_VALUES, numNonNilValues)
       .assoc(NUM_DICTIONARY_VALUES, numDictionaryValues)
       .assoc(LENGTH, length)
       .assoc(HEADER_LENGTH, dataHeaderLength)
@@ -122,6 +128,7 @@ public final class Stats {
     int numColumnChunks = RT.count(columnChunkStatsList);
     int length = 0;
     int numValues = 0;
+    int numNonNilValues = 0;
     int numDictionaryValues = 0;
     int numPages = 0;
     int headerLength = 0;
@@ -136,6 +143,7 @@ public final class Stats {
         IPersistentMap columnChunkStats = (IPersistentMap)s.first();
         length += (int)columnChunkStats.valAt(LENGTH);
         numValues += (int)columnChunkStats.valAt(NUM_VALUES);
+        numNonNilValues += (int)columnChunkStats.valAt(NUM_NON_NIL_VALUES);
         numDictionaryValues += (int)columnChunkStats.valAt(NUM_DICTIONARY_VALUES);
         numPages += (int)columnChunkStats.valAt(NUM_PAGES);
         headerLength += (int)columnChunkStats.valAt(HEADER_LENGTH);
@@ -156,6 +164,7 @@ public final class Stats {
       .assoc(PATH, path)
       .assoc(LENGTH, length)
       .assoc(NUM_VALUES, numValues)
+      .assoc(NUM_NON_NIL_VALUES, numNonNilValues)
       .assoc(NUM_DICTIONARY_VALUES, numDictionaryValues)
       .assoc(NUM_COLUMN_CHUNKS, numColumnChunks)
       .assoc(NUM_PAGES, numPages)

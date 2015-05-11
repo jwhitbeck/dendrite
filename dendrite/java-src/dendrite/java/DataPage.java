@@ -26,14 +26,16 @@ public final class DataPage {
   public final static class Header implements IPageHeader, IWriteable {
 
     private final int numValues;
+    private final int numNonNilValues;
     private final int repetitionLevelsLength;
     private final int definitionLevelsLength;
     private final int compressedDataLength;
     private final int uncompressedDataLength;
 
-    Header(int numValues, int repetitionLevelsLength, int definitionLevelsLength,
+    Header(int numValues, int numNonNilValues, int repetitionLevelsLength, int definitionLevelsLength,
            int compressedDataLength, int uncompressedDataLength) {
       this.numValues = numValues;
+      this.numNonNilValues = numNonNilValues;
       this.repetitionLevelsLength = repetitionLevelsLength;
       this.definitionLevelsLength = definitionLevelsLength;
       this.compressedDataLength = compressedDataLength;
@@ -85,13 +87,14 @@ public final class DataPage {
 
     @Override
     public IPersistentMap stats() {
-      return Stats.dataPageStats(numValues, headerLength() + bodyLength(), headerLength(),
+      return Stats.dataPageStats(numValues, numNonNilValues, headerLength() + bodyLength(), headerLength(),
                                  repetitionLevelsLength, definitionLevelsLength, compressedDataLength);
     }
 
     @Override
     public void writeTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, numValues);
+      Bytes.writeUInt(mos, numNonNilValues);
       Bytes.writeUInt(mos, repetitionLevelsLength);
       Bytes.writeUInt(mos, definitionLevelsLength);
       Bytes.writeUInt(mos, compressedDataLength);
@@ -99,7 +102,7 @@ public final class DataPage {
     }
 
     static Header read(ByteBuffer bb) {
-      return new Header(Bytes.readUInt(bb), Bytes.readUInt(bb), Bytes.readUInt(bb),
+      return new Header(Bytes.readUInt(bb), Bytes.readUInt(bb), Bytes.readUInt(bb), Bytes.readUInt(bb),
                         Bytes.readUInt(bb), Bytes.readUInt(bb));
 
     }
@@ -158,6 +161,7 @@ public final class DataPage {
     private Header provisionalHeader() {
       int estimatedDataLength = dataEncoder.estimatedLength();
       return new Header(numValues,
+                        dataEncoder.numEncodedValues(),
                         (repetitionLevelEncoder != null)? repetitionLevelEncoder.estimatedLength() : 0,
                         (definitionLevelEncoder != null)? definitionLevelEncoder.estimatedLength() : 0,
                         (int)(estimatedDataLength * getCompressionRatio()),
@@ -168,6 +172,7 @@ public final class DataPage {
     public Header header() {
       int length = dataEncoder.length();
       return new Header(numValues,
+                        dataEncoder.numEncodedValues(),
                         (repetitionLevelEncoder != null)? repetitionLevelEncoder.length() : 0,
                         (definitionLevelEncoder != null)? definitionLevelEncoder.length() : 0,
                         (compressor != null)? compressor.length() : length,
@@ -331,6 +336,11 @@ public final class DataPage {
     @Override
     public ByteBuffer next() {
       return Bytes.sliceAhead(bb, header.bodyLength());
+    }
+
+    @Override
+    public Header header() {
+      return header;
     }
 
     IIntDecoder getRepetitionLevelsDecoder() {

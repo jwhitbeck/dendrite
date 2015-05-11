@@ -14,7 +14,8 @@
             [dendrite.test-helpers :as helpers :refer [leveled partition-by-record]]
             [dendrite.utils :as utils])
   (:import [dendrite.java LeveledValue ColumnChunks ChunkedPersistentList DataColumnChunk$Reader
-            DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader Schema$Column Types]
+            DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader
+            OptimizingColumnChunkWriter Schema$Column Types]
            [java.util Date Calendar]
            [java.text SimpleDateFormat]))
 
@@ -32,7 +33,18 @@
    [column target-data-page-length types input-values]
    (let [w (ColumnChunks/createWriter types column target-data-page-length)]
      (.write w input-values)
-     (ColumnChunks/createReader types (helpers/output-buffer->byte-buffer w) (.metadata w) column))))
+     (ColumnChunks/createReader types (.byteBuffer w) (.metadata w) column))))
+
+(defn- write-optimized-column-chunk-and-get-reader
+  (^IColumnChunkReader
+   [column input-values]
+   (write-optimized-column-chunk-and-get-reader column {'deflate 10.0} input-values))
+  (^IColumnChunkReader
+   [column compression-thresholds input-values]
+   (let [w (OptimizingColumnChunkWriter/create types column test-target-data-page-length)]
+     (.write w input-values)
+     (let [opt-w (.optimize w types compression-thresholds)]
+       (ColumnChunks/createReader types (.byteBuffer opt-w) (.metadata opt-w) (.column opt-w))))))
 
 (defn- column-repeated ^Schema$Column [type encoding compression]
   (Schema$Column. 0 2 3 type encoding compression 0 nil))
@@ -130,3 +142,19 @@
           (is (= (-> bb1 .array seq) (-> bb2 .array seq))))))
     (testing "repeatable reads"
       (is (= (.readPartitioned reader 100) (.readPartitioned reader 100))))))
+
+(deftest find-best-boolean-encodings
+  (testing "random booleans"
+    (let [column (column-required Types/BOOLEAN Types/PLAIN Types/NONE)
+          input-values (as-chunked-list (repeatedly 1000 helpers/rand-bool))
+          reader (write-optimized-column-chunk-and-get-reader column input-values)
+          output-values (utils/flatten-1 (.readPartitioned reader 100))]
+      (is (= output-values input-values))
+      (is (= Types/PLAIN (-> reader .column .encoding)))))
+  (testing "mostly true booleans"
+    (let [column (column-required Types/BOOLEAN Types/PLAIN Types/NONE)
+          input-values (as-chunked-list (repeatedly 1000 #(helpers/rand-biased-bool 0.98)))
+          reader (write-optimized-column-chunk-and-get-reader column input-values)
+          output-values (utils/flatten-1 (.readPartitioned reader 100))]
+      (is (= output-values input-values))
+      (is (= Types/DICTIONARY (-> reader .column .encoding))))))

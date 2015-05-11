@@ -16,6 +16,7 @@ import clojure.lang.AFn;
 import clojure.lang.ArraySeq;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.RT;
 
@@ -54,13 +55,23 @@ public final class FrequencyColumnChunk {
 
     @Override
     public ISeq getPageHeaders() {
-      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
                                columnChunkMetadata.numDataPages);
+    }
+
+    @Override
+    public IPersistentMap stats() {
+      return Stats.columnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
     public ColumnChunkMetadata metadata() {
       return columnChunkMetadata;
+    }
+
+    @Override
+    public Schema.Column column() {
+      return column;
     }
 
   }
@@ -72,6 +83,7 @@ public final class FrequencyColumnChunk {
     final DictionaryPage.Writer dictPageWriter;
     final DataColumnChunk.Writer tempIndicesColumnChunkWriter;
     final DataColumnChunk.Writer frequencyIndicesColumnChunkWriter;
+    final MemoryOutputStream mos;
     double bytesPerDictionaryValue = -1.0;
     int dictionaryHeaderLength = -1;
     boolean isFinished = false;
@@ -88,6 +100,7 @@ public final class FrequencyColumnChunk {
       this.frequencyIndicesColumnChunkWriter
         = DataColumnChunk.Writer.create(types, indicesColumn, targetDataPageLength);
       this.column = column;
+      this.mos = new MemoryOutputStream();
       this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(column.type, Types.PLAIN),
                                                          types.getCompressor(column.compression));
     }
@@ -107,7 +120,20 @@ public final class FrequencyColumnChunk {
     }
 
     @Override
+    public ByteBuffer byteBuffer() {
+      mos.reset();
+      mos.write(this);
+      return mos.byteBuffer();
+    }
+
+    @Override
+    public int numDataPages() {
+      return tempIndicesColumnChunkWriter.numDataPages();
+    }
+
+    @Override
     public ColumnChunkMetadata metadata() {
+      finish();
       return new ColumnChunkMetadata(length(),
                                      frequencyIndicesColumnChunkWriter.metadata().numDataPages,
                                      dictionaryLength(),
@@ -134,7 +160,7 @@ public final class FrequencyColumnChunk {
     public void finish() {
       if (!isFinished) {
         tempIndicesColumnChunkWriter.finish();
-        ISeq dataPageReaders = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.mos.byteBuffer(),
+        ISeq dataPageReaders = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.byteBuffer(),
                                                         tempIndicesColumnChunkWriter.metadata().numDataPages,
                                                         column.repetitionLevel,
                                                         column.definitionLevel,
@@ -164,6 +190,7 @@ public final class FrequencyColumnChunk {
 
     @Override
     public int length() {
+      finish();
       return dictionaryLength() + frequencyIndicesColumnChunkWriter.length();
     }
 

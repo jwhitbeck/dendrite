@@ -183,6 +183,11 @@ public final class DictionaryPage {
       return Bytes.sliceAhead(bb, header.bodyLength());
     }
 
+    @Override
+    public Header header() {
+      return header;
+    }
+
     IDecoder getDecoder() {
       ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
       if (decompressorFactory != null) {

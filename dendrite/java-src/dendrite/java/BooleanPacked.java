@@ -37,7 +37,7 @@ public final class BooleanPacked {
     }
   }
 
-  public final static class Encoder extends AEncoder {
+  public static class Encoder extends AEncoder {
 
     private boolean[] octuplet = new boolean[8];
     private int position = 0;

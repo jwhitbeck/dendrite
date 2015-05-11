@@ -14,6 +14,7 @@ package dendrite.java;
 
 import clojure.lang.ArraySeq;
 import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.RT;
 
@@ -52,13 +53,23 @@ public final class DictionaryColumnChunk {
 
     @Override
     public ISeq getPageHeaders() {
-      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
                                columnChunkMetadata.numDataPages);
+    }
+
+    @Override
+    public IPersistentMap stats() {
+      return Stats.columnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
     public ColumnChunkMetadata metadata() {
       return columnChunkMetadata;
+    }
+
+    @Override
+    public Schema.Column column() {
+      return column;
     }
 
   }
@@ -69,6 +80,7 @@ public final class DictionaryColumnChunk {
     final Dictionary.Encoder dictEncoder;
     final DictionaryPage.Writer dictPageWriter;
     final DataColumnChunk.Writer indicesColumnChunkWriter;
+    final MemoryOutputStream mos;
     double bytesPerDictionaryValue = -1.0;
     int dictionaryHeaderLength = -1;
 
@@ -82,6 +94,7 @@ public final class DictionaryColumnChunk {
       this.indicesColumnChunkWriter
         = DataColumnChunk.Writer.create(indicesPageWriter, indicesColumn, targetDataPageLength);
       this.column = column;
+      this.mos = new MemoryOutputStream();
       this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(column.type, Types.PLAIN),
                                                          types.getCompressor(column.compression));
     }
@@ -101,7 +114,20 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
+    public ByteBuffer byteBuffer() {
+      mos.reset();
+      mos.write(this);
+      return mos.byteBuffer();
+    }
+
+    @Override
+    public int numDataPages() {
+      return indicesColumnChunkWriter.numDataPages();
+    }
+
+    @Override
     public ColumnChunkMetadata metadata() {
+      finish();
       return new ColumnChunkMetadata(length(),
                                      indicesColumnChunkWriter.metadata().numDataPages,
                                      dictionaryLength(),
@@ -131,6 +157,7 @@ public final class DictionaryColumnChunk {
 
     @Override
     public int length() {
+      finish();
       return dictionaryLength() + indicesColumnChunkWriter.length();
     }
 

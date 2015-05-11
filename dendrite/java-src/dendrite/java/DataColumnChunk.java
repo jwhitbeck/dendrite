@@ -13,6 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.RT;
 
@@ -47,6 +48,15 @@ public final class DataColumnChunk {
                                             column.fn);
     }
 
+    public ISeq getPageReaders() {
+      return Pages.getDataPageReaders(bb,
+                                      columnChunkMetadata.numDataPages,
+                                      column.repetitionLevel,
+                                      column.definitionLevel,
+                                      types.getDecoderFactory(column.type, column.encoding),
+                                      types.getDecompressorFactory(column.compression));
+    }
+
     @Override
     public ISeq getPageHeaders() {
       return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
@@ -54,13 +64,24 @@ public final class DataColumnChunk {
     }
 
     @Override
+    public IPersistentMap stats() {
+      return Stats.columnChunkStats(Pages.getPagesStats(getPageHeaders()));
+    }
+
+    @Override
     public ColumnChunkMetadata metadata() {
       return columnChunkMetadata;
+    }
+
+    @Override
+    public Schema.Column column() {
+      return column;
     }
 
   }
 
   public static abstract class Writer implements IColumnChunkWriter {
+
     int nextNumValuesForPageLengthCheck;
     int numPages;
     final int targetDataPageLength;
@@ -103,8 +124,20 @@ public final class DataColumnChunk {
     }
 
     @Override
+    public ByteBuffer byteBuffer() {
+      finish();
+      return mos.byteBuffer();
+    }
+
+    @Override
     public ColumnChunkMetadata metadata() {
+      finish();
       return new ColumnChunkMetadata(length(), numPages, 0, 0);
+    }
+
+    @Override
+    public int numDataPages() {
+      return numPages;
     }
 
     @Override
@@ -121,6 +154,7 @@ public final class DataColumnChunk {
 
     @Override
     public int length() {
+      finish();
       return mos.length();
     }
 
