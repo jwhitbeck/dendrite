@@ -22,19 +22,13 @@
           :header-length 3
           :repetition-levels-length 4
           :definition-levels-length 5
-          :dictionary-length 0
-          :dictionary-header-length 0
           :data-length 6}
          (Stats/dataPageStats 1 2 3 4 5 6))))
 
 (deftest dictionary-page-stats
   (is (= {:num-values 1
           :length 2
-          :header-length 0
-          :repetition-levels-length 0
-          :definition-levels-length 0
-          :data-length 0
-          :dictionary-header-length 3
+          :header-length 3
           :dictionary-length 4}
          (Stats/dictionaryPageStats 1 2 3 4))))
 
@@ -70,7 +64,7 @@
               :definition-levels-length (->> pages-stats next (map :definition-levels-length) (reduce +))
               :data-length (->> pages-stats next (map :data-length) (reduce +))
               :num-dictionary-values (-> pages-stats first :num-values)
-              :dictionary-header-length (-> pages-stats first :dictionary-header-length)
+              :dictionary-header-length (-> pages-stats first :header-length)
               :dictionary-length (-> pages-stats first :dictionary-length)}
              (Stats/columnChunkStats pages-stats))))))
 

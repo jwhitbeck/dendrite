@@ -54,11 +54,9 @@ public final class Stats {
         NUM_VALUES, numValues,
         LENGTH, length,
         HEADER_LENGTH, headerLength,
-        DICTIONARY_HEADER_LENGTH, 0,
         REPETITION_LEVELS_LENGTH, repetitionLevelsLength,
         DEFINITION_LEVELS_LENGTH, definitionLevelLength,
         DATA_LENGTH, dataLength,
-        DICTIONARY_LENGTH, 0
       });
   }
 
@@ -67,11 +65,7 @@ public final class Stats {
     return new PersistentArrayMap(new Object[]{
         NUM_VALUES, numValues,
         LENGTH, length,
-        HEADER_LENGTH, 0,
-        DICTIONARY_HEADER_LENGTH, dictionaryheaderLength,
-        REPETITION_LEVELS_LENGTH, 0,
-        DEFINITION_LEVELS_LENGTH, 0,
-        DATA_LENGTH, 0,
+        HEADER_LENGTH, dictionaryheaderLength,
         DICTIONARY_LENGTH, dictionaryLength
       });
   }
@@ -92,10 +86,10 @@ public final class Stats {
       for (ISeq s = RT.seq(pageStatsList); s != null; s = s.next()) {
         IPersistentMap pageStats = (IPersistentMap)s.first();;
         length += (int)pageStats.valAt(LENGTH);
-        boolean isDictionary = (int)pageStats.valAt(DICTIONARY_LENGTH) > 0;
+        boolean isDictionary = pageStats.valAt(DICTIONARY_LENGTH) != null;
         if (isDictionary) {
           numDictionaryValues += (int)pageStats.valAt(NUM_VALUES);
-          dictionaryHeaderLength += (int)pageStats.valAt(DICTIONARY_HEADER_LENGTH);
+          dictionaryHeaderLength += (int)pageStats.valAt(HEADER_LENGTH);
           dictionaryLength += (int)pageStats.valAt(DICTIONARY_LENGTH);
         } else {
           numValues += (int)pageStats.valAt(NUM_VALUES);
