@@ -71,11 +71,11 @@ public final class Bytes {
     throw new IllegalStateException("Failed to parse UInt");
   }
 
-  private static int encodeZigZag32(final int i) {
+  public static int encodeZigZag32(final int i) {
     return (i << 1) ^ (i >> 31);
   }
 
-  private static int decodeZigZag32(final int i) {
+  public static int decodeZigZag32(final int i) {
     return (i >>> 1) ^ -(i & 1);
   }
 
@@ -110,6 +110,16 @@ public final class Bytes {
     return l8 | l7 | l6 | l5 | l4 | l3 | l2 | l1;
   }
 
+  public static int getNumULongBytes(final long i) {
+    int numBytes = 0;
+    long v = i;
+    do {
+      numBytes += 1;
+      v >>>= 7;
+    } while (v != 0);
+    return numBytes;
+  }
+
   public static void writeULong(final MemoryOutputStream os, final long l) {
     long value = l;
     while (true) {
@@ -137,11 +147,11 @@ public final class Bytes {
     throw new IllegalStateException("Failed to parse ULong");
   }
 
-  private static long encodeZigZag64(final long l) {
+  public static long encodeZigZag64(final long l) {
     return (l << 1) ^ (l >> 63);
   }
 
-  private static long decodeZigZag64(final long l) {
+  public static long decodeZigZag64(final long l) {
     return (l >>> 1) ^ -(l & 1);
   }
 

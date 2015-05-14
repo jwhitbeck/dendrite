@@ -1005,6 +1005,28 @@ public final class Types {
     };
   }
 
+  public IEncoder getEncoderWithShim(int type, int encoding, IFn shim) {
+    final IEncoder enc;
+    final IFn fn;
+    if (isPrimitive(type)) {
+      enc = getPrimitiveEncoder(type, encoding);
+      fn = shim;
+    } else {
+      LogicalType lt = logicalTypes[type];
+      enc = getPrimitiveEncoder(lt.baseType, encoding);
+      fn = Utils.comp(shim, lt.toBaseTypeFn);
+    }
+    return new IEncoder() {
+      public void encode(Object o) { enc.encode(fn.invoke(o)); }
+      public int numEncodedValues() { return enc.numEncodedValues(); }
+      public void reset() { enc.reset(); }
+      public void finish() { enc.finish(); }
+      public int length() { return enc.length(); }
+      public int estimatedLength() { return enc.estimatedLength(); }
+      public void writeTo(MemoryOutputStream mos) { mos.write(enc); }
+    };
+  }
+
   public IDecoderFactory getDecoderFactory(int type, int encoding) {
     if (isPrimitive(type)) {
       return getPrimitiveDecoderFactory(type, encoding);

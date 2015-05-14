@@ -182,28 +182,6 @@ public final class Dictionary {
     }
   }
 
-  private final static class HashableByteArray {
-    final byte[] array;
-
-    HashableByteArray(byte[] array) {
-      this.array = array;
-    }
-
-    @Override
-    public int hashCode() {
-      int hash = 1;
-      for (int i=0; i<array.length; ++i) {
-        hash = 31 * hash + (int)array[i];
-      }
-      return hash;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return Arrays.equals(array, ((HashableByteArray)o).array);
-    }
-  }
-
   private final static class ByteArrayEncoder extends Encoder {
 
     ByteArrayEncoder(IEncoder indicesEncoder) {

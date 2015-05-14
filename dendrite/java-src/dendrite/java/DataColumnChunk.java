@@ -49,7 +49,7 @@ public final class DataColumnChunk {
     }
 
     public ISeq getPageReaders() {
-      return Pages.getDataPageReaders(bb,
+      return Pages.getDataPageReaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
                                       columnChunkMetadata.numDataPages,
                                       column.repetitionLevel,
                                       column.definitionLevel,
