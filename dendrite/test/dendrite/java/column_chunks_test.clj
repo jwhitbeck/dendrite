@@ -25,9 +25,6 @@
 
 (def ^Types types (Types/create nil nil))
 
-(defn- as-chunked-list [coll]
-  (persistent! (reduce conj! (ChunkedPersistentList/newEmptyTransient) coll)))
-
 (defn write-column-chunk-and-get-reader
   (^IColumnChunkReader
    [column input-values]
@@ -45,7 +42,7 @@
   (^IColumnChunkReader
    [column custom-types compression-thresholds input-values]
    (let [w (OptimizingColumnChunkWriter/create custom-types column test-target-data-page-length)]
-     (.write w (as-chunked-list input-values))
+     (.write w (helpers/as-chunked-list input-values))
      (let [opt-w (.optimize w compression-thresholds)]
        (ColumnChunks/createReader custom-types (.byteBuffer opt-w) (.metadata opt-w) (.column opt-w))))))
 
@@ -64,8 +61,8 @@
                  :max-repetition-level (.repetitionLevel column)})
        partition-by-record
        (take n)
-       (map as-chunked-list)
-       as-chunked-list))
+       (map helpers/as-chunked-list)
+       helpers/as-chunked-list))
 
 (def ^SimpleDateFormat simple-date-format (SimpleDateFormat. "yyyy-MM-dd"))
 

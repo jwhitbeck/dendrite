@@ -11,7 +11,7 @@
 (ns dendrite.test-helpers
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding])
-  (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer Types]
+  (:import [dendrite.java ChunkedPersistentList LeveledValue MemoryOutputStream IOutputBuffer Types]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -170,3 +170,6 @@
      ~@body
      (catch Exception e#
        (throw (.getCause e#)))))
+
+(defn as-chunked-list [coll]
+  (persistent! (reduce conj! (ChunkedPersistentList/newEmptyTransient) coll)))
