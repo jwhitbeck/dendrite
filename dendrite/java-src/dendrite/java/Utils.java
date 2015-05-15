@@ -14,11 +14,18 @@ package dendrite.java;
 
 import clojure.lang.AFn;
 import clojure.lang.ASeq;
+import clojure.lang.Agent;
+import clojure.lang.Cons;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
+import clojure.lang.LazySeq;
 import clojure.lang.RT;
+
+import java.util.LinkedList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 
 public final class Utils {
 
@@ -106,6 +113,52 @@ public final class Utils {
       return RT.seq(tail);
     }
     return new Concat(RT.seq(head), RT.seq(tail));
+  }
+
+  private static Future getPmapFuture(final IFn fn, final Object o) {
+    return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return fn.invoke(o);
+        }
+      });
+  }
+
+  private static Object tryGet(Future fut) {
+    try {
+      return fut.get();
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private static ISeq pmapStep(final IFn fn, final LinkedList<Future> futures, final ISeq s) {
+    return new LazySeq(new AFn() {
+        public Object invoke() {
+          if (futures.size() > 0) {
+            Future fut = futures.pollFirst();
+            if (RT.seq(s) != null) {
+              futures.addLast(getPmapFuture(fn, s.first()));
+              return new Cons(tryGet(fut), pmapStep(fn, futures, s.next()));
+            } else {
+              return new Cons(tryGet(fut), pmapStep(fn, futures, null));
+            }
+          }
+          return null;
+        }
+      });
+  }
+
+  public static ISeq pmap(IFn fn, ISeq s) {
+    int n = 2 + Runtime.getRuntime().availableProcessors();
+    final LinkedList<Future> futures = new LinkedList<Future>();
+    ISeq rest = s;
+    int i = 0;
+    while (rest != null && i<n) {
+      futures.addLast(getPmapFuture(fn, rest.first()));
+      rest = rest.next();
+      i += 1;
+    }
+    return pmapStep(fn, futures, rest);
   }
 
 }

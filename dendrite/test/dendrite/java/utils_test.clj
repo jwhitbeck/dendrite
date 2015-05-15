@@ -8,7 +8,7 @@
 ;;
 ;; You must not remove this notice, or any other, from this software.
 
-(ns dendrite.java.lists-test
+(ns dendrite.java.utils-test
   (:require [clojure.test :refer :all])
   (:import [dendrite.java Utils ChunkedPersistentList]))
 
@@ -34,3 +34,7 @@
   (is (= (Utils/concat (range 10) (range 10)) (concat (range 10) (range 10))))
   (is (= (Utils/concat (range 10) (list)) (range 10)))
   (is (nil? (Utils/concat (list) (list)))))
+
+(deftest parallel-map
+  (is (= (map (partial * 2) (range 10))
+         (Utils/pmap (partial * 2) (range 10)))))
