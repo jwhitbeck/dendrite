@@ -13,6 +13,6 @@
 package dendrite.java;
 
 public interface IDecoder {
-  public Object decode();
-  public int numEncodedValues();
+  Object decode();
+  int numEncodedValues();
 }

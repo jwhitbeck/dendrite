@@ -13,7 +13,5 @@
 package dendrite.java;
 
 public interface IWriteable {
-
-  public void writeTo(MemoryOutputStream os);
-
+  void writeTo(MemoryOutputStream os);
 }

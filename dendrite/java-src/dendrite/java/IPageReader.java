@@ -15,6 +15,6 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 
 public interface IPageReader {
-  public IPageHeader header();
-  public ByteBuffer next();
+  IPageHeader header();
+  ByteBuffer next();
 }

@@ -13,5 +13,5 @@
 package dendrite.java;
 
 public interface IIntDecoder extends IDecoder {
-  public int decodeInt();
+  int decodeInt();
 }

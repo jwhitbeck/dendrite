@@ -13,6 +13,6 @@
 package dendrite.java;
 
 public interface IIntIterator {
-  public boolean hasNext();
-  public int next();
+  boolean hasNext();
+  int next();
 }

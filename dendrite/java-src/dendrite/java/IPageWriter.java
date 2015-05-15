@@ -15,7 +15,7 @@ package dendrite.java;
 import clojure.lang.IPersistentCollection;
 
 public interface IPageWriter extends IOutputBuffer {
-  public void write(IPersistentCollection values);
-  public int numValues();
-  public IPageHeader header();
+  void write(IPersistentCollection values);
+  int numValues();
+  IPageHeader header();
 }

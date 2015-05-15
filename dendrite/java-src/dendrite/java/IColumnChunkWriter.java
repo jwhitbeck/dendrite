@@ -15,9 +15,9 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 
 public interface IColumnChunkWriter extends IOutputBuffer {
-  public void write(ChunkedPersistentList values);
-  public Schema.Column column();
-  public ColumnChunkMetadata metadata();
-  public int numDataPages();
-  public ByteBuffer byteBuffer();
+  void write(ChunkedPersistentList values);
+  Schema.Column column();
+  ColumnChunkMetadata metadata();
+  int numDataPages();
+  ByteBuffer byteBuffer();
 }

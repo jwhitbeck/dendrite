@@ -15,5 +15,5 @@ package dendrite.java;
 import java.nio.ByteBuffer;
 
 public interface IDecoderFactory {
-  public IDecoder create(ByteBuffer bb);
+  IDecoder create(ByteBuffer bb);
 }

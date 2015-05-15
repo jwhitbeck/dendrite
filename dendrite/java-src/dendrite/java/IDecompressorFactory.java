@@ -13,5 +13,5 @@
 package dendrite.java;
 
 public interface IDecompressorFactory {
-  public IDecompressor create();
+  IDecompressor create();
 }

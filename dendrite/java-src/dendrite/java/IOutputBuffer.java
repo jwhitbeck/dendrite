@@ -13,10 +13,8 @@
 package dendrite.java;
 
 public interface IOutputBuffer extends IWriteable {
-
-  public int length();
-  public int estimatedLength();
-  public void reset();
-  public void finish();
-
+  int length();
+  int estimatedLength();
+  void reset();
+  void finish();
 }

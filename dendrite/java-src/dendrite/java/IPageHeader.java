@@ -15,8 +15,8 @@ package dendrite.java;
 import clojure.lang.IPersistentMap;
 
 public interface IPageHeader {
-  public int type();
-  public int headerLength();
-  public int bodyLength();
-  public IPersistentMap stats();
+  int type();
+  int headerLength();
+  int bodyLength();
+  IPersistentMap stats();
 }
