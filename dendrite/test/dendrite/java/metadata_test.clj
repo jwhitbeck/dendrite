@@ -11,8 +11,8 @@
 (ns dendrite.java.metadata-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ColumnChunkMetadata CustomType FileMetadata MemoryOutputStream
-            RecordGroupMetadata Schema Schema$Column Schema$Field Schema$Record Schema$Collection]
+  (:import [dendrite.java CustomType Metadata$ColumnChunk Metadata$File Metadata$RecordGroup MemoryOutputStream
+            Schema Schema$Column Schema$Field Schema$Record Schema$Collection]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +30,7 @@
 
 (defn rand-schema-record [max-depth]
   (Schema$Record. (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
-                  (repeatedly (rand-int 3) #(rand-field max-depth))
+                  (into-array Schema$Field (repeatedly (rand-int 3) #(rand-field max-depth)))
                   nil))
 
 (defn rand-schema-coll [max-depth]
@@ -51,37 +51,38 @@
   (let [mos (MemoryOutputStream.)
         rand-schemas (repeatedly 100 rand-schema)]
     (doseq [^Schema schema rand-schemas]
-      (.write mos schema))
+      (Schema/writeTo mos schema))
     (let [bb (.byteBuffer mos)
           read-schemas (repeatedly 100 #(Schema/read bb))]
       (is (= read-schemas rand-schemas)))))
 
 (defn rand-column-chunk-metadata []
-  (ColumnChunkMetadata. (rand-int 1024) (rand-int 10) (rand-int 128) (rand-int 128)))
+  (Metadata$ColumnChunk. (rand-int 1024) (rand-int 10) (rand-int 128) (rand-int 128)))
 
 (deftest column-chunk-metadata
   (testing "serialization-deserialization"
     (let [mos (MemoryOutputStream.)
           rand-column-chunk-metadatas (repeatedly 100 rand-column-chunk-metadata)]
-      (doseq [^ColumnChunkMetadata column-chunk-metadata rand-column-chunk-metadatas]
+      (doseq [^Metadata$ColumnChunk column-chunk-metadata rand-column-chunk-metadatas]
         (.writeTo column-chunk-metadata mos))
       (let [bb (.byteBuffer mos)
-            read-column-chunk-metadatas (repeatedly 100 #(ColumnChunkMetadata/read bb))]
+            read-column-chunk-metadatas (repeatedly 100 #(Metadata$ColumnChunk/read bb))]
         (is (= read-column-chunk-metadatas rand-column-chunk-metadatas))))))
 
 (defn rand-record-group-metadata []
-  (RecordGroupMetadata. (rand-int (* 1024 1024))
-                        (rand-int 10000)
-                        (repeatedly (rand-int 10) rand-column-chunk-metadata)))
+  (Metadata$RecordGroup. (rand-int (* 1024 1024))
+                         (rand-int 10000)
+                         (into-array Metadata$ColumnChunk
+                                     (repeatedly (rand-int 10) rand-column-chunk-metadata))))
 
 (deftest record-group-metadata
   (testing "serialization-deserialization"
     (let [mos (MemoryOutputStream.)
           rand-record-group-metadatas (repeatedly 100 rand-record-group-metadata)]
-      (doseq [^RecordGroupMetadata record-group-metadata rand-record-group-metadatas]
+      (doseq [^Metadata$RecordGroup record-group-metadata rand-record-group-metadatas]
         (.writeTo record-group-metadata mos))
       (let [bb (.byteBuffer mos)
-            read-record-group-metadatas (repeatedly 100 #(RecordGroupMetadata/read bb))]
+            read-record-group-metadatas (repeatedly 100 #(Metadata$RecordGroup/read bb))]
         (is (= read-record-group-metadatas rand-record-group-metadatas))))))
 
 (defn rand-custom-type []
@@ -98,17 +99,17 @@
         (is (= read-custom-types rand-custom-types))))))
 
 (defn rand-file-metadata []
-  (FileMetadata. (repeatedly (rand-int 5) rand-record-group-metadata)
-                 (rand-schema)
-                 (repeatedly (rand-int 5) rand-custom-type)
-                 (helpers/rand-byte-buffer)))
+  (Metadata$File. (into-array Metadata$RecordGroup (repeatedly (rand-int 5) rand-record-group-metadata))
+                  (rand-schema)
+                  (into-array CustomType (repeatedly (rand-int 5) rand-custom-type))
+                  (helpers/rand-byte-buffer)))
 
 (deftest file-metadata
   (testing "serialization-deserialization"
     (let [mos (MemoryOutputStream.)
           rand-file-metadatas (repeatedly 100 rand-file-metadata)]
-      (doseq [^FileMetadata file-metadata rand-file-metadatas]
+      (doseq [^Metadata$File file-metadata rand-file-metadatas]
         (.writeTo file-metadata mos))
       (let [bb (.byteBuffer mos)
-            read-file-metadatas (repeatedly 100 #(FileMetadata/read bb))]
+            read-file-metadatas (repeatedly 100 #(Metadata$File/read bb))]
         (is (= read-file-metadatas rand-file-metadatas))))))

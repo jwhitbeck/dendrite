@@ -26,7 +26,7 @@ public final class ColumnChunks {
   }
 
   public static IColumnChunkReader createReader(Types types, ByteBuffer bb,
-                                                ColumnChunkMetadata columnChunkMetadata,
+                                                Metadata.ColumnChunk columnChunkMetadata,
                                                 Schema.Column column) {
     switch (column.encoding) {
     case Types.DICTIONARY: return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, column);

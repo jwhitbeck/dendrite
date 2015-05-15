@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 public interface IColumnChunkWriter extends IOutputBuffer {
   void write(ChunkedPersistentList values);
   Schema.Column column();
-  ColumnChunkMetadata metadata();
+  Metadata.ColumnChunk metadata();
   int numDataPages();
   ByteBuffer byteBuffer();
 }

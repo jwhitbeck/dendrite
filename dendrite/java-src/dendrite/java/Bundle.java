@@ -13,21 +13,43 @@
 package dendrite.java;
 
 import clojure.lang.ArraySeq;
+import clojure.lang.Counted;
+import clojure.lang.Cons;
 import clojure.lang.IFn;
 import clojure.lang.ISeq;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ITransientCollection;
 import clojure.lang.RT;
-import clojure.lang.Seqable;
+import clojure.lang.Sequential;
 
 import java.util.Arrays;
 
-public final class Bundle implements Seqable {
+public final class Bundle implements IPersistentCollection, Counted, Sequential {
 
-  private final ChunkedPersistentList[] columnValues;
+  public final ChunkedPersistentList[] columnValues;
 
   public Bundle(final ChunkedPersistentList[] columnValues) {
     this.columnValues = columnValues;
+  }
+
+  @Override
+  public boolean equiv(Object o) {
+    return RT.seq(this).equiv(RT.seq(o));
+  }
+
+  @Override
+  public IPersistentCollection cons(Object o) {
+    return new Cons(o, RT.seq(this));
+  }
+
+  @Override
+  public IPersistentCollection empty() {
+    return new Bundle(new ChunkedPersistentList[]{});
+  }
+
+  @Override
+  public int count() {
+    return RT.count(columnValues[0]);
   }
 
   public Bundle take(int n) {

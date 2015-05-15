@@ -264,7 +264,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   @Override
-  public ColumnChunkMetadata metadata() {
+  public Metadata.ColumnChunk metadata() {
     throw new UnsupportedOperationException();
   }
 

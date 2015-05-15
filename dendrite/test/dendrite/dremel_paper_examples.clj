@@ -9,23 +9,29 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.dremel-paper-examples
-  (:require [dendrite.leveled-value :refer [->LeveledValue]]
-            [dendrite.schema :as schema]
-            [dendrite.test-helpers :as helpers]))
+  (:require [dendrite.schema :as schema]
+            [dendrite.test-helpers :as helpers])
+  (:import [dendrite.java LeveledValue Schema]))
 
 (def dremel-paper-schema-str
-  "{:docid #req long
-    :links {:forward [long]
-            :backward [long]}
-    :name [{:language [{:code #req string
-                        :country string}]
-            :url string}]}")
+  "#req {:docid #req long
+         :links {:forward [long]
+                 :backward [long]}
+         :name [{:language [{:code #req string
+                             :country string}]
+                 :url string}]}")
 
 (def dremel-paper-schema
   (-> dremel-paper-schema-str schema/read-string (schema/parse helpers/default-type-store)))
 
+(def dremel-paper-schema2
+  (->> dremel-paper-schema-str Schema/readString (Schema/parse helpers/default-types)))
+
 (def dremel-paper-full-query-schema
   (schema/apply-query dremel-paper-schema '_ helpers/default-type-store true {}))
+
+(def dremel-paper-full-query-schema2
+  (Schema/applyQuery helpers/default-types true {} dremel-paper-schema2 '_))
 
 (def dremel-paper-record1
   {:docid 10
@@ -38,12 +44,12 @@
 
 (def dremel-paper-record1-striped
   [10
-   [(->LeveledValue 0 2 20) (->LeveledValue 1 2 40) (->LeveledValue 1 2 60)]
-   [(->LeveledValue 0 1 nil)]
-   [(->LeveledValue 0 2 "en-us") (->LeveledValue 2 2 "en") (->LeveledValue 1 1 nil)
-    (->LeveledValue 1 2 "en-gb")]
-   [(->LeveledValue 0 3 "us") (->LeveledValue 2 2 nil) (->LeveledValue 1 1 nil) (->LeveledValue 1 3 "gb")]
-   [(->LeveledValue 0 2 "http://A") (->LeveledValue 1 2 "http://B") (->LeveledValue 1 1 nil)]])
+   [(LeveledValue. 0 2 20) (LeveledValue. 1 2 40) (LeveledValue. 1 2 60)]
+   [(LeveledValue. 0 1 nil)]
+   [(LeveledValue. 0 2 "en-us") (LeveledValue. 2 2 "en") (LeveledValue. 1 1 nil)
+    (LeveledValue. 1 2 "en-gb")]
+   [(LeveledValue. 0 3 "us") (LeveledValue. 2 2 nil) (LeveledValue. 1 1 nil) (LeveledValue. 1 3 "gb")]
+   [(LeveledValue. 0 2 "http://A") (LeveledValue. 1 2 "http://B") (LeveledValue. 1 1 nil)]])
 
 (def dremel-paper-record2
   {:docid 20
@@ -53,8 +59,8 @@
 
 (def dremel-paper-record2-striped
   [20
-   [(->LeveledValue 0 2 80)]
-   [(->LeveledValue 0 2 10) (->LeveledValue 1 2 30)]
-   [(->LeveledValue 0 1 nil)]
-   [(->LeveledValue 0 1 nil)]
-   [(->LeveledValue 0 2 "http://C")]])
+   [(LeveledValue. 0 2 80)]
+   [(LeveledValue. 0 2 10) (LeveledValue. 1 2 30)]
+   [(LeveledValue. 0 1 nil)]
+   [(LeveledValue. 0 1 nil)]
+   [(LeveledValue. 0 2 "http://C")]])

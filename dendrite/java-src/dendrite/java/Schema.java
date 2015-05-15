@@ -25,7 +25,6 @@ import clojure.lang.IPersistentSet;
 import clojure.lang.IPersistentVector;
 import clojure.lang.ISeq;
 import clojure.lang.ITransientMap;
-import clojure.lang.ITransientCollection;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.PersistentList;
@@ -33,9 +32,11 @@ import clojure.lang.PersistentHashSet;
 import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
-import clojure.lang.Util;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.LinkedList;
 import java.util.HashSet;
 
@@ -203,6 +204,8 @@ public abstract class Schema implements IWriteable {
 
   public abstract Schema withFn(IFn fn);
 
+  public abstract int flag();
+
   @Override
   public boolean equals(Object o) {
     if (o == null || !(o instanceof Schema)) {
@@ -223,6 +226,11 @@ public abstract class Schema implements IWriteable {
     case COLLECTION: return Collection.read(bb);
     default: throw new IllegalStateException("Unknown schema type: " + type);
     }
+  }
+
+  public static void writeTo(MemoryOutputStream mos, Schema schema) {
+    mos.write(schema.flag());
+    mos.write(schema);
   }
 
   public static final class Column extends Schema {
@@ -252,8 +260,12 @@ public abstract class Schema implements IWriteable {
     }
 
     @Override
+    public int flag() {
+      return COLUMN;
+    }
+
+    @Override
     public void writeTo(MemoryOutputStream mos) {
-      mos.write(COLUMN);
       writeCommonFieldsTo(mos, this);
       Bytes.writeSInt(mos, type);
       Bytes.writeUInt(mos, encoding);
@@ -306,7 +318,7 @@ public abstract class Schema implements IWriteable {
     @Override
     public void writeTo(MemoryOutputStream mos) {
       writeName(mos, name);
-      mos.write(value);
+      Schema.writeTo(mos, value);
     }
 
     public static Field read(ByteBuffer bb) {
@@ -317,17 +329,17 @@ public abstract class Schema implements IWriteable {
   public static final class Record extends Schema {
 
     public final int leafColumnIndex;
-    public final ISeq fields;
+    public final Field[] fields;
 
     public Record(int repetition, int repetitionLevel, int definitionLevel, int leafColumnIndex,
-                  IPersistentCollection fields, IFn fn) {
+                  Field[] fields, IFn fn) {
       super(repetition, repetitionLevel, definitionLevel, fn);
       this.leafColumnIndex = leafColumnIndex;
-      this.fields = RT.seq(fields);
+      this.fields = fields;
     }
 
-    public static Record missing(Object fields) {
-      return new Record(-REQUIRED, -1, -1, -1, RT.seq(fields), null);
+    public static Record missing(Field[] fields) {
+      return new Record(-REQUIRED, -1, -1, -1, fields, null);
     }
 
     @Override
@@ -335,13 +347,13 @@ public abstract class Schema implements IWriteable {
       return new Record(repetition, repetitionLevel, definitionLevel, leafColumnIndex, fields, aFn);
     }
 
-    public Record withFields(IPersistentCollection newFields) {
+    public Record withFields(Field[] newFields) {
       return new Record(repetition, repetitionLevel, definitionLevel, leafColumnIndex, newFields, fn);
     }
 
     public Schema get(Keyword name) {
-      for (ISeq s = fields; s != null; s = s.next()) {
-        Field field = (Field)s.first();
+      for (int i=0; i<fields.length; ++i) {
+        Field field = fields[i];
         if (field.name.equals(name)) {
           return field.value;
         }
@@ -349,28 +361,29 @@ public abstract class Schema implements IWriteable {
       return null;
     }
 
-    private static IPersistentCollection readFields(ByteBuffer bb) {
+    private static Field[] readFields(ByteBuffer bb) {
       int n = Bytes.readUInt(bb);
-      if (n == 0) {
-        return null;
-      }
-      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
+      Field[] fields = new Field[n];
       for (int i=0; i<n; ++i) {
-        fields.conj(Field.read(bb));
+        fields[i] = Field.read(bb);
       }
-      return fields.persistent();
+      return fields;
     }
 
     private void writeFieldsTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, RT.count(fields));
-      for (ISeq s = RT.seq(fields); s != null; s = s.next()) {
-        mos.write((Field)s.first());
+      for (int i=0; i<fields.length; ++i) {
+        mos.write(fields[i]);
       }
     }
 
     @Override
+    public int flag() {
+      return RECORD;
+    }
+
+    @Override
     public void writeTo(MemoryOutputStream mos) {
-      mos.write(RECORD);
       writeCommonFieldsTo(mos, this);
       Bytes.writeUInt(mos, leafColumnIndex);
       writeFieldsTo(mos);
@@ -383,7 +396,7 @@ public abstract class Schema implements IWriteable {
       }
       Record r = (Record)o;
       return leafColumnIndex == r.leafColumnIndex &&
-        Util.equiv(fields, r.fields);
+        Arrays.equals(fields, r.fields);
     }
 
     public static Record read(ByteBuffer bb) {
@@ -429,11 +442,15 @@ public abstract class Schema implements IWriteable {
     }
 
     @Override
+    public int flag() {
+      return COLLECTION;
+    }
+
+    @Override
     public void writeTo(MemoryOutputStream mos) {
-      mos.write(COLLECTION);
       writeCommonFieldsTo(mos, this);
       Bytes.writeUInt(mos, leafColumnIndex);
-      mos.write(repeatedSchema);
+      Schema.writeTo(mos, repeatedSchema);
     }
 
     @Override
@@ -533,14 +550,16 @@ public abstract class Schema implements IWriteable {
                                      LinkedList<Column> columns, IPersistentMap record) {
     int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
     int repetition = isRequired(record)? REQUIRED : OPTIONAL;
-    ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
+    Field[] fields = new Field[RT.count(record)];
+    int i = 0;
     for (Object o : record) {
       IMapEntry e = (IMapEntry)o;
       Keyword name = (Keyword)e.key();
-      fields.conj(new Field(name, _parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val())));
+      fields[i] = new Field(name, _parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val()));
+      i += 1;
     }
     int leafColumnIndex = getLeafColumnIndex(columns);
-    return new Record(repetition, repLvl, curDefLvl, leafColumnIndex, fields.persistent(), null);
+    return new Record(repetition, repLvl, curDefLvl, leafColumnIndex, fields, null);
   }
 
   private static int getRepeatedRepetition(Object o) {
@@ -633,8 +652,9 @@ public abstract class Schema implements IWriteable {
 
   private static Object _unparseRecord(Types types, boolean asPlain, Record record) {
     ITransientMap rec = PersistentArrayMap.EMPTY.asTransient();
-    for (ISeq s = record.fields; s != null; s = s.next()) {
-      Field field = (Field)s.first();
+    Field[] fields = record.fields;
+    for (int i=0; i<fields.length; ++i) {
+      Field field = fields[i];
       rec.assoc(field.name, _unparse(types, asPlain, field.value));
     }
     return wrapWithRepetition(rec.persistent(), record.repetition);
@@ -751,13 +771,15 @@ public abstract class Schema implements IWriteable {
   private static Schema _applyQueryRecord(QueryContext context, Schema schema, IPersistentMap query,
                                           PersistentVector parents) {
     if (schema == null) {
-      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
+      Field[] fields = new Field[RT.count(query)];
+      int i = 0;
       for (ISeq s = RT.seq(query); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());
-        fields.conj(new Field(name, _applyQuery(context, null, e.val(), parents.cons(name))));
+        fields[i] = new Field(name, _applyQuery(context, null, e.val(), parents.cons(name)));
+        i += 1;
       }
-      return Record.missing(fields.persistent());
+      return Record.missing(fields);
     } else if (!(schema instanceof Record)) {
       throw new IllegalArgumentException(String.format("Element at path %s is not a record in schema.",
                                                        parents));
@@ -768,20 +790,20 @@ public abstract class Schema implements IWriteable {
       if (!context.isMissingFieldsAsNil && RT.seq(missingFieldsQuery) != null) {
         throw new IllegalArgumentException(missingFieldsErrorMessage(parents, RT.keys(missingFieldsQuery)));
       }
-      ITransientCollection fields = ChunkedPersistentList.newEmptyTransient();
+      ArrayList<Field> fieldsList = new ArrayList<Field>();
       for (ISeq s = RT.seq(missingFieldsQuery); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());
-        fields.conj(new Field(name, _applyQuery(context, null, e.val(), parents.cons(name))));
+        fieldsList.add(new Field(name, _applyQuery(context, null, e.val(), parents.cons(name))));
       }
       for (ISeq s = RT.seq(record.fields); s != null; s = s.next()) {
         Field field = (Field)s.first();
         if (query.containsKey(field.name)) {
-          fields.conj(new Field(field.name, _applyQuery(context, field.value, RT.get(query, field.name),
-                                                        parents.cons(field.name))));
+          fieldsList.add(new Field(field.name, _applyQuery(context, field.value, RT.get(query, field.name),
+                                                           parents.cons(field.name))));
         }
       }
-      return record.withFields(fields.persistent());
+      return record.withFields(fieldsList.toArray(new Field[]{}));
     }
   }
 
@@ -891,6 +913,27 @@ public abstract class Schema implements IWriteable {
     } catch (Exception e) {
       throw new IllegalArgumentException(String.format("Invalid query '%s' for schema '%s'.", query,
                                                        unparse(types, schema)), e);
+    }
+  }
+
+  public static Column[] getColumns(Schema schema) {
+    List<Column> columns = new ArrayList<Column>();
+    _getColumns(schema, columns);
+    return columns.toArray(new Column[]{});
+  }
+
+  private static void _getColumns(Schema schema, List<Column> columns) {
+    if (schema instanceof Column) {
+      columns.add((Column)schema);
+    } else if (schema instanceof Record) {
+      Record rec = (Record)schema;
+      Field[] fields = rec.fields;
+      for (int i=0; i<fields.length; ++i) {
+        _getColumns(fields[i].value, columns);
+      }
+    } else /* if (schema instanceof Collection) */{
+      Collection coll = (Collection)schema;
+      _getColumns(coll.repeatedSchema, columns);
     }
   }
 

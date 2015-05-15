@@ -151,7 +151,7 @@ public final class Utils {
   public static ISeq pmap(IFn fn, ISeq s) {
     int n = 2 + Runtime.getRuntime().availableProcessors();
     final LinkedList<Future> futures = new LinkedList<Future>();
-    ISeq rest = s;
+    ISeq rest = RT.seq(s);
     int i = 0;
     while (rest != null && i<n) {
       futures.addLast(getPmapFuture(fn, rest.first()));
@@ -159,6 +159,12 @@ public final class Utils {
       i += 1;
     }
     return pmapStep(fn, futures, rest);
+  }
+
+  public static void doAll(ISeq s) {
+    if (RT.seq(s) != null) {
+      doAll(s.next());
+    }
   }
 
 }

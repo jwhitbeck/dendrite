@@ -20,5 +20,5 @@ public interface IColumnChunkReader {
   ISeq getPageHeaders();
   Schema.Column column();
   IPersistentMap stats();
-  ColumnChunkMetadata metadata();
+  Metadata.ColumnChunk metadata();
 }

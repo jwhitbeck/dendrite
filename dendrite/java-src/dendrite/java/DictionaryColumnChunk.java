@@ -25,11 +25,11 @@ public final class DictionaryColumnChunk {
   public final static class Reader implements IColumnChunkReader {
 
     private final ByteBuffer bb;
-    private final ColumnChunkMetadata columnChunkMetadata;
+    private final Metadata.ColumnChunk columnChunkMetadata;
     private final Types types;
     private final Schema.Column column;
 
-    public Reader(Types types, ByteBuffer bb, ColumnChunkMetadata columnChunkMetadata,
+    public Reader(Types types, ByteBuffer bb, Metadata.ColumnChunk columnChunkMetadata,
                   Schema.Column column) {
       this.types = types;
       this.bb = bb;
@@ -63,7 +63,7 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
-    public ColumnChunkMetadata metadata() {
+    public Metadata.ColumnChunk metadata() {
       return columnChunkMetadata;
     }
 
@@ -126,12 +126,12 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
-    public ColumnChunkMetadata metadata() {
+    public Metadata.ColumnChunk metadata() {
       finish();
-      return new ColumnChunkMetadata(length(),
-                                     indicesColumnChunkWriter.metadata().numDataPages,
-                                     dictionaryLength(),
-                                     0);
+      return new Metadata.ColumnChunk(length(),
+                                      indicesColumnChunkWriter.metadata().numDataPages,
+                                      dictionaryLength(),
+                                      0);
     }
 
     void updateDictionaryLengthEstimates() {
