@@ -12,6 +12,7 @@
   (:require [clojure.string :as string]
             [dendrite.encoding :as encoding])
   (:import [dendrite.java ChunkedPersistentList LeveledValue MemoryOutputStream IOutputBuffer Types]
+           [java.io Writer]
            [java.nio ByteBuffer]
            [java.util Random UUID])
   (:refer-clojure :exclude [rand-int]))
@@ -20,7 +21,14 @@
 
 (def ^:private ^Random rng (Random.))
 
+(def ^Types default-types (Types/create nil nil))
+
 (def default-type-store (encoding/type-store nil))
+
+(defmethod print-method LeveledValue
+  [^LeveledValue lv ^Writer w]
+  (.write w (format "#<LeveledValue[r:%d, d:%d, v:%s]>"
+                    (.repetitionLevel lv) (.definitionLevel lv) (.value lv))))
 
 (defn rand-bool [] (zero? (clojure.core/rand-int 2)))
 

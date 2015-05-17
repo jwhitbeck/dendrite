@@ -167,4 +167,16 @@ public final class Utils {
     }
   }
 
+  public static ISeq map(final IFn fn, final ISeq s) {
+    return new LazySeq(new AFn() {
+        public Object invoke() {
+          if (RT.seq(s) == null) {
+            return null;
+          } else {
+            return new Cons(fn.invoke(s.first()), map(fn, s.next()));
+          }
+        }
+      });
+  }
+
 }

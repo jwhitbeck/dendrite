@@ -26,11 +26,6 @@
   ([type encoding] (Col. type encoding))
   ([type encoding compression] (Col. type encoding compression)))
 
-(defmethod print-method LeveledValue
-  [^LeveledValue lv ^Writer w]
-  (.write w (format "#<LeveledValue[r:%d, d:%d, v:%s]>"
-                    (.repetitionLevel lv) (.definitionLevel lv) (.value lv))))
-
 (defmethod print-method Col
   [v ^Writer w]
   (.write w (str v)))

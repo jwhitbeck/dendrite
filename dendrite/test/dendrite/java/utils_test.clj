@@ -35,6 +35,7 @@
   (is (= (Utils/concat (range 10) (list)) (range 10)))
   (is (nil? (Utils/concat (list) (list)))))
 
-(deftest parallel-map
+(deftest mapping
   (is (= (map (partial * 2) (range 10))
-         (Utils/pmap (partial * 2) (range 10)))))
+         (Utils/pmap (partial * 2) (range 10))
+         (Utils/map (partial * 2) (range 10)))))
