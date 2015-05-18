@@ -30,7 +30,6 @@ public final class IntVLQ {
   }
 
   public final static class Encoder extends AEncoder {
-
     @Override
     public void encode(Object o) {
       numValues += 1;
@@ -39,7 +38,7 @@ public final class IntVLQ {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new IDecoderFactory() {
+  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

@@ -39,7 +39,7 @@ public final class LongPlain {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new IDecoderFactory() {
+  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

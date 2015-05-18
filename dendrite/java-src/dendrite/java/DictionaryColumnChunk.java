@@ -45,10 +45,9 @@ public final class DictionaryColumnChunk {
          partitionLength,
          column.repetitionLevel,
          column.definitionLevel,
-         types.getDecoderFactory(column.type, Types.PLAIN),
+         types.getDecoderFactory(column.type, Types.PLAIN, column.fn),
          types.getDecoderFactory(Types.INT, Types.PACKED_RUN_LENGTH),
-         types.getDecompressorFactory(column.compression),
-         column.fn);
+         types.getDecompressorFactory(column.compression));
     }
 
     @Override

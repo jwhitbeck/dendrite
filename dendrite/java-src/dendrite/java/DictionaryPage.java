@@ -210,16 +210,5 @@ public final class DictionaryPage {
       return a;
     }
 
-    public Object[] readWith(IFn fn) {
-      IDecoder decoder = getDecoder();
-      Object[] a = new Object[decoder.numEncodedValues()];
-      int i = 0;
-      while (i < a.length) {
-        a[i] = fn.invoke(decoder.decode());
-        i += 1;
-      }
-      return a;
-    }
-
   }
 }

@@ -12,8 +12,8 @@
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers]
             [dendrite.utils :as utils])
-  (:import [dendrite.java DataPage$Reader DataPage$Writer DictionaryPage$Reader DictionaryPage$Writer
-            LeveledValue MemoryOutputStream Pages Types]))
+  (:import [dendrite.java DataPage$Reader DataPage$Writer Dictionary$DecoderFactory DictionaryPage$Reader
+            DictionaryPage$Writer LeveledValue MemoryOutputStream Pages Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,11 +29,9 @@
                  (.write input-values))
         bb (helpers/output-buffer->byte-buffer writer)
         reader (DataPage$Reader/create bb max-repetition-level max-definition-level
-                                       (.getDecoderFactory types type encoding)
+                                       (.getDecoderFactory types type encoding f)
                                        (.getDecompressorFactory types compression))]
-    (cond->> (if f
-               (.readWith reader f)
-               (.read reader))
+    (cond->> (.read reader)
       (pos? max-repetition-level) utils/flatten-1)))
 
 (deftest data-page
@@ -117,9 +115,9 @@
                  (.write input-values))
         bb (helpers/output-buffer->byte-buffer writer)
         reader (DictionaryPage$Reader/create bb
-                                             (.getDecoderFactory types type encoding)
+                                             (.getDecoderFactory types type encoding f)
                                              (.getDecompressorFactory types compression))]
-    (seq (if f (.readWith reader f) (.read reader)))))
+    (seq (.read reader))))
 
 (deftest dictionary-page
   (testing "write/read a dictionary page"
@@ -191,22 +189,21 @@
                                                                (:max-repetition-level levels)
                                                                (:max-definition-level levels)
                                                                (.getDecoderFactory types Types/INT Types/PLAIN)
-                                                               (.getDecompressorFactory types Types/NONE)
-                                                               nil)]
+                                                               (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (utils/flatten-1 (repeat num-pages input-values))
                (mapcat utils/flatten-1 partitioned-values)))))
     (testing "read partitionned with fn"
       (let [partition-length 31
             f #(if % (* 2 %) ::null)
-            partitioned-values (Pages/readDataPagesPartitioned (.byteBuffer mos)
-                                                               num-pages
-                                                               partition-length
-                                                               (:max-repetition-level levels)
-                                                               (:max-definition-level levels)
-                                                               (.getDecoderFactory types Types/INT Types/PLAIN)
-                                                               (.getDecompressorFactory types Types/NONE)
-                                                               f)]
+            partitioned-values
+              (Pages/readDataPagesPartitioned (.byteBuffer mos)
+                                              num-pages
+                                              partition-length
+                                              (:max-repetition-level levels)
+                                              (:max-definition-level levels)
+                                              (.getDecoderFactory types Types/INT Types/PLAIN f)
+                                              (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (utils/flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
                (mapcat utils/flatten-1 partitioned-values)))))
@@ -220,8 +217,7 @@
                                     (:max-definition-level levels)
                                     (.getDecoderFactory types Types/INT Types/PLAIN)
                                     (.getDecoderFactory types Types/INT Types/VLQ)
-                                    (.getDecompressorFactory types Types/NONE)
-                                    nil)))))))
+                                    (.getDecompressorFactory types Types/NONE))))))))
 
 (deftest multiple-data-pages-with-dictionary
   (let [levels {:max-definition-level 3 :max-repetition-level 2}
@@ -241,9 +237,11 @@
     (dotimes [i num-pages]
       (Pages/writeTo mos writer))
     (testing "read page-by-page"
-      (let [dictionary-reader (Pages/getDictionaryPageReader
+      (let [dictionary-decoder-factory (.getDecoderFactory types Types/STRING Types/PLAIN)
+            indices-decoder-factory (.getDecoderFactory types Types/INT Types/PLAIN)
+            dictionary-reader (Pages/getDictionaryPageReader
                                (.byteBuffer mos)
-                               (.getDecoderFactory types Types/STRING Types/PLAIN)
+                               dictionary-decoder-factory
                                (.getDecompressorFactory types Types/NONE))
             dictionary (.read dictionary-reader)
             data-page-readers (Pages/getDataPageReaders
@@ -251,7 +249,8 @@
                                num-pages
                                (:max-repetition-level levels)
                                (:max-definition-level levels)
-                               (.getDictionaryDecoderFactory types dictionary Types/PLAIN)
+                               (Dictionary$DecoderFactory. dictionary indices-decoder-factory
+                                                           dictionary-decoder-factory)
                                (.getDecompressorFactory types Types/NONE))]
         (is (= (->> input-indices
                     (helpers/map-leveled #(when % (aget dictionary (int %))))
@@ -268,8 +267,7 @@
                                 (:max-definition-level levels)
                                 (.getDecoderFactory types Types/STRING Types/PLAIN)
                                 (.getDecoderFactory types Types/INT Types/PLAIN)
-                                (.getDecompressorFactory types Types/NONE)
-                                nil)]
+                                (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
                     (helpers/map-leveled #(when % (aget dictionary (int %))))
@@ -285,10 +283,9 @@
                                 partition-length
                                 (:max-repetition-level levels)
                                 (:max-definition-level levels)
-                                (.getDecoderFactory types Types/STRING Types/PLAIN)
+                                (.getDecoderFactory types Types/STRING Types/PLAIN f)
                                 (.getDecoderFactory types Types/INT Types/PLAIN)
-                                (.getDecompressorFactory types Types/NONE)
-                                f)]
+                                (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
                     (helpers/map-leveled #(f (when % (aget dictionary (int %)))))
@@ -304,5 +301,4 @@
                                     (:max-repetition-level levels)
                                     (:max-definition-level levels)
                                     (.getDecoderFactory types Types/INT Types/PLAIN)
-                                    (.getDecompressorFactory types Types/NONE)
-                                    nil)))))))
+                                    (.getDecompressorFactory types Types/NONE))))))))

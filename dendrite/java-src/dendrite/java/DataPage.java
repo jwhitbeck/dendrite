@@ -364,17 +364,7 @@ public final class DataPage {
       return decoderFactory.create(byteBuffer);
     }
 
-    public IPersistentCollection read() {
-      return read(null);
-    }
-
-    public abstract IPersistentCollection read(Object nullValue);
-
-    public IPersistentCollection readWith(IFn fn) {
-      return readWith(fn, fn.invoke(null));
-    }
-
-    public abstract IPersistentCollection readWith(IFn fn, Object nullValue);
+    public abstract IPersistentCollection read();
 
   }
 
@@ -386,7 +376,7 @@ public final class DataPage {
     }
 
     @Override
-    public IPersistentCollection read(Object nullValue) {
+    public IPersistentCollection read() {
       IDecoder dataDecoder = getDataDecoder();
       ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
       int i = 0;
@@ -397,20 +387,6 @@ public final class DataPage {
       }
       return vs.persistent();
     }
-
-    @Override
-    public IPersistentCollection readWith(IFn fn, Object nullValue) {
-      IDecoder dataDecoder = getDataDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-      int i = 0;
-      int n = dataDecoder.numEncodedValues();
-      while (i < n) {
-        vs.conj(fn.invoke(dataDecoder.decode()));
-        i += 1;
-      }
-      return vs.persistent();
-    }
-
   }
 
   private final static class NonRepeatedValuesReader extends Reader {
@@ -421,8 +397,9 @@ public final class DataPage {
     }
 
     @Override
-    public IPersistentCollection read(Object nullValue) {
+    public IPersistentCollection read() {
       IDecoder dataDecoder = getDataDecoder();
+      Object nullValue = decoderFactory.nullValue();
       IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
       ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
       int i = 0;
@@ -437,25 +414,6 @@ public final class DataPage {
       }
       return vs.persistent();
     }
-
-    @Override
-    public IPersistentCollection readWith(IFn fn, Object nullValue) {
-      IDecoder dataDecoder = getDataDecoder();
-      IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-      int i = 0;
-      int n = definitionLevelsDecoder.numEncodedValues();
-      while (i < n) {
-        if (definitionLevelsDecoder.decodeInt() == 0) {
-          vs.conj(nullValue);
-        } else {
-          vs.conj(fn.invoke(dataDecoder.decode()));
-        }
-        i += 1;
-      }
-      return vs.persistent();
-    }
-
   }
 
 
@@ -467,8 +425,9 @@ public final class DataPage {
     }
 
     @Override
-    public IPersistentCollection read(Object nullValue) {
+    public IPersistentCollection read() {
       IDecoder dataDecoder = getDataDecoder();
+      Object nullValue = decoderFactory.nullValue();
       IIntDecoder repetitionLevelsDecoder = getRepetitionLevelsDecoder();
       IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
       ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
@@ -488,37 +447,6 @@ public final class DataPage {
           rv.conj(new LeveledValue(repLvl, defLvl, nullValue));
         } else {
           rv.conj(new LeveledValue(repLvl, defLvl, dataDecoder.decode()));
-        }
-        i += 1;
-      }
-      if (rv != null) {
-        vs.conj(rv.persistent());
-      }
-      return vs.persistent();
-    }
-
-    @Override
-    public IPersistentCollection readWith(IFn fn, Object nullValue) {
-      IDecoder dataDecoder = getDataDecoder();
-      IIntDecoder repetitionLevelsDecoder = getRepetitionLevelsDecoder();
-      IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-      ITransientCollection rv = ChunkedPersistentList.newEmptyTransient();
-      boolean seenFirstValue = false;
-      int i = 0;
-      int n = repetitionLevelsDecoder.numEncodedValues();
-      while (i < n) {
-        int repLvl = repetitionLevelsDecoder.decodeInt();
-        if (repLvl == 0 && seenFirstValue){
-          vs.conj(rv.persistent());
-          rv = ChunkedPersistentList.newEmptyTransient();
-        }
-        seenFirstValue = true;
-        int defLvl = definitionLevelsDecoder.decodeInt();
-        if (defLvl < maxDefinitionLevel) {
-          rv.conj(new LeveledValue(repLvl, defLvl, nullValue));
-        } else {
-          rv.conj(new LeveledValue(repLvl, defLvl, fn.invoke(dataDecoder.decode())));
         }
         i += 1;
       }

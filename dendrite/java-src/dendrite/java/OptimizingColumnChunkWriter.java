@@ -62,8 +62,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     DataPage.Writer statsPageWriter
       = DataPage.Writer.create(column.repetitionLevel,
                                column.definitionLevel,
-                               types.getEncoderWithShim(plainColumn.type, plainColumn.encoding,
-                                                        getShim(statsCollector)),
+                               types.getEncoder(plainColumn.type, plainColumn.encoding,
+                                                getShim(statsCollector)),
                                null);
     DataColumnChunk.Writer plainColumnChunkWriter
       = DataColumnChunk.Writer.create(statsPageWriter, column, targetDataPageLength);

@@ -202,15 +202,23 @@ public final class Dictionary {
   public final static class DecoderFactory implements IDecoderFactory {
     final Object[] dictionary;
     final IDecoderFactory intDecoderFactory;
+    final IDecoderFactory dictDecoderFactory;
 
-    public DecoderFactory(Object[] dictionary, IDecoderFactory intDecoderFactory) {
+    public DecoderFactory(Object[] dictionary, IDecoderFactory intDecoderFactory,
+                          IDecoderFactory dictDecoderFactory) {
       this.dictionary = dictionary;
       this.intDecoderFactory = intDecoderFactory;
+      this.dictDecoderFactory = dictDecoderFactory;
     }
 
     @Override
     public IDecoder create(ByteBuffer bb) {
       return new Decoder((IIntDecoder)intDecoderFactory.create(bb), dictionary);
+    }
+
+    @Override
+    public Object nullValue() {
+      return dictDecoderFactory.nullValue();
     }
   }
 }

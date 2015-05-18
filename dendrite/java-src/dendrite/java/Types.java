@@ -988,36 +988,25 @@ public final class Types {
   }
 
   public IEncoder getEncoder(int type, int encoding) {
-    if (isPrimitive(type)) {
-      return getPrimitiveEncoder(type, encoding);
-    }
-    LogicalType lt = logicalTypes[type];
-    final IEncoder enc = getPrimitiveEncoder(lt.baseType, encoding);
-    final IFn toBaseTypeFn = lt.toBaseTypeFn;
-    return new IEncoder() {
-      public void encode(Object o) { enc.encode(toBaseTypeFn.invoke(o)); }
-      public int numEncodedValues() { return enc.numEncodedValues(); }
-      public void reset() { enc.reset(); }
-      public void finish() { enc.finish(); }
-      public int length() { return enc.length(); }
-      public int estimatedLength() { return enc.estimatedLength(); }
-      public void writeTo(MemoryOutputStream mos) { mos.write(enc); }
-    };
+    return getEncoder(type, encoding, null);
   }
 
-  public IEncoder getEncoderWithShim(int type, int encoding, IFn shim) {
+  public IEncoder getEncoder(int type, int encoding, IFn fn) {
+    if (isPrimitive(type) && fn == null) {
+      return getPrimitiveEncoder(type, encoding);
+    }
     final IEncoder enc;
-    final IFn fn;
+    final IFn f;
     if (isPrimitive(type)) {
       enc = getPrimitiveEncoder(type, encoding);
-      fn = shim;
+      f = fn;
     } else {
       LogicalType lt = logicalTypes[type];
       enc = getPrimitiveEncoder(lt.baseType, encoding);
-      fn = Utils.comp(shim, lt.toBaseTypeFn);
+      f = (fn == null)? lt.toBaseTypeFn : Utils.comp(fn, lt.toBaseTypeFn);
     }
     return new IEncoder() {
-      public void encode(Object o) { enc.encode(fn.invoke(o)); }
+      public void encode(Object o) { enc.encode(f.invoke(o)); }
       public int numEncodedValues() { return enc.numEncodedValues(); }
       public void reset() { enc.reset(); }
       public void finish() { enc.finish(); }
@@ -1028,25 +1017,33 @@ public final class Types {
   }
 
   public IDecoderFactory getDecoderFactory(int type, int encoding) {
-    if (isPrimitive(type)) {
+    return getDecoderFactory(type, encoding, null);
+  }
+
+  public IDecoderFactory getDecoderFactory(int type, int encoding, final IFn fn) {
+    if (isPrimitive(type) && fn == null) {
       return getPrimitiveDecoderFactory(type, encoding);
     }
-    LogicalType lt = logicalTypes[type];
-    final IDecoderFactory decoderFactory = getPrimitiveDecoderFactory(lt.baseType, encoding);
-    final IFn fromBaseTypeFn = lt.fromBaseTypeFn;
+    final IDecoderFactory decoderFactory;
+    final IFn f;
+    if (isPrimitive(type)) {
+      decoderFactory = getPrimitiveDecoderFactory(type, encoding);
+      f = fn;
+    } else {
+      LogicalType lt = logicalTypes[type];
+      decoderFactory = getPrimitiveDecoderFactory(lt.baseType, encoding);
+      f = (fn == null)? lt.fromBaseTypeFn : Utils.comp(fn, lt.fromBaseTypeFn);
+    }
     return new IDecoderFactory() {
       public IDecoder create(ByteBuffer bb) {
         final IDecoder dec = decoderFactory.create(bb);
         return new IDecoder() {
-          public Object decode() { return fromBaseTypeFn.invoke(dec.decode()); }
+          public Object decode() { return f.invoke(dec.decode()); }
           public int numEncodedValues() { return dec.numEncodedValues(); }
         };
       }
+      public Object nullValue() { return (fn == null)? null : fn.invoke(null); }
     };
-  }
-
-  public IDecoderFactory getDictionaryDecoderFactory(Object[] dictionary, int indicesEncoding) {
-    return new Dictionary.DecoderFactory(dictionary, getPrimitiveDecoderFactory(INT, indicesEncoding));
   }
 
   public ICompressor getCompressor(int compression) {

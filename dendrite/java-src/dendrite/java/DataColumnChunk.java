@@ -43,9 +43,8 @@ public final class DataColumnChunk {
                                             partitionLength,
                                             column.repetitionLevel,
                                             column.definitionLevel,
-                                            types.getDecoderFactory(column.type, column.encoding),
-                                            types.getDecompressorFactory(column.compression),
-                                            column.fn);
+                                            types.getDecoderFactory(column.type, column.encoding, column.fn),
+                                            types.getDecompressorFactory(column.compression));
     }
 
     public ISeq getPageReaders() {

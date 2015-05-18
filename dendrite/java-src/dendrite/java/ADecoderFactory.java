@@ -12,9 +12,9 @@
 
 package dendrite.java;
 
-import java.nio.ByteBuffer;
-
-public interface IDecoderFactory {
-  IDecoder create(ByteBuffer bb);
-  Object nullValue();
+public abstract class ADecoderFactory implements IDecoderFactory {
+  @Override
+  public Object nullValue() {
+    return null;
+  }
 }

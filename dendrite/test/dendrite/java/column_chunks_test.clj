@@ -128,7 +128,6 @@
     (testing "repeatable reads"
       (is (= (.readPartitioned reader 100) (.readPartitioned reader 100))))))
 
-
 (deftest frequency-column-chunk
   (let [column (column-repeated Types/INT Types/FREQUENCY Types/DEFLATE)
         input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values column 1000))

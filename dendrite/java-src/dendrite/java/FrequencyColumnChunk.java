@@ -47,10 +47,9 @@ public final class FrequencyColumnChunk {
          partitionLength,
          column.repetitionLevel,
          column.definitionLevel,
-         types.getDecoderFactory(column.type, Types.PLAIN),
+         types.getDecoderFactory(column.type, Types.PLAIN, column.fn),
          types.getDecoderFactory(Types.INT, Types.VLQ),
-         types.getDecompressorFactory(column.compression),
-         column.fn);
+         types.getDecompressorFactory(column.compression));
     }
 
     @Override
@@ -147,11 +146,16 @@ public final class FrequencyColumnChunk {
       dictionaryHeaderLength = h.headerLength();
     }
 
-    IFn getFrequencyIndexMappingFn() {
+    IDecoderFactory getFrequencyMappedIndicesDecoderFactory() {
       final int[] indicesByFrequency = dictEncoder.getIndicesByFrequency();
-      return new AFn() {
-        public Object invoke(Object i) {
-          return indicesByFrequency[RT.intCast(i)];
+      final IDecoderFactory intDecoderFactory = Types.getPrimitiveDecoderFactory(Types.INT, Types.VLQ);
+      return new ADecoderFactory() {
+        public IDecoder create(ByteBuffer bb) {
+          final IIntDecoder intDecoder = (IIntDecoder)intDecoderFactory.create(bb);
+          return new IDecoder() {
+            public Object decode() { return indicesByFrequency[intDecoder.decodeInt()]; }
+            public int numEncodedValues() { return intDecoder.numEncodedValues(); }
+          };
         }
       };
     }
@@ -160,17 +164,16 @@ public final class FrequencyColumnChunk {
     public void finish() {
       if (!isFinished) {
         tempIndicesColumnChunkWriter.finish();
-        ISeq dataPageReaders = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.byteBuffer(),
-                                                        tempIndicesColumnChunkWriter.metadata().numDataPages,
-                                                        column.repetitionLevel,
-                                                        column.definitionLevel,
-                                                        Types.getPrimitiveDecoderFactory(Types.INT, Types.VLQ),
-                                                        null);
-        IFn frequencyIndexMappingFn = getFrequencyIndexMappingFn();
+        ISeq dataPageReaders
+          = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.byteBuffer(),
+                                     tempIndicesColumnChunkWriter.metadata().numDataPages,
+                                     column.repetitionLevel,
+                                     column.definitionLevel,
+                                     getFrequencyMappedIndicesDecoderFactory(),
+                                     null);
         for (ISeq s = dataPageReaders; s != null; s = s.next()) {
           DataPage.Reader reader = (DataPage.Reader)s.first();
-          ChunkedPersistentList values
-            = (ChunkedPersistentList)reader.readWith(frequencyIndexMappingFn, null);
+          ChunkedPersistentList values = (ChunkedPersistentList)reader.read();
           frequencyIndicesColumnChunkWriter.write(values);
         }
         frequencyIndicesColumnChunkWriter.finish();

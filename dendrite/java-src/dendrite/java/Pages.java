@@ -115,33 +115,27 @@ public final class Pages {
     final ISeq fullPartitions;
     final ISeq unfinishedPartition;
     final ISeq nextDataPageReaders;
-    final IFn fn;
-    final Object nullValue;
     final int partitionLength;
 
     DataPageReadResult(IPersistentCollection fullPartitions, IPersistentCollection unfinishedPartition,
-                       ISeq nextDataPageReaders, IFn fn, Object nullValue, int partitionLength) {
+                       ISeq nextDataPageReaders, int partitionLength) {
       this.fullPartitions = RT.seq(fullPartitions);
       this.unfinishedPartition = RT.seq(unfinishedPartition);
       this.nextDataPageReaders = nextDataPageReaders;
-      this.fn = fn;
-      this.nullValue = nullValue;
       this.partitionLength = partitionLength;
     }
   }
 
-  private static DataPageReadResult readAndPartititionDataPage(ISeq dataPageReaders, ISeq unfinishedPartition,
-                                                               int partitionLength, IFn fn, Object nullValue) {
+  static DataPageReadResult readAndPartititionDataPage(ISeq dataPageReaders, ISeq unfinishedPartition,
+                                                       int partitionLength) {
     DataPage.Reader reader = (DataPage.Reader)dataPageReaders.first();
-    ChunkedPersistentList values = (ChunkedPersistentList)((fn == null)?
-                                                           reader.read(nullValue)
-                                                           : reader.readWith(fn, nullValue));
+    ChunkedPersistentList values = (ChunkedPersistentList)reader.read();
     ITransientCollection partitions = ChunkedPersistentList.newEmptyTransient();
     int numUnfinished = RT.count(unfinishedPartition);
     if (numUnfinished > 0) {
       if (numUnfinished + RT.count(values) < partitionLength) {
         return new DataPageReadResult(null, Utils.concat(unfinishedPartition, values), dataPageReaders.next(),
-                                      fn, nullValue, partitionLength);
+                                      partitionLength);
       } else {
         partitions.conj(Utils.concat(unfinishedPartition, values.take(partitionLength - numUnfinished)));
         values = values.drop(partitionLength - numUnfinished);
@@ -151,17 +145,15 @@ public final class Pages {
       partitions.conj(values.take(partitionLength));
       values = values.drop(partitionLength);
     }
-    return new DataPageReadResult(partitions.persistent(), values, dataPageReaders.next(), fn, nullValue,
-                                  partitionLength);
+    return new DataPageReadResult(partitions.persistent(), values, dataPageReaders.next(), partitionLength);
   }
 
   private static Future<DataPageReadResult>
     readAndPartititionDataPageFuture(final ISeq dataPageReaders, final ISeq unfinishedPartition,
-                                     final int partitionLength, final IFn fn, final Object nullValue) {
+                                     final int partitionLength) {
     return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
         public DataPageReadResult call() {
-          return readAndPartititionDataPage(dataPageReaders, unfinishedPartition, partitionLength, fn,
-                                            nullValue);
+          return readAndPartititionDataPage(dataPageReaders, unfinishedPartition, partitionLength);
         }
       });
   }
@@ -170,15 +162,13 @@ public final class Pages {
     readAndPartititionFirstDataPageFuture(final ByteBuffer bb, final int n, final int partitionLength,
                                           final int maxRepetitionLevel, final int maxDefinitionLevel,
                                           final IDecoderFactory decoderFactory,
-                                          final IDecompressorFactory decompressorFactory,
-                                          final IFn fn) {
+                                          final IDecompressorFactory decompressorFactory) {
 
     return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
         public DataPageReadResult call() {
           ISeq dataPageReaders = getDataPageReaders(bb, n, maxRepetitionLevel, maxDefinitionLevel,
                                                     decoderFactory, decompressorFactory);
-          return readAndPartititionDataPage(dataPageReaders, null, partitionLength, fn,
-                                            (fn == null)? null : fn.invoke(null));
+          return readAndPartititionDataPage(dataPageReaders, null, partitionLength);
         }
       });
   }
@@ -190,19 +180,18 @@ public final class Pages {
                                                         final int maxDefinitionLevel,
                                                         final IDecoderFactory dictDecoderFactory,
                                                         final IDecoderFactory indicesDecoderFactory,
-                                                        final IDecompressorFactory decompressorFactory,
-                                                        final IFn fn) {
+                                                        final IDecompressorFactory decompressorFactory) {
     return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
         public DataPageReadResult call() {
           DictionaryPage.Reader dictReader = getDictionaryPageReader(bb, dictDecoderFactory,
                                                                      decompressorFactory);
-          Object[] dictionary = (fn == null)? dictReader.read() : dictReader.readWith(fn);
-          Object nullValue = (fn == null)? null : fn.invoke(null);
+          Object[] dictionary = dictReader.read();
           IDecoderFactory dataDecoderFactory = new Dictionary.DecoderFactory(dictionary,
-                                                                             indicesDecoderFactory);
+                                                                             indicesDecoderFactory,
+                                                                             dictDecoderFactory);
           ISeq dataPageReaders = getDataPageReaders(dictReader.next(), n, maxRepetitionLevel,
                                                     maxDefinitionLevel, dataDecoderFactory, null);
-          return readAndPartititionDataPage(dataPageReaders, null, partitionLength, null, nullValue);
+          return readAndPartititionDataPage(dataPageReaders, null, partitionLength);
         }
       });
   }
@@ -240,8 +229,7 @@ public final class Pages {
         if (RT.seq(res.nextDataPageReaders) != null) {
           next = new PartitionedDataPageSeq(readAndPartititionDataPageFuture(res.nextDataPageReaders,
                                                                              res.unfinishedPartition,
-                                                                             res.partitionLength,
-                                                                             res.fn, res.nullValue));
+                                                                             res.partitionLength));
         }
       }
     }
@@ -281,8 +269,7 @@ public final class Pages {
   public static ISeq readDataPagesPartitioned(ByteBuffer bb, int n, int partitionLength,
                                               int maxRepetitionLevel, int maxDefinitionLevel,
                                               IDecoderFactory decoderFactory,
-                                              IDecompressorFactory decompressorFactory,
-                                              IFn fn) {
+                                              IDecompressorFactory decompressorFactory) {
     if (n == 0) {
       return null;
     }
@@ -290,16 +277,14 @@ public final class Pages {
                                                                             maxRepetitionLevel,
                                                                             maxDefinitionLevel,
                                                                             decoderFactory,
-                                                                            decompressorFactory,
-                                                                            fn));
+                                                                            decompressorFactory));
   }
 
   public static ISeq readDataPagesWithDictionaryPartitioned(ByteBuffer bb, int n, int partitionLength,
                                                             int maxRepetitionLevel, int maxDefinitionLevel,
                                                             IDecoderFactory dictDecoderFactory,
                                                             IDecoderFactory indicesDecoderFactory,
-                                                            IDecompressorFactory decompressorFactory,
-                                                            IFn fn) {
+                                                            IDecompressorFactory decompressorFactory) {
     if (n == 0) {
       return null;
     }
@@ -310,8 +295,7 @@ public final class Pages {
                                                            maxDefinitionLevel,
                                                            dictDecoderFactory,
                                                            indicesDecoderFactory,
-                                                           decompressorFactory,
-                                                           fn));
+                                                           decompressorFactory));
   }
 
 }
