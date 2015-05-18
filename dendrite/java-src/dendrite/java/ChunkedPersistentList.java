@@ -17,6 +17,7 @@ import clojure.lang.ArrayChunk;
 import clojure.lang.Counted;
 import clojure.lang.IChunk;
 import clojure.lang.IChunkedSeq;
+import clojure.lang.IEditableCollection;
 import clojure.lang.IHashEq;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentList;
@@ -161,9 +162,12 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
     }
   }
 
-  public static ITransientCollection newEmptyTransient() {
-    return new TransientChunkedList();
-  }
+  public final static IEditableCollection EMPTY = new IEditableCollection() {
+      @Override
+      public ITransientCollection asTransient() {
+        return new TransientChunkedList();
+      }
+    };
 
   private static class TransientChunkedList implements ITransientCollection {
 

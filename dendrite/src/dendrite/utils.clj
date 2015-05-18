@@ -99,7 +99,7 @@
     (.get bb chars)
     (String. chars)))
 
-(definline transient-list [] `(ChunkedPersistentList/newEmptyTransient))
+(definline transient-list [] `(.asTransient ChunkedPersistentList/EMPTY))
 
 (defn transient? [x] (instance? ITransientCollection x))
 

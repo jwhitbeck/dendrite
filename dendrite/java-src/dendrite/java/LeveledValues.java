@@ -46,7 +46,7 @@ public final class LeveledValues {
   }
 
   private static IPersistentCollection readRequired(final IDecoder dataDecoder) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
     int i = 0;
     int n = dataDecoder.numEncodedValues();
     while (i < n) {
@@ -57,7 +57,7 @@ public final class LeveledValues {
   }
 
   private static IPersistentCollection readRequiredFn(final IDecoder dataDecoder, final IFn fn) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
     int i = 0;
     int n = dataDecoder.numEncodedValues();
     while (i < n) {
@@ -70,7 +70,7 @@ public final class LeveledValues {
   private static IPersistentCollection readNonRepeatedValue(final IIntDecoder definitionLevelsDecoder,
                                                             final IDecoder dataDecoder,
                                                             final int maxDefinitionLevel) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
     int i = 0;
     int n = definitionLevelsDecoder.numEncodedValues();
     while (i < n) {
@@ -88,7 +88,7 @@ public final class LeveledValues {
                                                               final IDecoder dataDecoder,
                                                               final int maxDefinitionLevel,
                                                               final IFn fn) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
     int i = 0;
     int n = definitionLevelsDecoder.numEncodedValues();
     while (i < n) {
@@ -106,8 +106,8 @@ public final class LeveledValues {
                                                    final IIntDecoder definitionLevelsDecoder,
                                                    final IDecoder dataDecoder,
                                                    final int maxDefinitionLevel) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-    ITransientCollection rv = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
+    ITransientCollection rv = ChunkedPersistentList.EMPTY.asTransient();
     boolean seenFirstValue = false;
     int i = 0;
     int n = repetitionLevelsDecoder.numEncodedValues();
@@ -115,7 +115,7 @@ public final class LeveledValues {
       int repLvl = repetitionLevelsDecoder.decodeInt();
       if (repLvl == 0 && seenFirstValue){
         vs.conj(rv.persistent());
-        rv = ChunkedPersistentList.newEmptyTransient();
+        rv = ChunkedPersistentList.EMPTY.asTransient();
       }
       seenFirstValue = true;
       int defLvl = definitionLevelsDecoder.decodeInt();
@@ -137,8 +137,8 @@ public final class LeveledValues {
                                                      final IDecoder dataDecoder,
                                                      final int maxDefinitionLevel,
                                                      final IFn fn) {
-    ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-    ITransientCollection rv = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
+    ITransientCollection rv = ChunkedPersistentList.EMPTY.asTransient();
     boolean seenFirstValue = false;
     int i = 0;
     int n = repetitionLevelsDecoder.numEncodedValues();
@@ -146,7 +146,7 @@ public final class LeveledValues {
       int repLvl = repetitionLevelsDecoder.decodeInt();
       if (repLvl == 0 && seenFirstValue){
         vs.conj(rv.persistent());
-        rv = ChunkedPersistentList.newEmptyTransient();
+        rv = ChunkedPersistentList.EMPTY.asTransient();
       }
       seenFirstValue = true;
       int defLvl = definitionLevelsDecoder.decodeInt();

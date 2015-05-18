@@ -64,7 +64,7 @@ public final class Pages {
   }
 
   public static IPersistentCollection getPagesStats(ISeq headers) {
-    ITransientCollection coll = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection coll = ChunkedPersistentList.EMPTY.asTransient();
     for (ISeq s = headers; s != null; s = s.next()) {
       coll.conj(((IPageHeader)s.first()).stats());
     }
@@ -130,7 +130,7 @@ public final class Pages {
                                                        int partitionLength) {
     DataPage.Reader reader = (DataPage.Reader)dataPageReaders.first();
     ChunkedPersistentList values = (ChunkedPersistentList)reader.read();
-    ITransientCollection partitions = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection partitions = ChunkedPersistentList.EMPTY.asTransient();
     int numUnfinished = RT.count(unfinishedPartition);
     if (numUnfinished > 0) {
       if (numUnfinished + RT.count(values) < partitionLength) {

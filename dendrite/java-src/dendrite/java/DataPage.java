@@ -378,7 +378,7 @@ public final class DataPage {
     @Override
     public IPersistentCollection read() {
       IDecoder dataDecoder = getDataDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
       int i = 0;
       int n = dataDecoder.numEncodedValues();
       while (i < n) {
@@ -401,7 +401,7 @@ public final class DataPage {
       IDecoder dataDecoder = getDataDecoder();
       Object nullValue = decoderFactory.nullValue();
       IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
+      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
       int i = 0;
       int n = definitionLevelsDecoder.numEncodedValues();
       while (i < n) {
@@ -430,8 +430,8 @@ public final class DataPage {
       Object nullValue = decoderFactory.nullValue();
       IIntDecoder repetitionLevelsDecoder = getRepetitionLevelsDecoder();
       IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.newEmptyTransient();
-      ITransientCollection rv = ChunkedPersistentList.newEmptyTransient();
+      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
+      ITransientCollection rv = ChunkedPersistentList.EMPTY.asTransient();
       boolean seenFirstValue = false;
       int i = 0;
       int n = repetitionLevelsDecoder.numEncodedValues();
@@ -439,7 +439,7 @@ public final class DataPage {
         int repLvl = repetitionLevelsDecoder.decodeInt();
         if (repLvl == 0 && seenFirstValue){
           vs.conj(rv.persistent());
-          rv = ChunkedPersistentList.newEmptyTransient();
+          rv = ChunkedPersistentList.EMPTY.asTransient();
         }
         seenFirstValue = true;
         int defLvl = definitionLevelsDecoder.decodeInt();

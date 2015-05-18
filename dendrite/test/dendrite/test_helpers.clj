@@ -180,4 +180,4 @@
        (throw (.getCause e#)))))
 
 (defn as-chunked-list [coll]
-  (persistent! (reduce conj! (ChunkedPersistentList/newEmptyTransient) coll)))
+  (persistent! (reduce conj! (transient ChunkedPersistentList/EMPTY) coll)))

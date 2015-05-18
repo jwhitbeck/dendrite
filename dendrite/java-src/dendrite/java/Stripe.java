@@ -88,7 +88,7 @@ public final class Stripe {
   static void appendRepeated(Object[] buffer, int colIdx, Object v) {
     ITransientCollection coll = (ITransientCollection)buffer[colIdx];
     if (coll == null) {
-      coll = ChunkedPersistentList.newEmptyTransient();
+      coll = ChunkedPersistentList.EMPTY.asTransient();
       buffer[colIdx] = coll;
     }
     coll.conj(v);

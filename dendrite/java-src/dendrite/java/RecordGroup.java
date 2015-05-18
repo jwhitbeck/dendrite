@@ -77,7 +77,7 @@ public final class RecordGroup {
 
     public void optimize(final IPersistentMap compressionThresholds) {
       if (canOptimize) {
-        ITransientCollection optimizingColumnChunkwriters = ChunkedPersistentList.newEmptyTransient();
+        ITransientCollection optimizingColumnChunkwriters = ChunkedPersistentList.EMPTY.asTransient();
         for (int i=0; i<columnChunkWriters.length; ++i) {
           if (columnChunkWriters[i] instanceof OptimizingColumnChunkWriter) {
             optimizingColumnChunkwriters.conj(columnChunkWriters[i]);
@@ -233,7 +233,7 @@ public final class RecordGroup {
     }
 
     public IPersistentMap stats() {
-      ITransientCollection columnChunkStats = ChunkedPersistentList.newEmptyTransient();
+      ITransientCollection columnChunkStats = ChunkedPersistentList.EMPTY.asTransient();
       for (int i=0; i<columnChunkReaders.length; ++i) {
         columnChunkStats.conj(columnChunkReaders[i].stats());
       }

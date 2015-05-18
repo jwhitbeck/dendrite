@@ -43,7 +43,7 @@ public final class StripedRecordBundle implements Seqable {
   }
 
   public IPersistentCollection assemble(final IFn assemblyFn) {
-    ITransientCollection records = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection records = ChunkedPersistentList.EMPTY.asTransient();
     for (int i=0; i<numRecords; ++i) {
       records = records.conj(getNextRecord(assemblyFn));
     }
@@ -72,7 +72,7 @@ public final class StripedRecordBundle implements Seqable {
     ITransientCollection[] transientColumnValueSeq = new ITransientCollection[numColumns];
     ISeq[] columnValueSeq = new ISeq[numColumns];
     for(int i=0; i<numColumns; ++i) {
-      transientColumnValueSeq[i] = ChunkedPersistentList.newEmptyTransient();
+      transientColumnValueSeq[i] = ChunkedPersistentList.EMPTY.asTransient();
     }
     int numRecords = 0;
     Object record = null;

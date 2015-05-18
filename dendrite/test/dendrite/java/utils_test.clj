@@ -16,7 +16,7 @@
 
 (deftest chunked-drop
   (let [^ChunkedPersistentList cs (persistent! (reduce conj!
-                                                       (ChunkedPersistentList/newEmptyTransient)
+                                                       (transient ChunkedPersistentList/EMPTY)
                                                        (range 100)))]
     (is (= (drop 10 cs) (.drop cs 10)))
     (is (= (drop 32 cs) (.drop cs 32)))
@@ -24,7 +24,7 @@
 
 (deftest chunked-take
   (let [^ChunkedPersistentList cs (persistent! (reduce conj!
-                                                       (ChunkedPersistentList/newEmptyTransient)
+                                                       (transient ChunkedPersistentList/EMPTY)
                                                        (range 100)))]
     (is (= (take 10 cs) (.take cs 10)))
     (is (= (take 32 cs) (.take cs 32)))

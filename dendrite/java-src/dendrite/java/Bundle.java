@@ -78,7 +78,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
   }
 
   public IPersistentCollection assemble(final IFn assemblyFn) {
-    ITransientCollection records = ChunkedPersistentList.newEmptyTransient();
+    ITransientCollection records = ChunkedPersistentList.EMPTY.asTransient();
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
     System.arraycopy(columnValues, 0, remainingColumnValues, 0, columnValues.length);
@@ -117,7 +117,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     Object[] buffer = new Object[numColumns];
     ITransientCollection[] transientColumnValues = new ITransientCollection[numColumns];
     for(int i=0; i<numColumns; ++i) {
-      transientColumnValues[i] = ChunkedPersistentList.newEmptyTransient();
+      transientColumnValues[i] = ChunkedPersistentList.EMPTY.asTransient();
     }
     boolean success = false;
     for (ISeq s = RT.seq(records); s != null; s = s.next()) {
