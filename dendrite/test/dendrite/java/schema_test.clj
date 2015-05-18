@@ -77,22 +77,23 @@
          [] Schema/REQUIRED 0 0
          [:docid] Schema/REQUIRED 0 0
          [:links] Schema/OPTIONAL 0 1
-         [:links :backward] Schema/LIST 1 1
-         [:links :backward nil] Schema/OPTIONAL 1 2
-         [:links :forward nil] Schema/OPTIONAL 1 2
-         [:name] Schema/VECTOR 1 0
-         [:name nil] Schema/OPTIONAL 1 1
-         [:name nil :language] Schema/VECTOR 2 1
-         [:name nil :language nil] Schema/OPTIONAL 2 2
-         [:name nil :language nil :code] Schema/REQUIRED 2 2
-         [:name nil :language nil :country] Schema/OPTIONAL 2 3
-         [:name nil :url] Schema/OPTIONAL 1 2
-         [:meta] Schema/MAP 1 0
-         [:meta nil] Schema/OPTIONAL 1 1
+         [:links :backward] Schema/LIST 1 2
+         [:links :backward nil] Schema/OPTIONAL 1 3
+         [:links :forward] Schema/VECTOR 1 2
+         [:links :forward nil] Schema/OPTIONAL 1 3
+         [:name] Schema/VECTOR 1 1
+         [:name nil] Schema/OPTIONAL 1 2
+         [:name nil :language] Schema/VECTOR 2 3
+         [:name nil :language nil] Schema/OPTIONAL 2 4
+         [:name nil :language nil :code] Schema/REQUIRED 2 4
+         [:name nil :language nil :country] Schema/OPTIONAL 2 5
+         [:name nil :url] Schema/OPTIONAL 1 3
+         [:meta] Schema/MAP 1 1
+         [:meta nil] Schema/REQUIRED 1 1
          [:meta nil :key] Schema/REQUIRED 1 1
          [:meta nil :val] Schema/REQUIRED 1 1
-         [:keywords] Schema/SET 1 0
-         [:keywords nil] Schema/OPTIONAL 1 1
+         [:keywords] Schema/SET 1 1
+         [:keywords nil] Schema/OPTIONAL 1 2
          [:is-active] Schema/REQUIRED 0 0))
   (testing "leaves are properly configured in test schema"
     (are [ks t enc com col-idx] (let [^Schema$Column column (sub-schema-in test-schema ks)]
@@ -129,8 +130,9 @@
        (Col. 'string 'delta) #"Unsupported encoding 'delta' for type 'string'"
        (Col. 'int 'incremental) #"Unsupported encoding 'incremental' for type 'int'"
        (Col. 'string 'delta) #"Unsupported encoding 'delta' for type 'string'"
-       [(Schema/req 'int)] #"Repeated element cannot also be required"
-       {:foo [(Schema/req {:foo 'int})]} #"Repeated element cannot also be required"
+       (Schema/req ['int]) #"Repeated element cannot also be required"
+       {:foo (Schema/req [{:foo 'int}])} #"Repeated element cannot also be required"
+       {:foo (Schema/req {'int 'int})} #"Repeated element cannot also be required"
        {:foo (byte-array [1 2 3])} #"Unsupported schema element"
        ['int {:foo :bar}] #"Repeated field can only contain a single schema element"
        {'string 'int 'long 'long} #"Map field can only contain a single key/value schema element"))

@@ -24,8 +24,8 @@
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
-    (is (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema2)))
-    (is (= dremel-paper-record2-striped (stripe-record dremel-paper-record2 dremel-paper-schema2)))))
+    (is (= dremel-paper-record1-striped2 (stripe-record dremel-paper-record1 dremel-paper-schema2)))
+    (is (= dremel-paper-record2-striped2 (stripe-record dremel-paper-record2 dremel-paper-schema2)))))
 
 (def test-schema* (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types)))
 
@@ -40,23 +40,23 @@
                        :meta {"adipisicing" "laboris" "commodo" "elit"}}]
       (is (= (stripe-record test-record test-schema*)
              [0
-              [(LeveledValue. 0 2 3)]
-              [(LeveledValue. 0 2 1) (LeveledValue. 1 2 2) ]
-              [(LeveledValue. 0 2 "us") (LeveledValue. 2 2 "gb")]
-              [(LeveledValue. 0 2 nil) (LeveledValue. 2 3 "Great Britain")]
-              [(LeveledValue. 0 2 "http://P")]
+              [(LeveledValue. 0 3 3)]
+              [(LeveledValue. 0 3 1) (LeveledValue. 1 3 2) ]
+              [(LeveledValue. 0 4 "us") (LeveledValue. 2 4 "gb")]
+              [(LeveledValue. 0 4 nil) (LeveledValue. 2 5 "Great Britain")]
+              [(LeveledValue. 0 3 "http://P")]
               [(LeveledValue. 0 1 "adipisicing") (LeveledValue. 1 1 "commodo")]
               [(LeveledValue. 0 1 "laboris") (LeveledValue. 1 1 "elit")]
-              [(LeveledValue. 0 1 "commodo")]
+              [(LeveledValue. 0 2 "commodo")]
               false]))))
   (testing "nil values in repeated records are preserved"
     (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema*)
            [0
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]
-            [(LeveledValue. 0 1 nil)]
-            [(LeveledValue. 0 1 nil)]
-            [(LeveledValue. 0 1 nil)]
+            [(LeveledValue. 0 2 nil)]
+            [(LeveledValue. 0 2 nil)]
+            [(LeveledValue. 0 2 nil)]
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]

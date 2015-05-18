@@ -51,6 +51,15 @@
    [(LeveledValue. 0 3 "us") (LeveledValue. 2 2 nil) (LeveledValue. 1 1 nil) (LeveledValue. 1 3 "gb")]
    [(LeveledValue. 0 2 "http://A") (LeveledValue. 1 2 "http://B") (LeveledValue. 1 1 nil)]])
 
+(def dremel-paper-record1-striped2
+  [10
+   [(LeveledValue. 0 3 20) (LeveledValue. 1 3 40) (LeveledValue. 1 3 60)]
+   [(LeveledValue. 0 1 nil)]
+   [(LeveledValue. 0 4 "en-us") (LeveledValue. 2 4 "en") (LeveledValue. 1 2 nil)
+    (LeveledValue. 1 4 "en-gb")]
+   [(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil) (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
+   [(LeveledValue. 0 3 "http://A") (LeveledValue. 1 3 "http://B") (LeveledValue. 1 2 nil)]])
+
 (def dremel-paper-record2
   {:docid 20
    :links {:backward [10 30]
@@ -64,3 +73,11 @@
    [(LeveledValue. 0 1 nil)]
    [(LeveledValue. 0 1 nil)]
    [(LeveledValue. 0 2 "http://C")]])
+
+(def dremel-paper-record2-striped2
+  [20
+   [(LeveledValue. 0 3 80)]
+   [(LeveledValue. 0 3 10) (LeveledValue. 1 3 30)]
+   [(LeveledValue. 0 2 nil)]
+   [(LeveledValue. 0 2 nil)]
+   [(LeveledValue. 0 3 "http://C")]])

@@ -23,7 +23,7 @@
 (def ^Types types (Types/create nil nil))
 
 (deftest dremel-write-read
-  (let [dremel-bundle (->> (map vector dremel-paper-record1-striped dremel-paper-record2-striped)
+  (let [dremel-bundle (->> (map vector dremel-paper-record1-striped2 dremel-paper-record2-striped2)
                            (map helpers/as-chunked-list)
                            (into-array ChunkedPersistentList)
                            Bundle.)
@@ -52,7 +52,7 @@
                                    record-group-metadata
                                    (Schema/getColumns two-fields-schema))]
         (is (= [[10 20]
-                [[(LeveledValue. 0 3 "us") (LeveledValue. 2 2 nil)
-                  (LeveledValue. 1 1 nil) (LeveledValue. 1 3 "gb")]
-                 [(LeveledValue. 0 1 nil)]]]
+                [[(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil)
+                  (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
+                 [(LeveledValue. 0 2 nil)]]]
                (first (.readBundled r 100))))))))

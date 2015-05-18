@@ -578,14 +578,14 @@ public abstract class Schema implements IWriteable {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
-    Object elem = RT.first(coll);
-    if (isRequired(elem)) {
+    if (isRequired(coll)) {
       throw new IllegalArgumentException("Repeated element cannot also be required.");
     }
-    Schema repeatedSchema = _parse(types, parents.cons(null), repLvl + 1, defLvl, columns, elem);
+    Object elem = RT.first(coll);
+    Schema repeatedSchema = _parse(types, parents.cons(null), repLvl + 1, defLvl + 1, columns, elem);
     return new Collection(getRepeatedRepetition(coll),
                           repLvl + 1,
-                          defLvl,
+                          defLvl + 1,
                           getLeafColumnIndex(columns),
                           repeatedSchema,
                           null);
@@ -596,11 +596,14 @@ public abstract class Schema implements IWriteable {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
-    int curRepLvl = repLvl + 1;
+    if (isRequired(map)) {
+      throw new IllegalArgumentException("Repeated element cannot also be required.");
+    }
     IMapEntry e = (IMapEntry)RT.first(map);
-    Schema keyValueRecord = _parseRecord(types, parents.cons(null), curRepLvl, defLvl, columns,
-                                         new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()}));
-    return new Collection(MAP, curRepLvl, defLvl, getLeafColumnIndex(columns), keyValueRecord, null);
+    IPersistentMap elem = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
+    Schema keyValueRecord = _parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, columns,
+                                         (IPersistentMap)req(elem));
+    return new Collection(MAP, repLvl + 1, defLvl + 1, getLeafColumnIndex(columns), keyValueRecord, null);
   }
 
   public static Schema parse(Types types, Object unparsedSchema) {

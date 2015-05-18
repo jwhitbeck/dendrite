@@ -277,7 +277,8 @@ public final class Stripe {
 
   static StripeFn getRepeatedStripeFn(Types types, Schema.Collection coll, final IPersistentVector parents) {
     final StripeFn repeatedElementStripeFn = getStripeFn(types, coll.repeatedSchema, parents.cons(null));
-    final int maxRepetitionLevel = coll.repetitionLevel;
+    final int curRepetitionLevel = coll.repetitionLevel;
+    final int curDefinitionLevel = coll.definitionLevel;
     return new StripeFn() {
       public void invoke(Object[] buffer, Object repeatedValues, boolean isParentNil, int repetitionLevel,
                          int definitionLevel) {
@@ -291,10 +292,10 @@ public final class Stripe {
         if (s == null) {
           repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, definitionLevel);
         } else {
-          repeatedElementStripeFn.invoke(buffer, s.first(), isParentNil, repetitionLevel, definitionLevel);
+          repeatedElementStripeFn.invoke(buffer, s.first(), isParentNil, repetitionLevel, curDefinitionLevel);
           for (ISeq t = s.next(); t != null; t = t.next()) {
-            repeatedElementStripeFn.invoke(buffer, t.first(), isParentNil, maxRepetitionLevel,
-                                           definitionLevel);
+            repeatedElementStripeFn.invoke(buffer, t.first(), isParentNil, curRepetitionLevel,
+                                           curDefinitionLevel);
           }
         }
       }
