@@ -196,7 +196,7 @@ public final class DictionaryColumnChunk {
 
     static Schema.Column getIndicesColumn(Schema.Column column) {
       return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
-                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex, null);
+                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex, -1, null);
     }
   }
 }

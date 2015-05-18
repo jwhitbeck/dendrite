@@ -47,13 +47,13 @@
        (ColumnChunks/createReader custom-types (.byteBuffer opt-w) (.metadata opt-w) (.column opt-w))))))
 
 (defn- column-repeated ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 2 3 type encoding compression 0 nil))
+  (Schema$Column. 0 2 3 type encoding compression 0 -1 nil))
 
 (defn- column-non-repeated ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 0 3 type encoding compression 0 nil))
+  (Schema$Column. 0 0 3 type encoding compression 0 -1 nil))
 
 (defn- column-required ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 0 0 type encoding compression 0 nil))
+  (Schema$Column. 0 0 0 type encoding compression 0 -1 nil))
 
 (defn- rand-repeated-values [^Schema$Column column n coll]
   (->> coll

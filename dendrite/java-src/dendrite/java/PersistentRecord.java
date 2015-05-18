@@ -190,7 +190,7 @@ public class PersistentRecord extends APersistentMap {
     final static long hasheqMask  = 0x00000000ffffffffL;
     final static long idxMask     = 0x7fffffff00000000L;
     final static long presenceBit = 0x8000000000000000L;
-    final static KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(null);
+    final static KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(new Keyword[]{});
 
     public KeywordIndexHashMap(Keyword[] keywords) {
       kws = keywords;

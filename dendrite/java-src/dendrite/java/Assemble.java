@@ -19,6 +19,8 @@ import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ISeq;
 import clojure.lang.ITransientCollection;
+import clojure.lang.ITransientMap;
+import clojure.lang.PersistentArrayMap;
 import clojure.lang.PersistentVector;
 import clojure.lang.PersistentHashSet;
 import clojure.lang.RT;
@@ -34,14 +36,16 @@ public final class Assemble {
       return getRecordFn((Schema.Record)schema);
     } else if (schema instanceof Schema.Column) {
       if (schema.repetition < 0) {
-        return getMissingValueFn((Schema.Column)schema);
+        return getMissingValueFn(schema);
       } else if (schema.repetitionLevel == 0) {
         return getNonRepeatedValueFn((Schema.Column)schema);
       } else {
         return getRepeatedValueFn((Schema.Column)schema);
       }
     } else /* if (schema instanceof Schema.Collection) */ {
-      if (schema.repetition == Schema.MAP) {
+      if (schema.repetition < 0) {
+        return getMissingValueFn(schema);
+      } else if (schema.repetition == Schema.MAP) {
         return getMapFn((Schema.Collection)schema);
       } else {
         return getRepeatedFn((Schema.Collection)schema);
@@ -49,8 +53,8 @@ public final class Assemble {
     }
   }
 
-  static Fn getMissingValueFn(Schema.Column column) {
-    IFn fn = column.fn;
+  static Fn getMissingValueFn(Schema schema) {
+    IFn fn = schema.fn;
     final Object v = (fn != null)? fn.invoke(null) : null;
     return new Fn() {
       public Object invoke(Object [] buffer) {
@@ -60,7 +64,7 @@ public final class Assemble {
   }
 
   static Fn getNonRepeatedValueFn(Schema.Column column) {
-    final int colIdx = column.columnIndex;
+    final int colIdx = column.queryColumnIndex;
     // NOTE: the column.fn is applied by the decoder for greater efficiency
     return new Fn() {
       public Object invoke(Object[] buffer) {
@@ -71,7 +75,7 @@ public final class Assemble {
 
   static Fn getRepeatedValueFn(Schema.Column column) {
     // NOTE: the column.fn is applied by the decoder for greater efficiency
-    final int colIdx = column.columnIndex;
+    final int colIdx = column.queryColumnIndex;
     return new Fn() {
       public Object invoke(Object[] buffer) {
         ISeq leveledValues = RT.seq(buffer[colIdx]);
@@ -159,45 +163,64 @@ public final class Assemble {
     final int leafColumnIndex = coll.leafColumnIndex;
     final int repetitionLevel = coll.repetitionLevel;
     final int definitionLevel = coll.definitionLevel;
-    final ITransientCollection emptyColl;
+    final IEditableCollection emptyColl;
     switch (coll.repetition) {
-    case Schema.SET: emptyColl = PersistentHashSet.EMPTY.asTransient(); break;
-    case Schema.VECTOR: emptyColl = PersistentVector.EMPTY.asTransient(); break;
-    default: /* Schema.LIST*/ emptyColl = ChunkedPersistentList.newEmptyTransient(); break;
+    case Schema.SET: emptyColl = PersistentHashSet.EMPTY; break;
+    case Schema.VECTOR: emptyColl = PersistentVector.EMPTY; break;
+    default: /* Schema.LIST*/ emptyColl = ChunkedPersistentList.EMPTY; break;
     }
     final Fn repeatedElemFn = getFn(coll.repeatedSchema);
-    return new Fn() {
-      public Object invoke(Object[] buffer) {
-        /* int currentDefinitionLevel = getNextDefinitionLevel(buffer, leafColumnIndex);
-        Object firstObject = repeatedElemFn.invoke(buffer);
-        if ((firstObject == null) && (definitionLevel > currentDefinitionLevel)) {
-          return null;
-        }
-        IPersistentCollection ret = null;
-        ITransientCollection tr = coll.asTransient();
-        tr = tr.conj(firstRecord);
-        int nextRepetitionLevel = getNextRepetitionLevel(colIdx, lva);
-        while (true) {
-          if (repetitionLevel > nextRepetitionLevel) {
-            ret = tr.persistent();
-            break;
-          } else {
-            Object nextRecord = nonRepeatedAssemblyFn.invoke(leveledValuesArray);
-            tr = tr.conj(nextRecord);
-            nextRepetitionLevel = getNextRepetitionLevel(colIdx, lva);
+    final Fn repeatedFn = new Fn() {
+        public Object invoke(Object[] buffer) {
+          int leafDefinitionLevel = getNextDefinitionLevel(buffer, leafColumnIndex);
+          Object firstObject = repeatedElemFn.invoke(buffer);
+          if ((firstObject == null) && (definitionLevel > leafDefinitionLevel)) {
+            return null;
           }
+          ITransientCollection tr = emptyColl.asTransient();
+          tr = tr.conj(firstObject);
+          int leafRepetitionLevel = getNextRepetitionLevel(buffer, leafColumnIndex);
+          while (repetitionLevel <= leafRepetitionLevel) {
+            Object nextRecord = repeatedElemFn.invoke(buffer);
+            tr = tr.conj(nextRecord);
+            leafRepetitionLevel = getNextRepetitionLevel(buffer, leafColumnIndex);
+          }
+          return tr.persistent();
         }
-        if (ret.count() == 0) {
-          return null;
+      };
+    final IFn fn = coll.fn;
+    if (fn == null) {
+      return repeatedFn;
+    } else {
+      return new Fn() {
+        public Object invoke(Object[] buffer) {
+          return fn.invoke(repeatedFn.invoke(buffer));
         }
-        return ret;
-        }*/
-        return null;
-      }
-    };
+      };
+    }
   }
 
   static Fn getMapFn(Schema.Collection coll) {
-    return null;
+    final Fn listFn = getFn(coll.withRepetition(Schema.LIST).withFn(null));
+    final Fn mapFn = new Fn() {
+        public Object invoke(Object[] buffer) {
+          ITransientMap tm = PersistentArrayMap.EMPTY.asTransient();
+          for (ISeq s = RT.seq(listFn.invoke(buffer)); s != null; s = s.next()) {
+            Object e = s.first();
+            tm.assoc(RT.get(e, Schema.KEY), RT.get(e, Schema.VAL));
+          }
+          return tm.persistent();
+        }
+      };
+    final IFn fn = coll.fn;
+    if (fn == null) {
+      return mapFn;
+    } else {
+      return new Fn() {
+        public Object invoke(Object[] buffer) {
+          return fn.invoke(mapFn.invoke(buffer));
+        }
+      };
+    }
   }
 }

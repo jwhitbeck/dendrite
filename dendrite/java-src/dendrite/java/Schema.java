@@ -43,6 +43,7 @@ import java.util.HashSet;
 public abstract class Schema implements IWriteable {
 
   public final static int
+    MISSING = -1,
     OPTIONAL = 0,
     REQUIRED = 1,
     VECTOR = 2,
@@ -239,24 +240,31 @@ public abstract class Schema implements IWriteable {
     public final int encoding;
     public final int compression;
     public final int columnIndex;
+    public final int queryColumnIndex;
 
     public Column(int repetition, int repetitionLevel, int definitionLevel, int type, int encoding,
-                  int compression, int columnIndex, IFn fn) {
+                  int compression, int columnIndex, int queryColumnIndex, IFn fn) {
       super(repetition, repetitionLevel, definitionLevel, fn);
       this.type = type;
       this.encoding = encoding;
       this.compression = compression;
       this.columnIndex = columnIndex;
+      this.queryColumnIndex = queryColumnIndex;
     }
 
     public static Column missing() {
-      return new Column(-REQUIRED, -1, -1, -1, -1, -1, -1, null);
+      return new Column(MISSING, -1, -1, -1, -1, -1, -1, -1, null);
     }
 
     @Override
     public Column withFn(IFn aFn) {
       return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
-                        columnIndex, aFn);
+                        columnIndex, queryColumnIndex, aFn);
+    }
+
+    public Column withQueryColumnIndex(int aQueryColumnIndex) {
+      return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
+                        columnIndex, aQueryColumnIndex, fn);
     }
 
     @Override
@@ -293,6 +301,7 @@ public abstract class Schema implements IWriteable {
                         Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
+                        -1,
                         null);
     }
   }
@@ -339,7 +348,7 @@ public abstract class Schema implements IWriteable {
     }
 
     public static Record missing(Field[] fields) {
-      return new Record(-REQUIRED, -1, -1, -1, fields, null);
+      return new Record(MISSING, -1, -1, -1, fields, null);
     }
 
     @Override
@@ -349,6 +358,10 @@ public abstract class Schema implements IWriteable {
 
     public Record withFields(Field[] newFields) {
       return new Record(repetition, repetitionLevel, definitionLevel, leafColumnIndex, newFields, fn);
+    }
+
+    public Record withLeafColumnIndex(int aLeafColumnIndex) {
+      return new Record(repetition, repetitionLevel, definitionLevel, aLeafColumnIndex, fields, fn);
     }
 
     public Schema get(Keyword name) {
@@ -422,13 +435,18 @@ public abstract class Schema implements IWriteable {
     }
 
     public static Collection missing(int repetition) {
-      return new Collection(-repetition, -1, -1, -1, null, null);
+      return new Collection(MISSING, -1, -1, -1, null, null);
     }
 
     @Override
     public Collection withFn(IFn aFn) {
       return new Collection(repetition, repetitionLevel, definitionLevel, leafColumnIndex,
                             repeatedSchema, aFn);
+    }
+
+    public Collection withLeafColumnIndex(int aLeafColumnIndex) {
+      return new Collection(repetition, repetitionLevel, definitionLevel, aLeafColumnIndex,
+                            repeatedSchema, fn);
     }
 
     public Collection withRepetition(int aRepetition) {
@@ -536,6 +554,7 @@ public abstract class Schema implements IWriteable {
                                types.getEncoding(type, col.encoding),
                                types.getCompression(col.compression),
                                columns.size(),
+                               -1,
                                null);
     columns.add(column);
     return column;
@@ -706,17 +725,39 @@ public abstract class Schema implements IWriteable {
     final Types types;
     final IPersistentMap readers;
     final boolean isMissingFieldsAsNil;
+    final LinkedList<Column> columns;
     QueryContext(Types types, IPersistentMap readers, boolean isMissingFieldsAsNil) {
       this.types = types;
       this.readers = readers;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
+      this.columns = new LinkedList<Column>();
+    }
+
+    int getLeafColumnIndex() {
+      return columns.getLast().queryColumnIndex;
+    }
+
+    void appendColumn(Column col) {
+      columns.addLast(col);
+    }
+
+    int getNextQueryColumnIndex() {
+      return columns.size();
+    }
+
+    boolean hasLeaf() {
+      return columns.size() > 0;
     }
   }
 
   private static Schema _applyQuery(QueryContext context, Schema schema, Object query,
                                     PersistentVector parents) {
     if (isTagged(query)) {
-      return _applyQueryTagged(context, schema, query, parents);
+      if (query instanceof Symbol) {
+        return _applyQueryTaggedSymbol(context, schema, (Symbol)query, parents);
+      } else {
+        return _applyQueryTagged(context, schema, query, parents);
+      }
     } else if (isRecord(query)) {
       return _applyQueryRecord(context, schema, (IPersistentMap)query, parents);
     } else if (query instanceof IPersistentMap) {
@@ -728,7 +769,7 @@ public abstract class Schema implements IWriteable {
     } else if (query instanceof IPersistentList) {
       return _applyQueryList(context, schema, (IPersistentList)query, parents);
     } else if (query instanceof Symbol) {
-      return _applyQuerySymbol(context, schema, (Symbol)query, parents);
+      return _applyQueryUntaggedSymbol(context, schema, (Symbol)query, parents);
     }
     throw new IllegalArgumentException(String.format("Unable to parse query element '%s'.", query));
   }
@@ -806,7 +847,12 @@ public abstract class Schema implements IWriteable {
                                                            parents.cons(field.name))));
         }
       }
-      return record.withFields(fieldsList.toArray(new Field[]{}));
+      record = record.withFields(fieldsList.toArray(new Field[]{}));
+      if (context.hasLeaf()) {
+        return record.withLeafColumnIndex(context.getLeafColumnIndex());
+      } else {
+        return record;
+      }
     }
   }
 
@@ -825,10 +871,15 @@ public abstract class Schema implements IWriteable {
     IMapEntry e = (IMapEntry)RT.first(query);
     Object keyValueQuery = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
     Collection map = (Collection)schema;
-    return map.withRepeatedSchema(_applyQuery(context,
-                                              map.repeatedSchema,
-                                              keyValueQuery,
-                                              parents.cons(null)));
+    map = map.withRepeatedSchema(_applyQuery(context,
+                                             map.repeatedSchema,
+                                             keyValueQuery,
+                                             parents.cons(null)));
+    if (context.hasLeaf()) {
+      return map.withLeafColumnIndex(context.getLeafColumnIndex());
+    } else {
+      return map;
+    }
   }
 
   private static Schema _applyQuerySet(QueryContext context, Schema schema, IPersistentSet query,
@@ -879,8 +930,34 @@ public abstract class Schema implements IWriteable {
   private static Schema _applyQueryRepeated(QueryContext context, int repetition, Schema schema,
                                             IPersistentCollection query, PersistentVector parents) {
     Collection coll = (Collection)schema;
-    return coll.withRepetition(repetition)
+    coll = coll.withRepetition(repetition)
       .withRepeatedSchema(_applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
+    if (context.hasLeaf()) {
+      return coll.withLeafColumnIndex(context.getLeafColumnIndex());
+    } else {
+      return coll;
+    }
+  }
+
+  private static Schema _applyQuerySubSchema(QueryContext context, Schema schema) {
+    if (schema instanceof Column) {
+      Column col = ((Column)schema).withQueryColumnIndex(context.getNextQueryColumnIndex());
+      context.appendColumn(col);
+      return col;
+    } else if (schema instanceof Collection) {
+      Collection coll = (Collection)schema;
+      return coll.withRepeatedSchema(_applyQuerySubSchema(context, coll.repeatedSchema))
+        .withLeafColumnIndex(context.getLeafColumnIndex());
+    } else /* if (schema instanceof Record) */ {
+      Record rec = (Record)schema;
+      Field[] fields = rec.fields;
+      Field[] newFields = new Field[fields.length];
+      for (int i=0; i<fields.length; ++i) {
+        Field field = fields[i];
+        newFields[i] = new Field(field.name, _applyQuerySubSchema(context, field.value));
+      }
+      return rec.withFields(newFields).withLeafColumnIndex(context.getLeafColumnIndex());
+    }
   }
 
   private static Schema _applyQuerySymbol(QueryContext context, Schema schema, Symbol query,
@@ -888,7 +965,7 @@ public abstract class Schema implements IWriteable {
     if (schema == null) {
       return Column.missing();
     } else if (query.equals(SUB_SCHEMA)) {
-      return schema;
+      return _applyQuerySubSchema(context, schema);
     } else if (schema instanceof Record) {
       throw new IllegalArgumentException(String.format("Element at path %s is a record, not a value.",
                                                        parents));
@@ -908,11 +985,50 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  public static Schema applyQuery(Types types, boolean isMissingFieldsAsNil, IPersistentMap readers,
-                                  Schema schema, Object query) {
+  private static Schema _applyQueryTaggedSymbol(QueryContext context, Schema schema, Symbol query,
+                                                PersistentVector parents) {
+    Symbol tag = (Symbol)getTag(query);
+    IFn fn = (IFn)RT.get(context.readers, tag);
+    if (fn == null) {
+      throw new IllegalArgumentException(String.format("No reader function was provided for tag '%s'.", tag));
+    }
+    Schema s = _applyQuerySymbol(context, schema, (Symbol)untag(query), parents).withFn(fn);
+    if (s instanceof Column && !query.equals(SUB_SCHEMA)) {
+      Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
+      context.appendColumn(col);
+      return col;
+    } else {
+      return s;
+    }
+  }
+
+  private static Schema _applyQueryUntaggedSymbol(QueryContext context, Schema schema, Symbol query,
+                                                  PersistentVector parents) {
+    Schema s = _applyQuerySymbol(context, schema, query, parents);
+    if (s instanceof Column && !query.equals(SUB_SCHEMA)) {
+      Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
+      context.appendColumn(col);
+      return col;
+    } else {
+      return s;
+    }
+  }
+
+  public final static class QueryResult {
+    public Schema schema;
+    public Column[] columns;
+    public QueryResult(Schema schema, Column[] columns) {
+      this.schema = schema;
+      this.columns = columns;
+    }
+  }
+
+  public static QueryResult applyQuery(Types types, boolean isMissingFieldsAsNil, IPersistentMap readers,
+                                       Schema schema, Object query) {
     try {
-      return _applyQuery(new QueryContext(types, readers, isMissingFieldsAsNil), schema, query,
-                         PersistentVector.EMPTY);
+      QueryContext context = new QueryContext(types, readers, isMissingFieldsAsNil);
+      Schema s =  _applyQuery(context, schema, query, PersistentVector.EMPTY);
+      return new QueryResult(s, context.columns.toArray(new Column[]{}));
     } catch (Exception e) {
       throw new IllegalArgumentException(String.format("Invalid query '%s' for schema '%s'.", query,
                                                        unparse(types, schema)), e);

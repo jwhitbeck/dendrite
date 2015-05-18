@@ -11,7 +11,7 @@
 (ns dendrite.dremel-paper-examples
   (:require [dendrite.schema :as schema]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java LeveledValue Schema]))
+  (:import [dendrite.java LeveledValue Schema Schema$QueryResult]))
 
 (def dremel-paper-schema-str
   "#req {:docid #req long
@@ -30,7 +30,7 @@
 (def dremel-paper-full-query-schema
   (schema/apply-query dremel-paper-schema '_ helpers/default-type-store true {}))
 
-(def dremel-paper-full-query-schema2
+(def ^Schema$QueryResult dremel-paper-full-query-schema2
   (Schema/applyQuery helpers/default-types true {} dremel-paper-schema2 '_))
 
 (def dremel-paper-record1

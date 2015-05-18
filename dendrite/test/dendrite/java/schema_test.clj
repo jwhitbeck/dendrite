@@ -163,7 +163,8 @@
     (is (= (Schema/readQueryString "{:docid _ :links #foo {:backward (long)}}")
            {:docid '_ :links (Schema/tag 'foo {:backward (list 'long)})})))
   (testing "select sub-schema from query"
-    (are [query sub-schema] (= (Schema/unparse types (Schema/applyQuery types true {} test-schema query))
+    (are [query sub-schema] (= (Schema/unparse types
+                                               (.schema (Schema/applyQuery types true {} test-schema query)))
                                sub-schema)
          '_ (Schema/unparse types test-schema)
          {:docid '_} {:docid (Schema/req (Col. 'long 'delta 'deflate))}
@@ -176,9 +177,35 @@
                                                                      (Schema/req 'string)}}
          {:keywords ['_]} {:keywords ['string]}
          {:meta ['_]} {:meta [{:key (Schema/req 'string) :val (Schema/req 'string)}]}))
+  (testing "query-column-indices are set correctly"
+    (let [query-result (Schema/applyQuery types true {} test-schema '_)]
+      (are [query-column-index sub-schema]
+        (let [^Schema$Column col (-> query-result .schema (sub-schema-in sub-schema))]
+          (is (= query-column-index (.queryColumnIndex col))))
+        0 [:docid]
+        1 [:links :backward nil]
+        2 [:links :forward nil]
+        3 [:name nil :language nil :code]
+        4 [:name nil :language nil :country]
+        5 [:name nil :url]
+        6 [:meta nil :key]
+        7 [:meta nil :val]
+        8 [:keywords nil]
+        9 [:is-active])
+      (is (= (range 10) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result)))))
+    (let [query-result (Schema/applyQuery types true {} test-schema {:is-active '_ :name '_})]
+      (are [query-column-index sub-schema]
+        (let [^Schema$Column col (-> query-result .schema (sub-schema-in sub-schema))]
+          (is (= query-column-index (.queryColumnIndex col))))
+        0 [:name nil :language nil :code]
+        1 [:name nil :language nil :country]
+        2 [:name nil :url]
+        3 [:is-active])
+      (is (= (range 4) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result))))))
   (testing "tagging"
     (let [bogus-fn (fn [])]
       (are [query path] (= bogus-fn (-> (Schema/applyQuery types true {'foo bogus-fn} test-schema query)
+                                        .schema
                                         (sub-schema-in path)
                                         .fn))
            {:docid (Schema/tag 'foo '_)} [:docid]
@@ -197,16 +224,18 @@
          IllegalArgumentException #"The following fields don't exist: \[:missing\]"
          (throw-cause (Schema/applyQuery types false {} test-schema {:docid '_ :missing '_})))))
   (testing "missing fields are marked as such and don't cross repetition levels"
-    (are [repetition query path] (let [applied-query (Schema/applyQuery types true {} test-schema query)]
+    (are [repetition query path]
+      (let [applied-query (.schema (Schema/applyQuery types true {} test-schema query))]
                                    (= repetition (.repetition (sub-schema-in applied-query path))))
-         -1 {:foo '_} [:foo]
-         -1 {:links {:foo '_}} [:links :foo]
-         (- Schema/VECTOR) {:links {:foo ['_]}} [:links :foo]
-         (- Schema/SET) {:links {:foo #{'_}}} [:links :foo]
-         (- Schema/VECTOR) {:links {:foo [{:bar '_}]}} [:links :foo]))
+         Schema/MISSING {:foo '_} [:foo]
+         Schema/MISSING {:links {:foo '_}} [:links :foo]
+         Schema/MISSING {:links {:foo ['_]}} [:links :foo]
+         Schema/MISSING {:links {:foo #{'_}}} [:links :foo]
+         Schema/MISSING {:links {:foo [{:bar '_}]}} [:links :foo]))
   (testing "tags on missing fields"
     (let [bogus-fn (fn [])]
       (are [query path] (= bogus-fn (-> (Schema/applyQuery types true {'foo bogus-fn} test-schema query)
+                                        .schema
                                         (sub-schema-in path)
                                         .fn))
            {:foo (Schema/tag 'foo '_)} [:foo]
@@ -214,6 +243,7 @@
            {:links {:foo (Schema/tag 'foo ['_])}} [:links :foo])
       (is (nil? (-> (Schema/applyQuery types true {'foo bogus-fn} test-schema
                                        {:links {:foo [(Schema/tag 'foo '_)]}})
+                    .schema
                     (sub-schema-in [:links :foo])
                     .fn)))))
   (testing "bad queries"

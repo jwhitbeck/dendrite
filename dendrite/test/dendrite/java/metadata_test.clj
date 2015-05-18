@@ -23,7 +23,7 @@
 
 (defn rand-schema-column []
   (Schema$Column. (rand-int 10) (rand-int 10) (rand-int 10) (- (rand-int 10) 4)
-                  (rand-int 10) (rand-int 10) (rand-int 100) nil))
+                  (rand-int 10) (rand-int 10) (rand-int 100) -1 nil))
 
 (defn rand-field [max-depth]
   (Schema$Field. (rand-name) (rand-schema (dec max-depth))))

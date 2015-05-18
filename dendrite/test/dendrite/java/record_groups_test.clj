@@ -39,18 +39,18 @@
       (let [r (RecordGroup$Reader. types
                                    bb
                                    record-group-metadata
-                                   (Schema/getColumns dremel-paper-full-query-schema2))]
+                                   (.columns dremel-paper-full-query-schema2))]
         (is (= dremel-bundle (first (.readBundled r 100))))))
     (testing "two fields example"
-      (let [two-fields-schema (Schema/applyQuery types
-                                                 true
-                                                 {}
-                                                 dremel-paper-schema2
-                                                 {:docid '_ :name [{:language [{:country '_}]}]})
+      (let [two-fields-query (Schema/applyQuery types
+                                                true
+                                                {}
+                                                dremel-paper-schema2
+                                                {:docid '_ :name [{:language [{:country '_}]}]})
             r (RecordGroup$Reader. types
                                    bb
                                    record-group-metadata
-                                   (Schema/getColumns two-fields-schema))]
+                                   (.columns two-fields-query))]
         (is (= [[10 20]
                 [[(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil)
                   (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
