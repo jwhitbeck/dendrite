@@ -23,6 +23,11 @@ import clojure.lang.ISeq;
 import clojure.lang.LazySeq;
 import clojure.lang.RT;
 
+import java.io.IOException;
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -177,6 +182,19 @@ public final class Utils {
           }
         }
       });
+  }
+
+  public static FileChannel getReadingFileChannel(File file) throws IOException {
+    return FileChannel.open(file.toPath(), StandardOpenOption.READ);
+  }
+
+  public static FileChannel getWritingFileChannel(File file) throws IOException {
+    return FileChannel.open(file.toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING);
+  }
+
+  public static ByteBuffer mapFileChannel(FileChannel fileChannel, int offset, int length) throws IOException {
+    return fileChannel.map(FileChannel.MapMode.READ_ONLY, offset, length);
   }
 
 }

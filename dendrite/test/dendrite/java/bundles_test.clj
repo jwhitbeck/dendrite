@@ -12,13 +12,16 @@
   (:require [clojure.test :refer :all]
             [dendrite.utils :as utils]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Bundle ChunkedPersistentList]
+  (:import [dendrite.java Bundle ChunkedPersistentList Stripe$Fn]
            [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
 
 (deftest bundle-striping
-  (let [stripe (fn [record ^objects array] (Arrays/fill array record) true)
+  (let [stripe (reify Stripe$Fn
+                 (^boolean invoke [_ record ^objects array]
+                   (Arrays/fill array record)
+                   true))
         striped-record-bundle (Bundle/stripe (range 10) stripe 4)]
     (is (= (seq striped-record-bundle)
            [(range 10) (range 10) (range 10) (range 10)]))
@@ -40,14 +43,15 @@
 (deftest stripe-and-assemble
   (let [num-columns 10
         assemble (fn [^objects a] (into [] a))
-        stripe (fn [record ^objects a]
-                 (dotimes [i (count record)]
-                   (aset a i (get record i)))
-                 true)]
+        stripe (reify Stripe$Fn
+                 (^boolean invoke [_ record ^objects a]
+                   (dotimes [i (count record)]
+                     (aset a i (get record i)))
+                   true))]
     (testing "single record"
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]
-        (stripe record array)
+        (.invoke stripe record array)
         (is (= record (assemble array)))))
     (testing "bundled records"
       (let [records (repeatedly 100 #(vec (repeatedly num-columns helpers/rand-int)))

@@ -68,8 +68,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return new Bundle(droppedColumnValues);
   }
 
-  private static Object getNextRecord(final Object[] buffer, final ChunkedPersistentList[] columnValues,
-                                      final IFn assemblyFn) {
+  private static Object getNextRecord(Object[] buffer, ChunkedPersistentList[] columnValues, IFn assemblyFn) {
     for (int i=0; i < columnValues.length; ++i) {
       buffer[i] = columnValues[i].first();
       columnValues[i] = columnValues[i].next();
@@ -77,7 +76,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return assemblyFn.invoke(buffer);
   }
 
-  public IPersistentCollection assemble(final IFn assemblyFn) {
+  public IPersistentCollection assemble(IFn assemblyFn) {
     ITransientCollection records = ChunkedPersistentList.EMPTY.asTransient();
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
@@ -89,7 +88,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return records.persistent();
   }
 
-  public Object reduce(final IFn reduceFn, final IFn assemblyFn, final Object init) {
+  public Object reduce(IFn reduceFn, IFn assemblyFn, Object init) {
     Object ret = init;
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
@@ -101,7 +100,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return ret;
   }
 
-  public Object reduce(final IFn reduceFn, final IFn assemblyFn) {
+  public Object reduce(IFn reduceFn, IFn assemblyFn) {
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
     System.arraycopy(columnValues, 0, remainingColumnValues, 0, columnValues.length);
@@ -113,7 +112,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return ret;
   }
 
-  public static Bundle stripe(final IPersistentCollection records, final IFn stripeFn, final int numColumns) {
+  public static Bundle stripe(IPersistentCollection records, Stripe.Fn stripeFn, int numColumns) {
     Object[] buffer = new Object[numColumns];
     ITransientCollection[] transientColumnValues = new ITransientCollection[numColumns];
     for(int i=0; i<numColumns; ++i) {

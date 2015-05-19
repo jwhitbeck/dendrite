@@ -23,7 +23,9 @@ import clojure.lang.ISeq;
 import clojure.lang.LazySeq;
 import clojure.lang.RT;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 public final class RecordGroup {
 
@@ -32,7 +34,7 @@ public final class RecordGroup {
     ONLY_DEFAULT = 1,
     ALL = 2;
 
-  public final static class Writer implements IOutputBuffer {
+  public final static class Writer implements IOutputBuffer, IFileWriteable {
 
     final IColumnChunkWriter[] columnChunkWriters;
     int numRecords;
@@ -157,6 +159,14 @@ public final class RecordGroup {
       finish();
       for (int i=0; i<columnChunkWriters.length; ++i) {
         mos.write(columnChunkWriters[i]);
+      }
+    }
+
+    @Override
+    public void writeTo(FileChannel fileChannel) throws IOException {
+      finish();
+      for (int i=0; i<columnChunkWriters.length; ++i) {
+        fileChannel.write(columnChunkWriters[i].byteBuffer());
       }
     }
 

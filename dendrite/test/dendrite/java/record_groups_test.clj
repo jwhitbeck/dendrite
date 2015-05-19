@@ -9,12 +9,12 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.java.record-groups-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
-            [dendrite.test-helpers :as helpers]
-            [dendrite.utils :as utils])
+            [dendrite.test-helpers :as helpers])
   (:import [dendrite.java Bundle ChunkedPersistentList LeveledValue RecordGroup RecordGroup$Reader
-            RecordGroup$Writer Schema Types]))
+            RecordGroup$Writer Schema Stripe Utils Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,3 +56,51 @@
                   (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
                  [(LeveledValue. 0 2 nil)]]]
                (first (.readBundled r 100))))))))
+
+
+(deftest byte-buffer-random-records-write-read
+  (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
+        num-columns (count (Schema/getColumns test-schema))
+        records (take 1000 (helpers/rand-test-records))
+        stripe (Stripe/getFn helpers/default-types test-schema nil)
+        bundle (Bundle/stripe records stripe num-columns)
+        w (doto (RecordGroup$Writer. helpers/default-types
+                                     (Schema/getColumns test-schema)
+                                     test-target-data-page-length
+                                     RecordGroup/NONE)
+            (.write bundle)
+            .finish)
+        record-group-metadata (.metadata w)
+        bb (helpers/output-buffer->byte-buffer w)
+        query-result (Schema/applyQuery helpers/default-types true {} test-schema '_)
+        r (RecordGroup$Reader. helpers/default-types bb record-group-metadata (.columns query-result))]
+    (testing "full schema"
+      (is (= bundle
+             (first (.readBundled r 1000)))))))
+
+(deftest file-random-records-write-read
+  (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
+        num-columns (count (Schema/getColumns test-schema))
+        records (take 1000 (helpers/rand-test-records))
+        stripe (Stripe/getFn helpers/default-types test-schema nil)
+        bundle (Bundle/stripe records stripe num-columns)
+        w (doto (RecordGroup$Writer. helpers/default-types
+                                     (Schema/getColumns test-schema)
+                                     test-target-data-page-length
+                                     RecordGroup/NONE)
+            (.write bundle)
+            .finish)
+        record-group-metadata (.metadata w)
+        tmp-file (io/as-file "target/tmp_file")
+        query-result (Schema/applyQuery helpers/default-types true {} test-schema '_)]
+    (with-open [f (Utils/getWritingFileChannel tmp-file)]
+      (.write f (helpers/output-buffer->byte-buffer w)))
+    (testing "full schema"
+      (is (= bundle
+             (with-open [f (Utils/getReadingFileChannel tmp-file)]
+               (let [r (RecordGroup$Reader. helpers/default-types
+                                            (Utils/mapFileChannel f 0 (.size f))
+                                            record-group-metadata
+                                            (.columns query-result))]
+                 (first (.readBundled r 1000)))))))
+    (io/delete-file tmp-file)))
