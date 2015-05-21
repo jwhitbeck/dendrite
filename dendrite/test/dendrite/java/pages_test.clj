@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^Types types (Types/create nil nil))
+(def ^Types types (Types/create))
 
 (defn- write-read-data-page
   [{:keys [max-repetition-level max-definition-level type encoding compression f]

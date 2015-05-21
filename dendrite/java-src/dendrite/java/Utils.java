@@ -15,7 +15,10 @@ package dendrite.java;
 import clojure.lang.AFn;
 import clojure.lang.ASeq;
 import clojure.lang.Agent;
+import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
+import clojure.lang.IChunkedSeq;
+import clojure.lang.IChunk;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
@@ -72,17 +75,17 @@ public final class Utils {
     }
   }
 
-  private final static class Concat extends ASeq {
+  static class Concat extends ASeq {
 
-    private final ISeq head;
-    private final ISeq tail;
+    final ISeq head;
+    final ISeq tail;
 
-    private Concat(ISeq head, ISeq tail) {
+    Concat(ISeq head, ISeq tail) {
       this.head = head;
       this.tail = tail;
     }
 
-    private Concat(IPersistentMap meta, ISeq head, ISeq tail) {
+    Concat(IPersistentMap meta, ISeq head, ISeq tail) {
       super(meta);
       this.head = head;
       this.tail = tail;
@@ -193,8 +196,35 @@ public final class Utils {
                             StandardOpenOption.TRUNCATE_EXISTING);
   }
 
-  public static ByteBuffer mapFileChannel(FileChannel fileChannel, int offset, int length) throws IOException {
+  public static ByteBuffer mapFileChannel(FileChannel fileChannel, long offset, long length)
+    throws IOException {
     return fileChannel.map(FileChannel.MapMode.READ_ONLY, offset, length);
+  }
+
+  static ISeq flattenChunkedStep(final IChunkedSeq curSeq, final ISeq nextSeqs) {
+    return new LazySeq(new AFn() {
+        public IChunkedSeq invoke() {
+          if (curSeq == null) {
+            return null;
+          } else {
+            IChunk firstChunk = curSeq.chunkedFirst();
+            IChunkedSeq nextChunks = (IChunkedSeq)curSeq.chunkedNext();
+            if (nextChunks == null) {
+              return new ChunkedCons(firstChunk,
+                                     flattenChunkedStep((IChunkedSeq)RT.first(nextSeqs), RT.next(nextSeqs)));
+            } else {
+              return new ChunkedCons(firstChunk, flattenChunkedStep(nextChunks, nextSeqs));
+            }
+          }
+        }
+      });
+  }
+
+  public static ISeq flattenChunked(ISeq chunkedSeqs) {
+    if (RT.seq(chunkedSeqs) == null) {
+      return null;
+    }
+    return flattenChunkedStep((IChunkedSeq)chunkedSeqs.first(), chunkedSeqs.next());
   }
 
 }

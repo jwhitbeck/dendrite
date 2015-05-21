@@ -551,7 +551,7 @@ public final class Bytes {
     if (bb == null) {
       writeSInt(os, -1);
     } else {
-      writeSInt(os, bb.limit() - bb.position());
+      writeSInt(os, bb.remaining());
       os.write(bb);
     }
   }

@@ -21,7 +21,7 @@
 
 (def ^:private ^Random rng (Random.))
 
-(def ^Types default-types (Types/create nil nil))
+(def ^Types default-types (Types/create))
 
 (def default-type-store (encoding/type-store nil))
 
@@ -179,5 +179,6 @@
      (catch Exception e#
        (throw (.getCause e#)))))
 
-(defn as-chunked-list [coll]
+(defn as-chunked-list
+  ^dendrite.java.ChunkedPersistentList [coll]
   (persistent! (reduce conj! (transient ChunkedPersistentList/EMPTY) coll)))

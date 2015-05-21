@@ -23,7 +23,7 @@
 
 (def test-target-data-page-length (* 128 1024))
 
-(def ^Types types (Types/create nil nil))
+(def ^Types types (Types/create))
 
 (defn write-column-chunk-and-get-reader
   (^IColumnChunkReader
@@ -178,6 +178,13 @@
           input-values (->> (repeatedly helpers/rand-int)
                             (helpers/rand-map 0.2 (constantly nil))
                             (take 1000))
+          reader (write-optimized-column-chunk-and-get-reader column input-values)
+          output-values (utils/flatten-1 (.readPartitioned reader 100))]
+      (is (= output-values input-values))
+      (is (= Types/PLAIN (-> reader .column .encoding)))))
+  (testing "random ints (repeated)"
+    (let [column (column-repeated Types/INT Types/PLAIN Types/NONE)
+          input-values (rand-repeated-values column 100 (repeatedly helpers/rand-int))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (utils/flatten-1 (.readPartitioned reader 100))]
       (is (= output-values input-values))
@@ -405,8 +412,7 @@
                                                  :to-base-type-fn #(locking simple-date-format
                                                                      (.format simple-date-format %))
                                                  :from-base-type-fn #(locking simple-date-format
-                                                                       (.parse simple-date-format %))}}
-                         nil)
+                                                                       (.parse simple-date-format %))}})
           column (column-required (.getType custom-types 'date-str) Types/PLAIN Types/NONE)
           input-values (take 1000 (days-seq "2014-01-01"))
           reader (write-optimized-column-chunk-and-get-reader column custom-types {} input-values)

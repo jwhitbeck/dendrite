@@ -205,6 +205,8 @@ public abstract class Schema implements IWriteable {
 
   public abstract Schema withFn(IFn fn);
 
+  public abstract Schema withColumns(Column[] newColumns);
+
   public abstract int flag();
 
   @Override
@@ -262,9 +264,19 @@ public abstract class Schema implements IWriteable {
                         columnIndex, queryColumnIndex, aFn);
     }
 
+    public Column withEncoding(int anEncoding) {
+      return new Column(repetition, repetitionLevel, definitionLevel, type, anEncoding, compression,
+                        columnIndex, queryColumnIndex, fn);
+    }
+
     public Column withQueryColumnIndex(int aQueryColumnIndex) {
       return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
                         columnIndex, aQueryColumnIndex, fn);
+    }
+
+    @Override
+    public Column withColumns(Column[] newColumns) {
+      return newColumns[columnIndex];
     }
 
     @Override
@@ -364,6 +376,16 @@ public abstract class Schema implements IWriteable {
       return new Record(repetition, repetitionLevel, definitionLevel, aLeafColumnIndex, fields, fn);
     }
 
+    @Override
+    public Record withColumns(Column[] newColumns) {
+      Field[] newFields = new Field[fields.length];
+      for (int i=0; i<fields.length; ++i) {
+        Field field = fields[i];
+        newFields[i] = new Field(field.name, field.value.withColumns(newColumns));
+      }
+      return withFields(newFields);
+    }
+
     public Schema get(Keyword name) {
       for (int i=0; i<fields.length; ++i) {
         Field field = fields[i];
@@ -457,6 +479,11 @@ public abstract class Schema implements IWriteable {
     public Collection withRepeatedSchema(Schema aRepeatedSchema) {
       return new Collection(repetition, repetitionLevel, definitionLevel, leafColumnIndex,
                             aRepeatedSchema, fn);
+    }
+
+    @Override
+    public Collection withColumns(Column[] newColumns) {
+      return withRepeatedSchema(repeatedSchema.withColumns(newColumns));
     }
 
     @Override
@@ -677,7 +704,7 @@ public abstract class Schema implements IWriteable {
     Field[] fields = record.fields;
     for (int i=0; i<fields.length; ++i) {
       Field field = fields[i];
-      rec.assoc(field.name, _unparse(types, asPlain, field.value));
+      rec = rec.assoc(field.name, _unparse(types, asPlain, field.value));
     }
     return wrapWithRepetition(rec.persistent(), record.repetition);
   }
@@ -690,7 +717,7 @@ public abstract class Schema implements IWriteable {
       return _unparse(types, true, parse(types, unparsedSchema));
   }
 
-  public static Schema subSchema(IPersistentVector entrypoint, Schema schema) {
+  public static Schema subSchema(Object entrypoint, Schema schema) {
     ISeq ks = RT.seq(entrypoint);
     Keyword parent = null;
     Schema s = schema;
@@ -1053,6 +1080,28 @@ public abstract class Schema implements IWriteable {
     } else /* if (schema instanceof Collection) */{
       Collection coll = (Collection)schema;
       _getColumns(coll.repeatedSchema, columns);
+    }
+  }
+
+  public static IPersistentVector[] getPaths(Schema schema) {
+    List<IPersistentVector> paths = new ArrayList<IPersistentVector>();
+    _getPaths(schema, paths, PersistentVector.EMPTY);
+    return paths.toArray(new IPersistentVector[]{});
+  }
+
+  private static void _getPaths(Schema schema, List<IPersistentVector> paths, IPersistentVector path) {
+    if (schema instanceof Column) {
+      paths.add(path);
+    } else if (schema instanceof Record) {
+      Record rec = (Record)schema;
+      Field[] fields = rec.fields;
+      for (int i=0; i<fields.length; ++i) {
+        Field field = fields[i];
+        _getPaths(field.value, paths, path.cons(field.name));
+      }
+    } else /* if (schema instanceof Collection) */{
+      Collection coll = (Collection)schema;
+      _getPaths(coll.repeatedSchema, paths, path.cons(null));
     }
   }
 

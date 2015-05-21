@@ -12,7 +12,7 @@
   (:require [clojure.test :refer :all]
             [dendrite.utils :as utils]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Bundle ChunkedPersistentList Stripe$Fn]
+  (:import [dendrite.java Assemble$Fn Bundle ChunkedPersistentList Stripe$Fn]
            [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
@@ -33,16 +33,20 @@
                          Bundle.)]
     (testing "assembly"
       (is (= (map (partial * 2) (range 10))
-             (.assemble test-bundle (fn [^objects lva] (+ (aget lva 0) (aget lva 1)))))))
+             (.assemble test-bundle (reify Assemble$Fn
+                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1))))))))
     (testing "reduce"
       (is (= (->> (range 10) (map (partial * 2)) (reduce +))
-             (.reduce test-bundle + (fn [^objects lva] (+ (aget lva 0) (aget lva 1))))))
+             (.reduce test-bundle + (reify Assemble$Fn
+                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1)))) 0)))
       (is (= (->> (range 10) (map (partial * 2)) (reduce + 10))
-             (.reduce test-bundle + (fn [^objects lva] (+ (aget lva 0) (aget lva 1))) 10))))))
+             (.reduce test-bundle + (reify Assemble$Fn
+                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1)))) 10))))))
 
 (deftest stripe-and-assemble
   (let [num-columns 10
-        assemble (fn [^objects a] (into [] a))
+        assemble (reify Assemble$Fn
+                   (invoke [_ ^objects a] (into [] a)))
         stripe (reify Stripe$Fn
                  (^boolean invoke [_ record ^objects a]
                    (dotimes [i (count record)]
@@ -52,7 +56,7 @@
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]
         (.invoke stripe record array)
-        (is (= record (assemble array)))))
+        (is (= record (.invoke assemble array)))))
     (testing "bundled records"
       (let [records (repeatedly 100 #(vec (repeatedly num-columns helpers/rand-int)))
             striped-record-bundle (Bundle/stripe records stripe num-columns)]

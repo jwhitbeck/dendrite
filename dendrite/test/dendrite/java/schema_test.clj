@@ -26,7 +26,7 @@
          "#col [int plain none none]" #"Invalid col"
          "#req #req int" #"Cannot mark a field as required multiple times")))
 
-(def ^Types types (Types/create nil nil))
+(def ^Types types (Types/create))
 
 (deftest parse-unparse-schemas
   (are [s] (= s (->> s (Schema/parse types) (Schema/unparse types)))

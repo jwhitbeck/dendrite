@@ -204,10 +204,15 @@ public final class Assemble {
     final Fn listFn = getFn(coll.withRepetition(Schema.LIST).withFn(null));
     final Fn mapFn = new Fn() {
         public Object invoke(Object[] buffer) {
+          ISeq s = RT.seq(listFn.invoke(buffer));
+          if (s == null) {
+            return null;
+          }
           ITransientMap tm = PersistentArrayMap.EMPTY.asTransient();
-          for (ISeq s = RT.seq(listFn.invoke(buffer)); s != null; s = s.next()) {
+          while (s != null) {
             Object e = s.first();
-            tm.assoc(RT.get(e, Schema.KEY), RT.get(e, Schema.VAL));
+            tm = tm.assoc(RT.get(e, Schema.KEY), RT.get(e, Schema.VAL));
+            s = s.next();
           }
           return tm.persistent();
         }

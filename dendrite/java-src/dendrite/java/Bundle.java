@@ -68,7 +68,8 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return new Bundle(droppedColumnValues);
   }
 
-  private static Object getNextRecord(Object[] buffer, ChunkedPersistentList[] columnValues, IFn assemblyFn) {
+  private static Object getNextRecord(Object[] buffer, ChunkedPersistentList[] columnValues,
+                                      Assemble.Fn assemblyFn) {
     for (int i=0; i < columnValues.length; ++i) {
       buffer[i] = columnValues[i].first();
       columnValues[i] = columnValues[i].next();
@@ -76,7 +77,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return assemblyFn.invoke(buffer);
   }
 
-  public IPersistentCollection assemble(IFn assemblyFn) {
+  public ChunkedPersistentList assemble(Assemble.Fn assemblyFn) {
     ITransientCollection records = ChunkedPersistentList.EMPTY.asTransient();
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
@@ -85,10 +86,10 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     for (int i=0; i<numRecords; ++i) {
       records.conj(getNextRecord(buffer, remainingColumnValues, assemblyFn));
     }
-    return records.persistent();
+    return (ChunkedPersistentList)records.persistent();
   }
 
-  public Object reduce(IFn reduceFn, IFn assemblyFn, Object init) {
+  public Object reduce(IFn reduceFn, Assemble.Fn assemblyFn, Object init) {
     Object ret = init;
     Object[] buffer = new Object[columnValues.length];
     ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
@@ -100,19 +101,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return ret;
   }
 
-  public Object reduce(IFn reduceFn, IFn assemblyFn) {
-    Object[] buffer = new Object[columnValues.length];
-    ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
-    System.arraycopy(columnValues, 0, remainingColumnValues, 0, columnValues.length);
-    int numRecords = columnValues[0].count();
-    Object ret = getNextRecord(buffer, remainingColumnValues, assemblyFn);
-    for (int i=1; i<numRecords; ++i) {
-      ret = reduceFn.invoke(ret, getNextRecord(buffer, remainingColumnValues, assemblyFn));
-    }
-    return ret;
-  }
-
-  public static Bundle stripe(IPersistentCollection records, Stripe.Fn stripeFn, int numColumns) {
+  public static Bundle stripe(Object records, Stripe.Fn stripeFn, int numColumns) {
     Object[] buffer = new Object[numColumns];
     ITransientCollection[] transientColumnValues = new ITransientCollection[numColumns];
     for(int i=0; i<numColumns; ++i) {

@@ -129,7 +129,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
                                 IPersistentMap plainStats, IPersistentMap compressionThresholds) {
     IColumnChunkWriter writer
       = DataColumnChunk.Writer.create(types,
-                                      primitiveColumn,
+                                      primitiveColumn.withEncoding(encoding),
                                       plainColumnChunkWriter.targetDataPageLength);
     copyAtLeastOnePage(primitiveReader, writer);
     writer.finish();
@@ -149,12 +149,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     int levelsLength = (int)RT.get(plainStats, Stats.REPETITION_LEVELS_LENGTH)
       + (int)RT.get(plainStats, Stats.DEFINITION_LEVELS_LENGTH);
     int bestCompression = Types.NONE;
-    int noCompressionLength = levelsLength + (int)RT.get(plainStats, Stats.DATA_LENGTH);
+    int noCompressionLength = levelsLength + (int)(h.uncompressedDataLength() * nonNilValuesMultiplier);
     int bestLength = noCompressionLength;
     for (Object o : compressionThresholds.without(Types.NONE_SYM)) {
       IMapEntry e = (IMapEntry)o;
       int compression = types.getCompression((Symbol)e.key());
-      double threshold = (double)e.val();
+      double threshold = RT.doubleCast(e.val());
       ICompressor compressor = types.getCompressor(compression);
       compressor.compress(dataBytes);
       compressor.finish();
@@ -400,7 +400,13 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
                                types.getPrimitiveEncoder(primitiveColumn.type, encoding),
                                types.getCompressor(Types.NONE));
     DataPage.Reader pageReader = (DataPage.Reader)primitiveReader.getPageReaders().first();
-    pageWriter.write(pageReader.read());
+    if (primitiveColumn.repetitionLevel > 0) {
+      for (ISeq s = RT.seq(pageReader.read()); s != null; s = s.next()) {
+        pageWriter.write(RT.seq(s.first()));
+      }
+    } else {
+      pageWriter.write(pageReader.read());
+    }
     pageWriter.finish();
     IPersistentMap pageStats = pageWriter.header().stats();
     int numNonNilValuesInPage = (int)RT.get(pageStats, Stats.NUM_NON_NIL_VALUES);

@@ -12,8 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.Keyword;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 

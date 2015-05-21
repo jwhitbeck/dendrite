@@ -20,7 +20,7 @@
 
 (def test-target-data-page-length (* 128 1024))
 
-(def ^Types types (Types/create nil nil))
+(def ^Types types (Types/create))
 
 (deftest dremel-write-read
   (let [dremel-bundle (->> (map vector dremel-paper-record1-striped2 dremel-paper-record2-striped2)
@@ -87,14 +87,16 @@
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length
-                                     RecordGroup/NONE)
+                                     RecordGroup/ALL)
             (.write bundle)
+            (.optimize {'deflate 2.0})
             .finish)
         record-group-metadata (.metadata w)
         tmp-file (io/as-file "target/tmp_file")
-        query-result (Schema/applyQuery helpers/default-types true {} test-schema '_)]
+        query-result (Schema/applyQuery helpers/default-types true {}
+                                        (.withColumns test-schema (.columns w)) '_)]
     (with-open [f (Utils/getWritingFileChannel tmp-file)]
-      (.write f (helpers/output-buffer->byte-buffer w)))
+      (.writeTo w f))
     (testing "full schema"
       (is (= bundle
              (with-open [f (Utils/getReadingFileChannel tmp-file)]

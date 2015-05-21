@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^Types types (Types/create nil nil))
+(def ^Types types (Types/create))
 
 (deftest primitive-types
   (are [x y] (and (= (.getType types x) y)
@@ -128,12 +128,12 @@
 
 (deftest custom-types
   (testing "invalid configurations"
-    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex (Types/create custom-types nil))
+    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex (Types/create custom-types))
          {:foo {}} #"Custom-type ':foo' is not a symbol."
          {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'bar'"
          {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'")
     (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex
-                                                (helpers/throw-cause (Types/create custom-types nil)))
+                                                (helpers/throw-cause (Types/create custom-types)))
          {'foo {}} #"Required field :base-type is missing."
          {'foo {:base-type :int}} #"Base type ':int' is not a symbol"
          {'foo {:base-type 'in}} #"Unknown base type 'in'"
@@ -149,7 +149,7 @@
                                   'bar {:base-type 'foo
                                         :coercion-fn double
                                         :to-base-type-fn (partial * 2)
-                                        :from-base-type-fn #(quot % 2)}} nil)
+                                        :from-base-type-fn #(quot % 2)}})
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
       (testing "new types are incrementally assigned"
@@ -166,7 +166,11 @@
         (is (= 5 ((.getToBaseTypeFn my-types bar) 2))))
       (testing "fromBaseTypeFns are correct"
         (is (= 2 ((.getFromBaseTypeFn my-types foo) 3)))
-        (is (= 2 ((.getFromBaseTypeFn my-types bar) 5))))))
+        (is (= 2 ((.getFromBaseTypeFn my-types bar) 5))))
+      (testing "custom-types array is correct"
+        (is (= (sort-by #(.type ^CustomType %) (.getCustomTypes my-types))
+               [(CustomType. (.getType my-types 'foo) Types/INT 'foo)
+                (CustomType. (.getType my-types 'bar) (.getType my-types 'foo) 'bar)])))))
   (testing "reading from file with defined custom-types"
     (let [my-types (Types/create
                        {'foo {:base-type 'int
@@ -177,7 +181,7 @@
                               :coercion-fn double
                               :to-base-type-fn (partial * 2)
                               :from-base-type-fn #(quot % 2)}}
-                     (list (CustomType. 20 Types/INT 'foo)))
+                     (into-array [(CustomType. 20 Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
       (testing "new types are incrementally assigned"
@@ -193,7 +197,7 @@
                               :coercion-fn double
                               :to-base-type-fn (partial * 2)
                               :from-base-type-fn #(quot % 2)}}
-                     (list (CustomType. Types/BYTE_BUFFER Types/INT 'foo)))
+                     (into-array [(CustomType. Types/BYTE_BUFFER Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
       (testing "new types are incrementally assigned"

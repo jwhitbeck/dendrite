@@ -214,17 +214,17 @@ public final class Stats {
       .persistent();
   }
 
-  public static IPersistentMap globalStats(int length, int numColumns,
+  public static IPersistentMap globalStats(long length, int numColumns,
                                            IPersistentCollection recordGroupStatsList) {
     int numRecordGroups = RT.count(recordGroupStatsList);
-    int dataLength = 0;
+    long dataLength = 0;
     int numRecords = 0;
-    int headerLength = 0;
-    int repetitionLevelsLength = 0;
-    int definitionLevelsLength = 0;
-    int dictionaryHeaderLength = 0;
-    int dictionaryLength = 0;
-    int metadataLength = length;
+    long headerLength = 0;
+    long repetitionLevelsLength = 0;
+    long definitionLevelsLength = 0;
+    long dictionaryHeaderLength = 0;
+    long dictionaryLength = 0;
+    long metadataLength = length;
 
     if (numRecordGroups > 0) {
       for (ISeq s = RT.seq(recordGroupStatsList); s != null; s = s.next()) {

@@ -9,9 +9,11 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.core2
-  (:require [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue Schema]
-           [java.io Writer]))
+  (:require [clojure.core.reducers]
+            [clojure.java.io :as io]
+            [clojure.pprint :as pprint])
+  (:import [dendrite.java Col LeveledValue Options Reader Schema View Writer])
+  (:refer-clojure :exclude [read pmap]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +29,7 @@
   ([type encoding compression] (Col. type encoding compression)))
 
 (defmethod print-method Col
-  [v ^Writer w]
+  [v ^java.io.Writer w]
   (.write w (str v)))
 
 (defmethod pprint/simple-dispatch Col
@@ -40,7 +42,7 @@
   (Schema/req x))
 
 (defmethod print-method Schema/REQUIRED_TYPE
-  [v ^Writer w]
+  [v ^java.io.Writer w]
   (.write w "#req ")
   (print-method (Schema/unreq v) w))
 
@@ -68,7 +70,7 @@
   (Schema/tag tag elem))
 
 (defmethod print-method Schema/TAGGED_TYPE
-  [v ^Writer w]
+  [v ^java.io.Writer w]
   (.write w (format "#%s " (-> v Schema/getTag name)))
   (print-method (Schema/untag v) w))
 
@@ -76,3 +78,34 @@
   "Parse an edn-formatted dendrite schema string."
   [s]
   (Schema/readString s))
+
+(defn reader
+  (^dendrite.java.Reader [file] (reader nil file))
+  (^dendrite.java.Reader [opts file]
+    (Reader/create (Options/getReaderOptions opts) (io/as-file file))))
+
+(defn writer
+  (^dendrite.java.Writer [schema file] (writer nil schema file))
+  (^dendrite.java.Writer [opts schema file]
+    (Writer/create (Options/getWriterOptions opts) schema (io/as-file file))))
+
+(extend-type View
+  clojure.core.protocols/CollReduce
+  (coll-reduce [this f]
+    (reduce f this))
+  (coll-reduce [this f init]
+    (reduce f init this))
+  clojure.core.reducers/CollFold
+  (coll-fold [this n combinef reducef]
+    (.fold this n combinef reducef)))
+
+(defn read
+  ([^Reader reader] (read nil reader))
+  ([opts ^Reader reader] (.read reader (Options/getReadOptions opts))))
+
+(defn pmap
+  ([f ^Reader reader] (pmap nil f reader))
+  ([opts f ^Reader reader] (.pmap reader (Options/getReadOptions opts) f)))
+
+(defn stats
+  [^Reader reader] (.stats reader))

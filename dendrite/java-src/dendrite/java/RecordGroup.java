@@ -26,6 +26,7 @@ import clojure.lang.RT;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 
 public final class RecordGroup {
 
@@ -37,24 +38,26 @@ public final class RecordGroup {
   public final static class Writer implements IOutputBuffer, IFileWriteable {
 
     final IColumnChunkWriter[] columnChunkWriters;
+    final ArrayList<OptimizingColumnChunkWriter> optimizingColumnChunkwriters;
     int numRecords;
-    boolean canOptimize;
 
     public Writer(Types types, Schema.Column[] columns, int targetDataPageLength,
                   int optimizationStrategy) {
       columnChunkWriters = new IColumnChunkWriter[columns.length];
+      this.optimizingColumnChunkwriters = new ArrayList<OptimizingColumnChunkWriter>();
       int numOptimizingColumnChunkWriters = 0;
       for (int i=0; i<columns.length; ++i) {
         if (optimizationStrategy == ALL || (optimizationStrategy == ONLY_DEFAULT
                                             && columns[i].encoding == Types.PLAIN
                                             && columns[i].compression == Types.NONE)) {
-          columnChunkWriters[i] = OptimizingColumnChunkWriter.create(types, columns[i], targetDataPageLength);
-          numOptimizingColumnChunkWriters += 1;
+          OptimizingColumnChunkWriter optimizingWriter
+            = OptimizingColumnChunkWriter.create(types, columns[i], targetDataPageLength);
+          columnChunkWriters[i] = optimizingWriter;
+          optimizingColumnChunkwriters.add(optimizingWriter);
         } else {
           columnChunkWriters[i] = ColumnChunks.createWriter(types, columns[i], targetDataPageLength);
         }
       }
-      canOptimize = numOptimizingColumnChunkWriters > 0;
       numRecords = 0;
     }
 
@@ -74,27 +77,21 @@ public final class RecordGroup {
     }
 
     public boolean canOptimize() {
-      return canOptimize;
+      return optimizingColumnChunkwriters.size() > 0;
     }
 
     public void optimize(final IPersistentMap compressionThresholds) {
-      if (canOptimize) {
-        ITransientCollection optimizingColumnChunkwriters = ChunkedPersistentList.EMPTY.asTransient();
-        for (int i=0; i<columnChunkWriters.length; ++i) {
-          if (columnChunkWriters[i] instanceof OptimizingColumnChunkWriter) {
-            optimizingColumnChunkwriters.conj(columnChunkWriters[i]);
-          }
-        }
+      if (canOptimize()) {
         ISeq optimizedColumnChunkWriters = Utils.pmap(new AFn() {
             public Object invoke(Object o) {
               return ((OptimizingColumnChunkWriter)o).optimize(compressionThresholds);
             }
-          }, RT.seq(optimizingColumnChunkwriters.persistent()));
+          }, RT.seq(optimizingColumnChunkwriters));
         for (ISeq s = optimizedColumnChunkWriters; s != null; s = s.next()) {
           IColumnChunkWriter ccw = (IColumnChunkWriter)s.first();
           columnChunkWriters[ccw.column().columnIndex] = ccw;
         }
-        canOptimize = false;
+        optimizingColumnChunkwriters.clear();
       }
     }
 
@@ -108,6 +105,10 @@ public final class RecordGroup {
 
     public int numRecords() {
       return numRecords;
+    }
+
+    public int numColumns() {
+      return columnChunkWriters.length;
     }
 
     public Metadata.RecordGroup metadata() {
@@ -242,12 +243,16 @@ public final class RecordGroup {
       return readBundled(partitionedPages);
     }
 
-    public IPersistentMap stats() {
-      ITransientCollection columnChunkStats = ChunkedPersistentList.EMPTY.asTransient();
+    public int numRecords() {
+      return numRecords;
+    }
+
+    public IPersistentMap[] columnChunkStats() {
+      IPersistentMap[] columnChunkStats = new IPersistentMap[columnChunkReaders.length];
       for (int i=0; i<columnChunkReaders.length; ++i) {
-        columnChunkStats.conj(columnChunkReaders[i].stats());
+        columnChunkStats[i] = columnChunkReaders[i].stats();
       }
-      return Stats.recordGroupStats(numRecords, columnChunkStats.persistent());
+      return columnChunkStats;
     }
   }
 

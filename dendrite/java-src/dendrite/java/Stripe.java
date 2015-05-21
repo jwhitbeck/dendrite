@@ -26,7 +26,7 @@ import java.util.Map;
 
 public final class Stripe {
 
-  public interface Fn {
+  public static interface Fn {
     boolean invoke(Object record, Object[] buffer);
   }
 

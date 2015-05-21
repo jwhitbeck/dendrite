@@ -91,7 +91,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
 
   public void write(ByteBuffer bb) {
     bb.mark();
-    int length = bb.limit() - bb.position();
+    int length = bb.remaining();
     ensureRemainingCapacity(length);
     bb.get(buffer, position, length);
     position += length;

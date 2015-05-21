@@ -9,26 +9,27 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.java.utils-test
-  (:require [clojure.test :refer :all])
+  (:require [clojure.test :refer :all]
+            [dendrite.test-helpers :as helpers])
   (:import [dendrite.java Utils ChunkedPersistentList]))
 
 (set! *warn-on-reflection* true)
 
 (deftest chunked-drop
-  (let [^ChunkedPersistentList cs (persistent! (reduce conj!
-                                                       (transient ChunkedPersistentList/EMPTY)
-                                                       (range 100)))]
+  (let [cs (helpers/as-chunked-list (range 100))]
     (is (= (drop 10 cs) (.drop cs 10)))
     (is (= (drop 32 cs) (.drop cs 32)))
     (is (= (seq (drop 101 cs)) (seq (.drop cs 101))))))
 
 (deftest chunked-take
-  (let [^ChunkedPersistentList cs (persistent! (reduce conj!
-                                                       (transient ChunkedPersistentList/EMPTY)
-                                                       (range 100)))]
+  (let [cs (helpers/as-chunked-list (range 100))]
     (is (= (take 10 cs) (.take cs 10)))
     (is (= (take 32 cs) (.take cs 32)))
     (is (= (seq (take 101 cs)) (seq (.take cs 101))))))
+
+(deftest chunked-flatten
+  (let [cs (repeat 10 (helpers/as-chunked-list (range 100)))]
+    (is (= (flatten cs) (Utils/flattenChunked cs)))))
 
 (deftest concatenation
   (is (= (Utils/concat (range 10) (range 10)) (concat (range 10) (range 10))))

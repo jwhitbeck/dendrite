@@ -198,7 +198,7 @@ public final class FrequencyColumnChunk {
     }
 
     int dictionaryLength() {
-      return dictPageWriter.length();
+      return 1 + dictPageWriter.length();
     }
 
     @Override
