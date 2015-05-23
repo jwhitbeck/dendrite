@@ -55,7 +55,7 @@ public final class FrequencyColumnChunk {
     @Override
     public ISeq getPageHeaders() {
       return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
-                               columnChunkMetadata.numDataPages);
+                               1 + columnChunkMetadata.numDataPages);
     }
 
     @Override
@@ -186,6 +186,7 @@ public final class FrequencyColumnChunk {
     @Override
     public void reset() {
       dictEncoder.reset();
+      dictEncoder.resetDictionary();
       dictPageWriter.reset();
       tempIndicesColumnChunkWriter.reset();
       frequencyIndicesColumnChunkWriter.reset();

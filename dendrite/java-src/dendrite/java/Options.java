@@ -143,7 +143,7 @@ public final class Options {
     }
     if (!(v instanceof IFn)) {
       throw new IllegalArgumentException
-        (String.format("reader value for tag '%s' should be a function but got", k, v));
+        (String.format("reader value for tag '%s' should be a function but got '%s'", k, v));
     }
   }
 

@@ -101,7 +101,7 @@ public final class IntPackedRunLength {
     public int estimatedLength() {
       int estimatedNumOctoplets = (numBufferedValues / 8) + 1;
       return 1 + Bytes.getNumUIntBytes(estimatedNumOctoplets << 1)
-        + (8 * estimatedNumOctoplets * maxWidth) + Bytes.getNumUIntBytes(numBufferedValues);
+        + (estimatedNumOctoplets * maxWidth) + Bytes.getNumUIntBytes(numBufferedValues);
     }
 
     @Override

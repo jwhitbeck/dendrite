@@ -142,7 +142,7 @@ public final class Writer implements Closeable {
   final Types types;
   final Schema schema;
   final FileChannel fileChannel;
-  ByteBuffer customMetadata;
+  ByteBuffer metadata;
   ITransientCollection batchBuffer;
   int numBufferedRecords;
   final LinkedBlockingQueue<IPersistentCollection> batchQueue;
@@ -156,7 +156,7 @@ public final class Writer implements Closeable {
     this.schema = schema;
     this.fileChannel = fileChannel;
     this.bundleSize = bundleSize;
-    this.customMetadata = null;
+    this.metadata = null;
     this.batchBuffer = ChunkedPersistentList.EMPTY.asTransient();
     this.numBufferedRecords = 0;
     this.batchQueue = batchQueue;
@@ -186,8 +186,8 @@ public final class Writer implements Closeable {
     return new Writer(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
   }
 
-  public void setCustomMetadata(ByteBuffer customMetadata) {
-    this.customMetadata = customMetadata;
+  public void setMetadata(ByteBuffer metadata) {
+    this.metadata = metadata;
   }
 
   void flushBatch() {
@@ -254,7 +254,7 @@ public final class Writer implements Closeable {
         writeFooter(new Metadata.File(res.recordGroupsMetadata,
                                       schema.withColumns(res.columns),
                                       types.getCustomTypes(),
-                                      customMetadata));
+                                      metadata));
       } finally {
         fileChannel.close();
         isClosed = true;

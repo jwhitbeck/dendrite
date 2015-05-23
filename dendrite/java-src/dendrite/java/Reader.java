@@ -62,7 +62,7 @@ public final class Reader implements Closeable {
     return new Reader(types, fileChannel, fileMetadata);
   }
 
-  public ByteBuffer metadata() {
+  public ByteBuffer getMetadata() {
     return fileMetadata.metadata;
   }
 
@@ -190,10 +190,16 @@ public final class Reader implements Closeable {
       throw new IllegalStateException("File is not a valid dendrite file.");
     }
     long metadataLengthPosition = lastMagicBytesPosition - fixedIntLength;
+    if (metadataLengthPosition < Constants.magicBytes.length) {
+      throw new IllegalStateException("File is not a valid dendrite file.");
+    }
     ByteBuffer metadataLengthBuffer
       = Utils.mapFileChannel(fileChannel, metadataLengthPosition, fixedIntLength);
     metadataLengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
     long metadataLength = metadataLengthBuffer.getInt();
+    if (metadataLength <= 0) {
+      throw new IllegalStateException("File is not a valid dendrite file.");
+    }
     ByteBuffer metadataBuffer
       = Utils.mapFileChannel(fileChannel, metadataLengthPosition - metadataLength, metadataLength);
     return Metadata.File.read(metadataBuffer);

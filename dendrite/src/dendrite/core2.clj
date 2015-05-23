@@ -10,9 +10,11 @@
 
 (ns dendrite.core2
   (:require [clojure.core.reducers]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue Options Reader Schema View Writer])
+  (:import [dendrite.java Col LeveledValue  Options Reader Schema Types View Writer]
+           [java.nio ByteBuffer])
   (:refer-clojure :exclude [read pmap]))
 
 (set! *warn-on-reflection* true)
@@ -92,9 +94,9 @@
 (extend-type View
   clojure.core.protocols/CollReduce
   (coll-reduce [this f]
-    (reduce f this))
+    (reduce f (seq this)))
   (coll-reduce [this f init]
-    (reduce f init this))
+    (reduce f init (seq this)))
   clojure.core.reducers/CollFold
   (coll-fold [this n combinef reducef]
     (.fold this n combinef reducef)))
@@ -109,3 +111,14 @@
 
 (defn stats
   [^Reader reader] (.stats reader))
+
+(defn schema
+  [^Reader reader] (.schema reader))
+
+(defn set-metadata!
+  [^Writer writer metadata]
+  (.setMetadata writer (-> metadata pr-str Types/toByteArray ByteBuffer/wrap)))
+
+(defn metadata
+  [^Reader reader]
+  (-> (.getMetadata reader) Types/toByteArray Types/toString edn/read-string))
