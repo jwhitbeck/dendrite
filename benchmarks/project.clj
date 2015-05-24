@@ -14,8 +14,8 @@
                  [dendrite "0.3.0-SNAPSHOT"]
                  [org.clojure/tools.cli "0.3.1"]
                  [org.flatland/protobuf "0.8.1"]
-                 [prismatic/plumbing "0.4.2"]
+                 [prismatic/plumbing "0.4.4"]
                  [net.jpountz.lz4/lz4 "1.3.0"]
-                 [clj-http "1.1.0"]
+                 [clj-http "1.1.2"]
                  [ring/ring-codec "1.0.0"]
                  [org.clojure/data.fressian "0.2.0"]])
