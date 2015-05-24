@@ -127,7 +127,7 @@ public final class ChunkedPersistentList extends ASeq implements IChunkedSeq, IP
   }
 
   public ChunkedPersistentList drop(int n) {
-    if (n == cnt) {
+    if (n >= cnt) {
       return null;
     }
     Node node = head;

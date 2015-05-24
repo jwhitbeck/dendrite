@@ -18,7 +18,7 @@ public final class Thresholds {
     if (value == 0) {
       return idx + 1;
     }
-    int nextIdx = idx + (idx * (target - value))/(2 * value);
+    int nextIdx = (int)(0.5 * idx * (1 + (double)target/(double)value));
     if (nextIdx == idx) {
       return idx + 1;
     }

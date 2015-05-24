@@ -172,7 +172,7 @@ public final class DataColumnChunk {
       if (pageWriter.numValues() > 0) {
         Pages.writeTo(mos, pageWriter);
         numPages += 1;
-        nextNumValuesForPageLengthCheck >>>= 1;
+        nextNumValuesForPageLengthCheck = pageWriter.numValues() / 2;
         pageWriter.reset();
       }
     }
