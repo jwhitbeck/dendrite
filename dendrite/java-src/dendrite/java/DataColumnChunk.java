@@ -192,7 +192,7 @@ public final class DataColumnChunk {
         flushDataPageWriter();
       }
       int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.numValues();
-      if (numValuesBeforeNextCheck >= RT.count(values)) {
+      if (numValuesBeforeNextCheck >= values.count()) {
         pageWriter.write(values);
       } else {
         ChunkedPersistentList currentBatch = values.take(numValuesBeforeNextCheck);
@@ -223,16 +223,13 @@ public final class DataColumnChunk {
         // number of values in a page here to one value per byte.
         flushDataPageWriter();
       }
-      int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.numValues();
-      int numWrittenValues = 0;
       ChunkedPersistentList remaining = leveledValuesSeq;
-      while (numWrittenValues <= numValuesBeforeNextCheck && remaining != null) {
+      while (pageWriter.numValues() <= nextNumValuesForPageLengthCheck && remaining != null) {
         IPersistentCollection leveledValues = (IPersistentCollection)remaining.first();
         pageWriter.write(leveledValues);
         remaining = remaining.next();
-        numWrittenValues += RT.count(leveledValues);
       }
-      if (numWrittenValues > numValuesBeforeNextCheck) {
+      if (pageWriter.numValues() > nextNumValuesForPageLengthCheck) {
         if (pageWriter.estimatedLength() > targetDataPageLength) {
           flushDataPageWriter();
         } else {

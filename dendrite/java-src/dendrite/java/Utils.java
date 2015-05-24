@@ -17,6 +17,7 @@ import clojure.lang.ASeq;
 import clojure.lang.Agent;
 import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
+import clojure.lang.Counted;
 import clojure.lang.IChunkedSeq;
 import clojure.lang.IChunk;
 import clojure.lang.IFn;
@@ -75,7 +76,7 @@ public final class Utils {
     }
   }
 
-  static class Concat extends ASeq {
+  static class Concat extends ASeq implements Counted {
 
     final ISeq head;
     final ISeq tail;

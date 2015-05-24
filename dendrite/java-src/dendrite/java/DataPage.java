@@ -253,8 +253,8 @@ public final class DataPage {
     public void write(IPersistentCollection values) {
       for (ISeq s = RT.seq(values); s != null; s = s.next()) {
         dataEncoder.encode(s.first());
+        numValues += 1;
       }
-      numValues += RT.count(values);
     }
   }
 
@@ -273,8 +273,8 @@ public final class DataPage {
           definitionLevelEncoder.encode(1);
           dataEncoder.encode(v);
         }
+        numValues += 1;
       }
-      numValues += RT.count(values);
     }
   }
 
@@ -293,8 +293,8 @@ public final class DataPage {
         }
         repetitionLevelEncoder.encode(lv.repetitionLevel);
         definitionLevelEncoder.encode(lv.definitionLevel);
+        numValues += 1;
       }
-      numValues += RT.count(leveledValues);
     }
   }
 
