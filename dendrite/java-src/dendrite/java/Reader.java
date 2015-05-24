@@ -302,8 +302,8 @@ public final class Reader implements Closeable {
 
     ISeq getAssembledBundleSeq(int bundleSize) {
       IFn fn = new AFn() {
-          public IChunkedSeq invoke(Object bundle) {
-            return ((Bundle)bundle).assemble(assembleFn);
+          public Object invoke(Object bundle) {
+            return ((ReadBundle)bundle).assemble(assembleFn);
           }
         };
       return Utils.pmap(fn, getBundlesSeq(bundleSize));
@@ -323,7 +323,7 @@ public final class Reader implements Closeable {
       if (assembledBundleseq == null) {
         IFn fn = new AFn() {
             public Object invoke(Object bundle) {
-              return ((Bundle)bundle).reduce(reducef, assembleFn, init);
+              return ((ReadBundle)bundle).reduce(reducef, assembleFn, init);
             }
           };
         return reduce(combinef, init, Utils.pmap(fn, getBundlesSeq(n)));

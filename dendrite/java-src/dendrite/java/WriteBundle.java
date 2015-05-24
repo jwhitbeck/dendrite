@@ -24,11 +24,11 @@ import clojure.lang.Sequential;
 
 import java.util.Arrays;
 
-public final class Bundle implements IPersistentCollection, Counted, Sequential {
+public final class WriteBundle implements IPersistentCollection, Counted, Sequential {
 
   public final ChunkedPersistentList[] columnValues;
 
-  public Bundle(final ChunkedPersistentList[] columnValues) {
+  public WriteBundle(final ChunkedPersistentList[] columnValues) {
     this.columnValues = columnValues;
   }
 
@@ -44,7 +44,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
 
   @Override
   public IPersistentCollection empty() {
-    return new Bundle(new ChunkedPersistentList[]{});
+    return new WriteBundle(new ChunkedPersistentList[]{});
   }
 
   @Override
@@ -52,56 +52,23 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     return RT.count(columnValues[0]);
   }
 
-  public Bundle take(int n) {
+  public WriteBundle take(int n) {
     ChunkedPersistentList[] takenColumnValues = new ChunkedPersistentList[columnValues.length];
     for (int i=0; i<columnValues.length; ++i) {
       takenColumnValues[i] = columnValues[i].take(n);
     }
-    return new Bundle(takenColumnValues);
+    return new WriteBundle(takenColumnValues);
   }
 
-  public Bundle drop(int n) {
+  public WriteBundle drop(int n) {
     ChunkedPersistentList[] droppedColumnValues = new ChunkedPersistentList[columnValues.length];
     for (int i=0; i<columnValues.length; ++i) {
       droppedColumnValues[i] = columnValues[i].drop(n);
     }
-    return new Bundle(droppedColumnValues);
+    return new WriteBundle(droppedColumnValues);
   }
 
-  private static Object getNextRecord(Object[] buffer, ChunkedPersistentList[] columnValues,
-                                      Assemble.Fn assemblyFn) {
-    for (int i=0; i < columnValues.length; ++i) {
-      buffer[i] = columnValues[i].first();
-      columnValues[i] = columnValues[i].next();
-    }
-    return assemblyFn.invoke(buffer);
-  }
-
-  public ChunkedPersistentList assemble(Assemble.Fn assemblyFn) {
-    ITransientCollection records = ChunkedPersistentList.EMPTY.asTransient();
-    Object[] buffer = new Object[columnValues.length];
-    ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
-    System.arraycopy(columnValues, 0, remainingColumnValues, 0, columnValues.length);
-    int numRecords = columnValues[0].count();
-    for (int i=0; i<numRecords; ++i) {
-      records.conj(getNextRecord(buffer, remainingColumnValues, assemblyFn));
-    }
-    return (ChunkedPersistentList)records.persistent();
-  }
-
-  public Object reduce(IFn reduceFn, Assemble.Fn assemblyFn, Object init) {
-    Object ret = init;
-    Object[] buffer = new Object[columnValues.length];
-    ChunkedPersistentList[] remainingColumnValues = new ChunkedPersistentList[columnValues.length];
-    System.arraycopy(columnValues, 0, remainingColumnValues, 0, columnValues.length);
-    int numRecords = columnValues[0].count();
-    for (int i=0; i<numRecords; ++i) {
-      ret = reduceFn.invoke(ret, getNextRecord(buffer, remainingColumnValues, assemblyFn));
-    }
-    return ret;
-  }
-
-  public static Bundle stripe(Object records, Stripe.Fn stripeFn, int numColumns) {
+  public static WriteBundle stripe(Object records, Stripe.Fn stripeFn, int numColumns) {
     Object[] buffer = new Object[numColumns];
     ITransientCollection[] transientColumnValues = new ITransientCollection[numColumns];
     for(int i=0; i<numColumns; ++i) {
@@ -121,7 +88,7 @@ public final class Bundle implements IPersistentCollection, Counted, Sequential 
     for(int i=0; i<numColumns; ++i) {
       columnValues[i] = (ChunkedPersistentList)transientColumnValues[i].persistent();
     }
-    return new Bundle(columnValues);
+    return new WriteBundle(columnValues);
   }
 
   @Override

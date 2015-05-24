@@ -12,7 +12,8 @@
   (:require [clojure.test :refer :all]
             [dendrite.utils :as utils]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Assemble$Fn Bundle ChunkedPersistentList Stripe$Fn]
+  (:import [dendrite.java Assemble$Fn ReadBundle WriteBundle ChunkedPersistentList Stripe$Fn]
+           [clojure.lang ISeq]
            [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
@@ -22,15 +23,13 @@
                  (^boolean invoke [_ record ^objects array]
                    (Arrays/fill array record)
                    true))
-        striped-record-bundle (Bundle/stripe (range 10) stripe 4)]
+        striped-record-bundle (WriteBundle/stripe (range 10) stripe 4)]
     (is (= (seq striped-record-bundle)
            [(range 10) (range 10) (range 10) (range 10)]))
     (is (every? chunked-seq? (seq striped-record-bundle)))))
 
 (deftest bundle-assembly
-  (let [test-bundle (->> [(helpers/as-chunked-list (range 10)) (helpers/as-chunked-list (range 10))]
-                         (into-array ChunkedPersistentList)
-                         Bundle.)]
+  (let [test-bundle (ReadBundle. (into-array ISeq [(range 10) (range 10)]))]
     (testing "assembly"
       (is (= (map (partial * 2) (range 10))
              (.assemble test-bundle (reify Assemble$Fn
@@ -56,8 +55,4 @@
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]
         (.invoke stripe record array)
-        (is (= record (.invoke assemble array)))))
-    (testing "bundled records"
-      (let [records (repeatedly 100 #(vec (repeatedly num-columns helpers/rand-int)))
-            striped-record-bundle (Bundle/stripe records stripe num-columns)]
-        (is (= records (.assemble striped-record-bundle assemble)))))))
+        (is (= record (.invoke assemble array)))))))

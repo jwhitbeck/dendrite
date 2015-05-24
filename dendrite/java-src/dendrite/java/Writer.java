@@ -72,8 +72,8 @@ public final class Writer implements Closeable {
 
   static IFn getBundleStripeFn(final Stripe.Fn stripeFn, final int numColumns) {
     return new AFn() {
-      public Bundle invoke(Object batch) {
-        return Bundle.stripe(batch, stripeFn, numColumns);
+      public WriteBundle invoke(Object batch) {
+        return WriteBundle.stripe(batch, stripeFn, numColumns);
       }
     };
   }
@@ -92,7 +92,7 @@ public final class Writer implements Closeable {
           ArrayList<Metadata.RecordGroup> recordGroupsMetadata = new ArrayList<Metadata.RecordGroup>();
           int nextNumRecordsForLengthCheck = 10 * bundleSize;
           while (bundles != null) {
-            Bundle bundle = (Bundle)bundles.first();
+            WriteBundle bundle = (WriteBundle)bundles.first();
             while (bundle != null) {
               int currentNumRecords = recordGroupWriter.numRecords();
               if (currentNumRecords >= nextNumRecordsForLengthCheck) {

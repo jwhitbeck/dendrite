@@ -13,8 +13,8 @@
             [clojure.test :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Bundle ChunkedPersistentList LeveledValue RecordGroup RecordGroup$Reader
-            RecordGroup$Writer Schema Stripe Utils Types]))
+  (:import [dendrite.java ReadBundle WriteBundle ChunkedPersistentList LeveledValue RecordGroup
+            RecordGroup$Reader RecordGroup$Writer Schema Stripe Utils Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +26,7 @@
   (let [dremel-bundle (->> (map vector dremel-paper-record1-striped2 dremel-paper-record2-striped2)
                            (map helpers/as-chunked-list)
                            (into-array ChunkedPersistentList)
-                           Bundle.)
+                           WriteBundle.)
         w (doto (RecordGroup$Writer. types
                                      (Schema/getColumns dremel-paper-schema2)
                                      test-target-data-page-length
@@ -57,13 +57,12 @@
                  [(LeveledValue. 0 2 nil)]]]
                (first (.readBundled r 100))))))))
 
-
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
         num-columns (count (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
         stripe (Stripe/getFn helpers/default-types test-schema nil)
-        bundle (Bundle/stripe records stripe num-columns)
+        bundle (WriteBundle/stripe records stripe num-columns)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length
@@ -83,7 +82,7 @@
         num-columns (count (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
         stripe (Stripe/getFn helpers/default-types test-schema nil)
-        bundle (Bundle/stripe records stripe num-columns)
+        bundle (WriteBundle/stripe records stripe num-columns)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length

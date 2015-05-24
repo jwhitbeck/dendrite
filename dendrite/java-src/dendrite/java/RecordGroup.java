@@ -61,7 +61,7 @@ public final class RecordGroup {
       numRecords = 0;
     }
 
-    public void write(Bundle bundle) {
+    public void write(WriteBundle bundle) {
       numRecords += bundle.count();
       Object[] writerValuesPairs = new Object[columnChunkWriters.length];
       for (int i=0; i<columnChunkWriters.length; ++i) {
@@ -222,12 +222,12 @@ public final class RecordGroup {
             if (RT.seq(partitionedPages[0]) == null) {
               return null;
             }
-            ChunkedPersistentList[] columnValues = new ChunkedPersistentList[partitionedPages.length];
+            ISeq[] columnValues = new ISeq[partitionedPages.length];
             for (int i=0; i<partitionedPages.length; ++i) {
-              columnValues[i] = (ChunkedPersistentList)partitionedPages[i].first();
+              columnValues[i] = (ISeq)partitionedPages[i].first();
               partitionedPages[i] = partitionedPages[i].next();
             }
-            return new Cons(new Bundle(columnValues), readBundled(partitionedPages));
+            return new Cons(new ReadBundle(columnValues), readBundled(partitionedPages));
             }
         });
     }
