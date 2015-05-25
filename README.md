@@ -12,12 +12,9 @@ the desired information.
 
 Furthermore, this library also borrows many ideas from the [Parquet][] project, an implementation of the
 Dremel file format for Hadoop. Unlike Parquet, Dendrite is not tied to any particular ecosystem and is
-designed to be a small library with very few external dependencies ([lz4-java][] for LZ4 compression and
-[fressian][] for metadata serialization).
+designed to be a small library with no external dependencies.
 
 [Parquet]: http://parquet.io/
-[lz4-java]: https://github.com/jpountz/lz4-java
-[fressian]: https://github.com/clojure/data.fressian
 
 Word of warning: this code has not yet been battle-tested. Prior to the 1.0 release, no effort will be made at
 preserving backwards compatibility of APIs or binary compatibility of files.
