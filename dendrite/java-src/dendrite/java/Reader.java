@@ -12,7 +12,10 @@
 
 package dendrite.java;
 
+import clojure.lang.ArrayChunk;
 import clojure.lang.AFn;
+import clojure.lang.Agent;
+import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
 import clojure.lang.Keyword;
 import clojure.lang.IChunkedSeq;
@@ -35,6 +38,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -49,7 +57,7 @@ public final class Reader implements Closeable {
   final Metadata.File fileMetadata;
   final Types types;
 
-  Reader(Types types, FileChannel fileChannel, Metadata.File fileMetadata) {
+  private Reader(Types types, FileChannel fileChannel, Metadata.File fileMetadata) {
     this.types = types;
     this.fileChannel = fileChannel;
     this.fileMetadata = fileMetadata;
@@ -102,44 +110,82 @@ public final class Reader implements Closeable {
     return getView(getQueryResult(options, pmapFn), options.bundleSize);
   }
 
-  ISeq getRecordGroupReaders(Schema.Column[] columns) {
+  Iterator<RecordGroup.Reader> getRecordGroupReaders(Schema.Column[] columns, int bundleSize) {
     return getRecordGroupReaders(types, fileChannel, Constants.magicBytes.length,
-                                 RT.seq(fileMetadata.recordGroups), columns);
+                                 fileMetadata.recordGroups, columns, bundleSize);
+  }
+
+  private static Iterator<RecordGroup.Reader>
+    getRecordGroupReaders(final Types types, final FileChannel fileChannel, final long offset,
+                          final Metadata.RecordGroup[] recordGroupsMetadata,
+                          final Schema.Column[] queriedColumns, final int bundleSize) {
+    final int numRecordGroups = recordGroupsMetadata.length;
+    if (numRecordGroups == 0) {
+      return Collections.<RecordGroup.Reader>emptyList().iterator();
+    }
+    return new AReadOnlyIterator<RecordGroup.Reader>() {
+      int i = 0;
+      long nextOffset = offset;
+
+      @Override
+      public boolean hasNext() {
+        return i < numRecordGroups;
+      }
+
+      @Override
+      public RecordGroup.Reader next() {
+        Metadata.RecordGroup recordGroupMetadata = recordGroupsMetadata[i];
+        long length = recordGroupMetadata.length;
+        ByteBuffer bb;
+        try {
+          bb = Utils.mapFileChannel(fileChannel, nextOffset, length);
+        } catch (IOException e) {
+          throw new IllegalStateException(e);
+        }
+        RecordGroup.Reader recordGroupReader
+          = new RecordGroup.Reader(types, bb, recordGroupMetadata, queriedColumns, bundleSize);
+        nextOffset += length;
+        i += 1;
+        return recordGroupReader;
+      }
+    };
   }
 
   public IPersistentMap stats() throws IOException {
-    IPersistentVector[] paths = Schema.getPaths(fileMetadata.schema);
-    Schema.Column[] columns = Schema.getColumns(fileMetadata.schema);
-    ITransientCollection[] columnStats = new ITransientCollection[columns.length];
-    ITransientCollection recordGroupStats = ChunkedPersistentList.EMPTY.asTransient();
-    for (int i=0; i<columns.length; ++i) {
-      columnStats[i] = ChunkedPersistentList.EMPTY.asTransient();
-    }
-    for (ISeq s = RT.seq(getRecordGroupReaders(columns)); s != null; s = s.next()) {
-      RecordGroup.Reader recordGroupReader = (RecordGroup.Reader)s.first();
-      IPersistentMap[] columnChunkStats = recordGroupReader.columnChunkStats();
-      for (int i=0; i<columnChunkStats.length; ++i) {
-        columnStats[i].conj(columnChunkStats[i]);
-      }
-      recordGroupStats.conj(Stats.recordGroupStats(recordGroupReader.numRecords(), RT.seq(columnChunkStats)));
-    }
-    IPersistentCollection[] finalColumnStats = new IPersistentCollection[columnStats.length];
-    for (int i=0; i<columnStats.length; ++i) {
-      Schema.Column col = columns[i];
-      finalColumnStats[i] = Stats.columnStats(types.getTypeSymbol(col.type),
-                                              types.getEncodingSymbol(col.encoding),
-                                              types.getCompressionSymbol(col.compression),
-                                              col.repetitionLevel,
-                                              col.definitionLevel,
-                                              paths[i],
-                                              columnStats[i].persistent());
-    }
-    IPersistentCollection finalRecordGroupStats = recordGroupStats.persistent();
-    return new PersistentArrayMap(new Object[]{
-        RECORD_GROUPS, recordGroupStats.persistent(),
-        COLUMNS, RT.seq(finalColumnStats),
-        GLOBAL, Stats.globalStats(fileChannel.size(), columns.length, finalRecordGroupStats)
-      });
+    // TODO Fix
+    // IPersistentVector[] paths = Schema.getPaths(fileMetadata.schema);
+    // Schema.Column[] columns = Schema.getColumns(fileMetadata.schema);
+    // ITransientCollection[] columnStats = new ITransientCollection[columns.length];
+    // ITransientCollection recordGroupStats = ChunkedPersistentList.EMPTY.asTransient();
+    // for (int i=0; i<columns.length; ++i) {
+    //   columnStats[i] = ChunkedPersistentList.EMPTY.asTransient();
+    // }
+    // for (ISeq s = RT.seq(getRecordGroupReaders(columns)); s != null; s = s.next()) {
+    //   RecordGroup.Reader recordGroupReader = (RecordGroup.Reader)s.first();
+    //   IPersistentMap[] columnChunkStats = recordGroupReader.columnChunkStats();
+    //   for (int i=0; i<columnChunkStats.length; ++i) {
+    //     columnStats[i].conj(columnChunkStats[i]);
+    //   }
+    //   recordGroupStats.conj(Stats.recordGroupStats(recordGroupReader.numRecords(), RT.seq(columnChunkStats)));
+    // }
+    // IPersistentCollection[] finalColumnStats = new IPersistentCollection[columnStats.length];
+    // for (int i=0; i<columnStats.length; ++i) {
+    //   Schema.Column col = columns[i];
+    //   finalColumnStats[i] = Stats.columnStats(types.getTypeSymbol(col.type),
+    //                                           types.getEncodingSymbol(col.encoding),
+    //                                           types.getCompressionSymbol(col.compression),
+    //                                           col.repetitionLevel,
+    //                                           col.definitionLevel,
+    //                                           paths[i],
+    //                                           columnStats[i].persistent());
+    // }
+    // IPersistentCollection finalRecordGroupStats = recordGroupStats.persistent();
+    // return new PersistentArrayMap(new Object[]{
+    //     RECORD_GROUPS, recordGroupStats.persistent(),
+    //     COLUMNS, RT.seq(finalColumnStats),
+    //     GLOBAL, Stats.globalStats(fileChannel.size(), columns.length, finalRecordGroupStats)
+    //   });
+    return null;
   }
 
   public Object schema() {
@@ -151,35 +197,11 @@ public final class Reader implements Closeable {
     fileChannel.close();
   }
 
-  static ISeq getRecordGroupReaders(final Types types, final FileChannel fileChannel, final long offset,
-                                    final ISeq recordGroupsMetadata, final Schema.Column[] queriedColumns) {
-    return new LazySeq(new AFn() {
-        public ISeq invoke() {
-          if (RT.seq(recordGroupsMetadata) == null) {
-            return null;
-          }
-          Metadata.RecordGroup recordGroupMetadata = (Metadata.RecordGroup)recordGroupsMetadata.first();
-          long length = recordGroupMetadata.length;
-          ByteBuffer bb;
-          try {
-            bb = Utils.mapFileChannel(fileChannel, offset, length);
-          } catch (IOException e) {
-            throw new IllegalStateException(e);
-          }
-          RecordGroup.Reader recordGroupReader
-            = new RecordGroup.Reader(types, bb, recordGroupMetadata, queriedColumns);
-          return new Cons(recordGroupReader,
-                          getRecordGroupReaders(types, fileChannel, offset + length,
-                                                recordGroupsMetadata.next(), queriedColumns));
-        }
-      });
-  }
-
-  static boolean isValidMagicBytes(ByteBuffer bb) {
+  private static boolean isValidMagicBytes(ByteBuffer bb) {
     return Arrays.equals(Constants.magicBytes, Types.toByteArray(bb));
   }
 
-  static final int fixedIntLength = 4;
+  private static final int fixedIntLength = 4;
 
   static Metadata.File readMetadata(FileChannel fileChannel) throws IOException {
     long length = fileChannel.size();
@@ -221,7 +243,7 @@ public final class Reader implements Closeable {
       for (int i=0; i<recordGroupsMetadata.length; ++i) {
         totalNumRecords = recordGroupsMetadata[i].numRecords;
       }
-      return repeat(totalNumRecords, assembledNilRecord);
+      return Utils.repeat(totalNumRecords, assembledNilRecord);
     }
 
     Object reduce(int n, IFn reducef, Object init) {
@@ -249,25 +271,13 @@ public final class Reader implements Closeable {
 
   }
 
-  static ISeq repeat(final long n, final Object v) {
-    return new LazySeq(new AFn(){
-        public ISeq invoke() {
-          if (n == 0) {
-            return null;
-          } else {
-            return new Cons(v, repeat(n-1, v));
-          }
-        }
-      });
-  }
-
   public static final class LazyView extends View {
 
-    final Assemble.Fn assembleFn;
-    final Schema.Column[] queriedColumns;
-    final Reader reader;
-    final int defaultBundleSize;
-    ISeq assembledBundleseq = null;
+    private final Assemble.Fn assembleFn;
+    private final Schema.Column[] queriedColumns;
+    private final Reader reader;
+    private final int defaultBundleSize;
+    private ISeq recordSeq = null;
 
     LazyView(Reader reader, Schema.Column[] queriedColumns, Assemble.Fn assembleFn, int defaultBundleSize) {
       this.reader = reader;
@@ -276,73 +286,129 @@ public final class Reader implements Closeable {
       this.defaultBundleSize = defaultBundleSize;
     }
 
-    static ISeq getBundlesSeq(final ISeq recordGroupReaders, final int bundleSize, final ISeq bundles) {
+    private static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
+      if (!recordGroupReaders.hasNext()) {
+        return Collections.<Bundle>emptyList().iterator();
+      }
+      return new AReadOnlyIterator<Bundle>() {
+        private Iterator<Bundle> bundleIterator = recordGroupReaders.next().iterator();
+
+        private void step() {
+          if (recordGroupReaders.hasNext()) {
+            bundleIterator = recordGroupReaders.next().iterator();
+          } else {
+            bundleIterator = null;
+          }
+        }
+
+        @Override
+        public boolean hasNext() {
+          if (bundleIterator == null) {
+            return false;
+          }
+          if (bundleIterator.hasNext()) {
+            return true;
+          } else {
+            step();
+            return hasNext();
+          }
+        }
+
+        @Override
+        public Bundle next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          return bundleIterator.next();
+        }
+      };
+    }
+
+    private Iterator<Bundle> getBundlesIterator(int bundleSize) {
+      return getBundlesIterator(reader.getRecordGroupReaders(queriedColumns, bundleSize));
+    }
+
+    private static Future<ArrayChunk> getAssembleFuture(final Bundle bundle, final Assemble.Fn assembleFn) {
+      return Agent.soloExecutor.submit(new Callable<ArrayChunk>() {
+          public ArrayChunk call() {
+                return new ArrayChunk(bundle.assemble(assembleFn));
+          }
+        });
+    }
+
+    private static Iterator<ArrayChunk> getRecordChunksIterator(final Iterator<Bundle> bundlesIterator,
+                                                                final Assemble.Fn assembleFn) {
+      int n = 2 + Runtime.getRuntime().availableProcessors();
+      final LinkedList<Future<ArrayChunk>> futures = new LinkedList<Future<ArrayChunk>>();
+      int k = 0;
+      while (bundlesIterator.hasNext() && k < n) {
+        futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+      }
+      return new AReadOnlyIterator<ArrayChunk>() {
+        @Override
+        public boolean hasNext() {
+          return !futures.isEmpty();
+        }
+
+        @Override
+        public ArrayChunk next() {
+          Future<ArrayChunk> fut = futures.pollFirst();
+          ArrayChunk chunk = Utils.tryGetFuture(fut);
+          if (bundlesIterator.hasNext()) {
+            futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+          }
+          return chunk;
+        }
+      };
+    }
+
+    private Iterator<ArrayChunk> getRecordChunksIterator(int bundleSize) {
+      return getRecordChunksIterator(getBundlesIterator(bundleSize), assembleFn);
+    }
+
+    private static ISeq getRecordChunkedSeq(final Iterator<ArrayChunk> recordChunksIterator) {
       return new LazySeq(new AFn() {
-          public ISeq invoke() {
-            if (RT.seq(bundles) == null) {
-              if (RT.seq(recordGroupReaders) == null) {
-                return null;
-              } else {
-                RecordGroup.Reader recordGroupReader = (RecordGroup.Reader)recordGroupReaders.first();
-                ISeq newBundles = recordGroupReader.readBundled(bundleSize);
-                return new Cons(newBundles.first(),
-                                getBundlesSeq(recordGroupReaders.next(), bundleSize, newBundles.next()));
-              }
+          public IChunkedSeq invoke() {
+            if (!recordChunksIterator.hasNext()) {
+              return null;
             } else {
-              return new Cons(bundles.first(),
-                              getBundlesSeq(recordGroupReaders, bundleSize, bundles.next()));
+              return new ChunkedCons(recordChunksIterator.next(), getRecordChunkedSeq(recordChunksIterator));
             }
           }
         });
     }
 
-    ISeq getBundlesSeq(int bundleSize) {
-      return getBundlesSeq(reader.getRecordGroupReaders(queriedColumns), bundleSize, null);
-    }
-
-    ISeq getAssembledBundleSeq(int bundleSize) {
-      IFn fn = new AFn() {
-          public Object invoke(Object bundle) {
-            return ((ReadBundle)bundle).assemble(assembleFn);
-          }
-        };
-      return Utils.pmap(fn, getBundlesSeq(bundleSize));
+    private ISeq getRecordChunkedSeq(int bundleSize) {
+      return getRecordChunkedSeq(getRecordChunksIterator(bundleSize));
     }
 
     @Override
     public synchronized ISeq seq() {
-      if (assembledBundleseq == null) {
-        assembledBundleseq = getAssembledBundleSeq(defaultBundleSize);
+      if (recordSeq == null) {
+        recordSeq = RT.seq(getRecordChunkedSeq(defaultBundleSize));
       }
-      return Utils.flattenChunked(assembledBundleseq);
+      return recordSeq;
     }
 
     @Override
     public synchronized Object fold(final int n, final IFn combinef, final IFn reducef) {
-      final Object init = combinef.invoke();
-      if (assembledBundleseq == null) {
-        IFn fn = new AFn() {
-            public Object invoke(Object bundle) {
-              return ((ReadBundle)bundle).reduce(reducef, assembleFn, init);
-            }
-          };
-        return reduce(combinef, init, Utils.pmap(fn, getBundlesSeq(n)));
-      } else {
-        IFn fn = new AFn() {
-            public Object invoke(Object assembledBundle) {
-              return reduce(reducef, init, assembledBundle);
-            }
-          };
-        return reduce(reducef, init, Utils.pmap(fn, assembledBundleseq));
-      }
+      throw new UnsupportedOperationException();
+      // final Object init = combinef.invoke();
+      // if (assembledBundleseq == null) {
+      //   IFn fn = new AFn() {
+      //       public Object invoke(Object bundle) {
+      //         return ((ReadBundle)bundle).reduce(reducef, assembleFn, init);
+      //       }
+      //     };
+      //   return reduce(combinef, init, Utils.pmap(fn, getBundlesSeq(n)));
+      // } else {
+      //   IFn fn = new AFn() {
+      //       public Object invoke(Object assembledBundle) {
+      //         return reduce(reducef, init, assembledBundle);
+      //       }
+      //     };
+      //   return reduce(reducef, init, Utils.pmap(fn, assembledBundleseq));
+      // }
     }
-  }
-
-  static Object reduce(IFn fn, Object init, Object coll) {
-    Object ret = init;
-    for (ISeq s = RT.seq(coll); s != null; s = s.next()) {
-      ret = fn.invoke(ret, s.first());
-    }
-    return ret;
   }
 }

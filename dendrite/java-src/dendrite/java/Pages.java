@@ -12,20 +12,17 @@
 
 package dendrite.java;
 
-import clojure.lang.AFn;
 import clojure.lang.Agent;
-import clojure.lang.ArraySeq;
-import clojure.lang.ASeq;
-import clojure.lang.Cons;
-import clojure.lang.IFn;
 import clojure.lang.ISeq;
 import clojure.lang.IPersistentCollection;
-import clojure.lang.IPersistentMap;
 import clojure.lang.ITransientCollection;
-import clojure.lang.LazySeq;
-import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -49,18 +46,32 @@ public final class Pages {
     mos.write(writer);
   }
 
-  public static ISeq readHeaders(final ByteBuffer bb, final int n) {
-    return new LazySeq(new AFn() {
-        public Object invoke() {
-          if (n == 0) {
-            return null;
-          } else {
-            ByteBuffer byteBuffer = (ByteBuffer)bb;
-            IPageHeader header = readHeader(byteBuffer);
-            return new Cons(header, readHeaders(Bytes.sliceAhead(byteBuffer, header.bodyLength()), n-1));
+  public static Iterable<IPageHeader> getHeaders(final ByteBuffer bb, final int n) {
+    return new Iterable<IPageHeader>() {
+      @Override
+        public Iterator<IPageHeader> iterator() {
+        return new AReadOnlyIterator<IPageHeader>() {
+          private int i = 0;
+          private ByteBuffer byteBuffer = bb ;
+
+          @Override
+            public boolean hasNext() {
+            return i < n;
           }
-        }
-      });
+
+          @Override
+            public IPageHeader next() {
+            if (i == n) {
+              throw new NoSuchElementException();
+            }
+            IPageHeader header = readHeader(byteBuffer);
+            byteBuffer = Bytes.sliceAhead(byteBuffer, header.bodyLength());
+            i += 1;
+            return header;
+          }
+        };
+      }
+    };
   }
 
   public static IPersistentCollection getPagesStats(ISeq headers) {
@@ -83,22 +94,36 @@ public final class Pages {
                                   decompressorFactory);
   }
 
-  public static ISeq getDataPageReaders(final ByteBuffer bb, final int n, final int maxRepetitionLevel,
-                                        final int maxDefinitionLevel, final IDecoderFactory decoderFactory,
-                                        final IDecompressorFactory decompressorFactory) {
-    return new LazySeq(new AFn() {
-        public Object invoke() {
-          if (n == 0) {
-            return null;
-          } else {
-            DataPage.Reader reader = getDataPageReader(bb, maxRepetitionLevel, maxDefinitionLevel,
-                                                       decoderFactory, decompressorFactory);
-            return new Cons(reader,
-                            getDataPageReaders(reader.next(), n-1, maxRepetitionLevel,
-                                               maxDefinitionLevel, decoderFactory, decompressorFactory));
+  public static Iterable<DataPage.Reader>
+    getDataPageReaders(final ByteBuffer bb, final int n, final int maxRepetitionLevel,
+                       final int maxDefinitionLevel, final IDecoderFactory decoderFactory,
+                       final IDecompressorFactory decompressorFactory) {
+    return new Iterable<DataPage.Reader>() {
+      @Override
+      public Iterator<DataPage.Reader> iterator() {
+        return new AReadOnlyIterator<DataPage.Reader>() {
+          private int i = 0;
+          private ByteBuffer byteBuffer = bb;
+
+          @Override
+            public boolean hasNext() {
+            return i < n;
           }
-        }
-      });
+
+          @Override
+            public DataPage.Reader next() {
+            if (i == n) {
+              throw new NoSuchElementException();
+            }
+            DataPage.Reader reader = getDataPageReader(byteBuffer, maxRepetitionLevel, maxDefinitionLevel,
+                                                       decoderFactory, decompressorFactory);
+            byteBuffer = reader.next();
+            i += 1;
+            return reader;
+          }
+        };
+      }
+    };
   }
 
   public static DictionaryPage.Reader getDictionaryPageReader(ByteBuffer bb, IDecoderFactory decoderFactory,
@@ -111,77 +136,70 @@ public final class Pages {
     return DictionaryPage.Reader.create(byteBuffer, decoderFactory, decompressorFactory);
   }
 
-  private final static class DataPageReadResult {
-    final ISeq fullPartitions;
-    final ISeq unfinishedPartition;
-    final int unfinishedPartitionLength;
-    final ISeq nextDataPageReaders;
-    final int partitionLength;
+  private static class ReadResult {
+    final List<List<Object>> fullPartitions;
+    final List<Object> unfinishedPartition;
+    ReadResult(List<List<Object>> fullPartitions, List<Object> unfinishedPartition){
+      this.fullPartitions = fullPartitions;
+      this.unfinishedPartition = unfinishedPartition;
+    }
+  }
 
-    DataPageReadResult(IPersistentCollection fullPartitions, IPersistentCollection unfinishedPartition,
-                       int unfinishedPartitionLength, ISeq nextDataPageReaders, int partitionLength) {
-      this.fullPartitions = RT.seq(fullPartitions);
-      this.unfinishedPartition = RT.seq(unfinishedPartition);
-      this.unfinishedPartitionLength = unfinishedPartitionLength;
-      this.nextDataPageReaders = nextDataPageReaders;
+  private static ReadResult readAndPartitionDataPage(DataPage.Reader reader, List<Object> unfinishedPartition,
+                                                     int partitionLength) {
+    List<List<Object>> fullPartitions = new ArrayList<List<Object>>();
+    List<Object> currentPartition = unfinishedPartition;
+    for (Object o : reader) {
+      currentPartition.add(o);
+      if (currentPartition.size() == partitionLength) {
+        fullPartitions.add(currentPartition);
+        currentPartition = new ArrayList<Object>(partitionLength);
+      }
+    }
+    return new ReadResult(fullPartitions, currentPartition);
+  }
+
+  private static Future<ReadResult> readAndPartitionDataPageFuture(final DataPage.Reader reader,
+                                                                   final List<Object> unfinishedPartition,
+                                                                   final int partitionLength) {
+    return Agent.soloExecutor.submit(new Callable<ReadResult>() {
+        public ReadResult call() {
+          return readAndPartitionDataPage(reader, unfinishedPartition, partitionLength);
+        }
+      });
+  }
+
+  private static class FirstPageReadResult extends ReadResult {
+    final Iterator<DataPage.Reader> pageIterator;
+    final int partitionLength;
+    FirstPageReadResult(List<List<Object>> fullPartitions, List<Object> unfinishedPartition,
+                        Iterator<DataPage.Reader> pageIterator, int partitionLength){
+      super(fullPartitions, unfinishedPartition);
+      this.pageIterator = pageIterator;
       this.partitionLength = partitionLength;
     }
   }
 
-  static DataPageReadResult readAndPartitionDataPage(ISeq dataPageReaders, ISeq unfinishedPartition,
-                                                     int unfinishedPartitionLength, int partitionLength) {
-    DataPage.Reader reader = (DataPage.Reader)dataPageReaders.first();
-    ChunkedPersistentList values = (ChunkedPersistentList)reader.read();
-    ITransientCollection partitions = ChunkedPersistentList.EMPTY.asTransient();
-    int numValues = (values == null)? 0 : values.count();
-    if (unfinishedPartitionLength > 0) {
-      if (unfinishedPartitionLength + numValues < partitionLength) {
-        return new DataPageReadResult(null, Utils.concat(unfinishedPartition, values),
-                                      unfinishedPartitionLength + numValues, dataPageReaders.next(),
-                                      partitionLength);
-      } else {
-        int numToComplete = partitionLength - unfinishedPartitionLength;
-        partitions.conj(Utils.concat(unfinishedPartition, values.take(numToComplete)));
-        values = values.drop(numToComplete);
-        numValues -= numToComplete;
-      }
-    }
-    while (numValues >= partitionLength) {
-      partitions.conj(values.take(partitionLength));
-      values = values.drop(partitionLength);
-      numValues -= partitionLength;
-    }
-    return new DataPageReadResult(partitions.persistent(), values, numValues, dataPageReaders.next(),
-                                  partitionLength);
-  }
-
-  private static Future<DataPageReadResult>
-    readAndPartitionDataPageFuture(final ISeq dataPageReaders, final ISeq unfinishedPartition,
-                                   final int unfinishedPartitionLength, final int partitionLength) {
-    return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
-        public DataPageReadResult call() {
-          return readAndPartitionDataPage(dataPageReaders, unfinishedPartition, unfinishedPartitionLength,
-                                          partitionLength);
-        }
-      });
-  }
-
-  private static Future<DataPageReadResult>
+  private static Future<FirstPageReadResult>
     readAndPartitionFirstDataPageFuture(final ByteBuffer bb, final int n, final int partitionLength,
                                         final int maxRepetitionLevel, final int maxDefinitionLevel,
                                         final IDecoderFactory decoderFactory,
                                         final IDecompressorFactory decompressorFactory) {
-
-    return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
-        public DataPageReadResult call() {
-          ISeq dataPageReaders = getDataPageReaders(bb, n, maxRepetitionLevel, maxDefinitionLevel,
-                                                    decoderFactory, decompressorFactory);
-          return readAndPartitionDataPage(dataPageReaders, null, 0, partitionLength);
+    return Agent.soloExecutor.submit(new Callable<FirstPageReadResult>() {
+        public FirstPageReadResult call() {
+          Iterator<DataPage.Reader> pageIterator
+            = getDataPageReaders(bb, n, maxRepetitionLevel, maxDefinitionLevel,
+                                 decoderFactory, decompressorFactory).iterator();
+          ReadResult res = readAndPartitionDataPage(pageIterator.next(),
+                                                    new ArrayList<Object>(partitionLength),
+                                                    partitionLength);
+          return new FirstPageReadResult(res.fullPartitions, res.unfinishedPartition, pageIterator,
+                                         partitionLength);
         }
       });
   }
 
-  private static Future<DataPageReadResult>
+  private static Future<FirstPageReadResult>
     readAndPartitionFirstDataPageWithDictionaryFuture(final ByteBuffer bb, final int n,
                                                       final int partitionLength,
                                                       final int maxRepetitionLevel,
@@ -189,122 +207,145 @@ public final class Pages {
                                                       final IDecoderFactory dictDecoderFactory,
                                                       final IDecoderFactory indicesDecoderFactory,
                                                       final IDecompressorFactory decompressorFactory) {
-    return Agent.soloExecutor.submit(new Callable<DataPageReadResult>() {
-        public DataPageReadResult call() {
+    return Agent.soloExecutor.submit(new Callable<FirstPageReadResult>() {
+        public FirstPageReadResult call() {
           DictionaryPage.Reader dictReader = getDictionaryPageReader(bb, dictDecoderFactory,
                                                                      decompressorFactory);
           Object[] dictionary = dictReader.read();
           IDecoderFactory dataDecoderFactory = new Dictionary.DecoderFactory(dictionary,
                                                                              indicesDecoderFactory,
                                                                              dictDecoderFactory);
-          ISeq dataPageReaders = getDataPageReaders(dictReader.next(), n, maxRepetitionLevel,
-                                                    maxDefinitionLevel, dataDecoderFactory, null);
-          return readAndPartitionDataPage(dataPageReaders, null, 0, partitionLength);
+          Iterator<DataPage.Reader> pageIterator
+            = getDataPageReaders(dictReader.next(), n, maxRepetitionLevel, maxDefinitionLevel,
+                                 dataDecoderFactory, null).iterator();
+          ReadResult res = readAndPartitionDataPage(pageIterator.next(),
+                                                    new ArrayList<Object>(partitionLength),
+                                                    partitionLength);
+          return new FirstPageReadResult(res.fullPartitions, res.unfinishedPartition, pageIterator,
+                                         partitionLength);
         }
       });
   }
 
-  private final static class PartitionedDataPageSeq extends ASeq {
+  private final static class PartitionedValuesIterator extends AReadOnlyIterator<List<Object>> {
+    private Future<ReadResult> fut;
+    private Future<FirstPageReadResult> firstFut;
+    private Iterator<DataPage.Reader> pageIterator;
+    private Iterator<List<Object>> fullPartitionsIterator;
+    private int partitionLength;
 
-    final Future<DataPageReadResult> fut;
-    DataPageReadResult res = null;
-    PartitionedDataPageSeq next = null;
-
-    PartitionedDataPageSeq(Future<DataPageReadResult> fut) {
-      this.fut = fut;
-    }
-
-    PartitionedDataPageSeq(IPersistentMap meta, Future<DataPageReadResult> fut, DataPageReadResult res,
-                           PartitionedDataPageSeq next) {
-      super(meta);
-      this.fut = fut;
-      this.res = res;
-      this.next = next;
+    PartitionedValuesIterator(Future<FirstPageReadResult> firstFut) {
+      this.firstFut = firstFut;
+      this.fut = null;
+      this.pageIterator = null;
+      this.fullPartitionsIterator = null;
+      this.partitionLength = 0;
     }
 
     @Override
-    public PartitionedDataPageSeq withMeta(IPersistentMap meta) {
-      return new PartitionedDataPageSeq(meta, fut, res, next);
-    }
-
-    private synchronized void step() {
-      if (res == null) {
-        try {
-          res = fut.get();
-        } catch (Exception e) {
-          throw new IllegalStateException(e);
-        }
-        if (RT.seq(res.nextDataPageReaders) != null) {
-          next = new PartitionedDataPageSeq(readAndPartitionDataPageFuture(res.nextDataPageReaders,
-                                                                           res.unfinishedPartition,
-                                                                           res.unfinishedPartitionLength,
-                                                                           res.partitionLength));
-        }
-      }
-    }
-
-    @Override
-    public Object first() {
-      step();
-      if (RT.seq(res.fullPartitions) != null) {
-        return res.fullPartitions.first();
-      } else if (next != null) {
-        return next.first();
+    public boolean hasNext() {
+      if (fullPartitionsIterator == null) {
+        processFirstPage();
+        return hasNext();
+      } else if (fullPartitionsIterator.hasNext()) {
+        return true;
+      } else if (fut != null) {
+        processNextPage();
+        return hasNext();
       } else {
-        return res.unfinishedPartition;
+        return false;
       }
     }
 
     @Override
-    public ISeq next() {
-      step();
-      if (next == null) {
-        if (RT.seq(res.fullPartitions) == null) {
-          return null;
-        } else if (RT.seq(res.unfinishedPartition) != null) {
-          return Utils.concat(res.fullPartitions.next(),
-                              ArraySeq.create(new Object[]{res.unfinishedPartition}));
-        } else {
-          return res.fullPartitions.next();
-        }
-      } else if (RT.seq(res.fullPartitions) != null) {
-        return Utils.concat(res.fullPartitions.next(), next);
-      } else {
-        return next.next();
+    public List<Object> next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
       }
+      return fullPartitionsIterator.next();
+    }
+
+    private void processFirstPage() {
+      FirstPageReadResult res;
+      try {
+        res = firstFut.get();
+        firstFut = null;
+      } catch (Exception e) {
+        throw new IllegalStateException(e);
+      }
+      pageIterator = res.pageIterator;
+      List<List<Object>> fullPartitions = res.fullPartitions;
+      partitionLength = res.partitionLength;
+      if (pageIterator.hasNext()) {
+        fut = readAndPartitionDataPageFuture(pageIterator.next(), res.unfinishedPartition, partitionLength);
+      } else if (!res.unfinishedPartition.isEmpty()) {
+        fullPartitions.add(res.unfinishedPartition);
+      }
+      fullPartitionsIterator = fullPartitions.iterator();
+    }
+
+    private void processNextPage() {
+      ReadResult res;
+      try {
+        res = fut.get();
+      } catch (Exception e) {
+        throw new IllegalStateException(e);
+      }
+      List<List<Object>> fullPartitions = res.fullPartitions;
+      if (pageIterator.hasNext()) {
+        fut = readAndPartitionDataPageFuture(pageIterator.next(), res.unfinishedPartition, partitionLength);
+      } else {
+        fut = null;
+        if (!res.unfinishedPartition.isEmpty()) {
+          fullPartitions.add(res.unfinishedPartition);
+        }
+      }
+      fullPartitionsIterator = fullPartitions.iterator();
     }
   }
 
-  public static ISeq readDataPagesPartitioned(ByteBuffer bb, int n, int partitionLength,
-                                              int maxRepetitionLevel, int maxDefinitionLevel,
-                                              IDecoderFactory decoderFactory,
-                                              IDecompressorFactory decompressorFactory) {
+  public static Iterable<List<Object>>
+    readAndPartitionDataPages(final ByteBuffer bb, final int n, final int partitionLength,
+                              final int maxRepetitionLevel, final int maxDefinitionLevel,
+                              final IDecoderFactory decoderFactory,
+                              final IDecompressorFactory decompressorFactory) {
     if (n == 0) {
-      return null;
+      return Collections.emptyList();
     }
-    return new PartitionedDataPageSeq(readAndPartitionFirstDataPageFuture(bb, n, partitionLength,
-                                                                          maxRepetitionLevel,
-                                                                          maxDefinitionLevel,
-                                                                          decoderFactory,
-                                                                          decompressorFactory));
+    return new Iterable<List<Object>>() {
+      @Override
+      public Iterator<List<Object>> iterator() {
+        return new PartitionedValuesIterator(readAndPartitionFirstDataPageFuture(bb, n, partitionLength,
+                                                                                 maxRepetitionLevel,
+                                                                                 maxDefinitionLevel,
+                                                                                 decoderFactory,
+                                                                                 decompressorFactory));
+      }
+    };
   }
 
-  public static ISeq readDataPagesWithDictionaryPartitioned(ByteBuffer bb, int n, int partitionLength,
-                                                            int maxRepetitionLevel, int maxDefinitionLevel,
-                                                            IDecoderFactory dictDecoderFactory,
-                                                            IDecoderFactory indicesDecoderFactory,
-                                                            IDecompressorFactory decompressorFactory) {
+  public static Iterable<List<Object>>
+    readAndPartitionDataPagesWithDictionary(final ByteBuffer bb, final int n, final int partitionLength,
+                                            final int maxRepetitionLevel, final int maxDefinitionLevel,
+                                            final IDecoderFactory dictDecoderFactory,
+                                            final IDecoderFactory indicesDecoderFactory,
+                                            final IDecompressorFactory decompressorFactory) {
     if (n == 0) {
-      return null;
+      return Collections.emptyList();
     }
-    return new PartitionedDataPageSeq
-      (readAndPartitionFirstDataPageWithDictionaryFuture(bb, n,
-                                                         partitionLength,
-                                                         maxRepetitionLevel,
-                                                         maxDefinitionLevel,
-                                                         dictDecoderFactory,
-                                                         indicesDecoderFactory,
-                                                         decompressorFactory));
+    return new Iterable<List<Object>>() {
+      @Override
+      public Iterator<List<Object>> iterator() {
+        return new PartitionedValuesIterator(
+            readAndPartitionFirstDataPageWithDictionaryFuture(bb, n,
+                                                              partitionLength,
+                                                              maxRepetitionLevel,
+                                                              maxDefinitionLevel,
+                                                              dictDecoderFactory,
+                                                              indicesDecoderFactory,
+                                                              decompressorFactory));
+      }
+    };
   }
 
 }

@@ -12,13 +12,12 @@
 
 package dendrite.java;
 
-import clojure.lang.ArraySeq;
-import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
-import clojure.lang.ISeq;
 import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.List;
 
 public final class DictionaryColumnChunk {
 
@@ -28,37 +27,39 @@ public final class DictionaryColumnChunk {
     private final Metadata.ColumnChunk columnChunkMetadata;
     private final Types types;
     private final Schema.Column column;
+    private final int partitionLength;
 
     public Reader(Types types, ByteBuffer bb, Metadata.ColumnChunk columnChunkMetadata,
-                  Schema.Column column) {
+                  Schema.Column column, int partitionLength) {
       this.types = types;
       this.bb = bb;
       this.columnChunkMetadata = columnChunkMetadata;
       this.column = column;
+      this.partitionLength = partitionLength;
     }
 
     @Override
-    public ISeq readPartitioned(int partitionLength) {
-      return Pages.readDataPagesWithDictionaryPartitioned
-        (Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
+    public Iterator<List<Object>> iterator() {
+      return Pages.readAndPartitionDataPagesWithDictionary(
+         Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
          columnChunkMetadata.numDataPages,
          partitionLength,
          column.repetitionLevel,
          column.definitionLevel,
          types.getDecoderFactory(column.type, Types.PLAIN, column.fn),
          types.getDecoderFactory(Types.INT, Types.PACKED_RUN_LENGTH),
-         types.getDecompressorFactory(column.compression));
+         types.getDecompressorFactory(column.compression)).iterator();
     }
 
     @Override
-    public ISeq getPageHeaders() {
-      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
-                               1 + columnChunkMetadata.numDataPages);
+    public Iterable<IPageHeader> getPageHeaders() {
+      return Pages.getHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dictionaryPageOffset),
+                              1 + columnChunkMetadata.numDataPages);
     }
 
     @Override
     public IPersistentMap stats() {
-      return Stats.columnChunkStats(Pages.getPagesStats(getPageHeaders()));
+      return Stats.columnChunkStats(Pages.getPagesStats(RT.seq(getPageHeaders())));
     }
 
     @Override
@@ -70,20 +71,19 @@ public final class DictionaryColumnChunk {
     public Schema.Column column() {
       return column;
     }
-
   }
 
   public final static class Writer implements IColumnChunkWriter {
 
-    final Schema.Column column;
-    final Dictionary.Encoder dictEncoder;
-    final DictionaryPage.Writer dictPageWriter;
-    final DataColumnChunk.Writer indicesColumnChunkWriter;
-    final MemoryOutputStream mos;
-    double bytesPerDictionaryValue = -1.0;
-    int dictionaryHeaderLength = -1;
+    private final Schema.Column column;
+    private final Dictionary.Encoder dictEncoder;
+    private final DictionaryPage.Writer dictPageWriter;
+    private final DataColumnChunk.Writer indicesColumnChunkWriter;
+    private final MemoryOutputStream mos;
+    private double bytesPerDictionaryValue = -1.0;
+    private int dictionaryHeaderLength = -1;
 
-    Writer(Types types, Schema.Column column, int targetDataPageLength) {
+    private Writer(Types types, Schema.Column column, int targetDataPageLength) {
       this.dictEncoder = Dictionary.Encoder.create(column.type, Types.PACKED_RUN_LENGTH);
       Schema.Column indicesColumn = getIndicesColumn(column);
       DataPage.Writer indicesPageWriter = DataPage.Writer.create(column.repetitionLevel,
@@ -103,7 +103,7 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
-    public void write(ChunkedPersistentList values) {
+    public void write(Iterable<Object> values) {
       indicesColumnChunkWriter.write(values);
     }
 
@@ -133,7 +133,7 @@ public final class DictionaryColumnChunk {
                                       0);
     }
 
-    void updateDictionaryLengthEstimates() {
+    private void updateDictionaryLengthEstimates() {
       IPageHeader h = dictPageWriter.header();
       bytesPerDictionaryValue
         = (int)((double)h.bodyLength() / (double)dictPageWriter.numValues());
@@ -161,7 +161,7 @@ public final class DictionaryColumnChunk {
       return dictionaryLength() + indicesColumnChunkWriter.length();
     }
 
-    int dictionaryLength() {
+    private int dictionaryLength() {
       return 1 + dictPageWriter.length();
     }
 
@@ -170,7 +170,7 @@ public final class DictionaryColumnChunk {
       return estimatedDictionaryLength() + indicesColumnChunkWriter.estimatedLength();
     }
 
-    int estimatedDictionaryLength() {
+    private int estimatedDictionaryLength() {
       if (bytesPerDictionaryValue > 0) {
         return 1 + dictionaryHeaderLength + (int)(dictEncoder.numDictionaryValues() * bytesPerDictionaryValue);
       } else if (dictEncoder.numDictionaryValues() > 0) {
@@ -189,9 +189,11 @@ public final class DictionaryColumnChunk {
       memoryOutputStream.write(indicesColumnChunkWriter);
     }
 
-    void encodeDictionaryPage() {
+    private void encodeDictionaryPage() {
       dictPageWriter.reset();
-      dictPageWriter.write(ArraySeq.create(dictEncoder.getDictionary()));
+      for (Object v : dictEncoder.getDictionary()) {
+        dictPageWriter.write(v);
+      }
       dictPageWriter.finish();
     }
 

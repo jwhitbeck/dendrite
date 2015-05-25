@@ -12,14 +12,13 @@
 
 package dendrite.java;
 
-import clojure.lang.IFn;
 import clojure.lang.IPersistentMap;
-import clojure.lang.IPersistentCollection;
-import clojure.lang.ITransientCollection;
-import clojure.lang.ISeq;
-import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 public final class DataPage {
 
@@ -106,7 +105,6 @@ public final class DataPage {
                         Bytes.readUInt(bb), Bytes.readUInt(bb));
 
     }
-
   }
 
   public abstract static class Writer implements IPageWriter {
@@ -119,8 +117,8 @@ public final class DataPage {
     boolean isFinished = false;
     int numValues = 0;
 
-    Writer(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder, IEncoder dataEncoder,
-           ICompressor compressor) {
+    private Writer(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder, IEncoder dataEncoder,
+                   ICompressor compressor) {
       this.repetitionLevelEncoder = repetitionLevelEncoder;
       this.definitionLevelEncoder = definitionLevelEncoder;
       this.dataEncoder = dataEncoder;
@@ -244,50 +242,46 @@ public final class DataPage {
 
   }
 
-  private final static class RequiredValuesWriter extends Writer {
-    RequiredValuesWriter(IEncoder dataEncoder, ICompressor compressor) {
+  private static final class RequiredValuesWriter extends Writer {
+    private RequiredValuesWriter(IEncoder dataEncoder, ICompressor compressor) {
       super(null, null, dataEncoder, compressor);
     }
 
     @Override
-    public void write(IPersistentCollection values) {
-      for (ISeq s = RT.seq(values); s != null; s = s.next()) {
-        dataEncoder.encode(s.first());
-        numValues += 1;
-      }
+    public void write(Object value) {
+      dataEncoder.encode(value);
+      numValues += 1;
     }
   }
 
-  private final static class NonRepeatedValuesWriter extends Writer {
-    NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder, ICompressor compressor) {
+  private static final class NonRepeatedValuesWriter extends Writer {
+    private NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder,
+                                    ICompressor compressor) {
       super(null, definitionLevelEncoder, dataEncoder, compressor);
     }
 
     @Override
-    public void write(IPersistentCollection values) {
-      for (ISeq s = RT.seq(values); s != null; s = s.next()) {
-        Object v = s.first();
-        if (v == null) {
-          definitionLevelEncoder.encode(0);
-        } else {
-          definitionLevelEncoder.encode(1);
-          dataEncoder.encode(v);
-        }
-        numValues += 1;
+    public void write(Object value) {
+      if (value == null) {
+        definitionLevelEncoder.encode(0);
+      } else {
+        definitionLevelEncoder.encode(1);
+        dataEncoder.encode(value);
       }
+      numValues += 1;
     }
   }
 
-  private final static class RepeatedValuesWriter extends Writer {
-    RepeatedValuesWriter(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder,
-                         IEncoder dataEncoder, ICompressor compressor) {
+  private static final class RepeatedValuesWriter extends Writer {
+    private RepeatedValuesWriter(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder,
+                                 IEncoder dataEncoder, ICompressor compressor) {
       super(repetitionLevelEncoder, definitionLevelEncoder, dataEncoder, compressor);
     }
 
     @Override
-    public void write(IPersistentCollection leveledValues) {
-      for (ISeq s = RT.seq(leveledValues); s != null; s = s.next()) {
-        LeveledValue lv = (LeveledValue)s.first();
+    public void write(Object values) {
+      for (Object o : (List)values) {
+        LeveledValue lv = (LeveledValue)o;
         if (lv.value != null) {
           dataEncoder.encode(lv.value);
         }
@@ -298,17 +292,17 @@ public final class DataPage {
     }
   }
 
-  public abstract static class Reader implements IPageReader {
+  public static final class Reader implements IPageReader, Iterable<Object> {
 
-    final ByteBuffer bb;
-    final IDecoderFactory decoderFactory;
-    final IDecompressorFactory decompressorFactory;
-    final Header header;
-    final int maxRepetitionLevel;
-    final int maxDefinitionLevel;
+    private final ByteBuffer bb;
+    private final IDecoderFactory decoderFactory;
+    private final IDecompressorFactory decompressorFactory;
+    private final Header header;
+    private final int maxRepetitionLevel;
+    private final int maxDefinitionLevel;
 
-    Reader(ByteBuffer bb, IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory,
-           Header header, int maxRepetitionLevel, int maxDefinitionLevel) {
+    private Reader(ByteBuffer bb, IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory,
+                   Header header, int maxRepetitionLevel, int maxDefinitionLevel) {
       this.bb = bb;
       this.decoderFactory = decoderFactory;
       this.decompressorFactory = decompressorFactory;
@@ -321,16 +315,8 @@ public final class DataPage {
                                 IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory) {
       ByteBuffer byteBuffer = bb.slice();
       Header header = Header.read(byteBuffer);
-      if (maxDefinitionLevel == 0) {
-        return new RequiredValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
-                                        maxRepetitionLevel, maxDefinitionLevel);
-      } else if (maxRepetitionLevel == 0) {
-        return new NonRepeatedValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
-                                           maxRepetitionLevel, maxDefinitionLevel);
-      } else {
-        return new RepeatedValuesReader(byteBuffer, decoderFactory, decompressorFactory, header,
-                                        maxRepetitionLevel, maxDefinitionLevel);
-      }
+      return new Reader(byteBuffer, decoderFactory, decompressorFactory, header, maxRepetitionLevel,
+                        maxDefinitionLevel);
     }
 
     @Override
@@ -343,17 +329,30 @@ public final class DataPage {
       return header;
     }
 
-    IIntDecoder getRepetitionLevelsDecoder() {
+    @Override
+    public Iterator<Object> iterator() {
+      if (maxDefinitionLevel == 0) {
+        return new RequiredValueIterator(getDataDecoder());
+      } else if (maxRepetitionLevel == 0) {
+        return new NonRepeatedValueIterator(getDefinitionLevelsDecoder(), getDataDecoder(),
+                                            decoderFactory.nullValue());
+      } else {
+        return new RepeatedValueIterator(getRepetitionLevelsDecoder(), getDefinitionLevelsDecoder(),
+                                         getDataDecoder(), decoderFactory.nullValue(), maxDefinitionLevel);
+      }
+    }
+
+    private IIntDecoder getRepetitionLevelsDecoder() {
       return Types.levelsDecoder(Bytes.sliceAhead(bb, header.byteOffsetRepetitionLevels()),
                                  maxRepetitionLevel);
     }
 
-    IIntDecoder getDefinitionLevelsDecoder() {
+    private IIntDecoder getDefinitionLevelsDecoder() {
       return Types.levelsDecoder(Bytes.sliceAhead(bb, header.byteOffsetDefinitionLevels()),
                                  maxDefinitionLevel);
     }
 
-    IDecoder getDataDecoder() {
+    private IDecoder getDataDecoder() {
       ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();
@@ -363,97 +362,114 @@ public final class DataPage {
       }
       return decoderFactory.create(byteBuffer);
     }
-
-    public abstract IPersistentCollection read();
-
   }
 
-  private final static class RequiredValuesReader extends Reader {
-    RequiredValuesReader(ByteBuffer bb, IDecoderFactory decoderFactory,
-                         IDecompressorFactory decompressorFactory, Header header, int maxRepetitionLevel,
-                         int maxDefinitionLevel) {
-      super(bb, decoderFactory, decompressorFactory, header, maxRepetitionLevel, maxDefinitionLevel);
+  private static final class RequiredValueIterator extends AReadOnlyIterator<Object> {
+
+    private final IDecoder decoder;
+    private final int n;
+    private int i;
+
+    private RequiredValueIterator(IDecoder decoder) {
+      this.n = decoder.numEncodedValues();
+      this.i = 0;
+      this.decoder = decoder;
     }
 
     @Override
-    public IPersistentCollection read() {
-      IDecoder dataDecoder = getDataDecoder();
-      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
-      int i = 0;
-      int n = dataDecoder.numEncodedValues();
-      while (i < n) {
-        vs.conj(dataDecoder.decode());
-        i += 1;
+    public boolean hasNext() {
+      return i < n;
+    }
+
+    @Override
+    public Object next() {
+      i += 1;
+      return decoder.decode();
+    }
+  }
+
+  private static final class NonRepeatedValueIterator extends AReadOnlyIterator<Object> {
+
+    private final IDecoder decoder;
+    private final IIntDecoder definitionLevelsDecoder;
+    private final Object nullValue;
+    private final int n;
+    private int i;
+
+    NonRepeatedValueIterator(IIntDecoder definitionLevelsDecoder, IDecoder decoder, Object nullValue) {
+      this.n = definitionLevelsDecoder.numEncodedValues();
+      this.i = 0;
+      this.decoder = decoder;
+      this.definitionLevelsDecoder = definitionLevelsDecoder;
+      this.nullValue = nullValue;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return i < n;
+    }
+
+    @Override
+    public Object next() {
+      i += 1;
+      if (definitionLevelsDecoder.decodeInt() == 0) {
+        return nullValue;
+      } else {
+        return decoder.decode();
       }
-      return vs.persistent();
     }
   }
 
-  private final static class NonRepeatedValuesReader extends Reader {
-    NonRepeatedValuesReader(ByteBuffer bb, IDecoderFactory decoderFactory,
-                            IDecompressorFactory decompressorFactory, Header header, int maxRepetitionLevel,
-                            int maxDefinitionLevel) {
-      super(bb, decoderFactory, decompressorFactory, header, maxRepetitionLevel, maxDefinitionLevel);
+  private static final class RepeatedValueIterator extends AReadOnlyIterator<Object> {
+
+    private final IIntDecoder repetitionLevelsDecoder;
+    private final IIntDecoder definitionLevelsDecoder;
+    private final int maxDefinitionLevel;
+    private final IDecoder decoder;
+    private final Object nullValue;
+    private final int n;
+    private int i;
+    private int nextRepetitionLevel;
+    private boolean seenFirstValue = false;
+
+    private RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
+                                  IDecoder decoder, Object nullValue, int maxDefinitionLevel) {
+      this.n = repetitionLevelsDecoder.numEncodedValues();
+      this.i = 0;
+      this.decoder = decoder;
+      this.repetitionLevelsDecoder = repetitionLevelsDecoder;
+      this.definitionLevelsDecoder = definitionLevelsDecoder;
+      this.nullValue = nullValue;
+      this.maxDefinitionLevel = maxDefinitionLevel;
+      if (n > 0) {
+        this.nextRepetitionLevel = repetitionLevelsDecoder.decodeInt();
+      }
     }
 
     @Override
-    public IPersistentCollection read() {
-      IDecoder dataDecoder = getDataDecoder();
-      Object nullValue = decoderFactory.nullValue();
-      IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
-      int i = 0;
-      int n = definitionLevelsDecoder.numEncodedValues();
+    public boolean hasNext() {
+      return i < n;
+    }
+
+    @Override
+    public Object next() {
+      List<LeveledValue> nextRepeatedValues = new ArrayList<LeveledValue>();
       while (i < n) {
-        if (definitionLevelsDecoder.decodeInt() == 0) {
-          vs.conj(nullValue);
+        int definitionLevel = definitionLevelsDecoder.decodeInt();
+        if (definitionLevel < maxDefinitionLevel) {
+          nextRepeatedValues.add(new LeveledValue(nextRepetitionLevel, definitionLevel, nullValue));
         } else {
-          vs.conj(dataDecoder.decode());
+          nextRepeatedValues.add(new LeveledValue(nextRepetitionLevel, definitionLevel, decoder.decode()));
         }
         i += 1;
-      }
-      return vs.persistent();
-    }
-  }
-
-
-  private final static class RepeatedValuesReader extends Reader {
-    RepeatedValuesReader(ByteBuffer bb, IDecoderFactory decoderFactory,
-                         IDecompressorFactory decompressorFactory, Header header, int maxRepetitionLevel,
-                         int maxDefinitionLevel) {
-      super(bb, decoderFactory, decompressorFactory, header, maxRepetitionLevel, maxDefinitionLevel);
-    }
-
-    @Override
-    public IPersistentCollection read() {
-      IDecoder dataDecoder = getDataDecoder();
-      Object nullValue = decoderFactory.nullValue();
-      IIntDecoder repetitionLevelsDecoder = getRepetitionLevelsDecoder();
-      IIntDecoder definitionLevelsDecoder = getDefinitionLevelsDecoder();
-      ITransientCollection vs = ChunkedPersistentList.EMPTY.asTransient();
-      ITransientCollection rv = ChunkedPersistentList.EMPTY.asTransient();
-      boolean seenFirstValue = false;
-      int i = 0;
-      int n = repetitionLevelsDecoder.numEncodedValues();
-      while (i < n) {
-        int repLvl = repetitionLevelsDecoder.decodeInt();
-        if (repLvl == 0 && seenFirstValue){
-          vs.conj(rv.persistent());
-          rv = ChunkedPersistentList.EMPTY.asTransient();
+        if (i < n) {
+          nextRepetitionLevel = repetitionLevelsDecoder.decodeInt();
+          if (nextRepetitionLevel == 0) {
+            break;
+          }
         }
-        seenFirstValue = true;
-        int defLvl = definitionLevelsDecoder.decodeInt();
-        if (defLvl < maxDefinitionLevel) {
-          rv.conj(new LeveledValue(repLvl, defLvl, nullValue));
-        } else {
-          rv.conj(new LeveledValue(repLvl, defLvl, dataDecoder.decode()));
-        }
-        i += 1;
       }
-      if (rv != null) {
-        vs.conj(rv.persistent());
-      }
-      return vs.persistent();
+      return nextRepeatedValues;
     }
   }
 

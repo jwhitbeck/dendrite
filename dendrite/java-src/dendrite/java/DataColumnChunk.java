@@ -18,53 +18,57 @@ import clojure.lang.ISeq;
 import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.List;
 
 public final class DataColumnChunk {
 
-  public final static class Reader implements IColumnChunkReader {
+  public static final class Reader implements IColumnChunkReader {
 
     private final ByteBuffer bb;
     private final Metadata.ColumnChunk columnChunkMetadata;
     private final Types types;
     private final Schema.Column column;
+    private final int partitionLength;
 
     public Reader(Types types, ByteBuffer bb, Metadata.ColumnChunk columnChunkMetadata,
-                  Schema.Column column) {
+                  Schema.Column column, int partitionLength) {
       this.types = types;
       this.bb = bb;
       this.columnChunkMetadata = columnChunkMetadata;
       this.column = column;
+      this.partitionLength = partitionLength;
     }
 
     @Override
-    public ISeq readPartitioned(int partitionLength) {
-      return Pages.readDataPagesPartitioned(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
-                                            columnChunkMetadata.numDataPages,
-                                            partitionLength,
-                                            column.repetitionLevel,
-                                            column.definitionLevel,
-                                            types.getDecoderFactory(column.type, column.encoding, column.fn),
-                                            types.getDecompressorFactory(column.compression));
+    public Iterator<List<Object>> iterator() {
+      return Pages.readAndPartitionDataPages(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+                                             columnChunkMetadata.numDataPages,
+                                             partitionLength,
+                                             column.repetitionLevel,
+                                             column.definitionLevel,
+                                             types.getDecoderFactory(column.type, column.encoding, column.fn),
+                                             types.getDecompressorFactory(column.compression)).iterator();
     }
 
-    public ISeq getPageReaders() {
+    @Override
+    public Iterable<IPageHeader> getPageHeaders() {
+      return Pages.getHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+                              columnChunkMetadata.numDataPages);
+    }
+
+    public Iterable<DataPage.Reader> getPageReaders() {
       return Pages.getDataPageReaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
                                       columnChunkMetadata.numDataPages,
                                       column.repetitionLevel,
                                       column.definitionLevel,
-                                      types.getDecoderFactory(column.type, column.encoding),
+                                      types.getDecoderFactory(column.type, column.encoding, column.fn),
                                       types.getDecompressorFactory(column.compression));
     }
 
     @Override
-    public ISeq getPageHeaders() {
-      return Pages.readHeaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
-                               columnChunkMetadata.numDataPages);
-    }
-
-    @Override
     public IPersistentMap stats() {
-      return Stats.columnChunkStats(Pages.getPagesStats(getPageHeaders()));
+      return Stats.columnChunkStats(Pages.getPagesStats(RT.seq(getPageHeaders())));
     }
 
     @Override
@@ -76,10 +80,9 @@ public final class DataColumnChunk {
     public Schema.Column column() {
       return column;
     }
-
   }
 
-  public static abstract class Writer implements IColumnChunkWriter {
+  public abstract static class Writer implements IColumnChunkWriter {
 
     int nextNumValuesForPageLengthCheck;
     int numPages;
@@ -115,7 +118,7 @@ public final class DataColumnChunk {
     }
 
     @Override
-    public abstract void write(ChunkedPersistentList values);
+    public abstract void write(Iterable<Object> values);
 
     @Override
     public Schema.Column column() {
@@ -178,66 +181,66 @@ public final class DataColumnChunk {
     }
   }
 
-  private final static class NonRepeatedWriter extends Writer {
+  private static final class NonRepeatedWriter extends Writer {
     NonRepeatedWriter(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
       super(pageWriter, column, targetDataPageLength);
     }
 
     @Override
-    public void write(ChunkedPersistentList values) {
-      if (pageWriter.numValues() >= targetDataPageLength) {
-        // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
-        // fully realized when read, this can lead to memory issues when deserializng so we cap the total
-        // number of values in a page here to one value per byte.
-        flushDataPageWriter();
-      }
-      int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.numValues();
-      if (numValuesBeforeNextCheck >= values.count()) {
-        pageWriter.write(values);
-      } else {
-        ChunkedPersistentList currentBatch = values.take(numValuesBeforeNextCheck);
-        ChunkedPersistentList nextBatch = values.drop(numValuesBeforeNextCheck);
-        pageWriter.write(currentBatch);
-        if (pageWriter.estimatedLength() > targetDataPageLength) {
+    public void write(Iterable<Object> values) {
+      Iterator<Object> vi = values.iterator();
+      while (vi.hasNext()) {
+        if (pageWriter.numValues() >= targetDataPageLength) {
+          // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
+          // fully realized when read, this can lead to memory issues when deserializng so we cap the total
+          // number of values in a page here to one value per byte.
           flushDataPageWriter();
-        } else {
-          nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
-                                                                          pageWriter.estimatedLength(),
-                                                                          targetDataPageLength);
         }
-        write(nextBatch);
+        int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.numValues();
+        while (numValuesBeforeNextCheck > 0 && vi.hasNext()) {
+          pageWriter.write(vi.next());
+          numValuesBeforeNextCheck -= 1;
+        }
+        if (vi.hasNext() && numValuesBeforeNextCheck == 0) {
+          if (pageWriter.estimatedLength() > targetDataPageLength) {
+            flushDataPageWriter();
+          } else {
+            nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
+                                                                            pageWriter.estimatedLength(),
+                                                                            targetDataPageLength);
+          }
+        }
       }
     }
   }
 
-  private final static class RepeatedWriter extends Writer {
+  private static final class RepeatedWriter extends Writer {
     RepeatedWriter(DataPage.Writer pageWriter, Schema.Column column, int targetDataPageLength) {
       super(pageWriter, column, targetDataPageLength);
     }
 
     @Override
-    public void write(ChunkedPersistentList leveledValuesSeq) {
-      if (pageWriter.numValues() >= targetDataPageLength) {
-        // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
-        // fully realized when read, this can lead to memory issues when deserializng so we cap the total
-        // number of values in a page here to one value per byte.
-        flushDataPageWriter();
-      }
-      ChunkedPersistentList remaining = leveledValuesSeq;
-      while (pageWriter.numValues() <= nextNumValuesForPageLengthCheck && remaining != null) {
-        IPersistentCollection leveledValues = (IPersistentCollection)remaining.first();
-        pageWriter.write(leveledValues);
-        remaining = remaining.next();
-      }
-      if (pageWriter.numValues() > nextNumValuesForPageLengthCheck) {
-        if (pageWriter.estimatedLength() > targetDataPageLength) {
+    public void write(Iterable<Object> leveledValues) {
+      Iterator<Object> lvi = leveledValues.iterator();
+      while (lvi.hasNext()) {
+        if (pageWriter.numValues() >= targetDataPageLength) {
+          // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
+          // fully realized when read, this can lead to memory issues when deserializng so we cap the total
+          // number of values in a page here to one value per byte.
           flushDataPageWriter();
-        } else {
-          nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
-                                                                          pageWriter.estimatedLength(),
-                                                                          targetDataPageLength);
         }
-        write(remaining);
+        while (pageWriter.numValues() <= nextNumValuesForPageLengthCheck && lvi.hasNext()) {
+          pageWriter.write(lvi.next());
+        }
+        if (pageWriter.numValues() > nextNumValuesForPageLengthCheck) {
+          if (pageWriter.estimatedLength() > targetDataPageLength) {
+            flushDataPageWriter();
+          } else {
+            nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
+                                                                            pageWriter.estimatedLength(),
+                                                                            targetDataPageLength);
+          }
+        }
       }
     }
   }

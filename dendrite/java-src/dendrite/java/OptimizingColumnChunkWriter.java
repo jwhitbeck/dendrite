@@ -15,14 +15,13 @@ package dendrite.java;
 import clojure.lang.AFn;
 import clojure.lang.IFn;
 import clojure.lang.IMapEntry;
-import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
-import clojure.lang.ISeq;
 import clojure.lang.Symbol;
 import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -88,19 +87,21 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   abstract int getBestEncoding(DataColumnChunk.Reader plainReader, IPersistentMap plainStats);
 
+  private static final int PARTITION_LENGTH = 100;
+
   public IColumnChunkWriter optimize(IPersistentMap compressionThresholds) {
     plainColumnChunkWriter.finish();
     DataColumnChunk.Reader primitiveReader
       = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
                                    plainColumnChunkWriter.metadata(),
-                                   primitiveColumn);
+                                   primitiveColumn, PARTITION_LENGTH);
     IPersistentMap plainStats = primitiveReader.stats();
     int bestEncoding = getBestEncoding(primitiveReader, plainStats);
     int bestCompression = getBestCompression(bestEncoding, primitiveReader, plainStats, compressionThresholds);
     DataColumnChunk.Reader plainReader
       = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
                                    plainColumnChunkWriter.metadata(),
-                                   column);
+                                   column, PARTITION_LENGTH);
     IColumnChunkWriter optimizedWriter
       = ColumnChunks.createWriter(types,
                                   getColumnWith(types, column, column.type, bestEncoding, bestCompression),
@@ -109,14 +110,13 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return optimizedWriter;
   }
 
-  void copyTo(DataColumnChunk.Reader columnChunkReader, IColumnChunkWriter columnChunkWriter) {
-    for (ISeq s = columnChunkReader.getPageReaders(); s != null; s = s.next()) {
-      DataPage.Reader reader = (DataPage.Reader)s.first();
-      columnChunkWriter.write((ChunkedPersistentList)reader.read());
+  private void copyTo(DataColumnChunk.Reader columnChunkReader, IColumnChunkWriter columnChunkWriter) {
+    for (DataPage.Reader reader : columnChunkReader.getPageReaders()) {
+      columnChunkWriter.write(reader);
     }
   }
 
-  int getBestCompression(int bestEncoding, DataColumnChunk.Reader primitiveReader,
+  private int getBestCompression(int bestEncoding, DataColumnChunk.Reader primitiveReader,
                          IPersistentMap plainStats, IPersistentMap compressionThresholds) {
     if (bestEncoding == Types.DICTIONARY || bestEncoding == Types.FREQUENCY) {
       return getDictionaryBestCompression(bestEncoding, plainStats, compressionThresholds);
@@ -125,7 +125,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  int getRegularBestCompression(int encoding, DataColumnChunk.Reader primitiveReader,
+  private int getRegularBestCompression(int encoding, DataColumnChunk.Reader primitiveReader,
                                 IPersistentMap plainStats, IPersistentMap compressionThresholds) {
     IColumnChunkWriter writer
       = DataColumnChunk.Writer.create(types,
@@ -168,17 +168,16 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return bestCompression;
   }
 
-  void copyAtLeastOnePage(DataColumnChunk.Reader primitiveReader, IColumnChunkWriter columnChunkWriter) {
-    ISeq dataPageReaders = primitiveReader.getPageReaders();
-    while (dataPageReaders != null && columnChunkWriter.numDataPages() == 0) {
-      DataPage.Reader reader = (DataPage.Reader)dataPageReaders.first();
-      columnChunkWriter.write((ChunkedPersistentList)reader.read());
-      dataPageReaders = dataPageReaders.next();
+  private void copyAtLeastOnePage(DataColumnChunk.Reader primitiveReader,
+                                  IColumnChunkWriter columnChunkWriter) {
+    Iterator<DataPage.Reader> i = primitiveReader.getPageReaders().iterator();
+    while (i.hasNext() && columnChunkWriter.numDataPages() == 0) {
+      columnChunkWriter.write(i.next());
     }
   }
 
-  int getDictionaryBestCompression(int encoding, IPersistentMap plainStats,
-                                   IPersistentMap compressionThresholds) {
+  private int getDictionaryBestCompression(int encoding, IPersistentMap plainStats,
+                                           IPersistentMap compressionThresholds) {
     int indicesDataLength;
     if (encoding == Types.DICTIONARY) {
       indicesDataLength = estimateDictionaryIndicesColumnLength(plainStats);
@@ -211,7 +210,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return bestCompression;
   }
 
-  int estimateLevelsLength(IPersistentMap plainStats) {
+  private int estimateLevelsLength(IPersistentMap plainStats) {
     return (int)RT.get(plainStats, Stats.REPETITION_LEVELS_LENGTH)
       + (int)RT.get(plainStats, Stats.DEFINITION_LEVELS_LENGTH);
   }
@@ -235,7 +234,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   @Override
-  public void write(ChunkedPersistentList values){
+  public void write(Iterable<Object> values){
     plainColumnChunkWriter.write(values);
   }
 
@@ -293,7 +292,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     throw new UnsupportedOperationException();
   }
 
-  static Schema.Column getPlainColumn(Types types, Schema.Column column) {
+  private static Schema.Column getPlainColumn(Types types, Schema.Column column) {
     int plainEncoding;
     if (types.getPrimitiveType(column.type) == Types.BYTE_ARRAY) {
       plainEncoding = Types.DELTA_LENGTH;
@@ -303,43 +302,43 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return getColumnWith(types, column, column.type, plainEncoding, Types.NONE);
   }
 
-  static Schema.Column getPrimitiveColumn(Types types, Schema.Column column) {
+  private static Schema.Column getPrimitiveColumn(Types types, Schema.Column column) {
     return getColumnWith(types, column, types.getPrimitiveType(column.type), column.encoding,
                          column.compression);
   }
 
-  static Schema.Column getColumnWith(Types types, Schema.Column column, int type, int encoding,
-                                     int compression) {
+  private static Schema.Column getColumnWith(Types types, Schema.Column column, int type, int encoding,
+                                             int compression) {
     return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
                              type, encoding, compression, column.columnIndex, -1, null);
   }
 
-  static class StatsCollector {
+  private static class StatsCollector {
 
     final HashMap<Object, Integer> frequencies;
     final int maxDictionarySize;
 
-    StatsCollector(int maxDictionarySize) {
+    private StatsCollector(int maxDictionarySize) {
       this.maxDictionarySize = maxDictionarySize;
       this.frequencies = new HashMap<Object, Integer>();
     }
 
-    public Map<Object, Integer> getFrequencies() {
+    Map<Object, Integer> getFrequencies() {
       return frequencies;
     }
 
-    public boolean isDictionarySaturated() {
+    boolean isDictionarySaturated() {
       return frequencies.size() == maxDictionarySize;
     }
 
-    public void process(Object o) {
+    void process(Object o) {
       if (frequencies.size() < maxDictionarySize) {
         incrementFrequency(frequencies, o);
       }
     }
   }
 
-  static IFn getShim(final StatsCollector statsCollector) {
+  private static IFn getShim(final StatsCollector statsCollector) {
     return new AFn() {
       public Object invoke(Object o) {
         statsCollector.process(o);
@@ -348,10 +347,10 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     };
   }
 
-  static class BooleanColumnChunk extends OptimizingColumnChunkWriter {
+  private static final class BooleanColumnChunk extends OptimizingColumnChunkWriter {
 
-    BooleanColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
-                       StatsCollector statsCollector) {
+    private BooleanColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+                               Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
 
@@ -399,13 +398,9 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
                                primitiveColumn.definitionLevel,
                                types.getPrimitiveEncoder(primitiveColumn.type, encoding),
                                types.getCompressor(Types.NONE));
-    DataPage.Reader pageReader = (DataPage.Reader)primitiveReader.getPageReaders().first();
-    if (primitiveColumn.repetitionLevel > 0) {
-      for (ISeq s = RT.seq(pageReader.read()); s != null; s = s.next()) {
-        pageWriter.write(RT.seq(s.first()));
-      }
-    } else {
-      pageWriter.write(pageReader.read());
+    DataPage.Reader pageReader = primitiveReader.getPageReaders().iterator().next();
+    for (Object o : pageReader) {
+      pageWriter.write(o);
     }
     pageWriter.finish();
     IPersistentMap pageStats = pageWriter.header().stats();
@@ -414,10 +409,10 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return (int)((int)RT.get(pageStats, Stats.DATA_LENGTH) * mult);
   }
 
-  static class DefaultColumnChunk extends OptimizingColumnChunkWriter {
+  private static final class DefaultColumnChunk extends OptimizingColumnChunkWriter {
 
-    DefaultColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
-                     StatsCollector statsCollector) {
+    private DefaultColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+                               Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
 
@@ -447,17 +442,17 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  static class IntStatsCollector extends StatsCollector {
+  private static final class IntStatsCollector extends StatsCollector {
 
-    int minValue = Integer.MAX_VALUE;
-    int maxValue = Integer.MIN_VALUE;
+    private int minValue = Integer.MAX_VALUE;
+    private int maxValue = Integer.MIN_VALUE;
 
-    IntStatsCollector(int maxDictionarySize) {
+    private IntStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
     @Override
-    public void process(Object o) {
+    void process(Object o) {
       super.process(o);
       int v = (Integer)o;
       if (v > maxValue) {
@@ -469,17 +464,17 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  static class IntColumnChunk extends OptimizingColumnChunkWriter {
+  private static class IntColumnChunk extends OptimizingColumnChunkWriter {
 
-    final IntStatsCollector intStatsCollector;
+    private final IntStatsCollector intStatsCollector;
 
-    IntColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
-                   StatsCollector statsCollector) {
+    private IntColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
+                           StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
       this.intStatsCollector = (IntStatsCollector)statsCollector;
     }
 
-    int getVLQDataLength() {
+    private int getVLQDataLength() {
       int length = 0;
       for (Map.Entry<Object, Integer> e : statsCollector.getFrequencies().entrySet()) {
         int v = (Integer)e.getKey();
@@ -489,7 +484,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       return length;
     }
 
-    int getZigZagDataLength() {
+    private int getZigZagDataLength() {
       int length = 0;
       for (Map.Entry<Object, Integer> e : statsCollector.getFrequencies().entrySet()) {
         int v = Bytes.encodeZigZag32((Integer)e.getKey());
@@ -567,17 +562,17 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  static class LongStatsCollector extends StatsCollector {
+  private static final class LongStatsCollector extends StatsCollector {
 
-    long minValue = Long.MAX_VALUE;
-    long maxValue = Long.MIN_VALUE;
+    private long minValue = Long.MAX_VALUE;
+    private long maxValue = Long.MIN_VALUE;
 
-    LongStatsCollector(int maxDictionarySize) {
+    private LongStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
     @Override
-    public void process(Object o) {
+    void process(Object o) {
       super.process(o);
       long v = (Long)o;
       if (v > maxValue) {
@@ -589,9 +584,9 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  static class LongColumnChunk extends OptimizingColumnChunkWriter {
+  private static final class LongColumnChunk extends OptimizingColumnChunkWriter {
 
-    final LongStatsCollector longStatsCollector;
+    private final LongStatsCollector longStatsCollector;
 
     LongColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
                    StatsCollector statsCollector) {
@@ -599,8 +594,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       this.longStatsCollector = (LongStatsCollector)statsCollector;
     }
 
-
-    int getVLQDataLength() {
+    private int getVLQDataLength() {
       int length = 0;
       for (Map.Entry<Object, Integer> e : statsCollector.getFrequencies().entrySet()) {
         long v = (Long)e.getKey();
@@ -610,7 +604,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       return length;
     }
 
-    int getZigZagDataLength() {
+    private int getZigZagDataLength() {
       int length = 0;
       for (Map.Entry<Object, Integer> e : statsCollector.getFrequencies().entrySet()) {
         long v = Bytes.encodeZigZag64((Long)e.getKey());
@@ -680,23 +674,23 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  static class ByteArrayStatsCollector extends StatsCollector {
+  private static final class ByteArrayStatsCollector extends StatsCollector {
 
-    Map<Object, Integer> unwrappedFrequencies = null;
+    private Map<Object, Integer> unwrappedFrequencies = null;
 
-    ByteArrayStatsCollector(int maxDictionarySize) {
+    private ByteArrayStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
     @Override
-    public void process(Object o) {
+    void process(Object o) {
       if (frequencies.size() < maxDictionarySize) {
         incrementFrequency(frequencies, new HashableByteArray((byte[])o));
       }
     }
 
     @Override
-    public Map<Object, Integer> getFrequencies() {
+    Map<Object, Integer> getFrequencies() {
       if (unwrappedFrequencies == null) {
         unwrappedFrequencies = new HashMap<Object, Integer>();
         for (Map.Entry<Object, Integer> e : frequencies.entrySet()) {
@@ -708,10 +702,10 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   }
 
-  static class ByteArrayColumnChunk extends OptimizingColumnChunkWriter {
+  private static class ByteArrayColumnChunk extends OptimizingColumnChunkWriter {
 
-    ByteArrayColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
-                     StatsCollector statsCollector) {
+    private ByteArrayColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+                                 Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
 

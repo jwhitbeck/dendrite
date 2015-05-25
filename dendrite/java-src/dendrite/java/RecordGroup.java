@@ -12,21 +12,18 @@
 
 package dendrite.java;
 
-import clojure.lang.ArraySeq;
-import clojure.lang.AFn;
-import clojure.lang.Cons;
-import clojure.lang.IFn;
+import clojure.lang.Agent;
 import clojure.lang.IPersistentMap;
-import clojure.lang.IPersistentCollection;
-import clojure.lang.ITransientCollection;
-import clojure.lang.ISeq;
-import clojure.lang.LazySeq;
-import clojure.lang.RT;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 
 public final class RecordGroup {
 
@@ -61,19 +58,41 @@ public final class RecordGroup {
       numRecords = 0;
     }
 
-    public void write(WriteBundle bundle) {
-      numRecords += bundle.count();
-      Object[] writerValuesPairs = new Object[columnChunkWriters.length];
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        writerValuesPairs[i] = new WriterValuesPair(columnChunkWriters[i], bundle.columnValues[i]);
+    @SuppressWarnings("unchecked")
+    private void writeParallel(Bundle bundle) {
+      List<Future<Object>> futures = new ArrayList<Future<Object>>(columnChunkWriters.length);
+      for(int i=0; i<columnChunkWriters.length; ++i) {
+        final IColumnChunkWriter writer = columnChunkWriters[i];
+        final List columnValues = bundle.columnValues[i];
+        futures.add(Agent.soloExecutor.submit(new Callable<Object>() {
+              public Object call() {
+                writer.write(columnValues);
+                return null;
+              }
+          }));
       }
-      Utils.doAll(Utils.pmap(new AFn() {
-          public Object invoke(Object o) {
-            WriterValuesPair wvp = (WriterValuesPair)o;
-            wvp.writer.write(wvp.values);
-            return null;
-          }
-        }, ArraySeq.create(writerValuesPairs)));
+      for (Future<Object> fut : futures) {
+        Utils.tryGetFuture(fut);
+      }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void writeSequential(Bundle bundle) {
+      for(int i=0; i<columnChunkWriters.length; ++i) {
+        columnChunkWriters[i].write(bundle.columnValues[i]);
+      }
+    }
+
+    private final static int PARALLEL_THRESHOLD = 128;
+
+    public void write(Bundle bundle) {
+      int numRecordsInBundle = bundle.size();
+      numRecords += numRecordsInBundle;
+      if (numRecordsInBundle >= PARALLEL_THRESHOLD) {
+        writeParallel(bundle);
+      } else {
+        writeSequential(bundle);
+      }
     }
 
     public boolean canOptimize() {
@@ -82,13 +101,17 @@ public final class RecordGroup {
 
     public void optimize(final IPersistentMap compressionThresholds) {
       if (canOptimize()) {
-        ISeq optimizedColumnChunkWriters = Utils.pmap(new AFn() {
-            public Object invoke(Object o) {
-              return ((OptimizingColumnChunkWriter)o).optimize(compressionThresholds);
-            }
-          }, RT.seq(optimizingColumnChunkwriters));
-        for (ISeq s = optimizedColumnChunkWriters; s != null; s = s.next()) {
-          IColumnChunkWriter ccw = (IColumnChunkWriter)s.first();
+        List<Future<IColumnChunkWriter>> futures
+          = new ArrayList<Future<IColumnChunkWriter>>(columnChunkWriters.length);
+        for (final OptimizingColumnChunkWriter occw : optimizingColumnChunkwriters) {
+          futures.add(Agent.soloExecutor.submit(new Callable<IColumnChunkWriter>() {
+                public IColumnChunkWriter call() {
+                  return occw.optimize(compressionThresholds);
+                }
+            }));
+        }
+        for (Future<IColumnChunkWriter> fut : futures) {
+          IColumnChunkWriter ccw = Utils.tryGetFuture(fut);
           columnChunkWriters[ccw.column().columnIndex] = ccw;
         }
         optimizingColumnChunkwriters.clear();
@@ -129,12 +152,18 @@ public final class RecordGroup {
 
     @Override
     public void finish() {
-      Utils.doAll(Utils.pmap(new AFn() {
-          public Object invoke(Object o)  {
-            ((IColumnChunkWriter)o).finish();
-            return null;
-          }},
-          ArraySeq.create((Object[])columnChunkWriters)));
+      List<Future<Object>> futures = new ArrayList<Future<Object>>(columnChunkWriters.length);
+      for (final IColumnChunkWriter ccw : columnChunkWriters) {
+        futures.add(Agent.soloExecutor.submit(new Callable<Object>() {
+              public Object call() {
+                ccw.finish();
+                return null;
+              }
+            }));
+      }
+      for (Future<Object> fut : futures) {
+        Utils.tryGetFuture(fut);
+      }
     }
 
     @Override
@@ -173,15 +202,6 @@ public final class RecordGroup {
 
   }
 
-  private final static class WriterValuesPair {
-    IColumnChunkWriter writer;
-    ChunkedPersistentList values;
-    WriterValuesPair(IColumnChunkWriter writer, ChunkedPersistentList values) {
-      this.writer = writer;
-      this.values = values;
-    }
-  }
-
   private static int[] getColumnChunkByteOffsets(Metadata.RecordGroup recordGroupMetadata) {
     Metadata.ColumnChunk[] columnChunksMetadata = recordGroupMetadata.columnChunks;
     int[] offsets = new int[columnChunksMetadata.length];
@@ -194,15 +214,19 @@ public final class RecordGroup {
     return offsets;
   }
 
-  public final static class Reader {
+  public static final class Reader implements Iterable<Bundle> {
 
-    final int numRecords;
-    final IColumnChunkReader[] columnChunkReaders;
+    private final int numRecords;
+    private final IColumnChunkReader[] columnChunkReaders;
+    private final Schema.Column[] queriedColumns;
+    private int bundleSize;
 
     public Reader(Types types, ByteBuffer bb, Metadata.RecordGroup recordGroupMetadata,
-                  Schema.Column[] queriedColumns) {
+                  Schema.Column[] queriedColumns, int bundleSize) {
       this.numRecords = recordGroupMetadata.numRecords;
+      this.queriedColumns = queriedColumns;
       this.columnChunkReaders = new IColumnChunkReader[queriedColumns.length];
+      this.bundleSize = bundleSize;
       int[] columnChunksByteOffsets = getColumnChunkByteOffsets(recordGroupMetadata);
       Metadata.ColumnChunk[] columnChunksMetadata = recordGroupMetadata.columnChunks;
       for (int i=0; i<queriedColumns.length; ++i) {
@@ -212,35 +236,39 @@ public final class RecordGroup {
           = ColumnChunks.createReader(types,
                                       Bytes.sliceAhead(bb, columnChunksByteOffsets[idx]),
                                       columnChunksMetadata[idx],
-                                      column);
+                                      column,
+                                      bundleSize);
       }
     }
 
-    private ISeq readBundled(final ISeq[] partitionedPages) {
-      return new LazySeq(new AFn(){
-          public Object invoke() {
-            if (RT.seq(partitionedPages[0]) == null) {
-              return null;
-            }
-            ISeq[] columnValues = new ISeq[partitionedPages.length];
-            for (int i=0; i<partitionedPages.length; ++i) {
-              columnValues[i] = (ISeq)partitionedPages[i].first();
-              partitionedPages[i] = partitionedPages[i].next();
-            }
-            return new Cons(new ReadBundle(columnValues), readBundled(partitionedPages));
-            }
-        });
-    }
-
-    public ISeq readBundled(int partitionLength) {
+    public Iterator<Bundle> iterator() {
       if (numRecords == 0) {
-        return null;
+        return Collections.<Bundle>emptyList().iterator();
       }
-      ISeq[] partitionedPages = new ISeq[columnChunkReaders.length];
-      for (int i=0; i<columnChunkReaders.length; ++i) {
-        partitionedPages[i] = columnChunkReaders[i].readPartitioned(partitionLength);
+      final Bundle.Factory bundleFactory = new Bundle.Factory(queriedColumns);
+      final int numColumns = queriedColumns.length;
+      final List<Iterator<List<Object>>> partitionedColumnIterators
+        = new ArrayList<Iterator<List<Object>>>(numColumns);
+      for (IColumnChunkReader ccr : columnChunkReaders) {
+        partitionedColumnIterators.add(ccr.iterator());
       }
-      return readBundled(partitionedPages);
+      return new AReadOnlyIterator<Bundle>() {
+        @Override
+        public boolean hasNext() {
+          return partitionedColumnIterators.get(0).hasNext();
+        }
+
+        @Override
+        public Bundle next() {
+          List[] columnValues = new List[numColumns];
+          int i = 0;
+          for (Iterator<List<Object>> pci : partitionedColumnIterators) {
+            columnValues[i] = pci.next();
+            i += 1;
+          }
+          return bundleFactory.create(columnValues);
+        }
+      };
     }
 
     public int numRecords() {

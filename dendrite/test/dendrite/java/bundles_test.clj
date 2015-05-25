@@ -11,47 +11,55 @@
 (ns dendrite.java.bundles-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Assemble$Fn ReadBundle WriteBundle ChunkedPersistentList Stripe$Fn]
-           [clojure.lang ISeq]
-           [java.util Arrays]))
+  (:import [dendrite.java Assemble$Fn Bundle Bundle$Factory Schema$Column Stripe$Fn]
+           [java.util Arrays Iterator List]))
 
 (set! *warn-on-reflection* true)
+
+(defn- bundle-factory ^Bundle$Factory [num-columns]
+  (Bundle$Factory. (into-array (repeat num-columns (Schema$Column. 0 0 0 0 0 0 0 0 nil)))))
 
 (deftest bundle-striping
   (let [stripe (reify Stripe$Fn
                  (^boolean invoke [_ record ^objects array]
                    (Arrays/fill array record)
                    true))
-        striped-record-bundle (WriteBundle/stripe (range 10) stripe 4)]
+        striped-record-bundle (.stripe (bundle-factory 4) stripe (range 10))]
     (is (= (seq striped-record-bundle)
-           [(range 10) (range 10) (range 10) (range 10)]))
-    (is (every? chunked-seq? (seq striped-record-bundle)))))
+           [(range 10) (range 10) (range 10) (range 10)]))))
 
 (deftest bundle-assembly
-  (let [test-bundle (ReadBundle. (into-array ISeq [(range 10) (range 10)]))]
+  (let [test-bundle (.create (bundle-factory 2) (into-array List [(range 10) (range 10)]))]
     (testing "assembly"
       (is (= (map (partial * 2) (range 10))
-             (.assemble test-bundle (reify Assemble$Fn
-                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1))))))))
+             (seq (.assemble test-bundle (reify Assemble$Fn
+                                           (invoke [_ iterators]
+                                             (+ (.next ^Iterator (aget iterators 0))
+                                                (.next ^Iterator (aget iterators 1))))))))))
     (testing "reduce"
       (is (= (->> (range 10) (map (partial * 2)) (reduce +))
              (.reduce test-bundle + (reify Assemble$Fn
-                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1)))) 0)))
+                                      (invoke [_ iterators]
+                                        (+ (.next ^Iterator (aget iterators 0))
+                                           (.next ^Iterator (aget iterators 1))))) 0)))
       (is (= (->> (range 10) (map (partial * 2)) (reduce + 10))
              (.reduce test-bundle + (reify Assemble$Fn
-                                      (invoke [_ ^objects lva] (+ (aget lva 0) (aget lva 1)))) 10))))))
+                                      (invoke [_ iterators]
+                                        (+ (.next ^Iterator (aget iterators 0))
+                                           (.next ^Iterator (aget iterators 1))))) 10))))))
 
 (deftest stripe-and-assemble
   (let [num-columns 10
         assemble (reify Assemble$Fn
-                   (invoke [_ ^objects a] (into [] a)))
+                   (invoke [_ iterators] (vec (for [^Iterator i iterators]
+                                                (.next i)))))
         stripe (reify Stripe$Fn
-                 (^boolean invoke [_ record ^objects a]
+                 (^boolean invoke [_ record ^objects buffer]
                    (dotimes [i (count record)]
-                     (aset a i (get record i)))
+                     (aset buffer i (get record i)))
                    true))]
     (testing "single record"
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]
         (.invoke stripe record array)
-        (is (= record (.invoke assemble array)))))))
+        (is (= record (.invoke assemble (helpers/as-list-iterators array))))))))

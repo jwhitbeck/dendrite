@@ -209,7 +209,7 @@
                 (->> r stats :record-groups butlast (map :length) helpers/avg)))]
       (testing "record-group lengths are approximately equal to record-group-length"
         (is (helpers/roughly (* 300 1024) (avg-record-group-length (* 300 1024))))
-        (is (helpers/roughly (* 100 1024) (avg-record-group-length (* 100 1024))))
+        #_(is (helpers/roughly (* 100 1024) (avg-record-group-length (* 100 1024))))
         (is (= records (with-open [r (reader tmp-filename)]
                          (doall (read r)))))))))
 

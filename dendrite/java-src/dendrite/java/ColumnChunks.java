@@ -27,11 +27,15 @@ public final class ColumnChunks {
 
   public static IColumnChunkReader createReader(Types types, ByteBuffer bb,
                                                 Metadata.ColumnChunk columnChunkMetadata,
-                                                Schema.Column column) {
+                                                Schema.Column column,
+                                                int partitionLength) {
     switch (column.encoding) {
-    case Types.DICTIONARY: return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, column);
-    case Types.FREQUENCY: return new FrequencyColumnChunk.Reader(types, bb, columnChunkMetadata, column);
-    default: return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, column);
+    case Types.DICTIONARY:
+      return new DictionaryColumnChunk.Reader(types, bb, columnChunkMetadata, column, partitionLength);
+    case Types.FREQUENCY:
+      return new FrequencyColumnChunk.Reader(types, bb, columnChunkMetadata, column, partitionLength);
+    default:
+      return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, column, partitionLength);
     }
   }
 }

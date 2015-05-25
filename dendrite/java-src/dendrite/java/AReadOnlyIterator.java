@@ -12,7 +12,13 @@
 
 package dendrite.java;
 
-public interface IIntIterator {
-  boolean hasNext();
-  int next();
+import java.util.Iterator;
+
+public abstract class AReadOnlyIterator<E> implements Iterator<E> {
+
+  @Override
+  public void remove() {
+    throw new UnsupportedOperationException();
+  }
+
 }

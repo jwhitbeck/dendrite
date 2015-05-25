@@ -17,7 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (defn assemble [leveled-values query-result]
-  (.invoke (Assemble/getFn (.schema ^Schema$QueryResult query-result)) (object-array leveled-values)))
+  (.invoke (Assemble/getFn (.schema ^Schema$QueryResult query-result))
+           (helpers/as-list-iterators leveled-values)))
 
 (deftest dremel-paper
   (testing "full schema"

@@ -22,16 +22,17 @@
   [{:keys [max-repetition-level max-definition-level type encoding compression f]
     :or {type Types/INT encoding Types/PLAIN compression Types/NONE}}
    input-values]
-  (let [writer (doto (DataPage$Writer/create max-repetition-level max-definition-level
-                                             (.getEncoder types type encoding)
-                                             (.getCompressor types compression))
-                 (.write input-values))
-        bb (helpers/output-buffer->byte-buffer writer)
-        reader (DataPage$Reader/create bb max-repetition-level max-definition-level
-                                       (.getDecoderFactory types type encoding f)
-                                       (.getDecompressorFactory types compression))]
-    (cond->> (.read reader)
-      (pos? max-repetition-level) flatten-1)))
+  (let [writer (DataPage$Writer/create max-repetition-level max-definition-level
+                                       (.getEncoder types type encoding)
+                                       (.getCompressor types compression))]
+    (doseq [v (cond->> input-values (pos? max-repetition-level) helpers/partition-by-record)]
+      (.write writer v))
+    (let [bb (helpers/output-buffer->byte-buffer writer)
+          reader (DataPage$Reader/create bb max-repetition-level max-definition-level
+                                         (.getDecoderFactory types type encoding f)
+                                         (.getDecompressorFactory types compression))]
+      (cond->> (seq reader)
+        (pos? max-repetition-level) (mapcat seq)))))
 
 (deftest data-page
   (testing "write/read a data page"
@@ -99,24 +100,20 @@
                                            (:max-repetition-level levels) (:max-definition-level levels)
                                            (.getDecoderFactory types Types/INT Types/PLAIN)
                                            (.getDecompressorFactory types Types/NONE))]
-        (is (= (.read reader) (.read reader)))))
-    (testing "read seq is chunked"
-      (let [levels {:max-definition-level 3 :max-repetition-level 2}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
-            output-values (write-read-data-page levels input-values)]
-        (is (chunked-seq? (seq output-values)))))))
+        (is (= (seq reader) (seq reader)))))))
 
 (defn- write-read-dictionary-page
   [{:keys [type encoding compression f] :or {type Types/INT encoding Types/PLAIN compression Types/NONE}}
    input-values]
-  (let [writer (doto (DictionaryPage$Writer/create (.getEncoder types type encoding)
-                                                   (.getCompressor types compression))
-                 (.write input-values))
-        bb (helpers/output-buffer->byte-buffer writer)
-        reader (DictionaryPage$Reader/create bb
-                                             (.getDecoderFactory types type encoding f)
-                                             (.getDecompressorFactory types compression))]
-    (seq (.read reader))))
+  (let [writer (DictionaryPage$Writer/create (.getEncoder types type encoding)
+                 (.getCompressor types compression))]
+    (doseq [v input-values]
+      (.write writer v))
+    (let [bb (helpers/output-buffer->byte-buffer writer)
+          reader (DictionaryPage$Reader/create bb
+                   (.getDecoderFactory types type encoding f)
+                   (.getDecompressorFactory types compression))]
+      (seq (.read reader)))))
 
 (deftest dictionary-page
   (testing "write/read a dictionary page"
@@ -139,35 +136,38 @@
         (is (empty? output-values))))
     (testing "repeatable writes"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            writer (doto (DictionaryPage$Writer/create (.getEncoder types Types/INT Types/PLAIN)
-                                                       (.getCompressor types Types/NONE))
-                          (.write input-values))
-            mos1 (doto (MemoryOutputStream. 10)
-                   (.write writer))
-            mos2 (doto (MemoryOutputStream. 10)
-                   (.write writer))]
-        (is (= (-> mos1 helpers/output-buffer->byte-buffer .array seq)
-               (-> mos2 helpers/output-buffer->byte-buffer .array seq)))))
+            writer (DictionaryPage$Writer/create (.getEncoder types Types/INT Types/PLAIN)
+                     (.getCompressor types Types/NONE))]
+        (doseq [v input-values]
+          (.write writer v))
+        (let [mos1 (doto (MemoryOutputStream. 10)
+                     (.write writer))
+              mos2 (doto (MemoryOutputStream. 10)
+                     (.write writer))]
+          (is (= (-> mos1 helpers/output-buffer->byte-buffer .array seq)
+                 (-> mos2 helpers/output-buffer->byte-buffer .array seq))))))
     (testing "repeatable reads"
       (let [input-values (repeatedly 1000 helpers/rand-int)
-            writer (doto (DictionaryPage$Writer/create (.getEncoder types Types/INT Types/PLAIN)
-                                                       (.getCompressor types Types/NONE))
-                     (.write input-values))
-            reader (DictionaryPage$Reader/create (helpers/output-buffer->byte-buffer writer)
-                                                 (.getDecoderFactory types Types/INT Types/PLAIN)
-                                                 (.getDecompressorFactory types Types/NONE))]
-        (is (= (seq (.read reader)) (seq (.read reader))))))))
+            writer (DictionaryPage$Writer/create (.getEncoder types Types/INT Types/PLAIN)
+                     (.getCompressor types Types/NONE))]
+        (doseq [v input-values]
+          (.write writer v))
+        (let [reader (DictionaryPage$Reader/create (helpers/output-buffer->byte-buffer writer)
+                       (.getDecoderFactory types Types/INT Types/PLAIN)
+                       (.getDecompressorFactory types Types/NONE))]
+          (is (= (seq (.read reader)) (seq (.read reader)))))))))
 
 (deftest multiple-data-pages
   (let [levels {:max-definition-level 3 :max-repetition-level 2}
         input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
-        writer (doto (DataPage$Writer/create (:max-repetition-level levels)
-                       (:max-definition-level levels)
-                       (.getEncoder types Types/INT Types/PLAIN)
-                       (.getCompressor types Types/NONE))
-                 (.write input-values))
+        writer (DataPage$Writer/create (:max-repetition-level levels)
+                 (:max-definition-level levels)
+                 (.getEncoder types Types/INT Types/PLAIN)
+                 (.getCompressor types Types/NONE))
         mos (MemoryOutputStream. 10)
         num-pages 10]
+    (doseq [v (helpers/partition-by-record input-values)]
+      (.write writer v))
     (dotimes [i num-pages]
       (Pages/writeTo mos writer))
     (testing "read page-by-page"
@@ -179,36 +179,37 @@
                                                         (.getDecompressorFactory types Types/NONE))]
         (is (= (repeat num-pages input-values)
                (for [^DataPage$Reader rdr data-page-readers]
-                 (flatten-1 (.read rdr)))))))
+                 (flatten-1 rdr))))))
     (testing "read partitionned"
       (let [partition-length 31
-            partitioned-values (Pages/readDataPagesPartitioned (.byteBuffer mos)
-                                                               num-pages
-                                                               partition-length
-                                                               (:max-repetition-level levels)
-                                                               (:max-definition-level levels)
-                                                               (.getDecoderFactory types Types/INT Types/PLAIN)
-                                                               (.getDecompressorFactory types Types/NONE))]
+            partitioned-values (Pages/readAndPartitionDataPages
+                                (.byteBuffer mos)
+                                num-pages
+                                partition-length
+                                (:max-repetition-level levels)
+                                (:max-definition-level levels)
+                                (.getDecoderFactory types Types/INT Types/PLAIN)
+                                (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (flatten-1 (repeat num-pages input-values))
                (mapcat flatten-1 partitioned-values)))))
     (testing "read partitionned with fn"
       (let [partition-length 31
             f #(if % (* 2 %) ::null)
-            partitioned-values
-              (Pages/readDataPagesPartitioned (.byteBuffer mos)
-                                              num-pages
-                                              partition-length
-                                              (:max-repetition-level levels)
-                                              (:max-definition-level levels)
-                                              (.getDecoderFactory types Types/INT Types/PLAIN f)
-                                              (.getDecompressorFactory types Types/NONE))]
+            partitioned-values (Pages/readAndPartitionDataPages
+                                (.byteBuffer mos)
+                                num-pages
+                                partition-length
+                                (:max-repetition-level levels)
+                                (:max-definition-level levels)
+                                (.getDecoderFactory types Types/INT Types/PLAIN f)
+                                (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
                (mapcat flatten-1 partitioned-values)))))
     (testing "trying to read dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a dictionary page type"
-                            (first (Pages/readDataPagesWithDictionaryPartitioned
+                            (first (Pages/readAndPartitionDataPagesWithDictionary
                                     (.byteBuffer mos)
                                     num-pages
                                     31
@@ -221,17 +222,19 @@
 (deftest multiple-data-pages-with-dictionary
   (let [levels {:max-definition-level 3 :max-repetition-level 2}
         ^objects dictionary (into-array ["foo" "bar" "baz" "foobar"])
-        dictionary-writer (doto (DictionaryPage$Writer/create (.getEncoder types Types/STRING Types/PLAIN)
-                                                              (.getCompressor types Types/NONE))
-                            (.write (seq dictionary)))
+        dictionary-writer (DictionaryPage$Writer/create (.getEncoder types Types/STRING Types/PLAIN)
+                            (.getCompressor types Types/NONE))
         input-indices (->> (repeatedly #(helpers/rand-int-bits 2)) (helpers/leveled levels) (take 1000))
-        writer (doto (DataPage$Writer/create (:max-repetition-level levels)
-                                             (:max-definition-level levels)
-                                             (.getEncoder types Types/INT Types/PLAIN)
-                                             (.getCompressor types Types/NONE))
-                 (.write input-indices))
+        writer (DataPage$Writer/create (:max-repetition-level levels)
+                 (:max-definition-level levels)
+                 (.getEncoder types Types/INT Types/PLAIN)
+                 (.getCompressor types Types/NONE))
         mos (MemoryOutputStream. 10)
         num-pages 10]
+    (doseq [entry (seq dictionary)]
+      (.write dictionary-writer entry))
+    (doseq [v (helpers/partition-by-record input-indices)]
+      (.write writer v))
     (Pages/writeTo mos dictionary-writer)
     (dotimes [i num-pages]
       (Pages/writeTo mos writer))
@@ -255,10 +258,10 @@
                     (helpers/map-leveled #(when % (aget dictionary (int %))))
                     (repeat num-pages))
                (for [^DataPage$Reader rdr data-page-readers]
-                 (flatten-1 (.read rdr)))))))
+                 (flatten-1 rdr))))))
     (testing "read partitionned"
       (let [partition-length 31
-            partitioned-values (Pages/readDataPagesWithDictionaryPartitioned
+            partitioned-values (Pages/readAndPartitionDataPagesWithDictionary
                                 (.byteBuffer mos)
                                 num-pages
                                 partition-length
@@ -276,7 +279,7 @@
     (testing "read partitionned with fn"
       (let [partition-length 31
             f #(if % (str "foo" %) ::null)
-            partitioned-values (Pages/readDataPagesWithDictionaryPartitioned
+            partitioned-values (Pages/readAndPartitionDataPagesWithDictionary
                                 (.byteBuffer mos)
                                 num-pages
                                 partition-length
@@ -293,7 +296,7 @@
                (mapcat flatten-1 partitioned-values)))))
     (testing "trying to read without dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a data page type"
-                            (first (Pages/readDataPagesPartitioned
+                            (first (Pages/readAndPartitionDataPages
                                     (.byteBuffer mos)
                                     num-pages
                                     31

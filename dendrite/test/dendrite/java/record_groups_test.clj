@@ -13,8 +13,8 @@
             [clojure.test :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java ReadBundle WriteBundle ChunkedPersistentList LeveledValue RecordGroup
-            RecordGroup$Reader RecordGroup$Writer Schema Stripe Utils Types]))
+  (:import [dendrite.java Bundle Bundle$Factory LeveledValue RecordGroup RecordGroup$Reader RecordGroup$Writer
+            Schema Stripe Utils Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,10 +23,10 @@
 (def ^Types types (Types/create))
 
 (deftest dremel-write-read
-  (let [dremel-bundle (->> (map vector dremel-paper-record1-striped dremel-paper-record2-striped)
-                           (map helpers/as-chunked-list)
-                           (into-array ChunkedPersistentList)
-                           WriteBundle.)
+  (let [bundle-factory (Bundle$Factory. (Schema/getColumns dremel-paper-schema))
+        dremel-bundle (->> (map list dremel-paper-record1-striped dremel-paper-record2-striped)
+                           into-array
+                           (.create bundle-factory))
         w (doto (RecordGroup$Writer. types
                                      (Schema/getColumns dremel-paper-schema)
                                      test-target-data-page-length
@@ -39,8 +39,9 @@
       (let [r (RecordGroup$Reader. types
                                    bb
                                    record-group-metadata
-                                   (.columns dremel-paper-full-query-schema))]
-        (is (= dremel-bundle (first (.readBundled r 100))))))
+                                   (.columns dremel-paper-full-query-schema)
+                                   100)]
+        (is (= (seq dremel-bundle) (seq (first r))))))
     (testing "two fields example"
       (let [two-fields-query (Schema/applyQuery types
                                                 true
@@ -50,19 +51,20 @@
             r (RecordGroup$Reader. types
                                    bb
                                    record-group-metadata
-                                   (.columns two-fields-query))]
+                                   (.columns two-fields-query)
+                                   100)]
         (is (= [[10 20]
                 [[(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil)
                   (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
                  [(LeveledValue. 0 2 nil)]]]
-               (first (.readBundled r 100))))))))
+               (seq (first r))))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
-        num-columns (count (Schema/getColumns test-schema))
+        bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
         stripe (Stripe/getFn helpers/default-types test-schema nil)
-        bundle (WriteBundle/stripe records stripe num-columns)
+        bundle (.stripe bundle-factory stripe records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length
@@ -72,17 +74,17 @@
         record-group-metadata (.metadata w)
         bb (helpers/output-buffer->byte-buffer w)
         query-result (Schema/applyQuery helpers/default-types true {} test-schema '_)
-        r (RecordGroup$Reader. helpers/default-types bb record-group-metadata (.columns query-result))]
+        r (RecordGroup$Reader. helpers/default-types bb record-group-metadata (.columns query-result) 1000)]
     (testing "full schema"
-      (is (= bundle
-             (first (.readBundled r 1000)))))))
+      (is (= (seq bundle)
+             (seq (first r)))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
-        num-columns (count (Schema/getColumns test-schema))
+        bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
         stripe (Stripe/getFn helpers/default-types test-schema nil)
-        bundle (WriteBundle/stripe records stripe num-columns)
+        bundle (.stripe bundle-factory stripe records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length
@@ -97,11 +99,12 @@
     (with-open [f (Utils/getWritingFileChannel tmp-file)]
       (.writeTo w f))
     (testing "full schema"
-      (is (= bundle
+      (is (= (seq bundle)
              (with-open [f (Utils/getReadingFileChannel tmp-file)]
                (let [r (RecordGroup$Reader. helpers/default-types
                                             (Utils/mapFileChannel f 0 (.size f))
                                             record-group-metadata
-                                            (.columns query-result))]
-                 (first (.readBundled r 1000)))))))
+                                            (.columns query-result)
+                                            1000)]
+                 (seq (first r)))))))
     (io/delete-file tmp-file)))

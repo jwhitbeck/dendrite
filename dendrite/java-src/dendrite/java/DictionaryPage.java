@@ -12,23 +12,19 @@
 
 package dendrite.java;
 
-import clojure.lang.IFn;
 import clojure.lang.IPersistentMap;
-import clojure.lang.IPersistentCollection;
-import clojure.lang.ISeq;
-import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
 
 public final class DictionaryPage {
 
-  public final static class Header implements IPageHeader, IWriteable {
+  public static final class Header implements IPageHeader, IWriteable {
 
     private final int numValues;
     private final int compressedDataLength;
     private final int uncompressedDataLength;
 
-    Header(int numValues, int compressedDataLength, int uncompressedDataLength) {
+    private Header(int numValues, int compressedDataLength, int uncompressedDataLength) {
       this.numValues = numValues;
       this.compressedDataLength = compressedDataLength;
       this.uncompressedDataLength = uncompressedDataLength;
@@ -73,19 +69,19 @@ public final class DictionaryPage {
       Bytes.writeUInt(mos, uncompressedDataLength);
     }
 
-    static Header read(ByteBuffer bb) {
+    public static Header read(ByteBuffer bb) {
       return new Header(Bytes.readUInt(bb), Bytes.readUInt(bb), Bytes.readUInt(bb));
     }
 
   }
 
-  public final static class Writer implements IPageWriter {
+  public static final class Writer implements IPageWriter {
 
     final IEncoder dataEncoder;
     final ICompressor compressor;
     boolean isFinished = false;
 
-    Writer(IEncoder dataEncoder, ICompressor compressor) {
+    private Writer(IEncoder dataEncoder, ICompressor compressor) {
       this.dataEncoder = dataEncoder;
       this.compressor = compressor;
     }
@@ -100,10 +96,8 @@ public final class DictionaryPage {
     }
 
     @Override
-    public void write(IPersistentCollection values) {
-      for (ISeq s = RT.seq(values); s != null; s = s.next()) {
-        dataEncoder.encode(s.first());
-      }
+    public void write(Object value) {
+      dataEncoder.encode(value);
     }
 
     @Override
@@ -156,15 +150,15 @@ public final class DictionaryPage {
 
   }
 
-  public final static class Reader implements IPageReader {
+  public static final class Reader implements IPageReader {
 
-    final ByteBuffer bb;
-    final IDecoderFactory decoderFactory;
-    final IDecompressorFactory decompressorFactory;
-    final Header header;
+    private final ByteBuffer bb;
+    private final IDecoderFactory decoderFactory;
+    private final IDecompressorFactory decompressorFactory;
+    private final Header header;
 
-    Reader(ByteBuffer bb, IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory,
-           Header header) {
+    private Reader(ByteBuffer bb, IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory,
+                   Header header) {
       this.bb = bb;
       this.decoderFactory = decoderFactory;
       this.decompressorFactory = decompressorFactory;
@@ -188,7 +182,7 @@ public final class DictionaryPage {
       return header;
     }
 
-    IDecoder getDecoder() {
+    private IDecoder getDecoder() {
       ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();

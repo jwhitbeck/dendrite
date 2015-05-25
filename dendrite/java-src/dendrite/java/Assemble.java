@@ -25,10 +25,12 @@ import clojure.lang.PersistentVector;
 import clojure.lang.PersistentHashSet;
 import clojure.lang.RT;
 
+import java.util.ListIterator;
+
 public final class Assemble {
 
   public static interface Fn {
-    Object invoke(Object[] buffer);
+    Object invoke(ListIterator[] iterators);
   }
 
   public static Fn getFn(Schema schema) {
@@ -57,7 +59,7 @@ public final class Assemble {
     IFn fn = schema.fn;
     final Object v = (fn != null)? fn.invoke(null) : null;
     return new Fn() {
-      public Object invoke(Object [] buffer) {
+      public Object invoke(ListIterator[] iterators) {
         return v;
       }
     };
@@ -67,37 +69,37 @@ public final class Assemble {
     final int colIdx = column.queryColumnIndex;
     // NOTE: the column.fn is applied by the decoder for greater efficiency
     return new Fn() {
-      public Object invoke(Object[] buffer) {
-        return buffer[colIdx];
+      public Object invoke(ListIterator[] iterators) {
+        return iterators[colIdx].next();
       }
     };
   }
 
+  @SuppressWarnings("unchecked")
   static Fn getRepeatedValueFn(Schema.Column column) {
     // NOTE: the column.fn is applied by the decoder for greater efficiency
     final int colIdx = column.queryColumnIndex;
     return new Fn() {
-      public Object invoke(Object[] buffer) {
-        ISeq leveledValues = RT.seq(buffer[colIdx]);
-        LeveledValue lv = (LeveledValue)leveledValues.first();
-        buffer[colIdx] = leveledValues.next();
+      public Object invoke(ListIterator[] iterators) {
+        ListIterator<LeveledValue> iterator = iterators[colIdx];
+        LeveledValue lv = iterator.next();
         return lv.value;
       }
     };
   }
 
   static interface RecordConstructorFn {
-    public IPersistentCollection invoke(Object[] buffer);
+    public IPersistentCollection invoke(ListIterator[] iterators);
   }
 
   static RecordConstructorFn getRecordConstructorFn(final Keyword[] fieldNames, final Fn[] fieldAssemblyFns) {
     final PersistentRecord.Factory factory = new PersistentRecord.Factory(fieldNames);
     final int n = fieldAssemblyFns.length;
     return new RecordConstructorFn() {
-      public IPersistentCollection invoke(Object[] buffer) {
+      public IPersistentCollection invoke(ListIterator[] iterators) {
         Object[] vals = new Object[n];
         for (int i=0; i<n; ++i) {
-          Object v = fieldAssemblyFns[i].invoke(buffer);
+          Object v = fieldAssemblyFns[i].invoke(iterators);
           vals[i] = (v == null)? PersistentRecord.UNDEFINED : v;
         }
         return factory.create(vals);
@@ -118,8 +120,8 @@ public final class Assemble {
     final RecordConstructorFn recordConstructorFn = getRecordConstructorFn(fieldNames, fieldAssemblyFns);
     if (record.fn == null) {
       return new Fn() {
-        public Object invoke(Object[] buffer) {
-          IPersistentCollection rec = recordConstructorFn.invoke(buffer);
+        public Object invoke(ListIterator[] iterators) {
+          IPersistentCollection rec = recordConstructorFn.invoke(iterators);
           if (rec.count() == 0) {
             return null;
           } else {
@@ -131,8 +133,8 @@ public final class Assemble {
       final IFn fn = record.fn;
       final Object emptyValue = fn.invoke(null);
       return new Fn() {
-        public Object invoke(Object[] buffer) {
-          IPersistentCollection rec = recordConstructorFn.invoke(buffer);
+        public Object invoke(ListIterator[] iterators) {
+          IPersistentCollection rec = recordConstructorFn.invoke(iterators);
           if (rec.count() == 0) {
             return emptyValue;
           } else {
@@ -143,19 +145,25 @@ public final class Assemble {
     }
   }
 
-  static int getNextRepetitionLevel( Object[] buffer, int colIdx) {
-    LeveledValue lv = (LeveledValue)RT.first(buffer[colIdx]);
-    if (lv == null) {
+  @SuppressWarnings("unchecked")
+  static int getNextRepetitionLevel(ListIterator[] iterators, int colIdx) {
+    ListIterator<LeveledValue> i = iterators[colIdx];
+    if (!i.hasNext()) {
       return 0;
     }
+    LeveledValue lv = i.next();
+    i.previous();
     return lv.repetitionLevel;
   }
 
-  static int getNextDefinitionLevel( Object[] buffer, int colIdx) {
-    LeveledValue lv = (LeveledValue)RT.first(buffer[colIdx]);
-    if (lv == null) {
+  @SuppressWarnings("unchecked")
+  static int getNextDefinitionLevel(ListIterator[] iterators, int colIdx) {
+    ListIterator<LeveledValue> i = iterators[colIdx];
+    if (!i.hasNext()) {
       return 0;
     }
+    LeveledValue lv = i.next();
+    i.previous();
     return lv.definitionLevel;
   }
 
@@ -171,19 +179,19 @@ public final class Assemble {
     }
     final Fn repeatedElemFn = getFn(coll.repeatedSchema);
     final Fn repeatedFn = new Fn() {
-        public Object invoke(Object[] buffer) {
-          int leafDefinitionLevel = getNextDefinitionLevel(buffer, leafColumnIndex);
-          Object firstObject = repeatedElemFn.invoke(buffer);
+        public Object invoke(ListIterator[] iterators) {
+          int leafDefinitionLevel = getNextDefinitionLevel(iterators, leafColumnIndex);
+          Object firstObject = repeatedElemFn.invoke(iterators);
           if ((firstObject == null) && (definitionLevel > leafDefinitionLevel)) {
             return null;
           }
           ITransientCollection tr = emptyColl.asTransient();
           tr = tr.conj(firstObject);
-          int leafRepetitionLevel = getNextRepetitionLevel(buffer, leafColumnIndex);
+          int leafRepetitionLevel = getNextRepetitionLevel(iterators, leafColumnIndex);
           while (repetitionLevel <= leafRepetitionLevel) {
-            Object nextRecord = repeatedElemFn.invoke(buffer);
+            Object nextRecord = repeatedElemFn.invoke(iterators);
             tr = tr.conj(nextRecord);
-            leafRepetitionLevel = getNextRepetitionLevel(buffer, leafColumnIndex);
+            leafRepetitionLevel = getNextRepetitionLevel(iterators, leafColumnIndex);
           }
           return tr.persistent();
         }
@@ -193,8 +201,8 @@ public final class Assemble {
       return repeatedFn;
     } else {
       return new Fn() {
-        public Object invoke(Object[] buffer) {
-          return fn.invoke(repeatedFn.invoke(buffer));
+        public Object invoke(ListIterator[] iterators) {
+          return fn.invoke(repeatedFn.invoke(iterators));
         }
       };
     }
@@ -203,8 +211,8 @@ public final class Assemble {
   static Fn getMapFn(Schema.Collection coll) {
     final Fn listFn = getFn(coll.withRepetition(Schema.LIST).withFn(null));
     final Fn mapFn = new Fn() {
-        public Object invoke(Object[] buffer) {
-          ISeq s = RT.seq(listFn.invoke(buffer));
+        public Object invoke(ListIterator[] iterators) {
+          ISeq s = RT.seq(listFn.invoke(iterators));
           if (s == null) {
             return null;
           }
@@ -222,8 +230,8 @@ public final class Assemble {
       return mapFn;
     } else {
       return new Fn() {
-        public Object invoke(Object[] buffer) {
-          return fn.invoke(mapFn.invoke(buffer));
+        public Object invoke(ListIterator[] iterators) {
+          return fn.invoke(mapFn.invoke(iterators));
         }
       };
     }

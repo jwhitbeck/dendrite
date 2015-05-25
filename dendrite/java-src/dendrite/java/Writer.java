@@ -12,16 +12,8 @@
 
 package dendrite.java;
 
-import clojure.lang.AFn;
 import clojure.lang.Agent;
-import clojure.lang.Cons;
-import clojure.lang.LazySeq;
-import clojure.lang.IFn;
-import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
-import clojure.lang.ISeq;
-import clojure.lang.ITransientCollection;
-import clojure.lang.RT;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -30,35 +22,137 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public final class Writer implements Closeable {
 
-  final static IPersistentCollection poison = new IPersistentCollection() {
-      public int count() { throw new UnsupportedOperationException(); }
-      public IPersistentCollection cons(Object o) { throw new UnsupportedOperationException(); }
-      public IPersistentCollection empty() { throw new UnsupportedOperationException(); }
-      public boolean equiv(Object o) { throw new UnsupportedOperationException(); }
-      public ISeq seq() { throw new UnsupportedOperationException(); }
-    };
+  private final Types types;
+  private final Schema schema;
+  private final FileChannel fileChannel;
+  private ByteBuffer metadata;
+  private List<Object> batchBuffer;
+  private int numBufferedRecords;
+  private final LinkedBlockingQueue<List<Object>> batchQueue;
+  private final Future<WriteThreadResult> writeThread;
+  private final int bundleSize;
+  private boolean isClosed;
 
-  static ISeq blockingSeq(final LinkedBlockingQueue queue) {
-    return new LazySeq(new AFn(){
-        public Object invoke() {
-          try {
-            Object v = queue.take();
-            if (v != poison) {
-              return new Cons(v, blockingSeq(queue));
-            } else {
-              return null;
-            }
-          } catch (Exception e) {
-            throw new IllegalStateException(e);
-          }
+  private Writer(Types types, Schema schema, FileChannel fileChannel, int bundleSize,
+                 Future<WriteThreadResult> writeThread, LinkedBlockingQueue<List<Object>> batchQueue) {
+    this.types = types;
+    this.schema = schema;
+    this.fileChannel = fileChannel;
+    this.bundleSize = bundleSize;
+    this.metadata = null;
+    this.batchBuffer = new ArrayList<Object>(bundleSize);
+    this.numBufferedRecords = 0;
+    this.batchQueue = batchQueue;
+    this.writeThread = writeThread;
+    this.isClosed = false;
+  }
+
+  public static Writer create(Options.WriterOptions writerOptions, Object unparsedSchema, File file)
+    throws IOException {
+    Types types = Types.create(writerOptions.customTypeDefinitions);
+    Schema schema = Schema.parse(types, unparsedSchema);
+    Schema.Column[] columns = Schema.getColumns(schema);
+    RecordGroup.Writer recordGroupWriter = new RecordGroup.Writer(types, columns, writerOptions.dataPageLength,
+                                                                  writerOptions.optimizationStrategy);
+    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.invalidInputHandler);
+    LinkedBlockingQueue<List<Object>> batchQueue = new LinkedBlockingQueue<List<Object>>(100);
+    Bundle.Factory bundleFactory = new Bundle.Factory(columns);
+    FileChannel fileChannel = Utils.getWritingFileChannel(file);
+    fileChannel.write(ByteBuffer.wrap(Constants.magicBytes));
+    Future<WriteThreadResult> writeThread = startWriteThread(recordGroupWriter,
+                                                             bundleFactory,
+                                                             stripeFn,
+                                                             fileChannel,
+                                                             writerOptions.recordGroupLength,
+                                                             writerOptions.bundleSize,
+                                                             writerOptions.compressionThresholds,
+                                                             getBatchIterator(batchQueue));
+    return new Writer(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
+  }
+
+  private final static List<Object> poison = new ArrayList<Object>();
+
+  private static Iterator<List<Object>> getBatchIterator(final LinkedBlockingQueue<List<Object>> batchQueue) {
+    return new AReadOnlyIterator<List<Object>>() {
+      private List<Object> next = null;
+
+      private void step() {
+        try {
+          next = batchQueue.take();
+        } catch (Exception e) {
+          throw new IllegalStateException(e);
+        }
+      }
+
+      @Override
+      public boolean hasNext() {
+        if (next == null) {
+          step();
+          return hasNext();
+        } else if (next == poison) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      @Override
+      public List<Object> next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        List<Object> ret = next;
+        step();
+        return ret;
+      }
+    };
+  }
+
+  private static Future<Bundle> getBundleFuture(final Bundle.Factory bundleFactory,
+                                                final Stripe.Fn stripeFn,
+                                                final List<Object> records) {
+    return Agent.soloExecutor.submit(new Callable<Bundle>() {
+        public Bundle call() {
+          return bundleFactory.stripe(stripeFn, records);
         }
       });
+  }
+
+  private static Iterator<Bundle> getBundleIterator(final Bundle.Factory bundleFactory,
+                                                    final Stripe.Fn stripeFn,
+                                                    final Iterator<List<Object>> batchIterator) {
+    int n = 2 + Runtime.getRuntime().availableProcessors();
+    final LinkedList<Future<Bundle>> futures = new LinkedList<Future<Bundle>>();
+    int k = 0;
+    while (batchIterator.hasNext() && k < n) {
+      futures.addLast(getBundleFuture(bundleFactory, stripeFn, batchIterator.next()));
+    }
+    return new AReadOnlyIterator<Bundle>() {
+      @Override
+      public boolean hasNext() {
+        return !futures.isEmpty();
+      }
+
+      @Override
+      public Bundle next() {
+        Future<Bundle> fut = futures.pollFirst();
+        Bundle bundle = Utils.tryGetFuture(fut);
+        if (batchIterator.hasNext()) {
+          futures.addLast(getBundleFuture(bundleFactory, stripeFn, batchIterator.next()));
+        }
+        return bundle;
+      }
+    };
   }
 
   static final class WriteThreadResult {
@@ -70,30 +164,23 @@ public final class Writer implements Closeable {
     }
   }
 
-  static IFn getBundleStripeFn(final Stripe.Fn stripeFn, final int numColumns) {
-    return new AFn() {
-      public WriteBundle invoke(Object batch) {
-        return WriteBundle.stripe(batch, stripeFn, numColumns);
-      }
-    };
-  }
-
   static Future<WriteThreadResult>
     startWriteThread(final RecordGroup.Writer recordGroupWriter,
-                     final IFn bundleStripeFn,
+                     final Bundle.Factory bundleFactory,
+                     final Stripe.Fn stripeFn,
                      final FileChannel fileChannel,
                      final int targetRecordGroupLength,
                      final int bundleSize,
                      final IPersistentMap compressionThresholds,
-                     final LinkedBlockingQueue<IPersistentCollection> batchQueue) {
+                     final Iterator<List<Object>> batchIterator) {
     return Agent.soloExecutor.submit(new Callable<WriteThreadResult>() {
         public WriteThreadResult call() throws IOException {
-          ISeq bundles = Utils.pmap(bundleStripeFn, blockingSeq(batchQueue));
           ArrayList<Metadata.RecordGroup> recordGroupsMetadata = new ArrayList<Metadata.RecordGroup>();
+          Iterator<Bundle> bundleIterator = getBundleIterator(bundleFactory, stripeFn, batchIterator);
           int nextNumRecordsForLengthCheck = 10 * bundleSize;
-          while (bundles != null) {
-            WriteBundle bundle = (WriteBundle)bundles.first();
-            while (bundle != null) {
+          while (bundleIterator.hasNext()) {
+            Bundle bundle = bundleIterator.next();
+            while (true) {
               int currentNumRecords = recordGroupWriter.numRecords();
               if (currentNumRecords >= nextNumRecordsForLengthCheck) {
                 int estimatedLength = recordGroupWriter.estimatedLength();
@@ -114,16 +201,15 @@ public final class Writer implements Closeable {
                 }
               } else {
                 int remainingRecordsBeforeCheck = nextNumRecordsForLengthCheck - currentNumRecords;
-                if (bundle.count() <= remainingRecordsBeforeCheck) {
+                if (bundle.size() <= remainingRecordsBeforeCheck) {
                   recordGroupWriter.write(bundle);
-                  bundle = null;
+                  break;
                 } else {
                   recordGroupWriter.write(bundle.take(remainingRecordsBeforeCheck));
                   bundle = bundle.drop(remainingRecordsBeforeCheck);
                 }
               }
             }
-            bundles = bundles.next();
           }
           if (recordGroupWriter.numRecords() > 0) {
             if (recordGroupWriter.canOptimize()) {
@@ -137,53 +223,6 @@ public final class Writer implements Closeable {
                                        recordGroupWriter.columns());
         }
       });
-  }
-
-  final Types types;
-  final Schema schema;
-  final FileChannel fileChannel;
-  ByteBuffer metadata;
-  ITransientCollection batchBuffer;
-  int numBufferedRecords;
-  final LinkedBlockingQueue<IPersistentCollection> batchQueue;
-  final Future<WriteThreadResult> writeThread;
-  final int bundleSize;
-  boolean isClosed;
-
-  Writer(Types types, Schema schema, FileChannel fileChannel, int bundleSize,
-         Future<WriteThreadResult> writeThread, LinkedBlockingQueue<IPersistentCollection> batchQueue) {
-    this.types = types;
-    this.schema = schema;
-    this.fileChannel = fileChannel;
-    this.bundleSize = bundleSize;
-    this.metadata = null;
-    this.batchBuffer = ChunkedPersistentList.EMPTY.asTransient();
-    this.numBufferedRecords = 0;
-    this.batchQueue = batchQueue;
-    this.writeThread = writeThread;
-    this.isClosed = false;
-  }
-
-  public static Writer create(Options.WriterOptions writerOptions, Object unparsedSchema, File file)
-    throws IOException {
-    Types types = Types.create(writerOptions.customTypeDefinitions);
-    Schema schema = Schema.parse(types, unparsedSchema);
-    Schema.Column[] columns = Schema.getColumns(schema);
-    RecordGroup.Writer recordGroupWriter = new RecordGroup.Writer(types, columns, writerOptions.dataPageLength,
-                                                                  writerOptions.optimizationStrategy);
-    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.invalidInputHandler);
-    LinkedBlockingQueue<IPersistentCollection> batchQueue
-      = new LinkedBlockingQueue<IPersistentCollection>(100);
-    FileChannel fileChannel = Utils.getWritingFileChannel(file);
-    fileChannel.write(ByteBuffer.wrap(Constants.magicBytes));
-    Future<WriteThreadResult> writeThread = startWriteThread(recordGroupWriter,
-                                                             getBundleStripeFn(stripeFn, columns.length),
-                                                             fileChannel,
-                                                             writerOptions.recordGroupLength,
-                                                             writerOptions.bundleSize,
-                                                             writerOptions.compressionThresholds,
-                                                             batchQueue);
-    return new Writer(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
   }
 
   public void setMetadata(ByteBuffer metadata) {
@@ -202,11 +241,11 @@ public final class Writer implements Closeable {
       throw new IllegalStateException("Cannot write to a closed writer.");
     } else {
       try {
-        batchQueue.put(batchBuffer.persistent());
+        batchQueue.put(batchBuffer);
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }
-      batchBuffer = ChunkedPersistentList.EMPTY.asTransient();
+      batchBuffer = new ArrayList<Object>(bundleSize);
       numBufferedRecords = 0;
     }
   }
@@ -224,12 +263,12 @@ public final class Writer implements Closeable {
       flushBatch();
     }
     numBufferedRecords += 1;
-    batchBuffer.conj(record);
+    batchBuffer.add(record);
   }
 
-  public void writeAll(Object records) {
-    for (ISeq s = RT.seq(records); s != null; s = s.next()) {
-      write(s.first());
+  public void writeAll(List<Object> records) {
+    for (Object o : records) {
+      write(o);
     }
   }
 

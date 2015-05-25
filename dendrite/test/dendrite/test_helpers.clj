@@ -13,7 +13,7 @@
   (:import [dendrite.java ChunkedPersistentList LeveledValue MemoryOutputStream IOutputBuffer Types]
            [java.io Writer]
            [java.nio ByteBuffer]
-           [java.util Random UUID])
+           [java.util ArrayList Collections ListIterator Random UUID])
   (:refer-clojure :exclude [rand-int]))
 
 (set! *warn-on-reflection* true)
@@ -195,3 +195,13 @@
                  (let [r (rest s)]
                    (cons (first s) (if (seq r) (step r rs) (step (first rs) (rest rs)))))))))]
     (step (first seqs) (rest seqs))))
+
+(defn as-list-iterators [leveled-values]
+  (->> (for [column-values leveled-values]
+         (if (coll? column-values)
+           (let [l (ArrayList.)]
+             (doseq [v column-values]
+               (.add l v))
+             (.listIterator l))
+           (.listIterator (Collections/singletonList column-values))))
+       (into-array ListIterator)))
