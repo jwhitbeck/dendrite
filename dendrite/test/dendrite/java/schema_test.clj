@@ -10,6 +10,7 @@
 
 (ns dendrite.java.schema-test
   (:require [clojure.test :refer :all]
+            [dendrite.core] ; for the print-methods
             [dendrite.test-helpers :refer [test-schema-str throw-cause]])
   (:import [dendrite.java Col Schema Schema$Column Schema$Collection Schema$Record Schema$Field Types]))
 
@@ -92,8 +93,11 @@
          [:meta nil :key] Schema/REQUIRED 1 1
          [:meta nil :val] Schema/REQUIRED 1 1
          [:keywords] Schema/SET 1 1
-         [:keywords nil] Schema/OPTIONAL 1 2
-         [:is-active] Schema/REQUIRED 0 0))
+         [:keywords nil] Schema/REQUIRED 1 1
+         [:is-active] Schema/REQUIRED 0 0
+         [:ngrams] Schema/VECTOR 1 1
+         [:ngrams nil] Schema/VECTOR 2 2
+         [:ngrams nil nil] Schema/REQUIRED 2 2)))
   (testing "leaves are properly configured in test schema"
     (are [ks t enc com col-idx] (let [^Schema$Column column (sub-schema-in test-schema ks)]
                                   (and (= t (.type column))
@@ -109,14 +113,15 @@
          [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6
          [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7
          [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8
-         [:is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9))
+         [:is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9
+         [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10))
   (testing "records have the proper leaf-column-index"
     (are [ks leaf-column-idx] (let [^Schema$Record record (sub-schema-in test-schema ks)]
                                 (= leaf-column-idx (.leafColumnIndex record)))
-         [] 9
+         [] 10
          [:links] 2
          [:name nil] 5
-         [:name nil :language nil] 4)))
+         [:name nil :language nil] 4))
 
 (deftest invalid-schemas
   (are [schema regex] (thrown-with-msg? IllegalArgumentException regex
@@ -142,7 +147,8 @@
           :meta {(Schema/req 'string) (Schema/req 'string)}
           :name [{:url 'string :language [{:country 'string, :code (Schema/req 'string)}]}]
           :links {:forward ['long] :backward '(long)}
-          :docid 'long}
+          :docid 'long
+          :ngrams [['string]]}
          (Schema/plain types test-unparsed-schema)))
   (is (= {:foo (Schema/req 'int)}
          (Schema/plain types {:foo (Schema/req (Col. 'int 'vlq))}))))
@@ -190,8 +196,9 @@
         6 [:meta nil :key]
         7 [:meta nil :val]
         8 [:keywords nil]
-        9 [:is-active])
-      (is (= (range 10) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result)))))
+        9 [:is-active]
+        10 [:ngrams nil nil])
+      (is (= (range 11) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result)))))
     (let [query-result (Schema/applyQuery types true {} test-schema {:is-active '_ :name '_})]
       (are [query-column-index sub-schema]
         (let [^Schema$Column col (-> query-result .schema (sub-schema-in sub-schema))]
@@ -211,7 +218,10 @@
            {:name [{:language [{:code (Schema/tag 'foo '_)}]}]} [:name nil :language nil :code]
            {:links {:backward (Schema/tag 'foo '_)}} [:links :backward]
            {:links {:backward [(Schema/tag 'foo '_)]}} [:links :backward nil]
-           {:name (Schema/tag 'foo '_)} [:name])
+           {:name (Schema/tag 'foo '_)} [:name]
+           {:ngrams (Schema/tag 'foo '_)} [:ngrams]
+           {:ngrams [(Schema/tag 'foo '_)]} [:ngrams nil]
+           {:ngrams [[(Schema/tag 'foo '_)]]} [:ngrams nil nil])
       (is (thrown-with-msg? IllegalArgumentException #"No reader function was provided for tag 'foo'"
                             (throw-cause (Schema/applyQuery types true {} test-schema
                                                             {:docid (Schema/tag 'foo '_)}))))

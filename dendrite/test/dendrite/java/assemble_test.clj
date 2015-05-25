@@ -48,7 +48,8 @@
                               :url "http://A"}]
                   :meta {"key1" "value1"
                          "key2" "value2"}
-                  :keywords #{"lorem" "ipsum"}})
+                  :keywords #{"lorem" "ipsum"}
+                  :ngrams [["foo" "bar"]]})
 
 (def test-record-striped
   (let [n (count (Schema/getColumns test-schema))

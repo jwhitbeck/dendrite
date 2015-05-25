@@ -37,7 +37,8 @@
                        :name [{:url "http://P" :language [{:code "us"}
                                                           {:code "gb" :country "Great Britain"}]}]
                        :keywords #{"commodo"}
-                       :meta {"adipisicing" "laboris" "commodo" "elit"}}]
+                       :meta {"adipisicing" "laboris" "commodo" "elit"}
+                       :ngrams [["foo" "bar"]]}]
       (is (= (stripe-record test-record test-schema*)
              [0
               [(LeveledValue. 0 3 3)]
@@ -47,8 +48,9 @@
               [(LeveledValue. 0 3 "http://P")]
               [(LeveledValue. 0 1 "adipisicing") (LeveledValue. 1 1 "commodo")]
               [(LeveledValue. 0 1 "laboris") (LeveledValue. 1 1 "elit")]
-              [(LeveledValue. 0 2 "commodo")]
-              false]))))
+              [(LeveledValue. 0 1 "commodo")]
+              false
+              [(LeveledValue. 0 2 "foo") (LeveledValue. 2 2 "bar")]]))))
   (testing "nil values in repeated records are preserved"
     (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema*)
            [0
@@ -60,7 +62,8 @@
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]
-            false]))))
+            false
+            [(LeveledValue. 0 0 nil)]]))))
 
 (deftest invalid-records
   (testing "missing required field"

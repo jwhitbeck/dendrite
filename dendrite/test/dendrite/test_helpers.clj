@@ -129,8 +129,9 @@
                         :country string}]
            :url string}]
     :meta {#req string #req string}
-    :keywords #{string}
-    :is-active #req boolean}")
+    :keywords #{#req string}
+    :is-active #req boolean
+    :ngrams [[#req string]]}")
 
 (defn- rand-test-record [docid]
   (letfn [(rand-language []
@@ -160,13 +161,16 @@
           names (take (clojure.core/rand-int 3) (repeatedly rand-name))
           links (cond-> {}
                         (seq backward) (assoc :backward backward)
-                        (seq forward) (assoc :forward forward))]
+                        (seq forward) (assoc :forward forward))
+          ngrams (repeatedly (clojure.core/rand-int 3)
+                             #(repeatedly (inc (clojure.core/rand-int 2)) rand-word))]
       (cond-> {:docid docid
                :is-active (rand-bool)}
        (seq links) (assoc :links links)
        (seq names) (assoc :name names)
        (seq meta-map) (assoc :meta meta-map)
-       (seq keywords) (assoc :keywords keywords)))))
+       (seq keywords) (assoc :keywords keywords)
+       (seq ngrams) (assoc :ngrams ngrams)))))
 
 (defn rand-test-records [] (map rand-test-record (range)))
 

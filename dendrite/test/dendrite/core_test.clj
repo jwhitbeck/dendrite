@@ -168,8 +168,9 @@
                     " :country #col [string dictionary]}],"
                     " :url #col [string incremental]}],"
                     " :meta {#req #col [string dictionary] #req #col [string dictionary]},"
-                    " :keywords #{#col [string dictionary]},"
-                    " :is-active #req boolean}")
+                    " :keywords #{#req #col [string dictionary]},"
+                    " :is-active #req boolean,"
+                    " :ngrams [[#req #col [string dictionary]]]}")
                (str (schema r)))))
       (testing "stats"
         (is (not (nil? (stats r)))))
