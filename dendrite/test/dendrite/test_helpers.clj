@@ -9,8 +9,7 @@
 ;; You must not remove this notice, or any other, from this software.
 
 (ns dendrite.test-helpers
-  (:require [clojure.string :as string]
-            [dendrite.encoding :as encoding])
+  (:require [clojure.string :as string])
   (:import [dendrite.java ChunkedPersistentList LeveledValue MemoryOutputStream IOutputBuffer Types]
            [java.io Writer]
            [java.nio ByteBuffer]
@@ -22,8 +21,6 @@
 (def ^:private ^Random rng (Random.))
 
 (def ^Types default-types (Types/create))
-
-(def default-type-store (encoding/type-store nil))
 
 (defmethod print-method LeveledValue
   [^LeveledValue lv ^Writer w]
@@ -182,3 +179,15 @@
 (defn as-chunked-list
   ^dendrite.java.ChunkedPersistentList [coll]
   (persistent! (reduce conj! (transient ChunkedPersistentList/EMPTY) coll)))
+
+(defn flatten-1 [seqs]
+  (letfn [(step [cs rs]
+            (lazy-seq
+             (when-let [s (seq cs)]
+               (if (chunked-seq? s)
+                 (let [cf (chunk-first s)
+                       cr (chunk-rest s)]
+                   (chunk-cons cf (if (seq cr) (step cr rs) (step (first rs) (rest rs)))))
+                 (let [r (rest s)]
+                   (cons (first s) (if (seq r) (step r rs) (step (first rs) (rest rs)))))))))]
+    (step (first seqs) (rest seqs))))

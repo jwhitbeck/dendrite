@@ -5,7 +5,6 @@
             [clojure.data.fressian :as fressian]
             [cheshire.core :as json]
             [dendrite.core :as d]
-            [dendrite.utils :as du]
             [clj-http.client :as http]
             [ring.util.codec :as codec]
             [taoensso.nippy :as nippy])
@@ -18,6 +17,27 @@
            [org.fressian FressianWriter FressianReader]))
 
 (set! *warn-on-reflection* true)
+
+(defn flatten-1 [seqs]
+  (letfn [(step [cs rs]
+            (lazy-seq
+             (when-let [s (seq cs)]
+               (if (chunked-seq? s)
+                 (let [cf (chunk-first s)
+                       cr (chunk-rest s)]
+                   (chunk-cons cf (if (seq cr) (step cr rs) (step (first rs) (rest rs)))))
+                 (let [r (rest s)]
+                   (cons (first s) (if (seq r) (step r rs) (step (first rs) (rest rs)))))))))]
+    (step (first seqs) (rest seqs))))
+
+(defn chunked-pmap
+  ([f coll]
+   (chunked-pmap f 256 coll))
+  ([f chunk-size coll]
+   (->> coll
+        (partition-all chunk-size)
+        (pmap (partial mapv f))
+        flatten-1)))
 
 (defn file-input-stream
   ^java.io.FileInputStream [filename]
@@ -105,7 +125,7 @@
               w (-> output-json-filename file-output-stream gzip-output-stream buffered-writer)]
     (let [records (->> r
                        line-seq
-                       (du/chunked-pmap (comp json/generate-string fix-fn #(json/parse-string % true))))]
+                       (chunked-pmap (comp json/generate-string fix-fn #(json/parse-string % true))))]
       (doseq [rec records]
         (.write w (str rec))
         (.newLine w )))))
@@ -132,11 +152,9 @@
 
 (defn json-file->dendrite-file [schema json-filename dendrite-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-              w (d/file-writer schema dendrite-filename)]
-    (->> r
-         line-seq
-         (map #(json/parse-string % true))
-         (reduce d/write! w))))
+              w (d/writer schema dendrite-filename)]
+    (doseq [record (map #(json/parse-string % true) (line-seq r))]
+      (.write w record))))
 
 (defn json-file->java-objects-file [compression json-filename output-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
@@ -238,7 +256,7 @@
 
 (defn read-plain-text-file-parallel [compression parse-fn filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression) buffered-reader)]
-    (->> r line-seq (du/chunked-pmap parse-fn) last)))
+    (->> r line-seq (chunked-pmap parse-fn) last)))
 
 (defn read-json-file [compression keywordize? filename]
   (read-plain-text-file compression #(json/parse-string % keywordize?) filename))
@@ -253,13 +271,13 @@
   (read-plain-text-file-parallel compression edn/read-string filename))
 
 (defn read-dendrite-file [filename]
-  (with-open [r (d/file-reader filename)]
+  (with-open [r (d/reader filename)]
     (last (d/read r))))
 
 (defn read-byte-buffer-file [n compression parse-fn filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
-    (->> r (byte-buffer-seq n) (du/chunked-pmap parse-fn) last)))
+    (->> r (byte-buffer-seq n) (chunked-pmap parse-fn) last)))
 
 (defn read-smile-file [n compression keywordize? filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)

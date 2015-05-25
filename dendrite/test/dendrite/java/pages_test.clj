@@ -10,8 +10,7 @@
 
 (ns dendrite.java.pages-test
   (:require [clojure.test :refer :all]
-            [dendrite.test-helpers :as helpers]
-            [dendrite.utils :as utils])
+            [dendrite.test-helpers :as helpers :refer [flatten-1]])
   (:import [dendrite.java DataPage$Reader DataPage$Writer Dictionary$DecoderFactory DictionaryPage$Reader
             DictionaryPage$Writer LeveledValue MemoryOutputStream Pages Types]))
 
@@ -32,7 +31,7 @@
                                        (.getDecoderFactory types type encoding f)
                                        (.getDecompressorFactory types compression))]
     (cond->> (.read reader)
-      (pos? max-repetition-level) utils/flatten-1)))
+      (pos? max-repetition-level) flatten-1)))
 
 (deftest data-page
   (testing "write/read a data page"
@@ -180,7 +179,7 @@
                                                         (.getDecompressorFactory types Types/NONE))]
         (is (= (repeat num-pages input-values)
                (for [^DataPage$Reader rdr data-page-readers]
-                 (utils/flatten-1 (.read rdr)))))))
+                 (flatten-1 (.read rdr)))))))
     (testing "read partitionned"
       (let [partition-length 31
             partitioned-values (Pages/readDataPagesPartitioned (.byteBuffer mos)
@@ -191,8 +190,8 @@
                                                                (.getDecoderFactory types Types/INT Types/PLAIN)
                                                                (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
-        (is (= (utils/flatten-1 (repeat num-pages input-values))
-               (mapcat utils/flatten-1 partitioned-values)))))
+        (is (= (flatten-1 (repeat num-pages input-values))
+               (mapcat flatten-1 partitioned-values)))))
     (testing "read partitionned with fn"
       (let [partition-length 31
             f #(if % (* 2 %) ::null)
@@ -205,8 +204,8 @@
                                               (.getDecoderFactory types Types/INT Types/PLAIN f)
                                               (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
-        (is (= (utils/flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
-               (mapcat utils/flatten-1 partitioned-values)))))
+        (is (= (flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
+               (mapcat flatten-1 partitioned-values)))))
     (testing "trying to read dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a dictionary page type"
                             (first (Pages/readDataPagesWithDictionaryPartitioned
@@ -256,7 +255,7 @@
                     (helpers/map-leveled #(when % (aget dictionary (int %))))
                     (repeat num-pages))
                (for [^DataPage$Reader rdr data-page-readers]
-                 (utils/flatten-1 (.read rdr)))))))
+                 (flatten-1 (.read rdr)))))))
     (testing "read partitionned"
       (let [partition-length 31
             partitioned-values (Pages/readDataPagesWithDictionaryPartitioned
@@ -272,8 +271,8 @@
         (is (= (->> input-indices
                     (helpers/map-leveled #(when % (aget dictionary (int %))))
                     (repeat num-pages)
-                    utils/flatten-1)
-               (mapcat utils/flatten-1 partitioned-values)))))
+                    flatten-1)
+               (mapcat flatten-1 partitioned-values)))))
     (testing "read partitionned with fn"
       (let [partition-length 31
             f #(if % (str "foo" %) ::null)
@@ -290,8 +289,8 @@
         (is (= (->> input-indices
                     (helpers/map-leveled #(f (when % (aget dictionary (int %)))))
                     (repeat num-pages)
-                    utils/flatten-1)
-               (mapcat utils/flatten-1 partitioned-values)))))
+                    flatten-1)
+               (mapcat flatten-1 partitioned-values)))))
     (testing "trying to read without dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a data page type"
                             (first (Pages/readDataPagesPartitioned

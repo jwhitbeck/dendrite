@@ -12,7 +12,7 @@
   (:require [clojure.core.reducers :as r]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [dendrite.core2 :refer :all]
+            [dendrite.core :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java Options Schema]

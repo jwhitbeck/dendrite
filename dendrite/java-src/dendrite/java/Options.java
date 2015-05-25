@@ -43,13 +43,13 @@ public final class Options {
     NONE = Keyword.intern("none"),
     DEFAULT = Keyword.intern("default");
 
-  static final int DEFAULT_RECORD_GROUP_LENGTH = 128 * 1024 * 1024; // 128 MB
-  static final int DEFAULT_DATA_PAGE_LENGTH = 256 * 1024; // 256 KB
-  static final int DEFAULT_OPTIMIZE_COLUMNS = RecordGroup.ONLY_DEFAULT;
-  static final IPersistentMap DEFAULT_COMPRESSION_THRESHOLDS
+  public static final int DEFAULT_RECORD_GROUP_LENGTH = 128 * 1024 * 1024; // 128 MB
+  public static final int DEFAULT_DATA_PAGE_LENGTH = 256 * 1024; // 256 KB
+  public static final int DEFAULT_OPTIMIZE_COLUMNS = RecordGroup.ONLY_DEFAULT;
+  public static final IPersistentMap DEFAULT_COMPRESSION_THRESHOLDS
     = new PersistentArrayMap(new Object[]{Types.DEFLATE_SYM, 1.5});
-  static final boolean DEFAULT_MISSING_FIELDS_AS_NIL = true;
-  static final int DEFAULT_BUNDLE_SIZE = 256;
+  public static final boolean DEFAULT_MISSING_FIELDS_AS_NIL = true;
+  public static final int DEFAULT_BUNDLE_SIZE = 256;
 
   public static final class ReaderOptions {
     public final IPersistentMap customTypeDefinitions;

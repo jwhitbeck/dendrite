@@ -10,7 +10,6 @@
 
 (ns dendrite.java.schema-test
   (:require [clojure.test :refer :all]
-            [dendrite.core2] ; for the print-method
             [dendrite.test-helpers :refer [test-schema-str throw-cause]])
   (:import [dendrite.java Col Schema Schema$Column Schema$Collection Schema$Record Schema$Field Types]))
 

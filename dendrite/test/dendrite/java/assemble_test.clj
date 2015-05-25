@@ -21,13 +21,13 @@
 
 (deftest dremel-paper
   (testing "full schema"
-    (is (= dremel-paper-record1 (assemble dremel-paper-record1-striped2 dremel-paper-full-query-schema2)))
-    (is (= dremel-paper-record2 (assemble dremel-paper-record2-striped2 dremel-paper-full-query-schema2))))
+    (is (= dremel-paper-record1 (assemble dremel-paper-record1-striped dremel-paper-full-query-schema)))
+    (is (= dremel-paper-record2 (assemble dremel-paper-record2-striped dremel-paper-full-query-schema))))
   (testing "two fields example"
     (let [sub-schema (Schema/applyQuery helpers/default-types
                                         true
                                         {}
-                                        dremel-paper-schema2
+                                        dremel-paper-schema
                                         {:docid '_ :name [{:language [{:country '_}]}]})]
       (is (= {:docid 10
               :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}

@@ -3,9 +3,9 @@
             [clojure.pprint :as pprint]
             [clojure.tools.cli :as cli]
             [clojure.string :as string]
-            [dendrite.core :as d]
-            [dendrite.impl :refer [default-writer-options]])
-  (:import [java.io BufferedReader])
+            [dendrite.core :as d])
+  (:import [java.io BufferedReader]
+           [dendrite.java Options])
   (:gen-class))
 
 (set! *warn-on-reflection* true)
@@ -24,7 +24,7 @@
    help-cli-option])
 
 (defn schema [options filename]
-  (with-open [r (d/file-reader filename)]
+  (with-open [r (d/reader filename)]
     (let [schema (cond-> (d/schema r) (:plain options) d/plain)]
       (if (:pretty options)
         (pprint/pprint schema)
@@ -35,7 +35,7 @@
    help-cli-option])
 
 (defn metadata [options filename]
-  (with-open [r (d/file-reader filename)]
+  (with-open [r (d/reader filename)]
     (let [metadata (d/metadata r)]
       (if (:pretty options)
         (pprint/pprint metadata)
@@ -56,7 +56,7 @@
    help-cli-option])
 
 (defn read-file [cli-options filename]
-  (with-open [r (d/file-reader filename)]
+  (with-open [r (d/reader filename)]
     (let [opts (cond-> {}
                  (:query cli-options) (assoc :query (:query cli-options))
                  (:query-file cli-options) (assoc :query (:query-file cli-options))
@@ -89,11 +89,11 @@
    [nil "--metadata-file FILE" "Set the file's metadata to the contents of this file."
     :parse-fn (comp edn/read-string slurp)]
    [nil "--data-page-length N" "The length in bytes of the data pages." :parse-fn #(Long/parseLong %)
-    :default (:data-page-length default-writer-options)]
+    :default Options/DEFAULT_DATA_PAGE_LENGTH]
    [nil "--record-group-length N" "The length in bytes of each record group." :parse-fn #(Long/parseLong %)
-    :default (:record-group-length default-writer-options)]
+    :default Options/DEFAULT_RECORD_GROUP_LENGTH]
    [nil "--compression-thresholds MAP" "A map of compression method to the minimum compression threshold."
-    :parse-fn edn/read-string :default (:compression-thresholds default-writer-options)]
+    :parse-fn edn/read-string :default Options/DEFAULT_COMPRESSION_THRESHOLDS]
    [nil "--optimize-columns? true/false/nil"
     (str "If true, will optimize all columns, if false, will never optimize, and if nil will only optimize "
          "if all columns have the default encoding & compression.")
@@ -106,9 +106,8 @@
       (throw (IllegalStateException. "must specify at least one of --schema or --schema-file.")))
     (let [opts (select-keys cli-options [:data-page-length :record-group-length
                                          :compression-thresholds :optimize-columns?])]
-      (with-open [w (d/file-writer opts schema filename)]
-        (doseq [record (pmap edn/read-string (line-seq (BufferedReader. *in*)))]
-          (d/write! w record))
+      (with-open [w (d/writer opts schema filename)]
+        (.writeAll w (pmap edn/read-string (line-seq (BufferedReader. *in*))))
         (when-let [metadata (or (:metadata cli-options) (:metadata-file cli-options))]
           (d/set-metadata! w metadata))))))
 
@@ -155,7 +154,7 @@
         record-group-stats)))
 
 (defn stats [options filename]
-  (with-open [r (d/file-reader filename)]
+  (with-open [r (d/reader filename)]
     (let [sort-col (:sort options)
           rows (cond->> (cond (:columns options)
                               (format-column-stats (:columns (d/stats r)) sort-col)

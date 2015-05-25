@@ -3,7 +3,6 @@
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [dendrite.core :as d]
-            [dendrite.utils :as du]
             [dendrite.benchmarks.utils :as utils]
             [flatland.protobuf.core :refer :all])
   (:import [dendrite.benchmarks UserEvents$User]

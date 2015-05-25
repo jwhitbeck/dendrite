@@ -10,7 +10,6 @@
 
 (ns dendrite.java.bundles-test
   (:require [clojure.test :refer :all]
-            [dendrite.utils :as utils]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java Assemble$Fn ReadBundle WriteBundle ChunkedPersistentList Stripe$Fn]
            [clojure.lang ISeq]

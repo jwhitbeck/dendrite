@@ -24,8 +24,8 @@
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
-    (is (= dremel-paper-record1-striped2 (stripe-record dremel-paper-record1 dremel-paper-schema2)))
-    (is (= dremel-paper-record2-striped2 (stripe-record dremel-paper-record2 dremel-paper-schema2)))))
+    (is (= dremel-paper-record1-striped (stripe-record dremel-paper-record1 dremel-paper-schema)))
+    (is (= dremel-paper-record2-striped (stripe-record dremel-paper-record2 dremel-paper-schema)))))
 
 (def test-schema* (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types)))
 

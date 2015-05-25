@@ -23,12 +23,12 @@
 (def ^Types types (Types/create))
 
 (deftest dremel-write-read
-  (let [dremel-bundle (->> (map vector dremel-paper-record1-striped2 dremel-paper-record2-striped2)
+  (let [dremel-bundle (->> (map vector dremel-paper-record1-striped dremel-paper-record2-striped)
                            (map helpers/as-chunked-list)
                            (into-array ChunkedPersistentList)
                            WriteBundle.)
         w (doto (RecordGroup$Writer. types
-                                     (Schema/getColumns dremel-paper-schema2)
+                                     (Schema/getColumns dremel-paper-schema)
                                      test-target-data-page-length
                                      RecordGroup/NONE)
             (.write dremel-bundle)
@@ -39,13 +39,13 @@
       (let [r (RecordGroup$Reader. types
                                    bb
                                    record-group-metadata
-                                   (.columns dremel-paper-full-query-schema2))]
+                                   (.columns dremel-paper-full-query-schema))]
         (is (= dremel-bundle (first (.readBundled r 100))))))
     (testing "two fields example"
       (let [two-fields-query (Schema/applyQuery types
                                                 true
                                                 {}
-                                                dremel-paper-schema2
+                                                dremel-paper-schema
                                                 {:docid '_ :name [{:language [{:country '_}]}]})
             r (RecordGroup$Reader. types
                                    bb
