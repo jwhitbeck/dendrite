@@ -246,9 +246,9 @@ public final class Reader implements Closeable {
       return Utils.repeat(totalNumRecords, assembledNilRecord);
     }
 
-    Object reduce(int n, IFn reducef, Object init) {
+    Object reduce(long n, IFn reducef, Object init) {
       Object ret = init;
-      for (int i=0; i<n; ++i) {
+      for (long i=0; i<n; ++i) {
         ret = reducef.invoke(ret, assembledNilRecord);
       }
       return ret;
@@ -260,8 +260,8 @@ public final class Reader implements Closeable {
       Object foldedBundle = reduce(n, reducef, init);
       Object ret = init;
       for (int i=0; i<recordGroupsMetadata.length; ++i) {
-        int numRecords = recordGroupsMetadata[i].numRecords;
-        for (int j=0; j<(numRecords/n); ++j) {
+        long numRecords = recordGroupsMetadata[i].numRecords;
+        for (long j=0; j<(numRecords/n); ++j) {
           ret = combinef.invoke(ret, foldedBundle);
         }
         ret = combinef.invoke(ret, reduce(numRecords % n, reducef, init));

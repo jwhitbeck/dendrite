@@ -177,11 +177,11 @@ public final class Writer implements Closeable {
         public WriteThreadResult call() throws IOException {
           ArrayList<Metadata.RecordGroup> recordGroupsMetadata = new ArrayList<Metadata.RecordGroup>();
           Iterator<Bundle> bundleIterator = getBundleIterator(bundleFactory, stripeFn, batchIterator);
-          int nextNumRecordsForLengthCheck = 10 * bundleSize;
+          long nextNumRecordsForLengthCheck = 10 * bundleSize;
           while (bundleIterator.hasNext()) {
             Bundle bundle = bundleIterator.next();
             while (true) {
-              int currentNumRecords = recordGroupWriter.numRecords();
+              long currentNumRecords = recordGroupWriter.numRecords();
               if (currentNumRecords >= nextNumRecordsForLengthCheck) {
                 int estimatedLength = recordGroupWriter.estimatedLength();
                 if (estimatedLength >= targetRecordGroupLength) {
@@ -200,13 +200,13 @@ public final class Writer implements Closeable {
                                                                                targetRecordGroupLength);
                 }
               } else {
-                int remainingRecordsBeforeCheck = nextNumRecordsForLengthCheck - currentNumRecords;
+                long remainingRecordsBeforeCheck = nextNumRecordsForLengthCheck - currentNumRecords;
                 if (bundle.size() <= remainingRecordsBeforeCheck) {
                   recordGroupWriter.write(bundle);
                   break;
                 } else {
-                  recordGroupWriter.write(bundle.take(remainingRecordsBeforeCheck));
-                  bundle = bundle.drop(remainingRecordsBeforeCheck);
+                  recordGroupWriter.write(bundle.take((int)remainingRecordsBeforeCheck));
+                  bundle = bundle.drop((int)remainingRecordsBeforeCheck);
                 }
               }
             }

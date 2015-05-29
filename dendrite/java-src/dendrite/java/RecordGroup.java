@@ -27,16 +27,16 @@ import java.util.concurrent.Future;
 
 public final class RecordGroup {
 
-  public final static int
+  public static final int
     NONE = 0,
     ONLY_DEFAULT = 1,
     ALL = 2;
 
-  public final static class Writer implements IOutputBuffer, IFileWriteable {
+  public static final class Writer implements IOutputBuffer, IFileWriteable {
 
-    final IColumnChunkWriter[] columnChunkWriters;
-    final ArrayList<OptimizingColumnChunkWriter> optimizingColumnChunkwriters;
-    int numRecords;
+    private final IColumnChunkWriter[] columnChunkWriters;
+    private final ArrayList<OptimizingColumnChunkWriter> optimizingColumnChunkwriters;
+    private long numRecords;
 
     public Writer(Types types, Schema.Column[] columns, int targetDataPageLength,
                   int optimizationStrategy) {
@@ -126,7 +126,7 @@ public final class RecordGroup {
       return columns;
     }
 
-    public int numRecords() {
+    public long numRecords() {
       return numRecords;
     }
 
@@ -216,7 +216,7 @@ public final class RecordGroup {
 
   public static final class Reader implements Iterable<Bundle> {
 
-    private final int numRecords;
+    private final long numRecords;
     private final IColumnChunkReader[] columnChunkReaders;
     private final Schema.Column[] queriedColumns;
     private int bundleSize;
@@ -271,7 +271,7 @@ public final class RecordGroup {
       };
     }
 
-    public int numRecords() {
+    public long numRecords() {
       return numRecords;
     }
 

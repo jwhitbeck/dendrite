@@ -63,10 +63,10 @@ public final class Metadata {
   public final static class RecordGroup implements IWriteable {
 
     public final int length;
-    public final int numRecords;
+    public final long numRecords;
     public final ColumnChunk[] columnChunks;
 
-    public RecordGroup(int length, int numRecords, ColumnChunk[] columnChunks) {
+    public RecordGroup(int length, long numRecords, ColumnChunk[] columnChunks) {
       this.length = length;
       this.numRecords = numRecords;
       this.columnChunks = columnChunks;
@@ -91,7 +91,7 @@ public final class Metadata {
     @Override
     public void writeTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, length);
-      Bytes.writeUInt(mos, numRecords);
+      Bytes.writeULong(mos, numRecords);
       writeColumnChunksTo(mos);
     }
 
@@ -108,7 +108,7 @@ public final class Metadata {
 
     public static RecordGroup read(ByteBuffer bb) {
       return new RecordGroup(Bytes.readUInt(bb),
-                             Bytes.readUInt(bb),
+                             Bytes.readULong(bb),
                              readColumnChunks(bb));
     }
 

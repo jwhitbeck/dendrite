@@ -24,4 +24,15 @@ public final class Thresholds {
     }
     return nextIdx;
   }
+
+  public static long nextCheckThreshold(final long idx, final long value, final long target) {
+    if (value == 0) {
+      return idx + 1;
+    }
+    long nextIdx = (long)(0.5 * idx * (1 + (double)target/(double)value));
+    if (nextIdx == idx) {
+      return idx + 1;
+    }
+    return nextIdx;
+  }
 }
