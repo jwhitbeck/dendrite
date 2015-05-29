@@ -271,14 +271,14 @@ public final class RecordGroup {
       };
     }
 
-    public long numRecords() {
+    public long getNumRecords() {
       return numRecords;
     }
 
-    public IPersistentMap[] columnChunkStats() {
-      IPersistentMap[] columnChunkStats = new IPersistentMap[columnChunkReaders.length];
+    public List<Stats.ColumnChunk> getColumnChunkStats() {
+      List<Stats.ColumnChunk> columnChunkStats = new ArrayList<Stats.ColumnChunk>(columnChunkReaders.length);
       for (int i=0; i<columnChunkReaders.length; ++i) {
-        columnChunkStats[i] = columnChunkReaders[i].stats();
+        columnChunkStats.add(columnChunkReaders[i].stats());
       }
       return columnChunkStats;
     }

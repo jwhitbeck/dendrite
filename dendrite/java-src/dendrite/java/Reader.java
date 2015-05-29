@@ -27,6 +27,7 @@ import clojure.lang.ISeq;
 import clojure.lang.LazySeq;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.ITransientCollection;
+import clojure.lang.ITransientMap;
 import clojure.lang.Seqable;
 import clojure.lang.Sequential;
 import clojure.lang.RT;
@@ -37,6 +38,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -51,23 +53,47 @@ public final class Reader implements Closeable {
   public final static Keyword
     RECORD_GROUPS = Keyword.intern("record-groups"),
     COLUMNS = Keyword.intern("columns"),
-    GLOBAL = Keyword.intern("global");
+    GLOBAL = Keyword.intern("global"),
+    DATA_HEADER_LENGTH = Keyword.intern("data-header-length"),
+    REPETITION_LEVELS_LENGTH = Keyword.intern("repetition-levels-length"),
+    DEFINITION_LEVELS_LENGTH = Keyword.intern("definition-levels-length"),
+    METADATA_LENGTH = Keyword.intern("metadata-length"),
+    DATA_LENGTH = Keyword.intern("data-length"),
+    DICTIONARY_HEADER_LENGTH = Keyword.intern("dictionary-header-length"),
+    DICTIONARY_LENGTH = Keyword.intern("dictionary-length"),
+    NUM_VALUES = Keyword.intern("num-values"),
+    NUM_NON_NIL_VALUES = Keyword.intern("num-non-nil-values"),
+    LENGTH = Keyword.intern("length"),
+    NUM_PAGES = Keyword.intern("num-pages"),
+    NUM_DICTIONARY_VALUES = Keyword.intern("num-dictionary-values"),
+    TYPE = Keyword.intern("type"),
+    ENCODING = Keyword.intern("encoding"),
+    COMPRESSION = Keyword.intern("compression"),
+    MAX_REPETITION_LEVEL = Keyword.intern("max-repetition-level"),
+    MAX_DEFINITION_LEVEL = Keyword.intern("max-definition-level"),
+    PATH = Keyword.intern("path"),
+    NUM_RECORDS = Keyword.intern("num-records"),
+    NUM_RECORD_GROUPS = Keyword.intern("num-record-groups"),
+    NUM_COLUMN_CHUNKS = Keyword.intern("num-column-chunks"),
+    NUM_COLUMNS = Keyword.intern("num-columns");
 
+  final Types types;
   final FileChannel fileChannel;
   final Metadata.File fileMetadata;
-  final Types types;
+  final long metadataLength;
 
-  private Reader(Types types, FileChannel fileChannel, Metadata.File fileMetadata) {
+  private Reader(Types types, FileChannel fileChannel, Metadata.File fileMetadata, long metadataLength) {
     this.types = types;
     this.fileChannel = fileChannel;
     this.fileMetadata = fileMetadata;
+    this.metadataLength = metadataLength;
   }
 
   public static Reader create(Options.ReaderOptions options, File file) throws IOException {
     FileChannel fileChannel = Utils.getReadingFileChannel(file);
-    Metadata.File fileMetadata = readMetadata(fileChannel);
-    Types types = Types.create(options.customTypeDefinitions, fileMetadata.customTypes);
-    return new Reader(types, fileChannel, fileMetadata);
+    MetadataReadResult res = readMetadata(fileChannel);
+    Types types = Types.create(options.customTypeDefinitions, res.fileMetadata.customTypes);
+    return new Reader(types, fileChannel, res.fileMetadata, res.metadataLength);
   }
 
   public ByteBuffer getMetadata() {
@@ -151,41 +177,106 @@ public final class Reader implements Closeable {
     };
   }
 
+  private IPersistentMap asPersistentMap(Stats.Global globalStats) {
+    return PersistentArrayMap.EMPTY.asTransient()
+      .assoc(NUM_COLUMNS, globalStats.numColumns)
+      .assoc(NUM_RECORD_GROUPS, globalStats.numRecordGroups)
+      .assoc(NUM_RECORDS, globalStats.numRecords)
+      .assoc(LENGTH, globalStats.length)
+      .assoc(DATA_HEADER_LENGTH, globalStats.dataHeaderLength)
+      .assoc(REPETITION_LEVELS_LENGTH, globalStats.repetitionLevelsLength)
+      .assoc(DEFINITION_LEVELS_LENGTH, globalStats.definitionLevelsLength)
+      .assoc(DATA_LENGTH, globalStats.dataLength)
+      .assoc(DICTIONARY_HEADER_LENGTH, globalStats.dictionaryHeaderLength)
+      .assoc(DICTIONARY_LENGTH, globalStats.dictionaryLength)
+      .assoc(METADATA_LENGTH, globalStats.metadataLength)
+      .persistent();
+  }
+
+  private IPersistentMap asPersistentMap(Stats.Column columnStats) {
+    return PersistentArrayMap.EMPTY.asTransient()
+      .assoc(TYPE, columnStats.type)
+      .assoc(ENCODING, columnStats.encoding)
+      .assoc(COMPRESSION, columnStats.compression)
+      .assoc(PATH, columnStats.path)
+      .assoc(MAX_REPETITION_LEVEL, columnStats.maxRepetitionLevel)
+      .assoc(MAX_DEFINITION_LEVEL, columnStats.maxDefinitionLevel)
+      .assoc(NUM_COLUMN_CHUNKS, columnStats.numColumnChunks)
+      .assoc(NUM_VALUES, columnStats.numValues)
+      .assoc(NUM_NON_NIL_VALUES, columnStats.numNonNilValues)
+      .assoc(LENGTH, columnStats.length)
+      .assoc(DATA_HEADER_LENGTH, columnStats.dataHeaderLength)
+      .assoc(REPETITION_LEVELS_LENGTH, columnStats.repetitionLevelsLength)
+      .assoc(DEFINITION_LEVELS_LENGTH, columnStats.definitionLevelsLength)
+      .assoc(DATA_LENGTH, columnStats.dataLength)
+      .assoc(DICTIONARY_HEADER_LENGTH, columnStats.dictionaryHeaderLength)
+      .assoc(DICTIONARY_LENGTH, columnStats.dictionaryLength)
+      .persistent();
+  }
+
+  private IPersistentMap asPersistentMap(Stats.RecordGroup recordGroupStats) {
+    return PersistentArrayMap.EMPTY.asTransient()
+      .assoc(NUM_RECORDS, recordGroupStats.numRecords)
+      .assoc(NUM_COLUMN_CHUNKS, recordGroupStats.numColumnChunks)
+      .assoc(LENGTH, recordGroupStats.length)
+      .assoc(DATA_HEADER_LENGTH, recordGroupStats.dataHeaderLength)
+      .assoc(REPETITION_LEVELS_LENGTH, recordGroupStats.repetitionLevelsLength)
+      .assoc(DEFINITION_LEVELS_LENGTH, recordGroupStats.definitionLevelsLength)
+      .assoc(DATA_LENGTH, recordGroupStats.dataLength)
+      .assoc(DICTIONARY_HEADER_LENGTH, recordGroupStats.dictionaryHeaderLength)
+      .assoc(DICTIONARY_LENGTH, recordGroupStats.dictionaryLength)
+      .persistent();
+  }
+
   public IPersistentMap stats() throws IOException {
-    // TODO Fix
-    // IPersistentVector[] paths = Schema.getPaths(fileMetadata.schema);
-    // Schema.Column[] columns = Schema.getColumns(fileMetadata.schema);
-    // ITransientCollection[] columnStats = new ITransientCollection[columns.length];
-    // ITransientCollection recordGroupStats = ChunkedPersistentList.EMPTY.asTransient();
-    // for (int i=0; i<columns.length; ++i) {
-    //   columnStats[i] = ChunkedPersistentList.EMPTY.asTransient();
-    // }
-    // for (ISeq s = RT.seq(getRecordGroupReaders(columns)); s != null; s = s.next()) {
-    //   RecordGroup.Reader recordGroupReader = (RecordGroup.Reader)s.first();
-    //   IPersistentMap[] columnChunkStats = recordGroupReader.columnChunkStats();
-    //   for (int i=0; i<columnChunkStats.length; ++i) {
-    //     columnStats[i].conj(columnChunkStats[i]);
-    //   }
-    //   recordGroupStats.conj(Stats.recordGroupStats(recordGroupReader.numRecords(), RT.seq(columnChunkStats)));
-    // }
-    // IPersistentCollection[] finalColumnStats = new IPersistentCollection[columnStats.length];
-    // for (int i=0; i<columnStats.length; ++i) {
-    //   Schema.Column col = columns[i];
-    //   finalColumnStats[i] = Stats.columnStats(types.getTypeSymbol(col.type),
-    //                                           types.getEncodingSymbol(col.encoding),
-    //                                           types.getCompressionSymbol(col.compression),
-    //                                           col.repetitionLevel,
-    //                                           col.definitionLevel,
-    //                                           paths[i],
-    //                                           columnStats[i].persistent());
-    // }
-    // IPersistentCollection finalRecordGroupStats = recordGroupStats.persistent();
-    // return new PersistentArrayMap(new Object[]{
-    //     RECORD_GROUPS, recordGroupStats.persistent(),
-    //     COLUMNS, RT.seq(finalColumnStats),
-    //     GLOBAL, Stats.globalStats(fileChannel.size(), columns.length, finalRecordGroupStats)
-    //   });
-    return null;
+    IPersistentVector[] paths = Schema.getPaths(fileMetadata.schema);
+    Schema.Column[] columns = Schema.getColumns(fileMetadata.schema);
+    List<Stats.RecordGroup> recordGroupsStats = new ArrayList<Stats.RecordGroup>();
+    List<List<Stats.ColumnChunk>> columnChunkStatsByColumn
+      = new ArrayList<List<Stats.ColumnChunk>>(columns.length);
+    for (int i=0; i<columns.length; ++i) {
+      columnChunkStatsByColumn.add(new ArrayList<Stats.ColumnChunk>());
+    }
+    Iterator<RecordGroup.Reader> recordGroupReaders = getRecordGroupReaders(columns, 100);
+    while (recordGroupReaders.hasNext()) {
+      RecordGroup.Reader recordGroupReader = recordGroupReaders.next();
+      List<Stats.ColumnChunk> columnChunksStats = recordGroupReader.getColumnChunkStats();
+      recordGroupsStats.add(Stats.createRecordGroupStats(recordGroupReader.getNumRecords(),
+                                                         columnChunksStats));
+      int i = 0;
+      for(Stats.ColumnChunk columnChunkStats : columnChunksStats) {
+        columnChunkStatsByColumn.get(i).add(columnChunkStats);
+        i += 1;
+      }
+    }
+    List<Stats.Column> columnsStats = new ArrayList<Stats.Column>(columns.length);
+    for (int i=0; i<columns.length; ++i) {
+      Schema.Column col = columns[i];
+      columnsStats.add(Stats.createColumnStats(types.getTypeSymbol(col.type),
+                                               types.getEncodingSymbol(col.encoding),
+                                               types.getCompressionSymbol(col.compression),
+                                               col.repetitionLevel,
+                                               col.definitionLevel,
+                                               paths[i],
+                                               columnChunkStatsByColumn.get(i)));
+    }
+    List<IPersistentMap> recordGroupStatsMaps = new ArrayList<IPersistentMap>();
+    for (Stats.RecordGroup recordGroupStats : recordGroupsStats) {
+      recordGroupStatsMaps.add(asPersistentMap(recordGroupStats));
+    }
+    List<IPersistentMap> columnStatsMaps = new ArrayList<IPersistentMap>();
+    for (Stats.Column columnStats : columnsStats) {
+      columnStatsMaps.add(asPersistentMap(columnStats));
+    }
+    IPersistentMap globalStatsMap = asPersistentMap(Stats.createGlobalStats(fileChannel.size(),
+                                                                            metadataLength,
+                                                                            columns.length,
+                                                                            recordGroupsStats));
+    return new PersistentArrayMap(new Object[]{
+        RECORD_GROUPS, recordGroupStatsMaps,
+        COLUMNS, columnStatsMaps,
+        GLOBAL, globalStatsMap
+      });
   }
 
   public Object schema() {
@@ -203,7 +294,16 @@ public final class Reader implements Closeable {
 
   private static final int fixedIntLength = 4;
 
-  static Metadata.File readMetadata(FileChannel fileChannel) throws IOException {
+  private static final class MetadataReadResult {
+    final Metadata.File fileMetadata;
+    final long metadataLength;
+    MetadataReadResult(Metadata.File fileMetadata, long metadataLength) {
+      this.fileMetadata = fileMetadata;
+      this.metadataLength = metadataLength;
+    }
+  }
+
+  static MetadataReadResult readMetadata(FileChannel fileChannel) throws IOException {
     long length = fileChannel.size();
     long lastMagicBytesPosition = length - Constants.magicBytes.length;
     ByteBuffer lastMagicBytesBuffer
@@ -224,7 +324,7 @@ public final class Reader implements Closeable {
     }
     ByteBuffer metadataBuffer
       = Utils.mapFileChannel(fileChannel, metadataLengthPosition - metadataLength, metadataLength);
-    return Metadata.File.read(metadataBuffer);
+    return new MetadataReadResult(Metadata.File.read(metadataBuffer), metadataLength);
   }
 
   public static final class EmptyView extends View {

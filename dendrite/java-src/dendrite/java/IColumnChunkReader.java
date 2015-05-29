@@ -12,13 +12,11 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
-
 import java.util.List;
 
 public interface IColumnChunkReader extends Iterable<List<Object>> {
   Iterable<IPageHeader> getPageHeaders();
   Schema.Column column();
-  IPersistentMap stats();
+  Stats.ColumnChunk stats();
   Metadata.ColumnChunk metadata();
 }

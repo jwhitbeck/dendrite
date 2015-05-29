@@ -12,9 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
-import clojure.lang.RT;
-
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
@@ -58,8 +55,8 @@ public final class DictionaryColumnChunk {
     }
 
     @Override
-    public IPersistentMap stats() {
-      return Stats.columnChunkStats(Pages.getPagesStats(RT.seq(getPageHeaders())));
+    public Stats.ColumnChunk stats() {
+      return Stats.createColumnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
@@ -73,7 +70,7 @@ public final class DictionaryColumnChunk {
     }
   }
 
-  public final static class Writer implements IColumnChunkWriter {
+  public static final class Writer implements IColumnChunkWriter {
 
     private final Schema.Column column;
     private final Dictionary.Encoder dictEncoder;

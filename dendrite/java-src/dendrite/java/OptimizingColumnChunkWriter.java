@@ -85,7 +85,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  abstract int getBestEncoding(DataColumnChunk.Reader plainReader, IPersistentMap plainStats);
+  abstract int getBestEncoding(DataColumnChunk.Reader plainReader, Stats.ColumnChunk plainStats);
 
   private static final int PARTITION_LENGTH = 100;
 
@@ -95,7 +95,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
                                    plainColumnChunkWriter.metadata(),
                                    primitiveColumn, PARTITION_LENGTH);
-    IPersistentMap plainStats = primitiveReader.stats();
+    Stats.ColumnChunk plainStats = primitiveReader.stats();
     int bestEncoding = getBestEncoding(primitiveReader, plainStats);
     int bestCompression = getBestCompression(bestEncoding, primitiveReader, plainStats, compressionThresholds);
     DataColumnChunk.Reader plainReader
@@ -117,7 +117,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private int getBestCompression(int bestEncoding, DataColumnChunk.Reader primitiveReader,
-                         IPersistentMap plainStats, IPersistentMap compressionThresholds) {
+                                 Stats.ColumnChunk plainStats, IPersistentMap compressionThresholds) {
     if (bestEncoding == Types.DICTIONARY || bestEncoding == Types.FREQUENCY) {
       return getDictionaryBestCompression(bestEncoding, plainStats, compressionThresholds);
     } else {
@@ -126,7 +126,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private int getRegularBestCompression(int encoding, DataColumnChunk.Reader primitiveReader,
-                                IPersistentMap plainStats, IPersistentMap compressionThresholds) {
+                                        Stats.ColumnChunk plainStats, IPersistentMap compressionThresholds) {
     IColumnChunkWriter writer
       = DataColumnChunk.Writer.create(types,
                                       primitiveColumn.withEncoding(encoding),
@@ -135,9 +135,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     writer.finish();
     ByteBuffer bb = writer.byteBuffer();
     DataPage.Header h = (DataPage.Header)Pages.readHeader(bb);
-    int numFirstPageNonNilValues = (int)RT.get(h.stats(), Stats.NUM_NON_NIL_VALUES);
-    int numColumnNonNilValues = (int)RT.get(plainStats, Stats.NUM_NON_NIL_VALUES);
-    double nonNilValuesMultiplier = (double)numColumnNonNilValues / (double)numFirstPageNonNilValues;
+    double nonNilValuesMultiplier = (double)plainStats.numNonNilValues / (double)h.stats().numNonNilValues;
     final ByteBuffer dataByteBuffer = bb.slice();
     dataByteBuffer.position(h.byteOffsetData());
     dataByteBuffer.limit(h.bodyLength());
@@ -146,8 +144,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
           mos.write(dataByteBuffer);
         }
       };
-    int levelsLength = (int)RT.get(plainStats, Stats.REPETITION_LEVELS_LENGTH)
-      + (int)RT.get(plainStats, Stats.DEFINITION_LEVELS_LENGTH);
+    int levelsLength = estimateLevelsLength(plainStats);
     int bestCompression = Types.NONE;
     int noCompressionLength = levelsLength + (int)(h.uncompressedDataLength() * nonNilValuesMultiplier);
     int bestLength = noCompressionLength;
@@ -176,7 +173,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
   }
 
-  private int getDictionaryBestCompression(int encoding, IPersistentMap plainStats,
+  private int getDictionaryBestCompression(int encoding, Stats.ColumnChunk plainStats,
                                            IPersistentMap compressionThresholds) {
     int indicesDataLength;
     if (encoding == Types.DICTIONARY) {
@@ -210,19 +207,17 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     return bestCompression;
   }
 
-  private int estimateLevelsLength(IPersistentMap plainStats) {
-    return (int)RT.get(plainStats, Stats.REPETITION_LEVELS_LENGTH)
-      + (int)RT.get(plainStats, Stats.DEFINITION_LEVELS_LENGTH);
+  private int estimateLevelsLength(Stats.ColumnChunk plainStats) {
+    return (int)(plainStats.repetitionLevelsLength + plainStats.definitionLevelsLength);
   }
 
-  int estimateDictionaryIndicesColumnLength(IPersistentMap plainStats) {
+  int estimateDictionaryIndicesColumnLength(Stats.ColumnChunk plainStats) {
     int numEntries = statsCollector.getFrequencies().size();
     int width = Bytes.getBitWidth(numEntries);
-    int numNonNilValues = (int)plainStats.valAt(Stats.NUM_NON_NIL_VALUES);
-    return (numNonNilValues * width) / 8;
+    return (int)((plainStats.numNonNilValues * width) / 8);
   }
 
-  int estimateFrequencyIndicesColumnLength(IPersistentMap plainStats) {
+  int estimateFrequencyIndicesColumnLength(Stats.ColumnChunk plainStats) {
     int indicesLength = 0;
     Integer[] frequencies = statsCollector.getFrequencies().values().toArray(new Integer[]{});
     Arrays.sort(frequencies);
@@ -355,7 +350,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
 
     @Override
-    int getBestEncoding(DataColumnChunk.Reader primitiveReader, IPersistentMap plainStats) {
+    int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
       Integer numTrue = statsCollector.getFrequencies().get(true);
       Integer numFalse = statsCollector.getFrequencies().get(false);
       if (numTrue == null || numFalse == null) {
@@ -403,10 +398,10 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       pageWriter.write(o);
     }
     pageWriter.finish();
-    IPersistentMap pageStats = pageWriter.header().stats();
-    int numNonNilValuesInPage = (int)RT.get(pageStats, Stats.NUM_NON_NIL_VALUES);
+    Stats.Page pageStats = pageWriter.header().stats();
+    int numNonNilValuesInPage = (int)pageStats.numNonNilValues;
     double mult = ((double)numNonNilValues/(double)numNonNilValuesInPage);
-    return (int)((int)RT.get(pageStats, Stats.DATA_LENGTH) * mult);
+    return (int)(pageStats.dataLength * mult);
   }
 
   private static final class DefaultColumnChunk extends OptimizingColumnChunkWriter {
@@ -417,7 +412,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
 
     @Override
-    int getBestEncoding(DataColumnChunk.Reader primitiveReader, IPersistentMap plainStats) {
+    int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
       if (statsCollector.isDictionarySaturated()) {
         return Types.PLAIN;
       }
@@ -425,8 +420,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       if (isDictionaryTooLarge(encodedDictionary)) {
         return Types.PLAIN;
       }
-      int plainLength = (int)RT.get(plainStats, Stats.DATA_LENGTH);
-      int bestLength = plainLength;
+      int bestLength = (int)plainStats.dataLength;
       int bestEncoding = Types.PLAIN;
       int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats) + encodedDictionary.length();
       if (dictionaryLength < bestLength) {
@@ -495,11 +489,11 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
 
     @Override
-    int getBestEncoding(DataColumnChunk.Reader primitiveReader, IPersistentMap plainStats) {
-      int plainLength = (int)RT.get(plainStats, Stats.DATA_LENGTH);
-      int bestLength = plainLength;
+    int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
+      int plainLength = (int)plainStats.dataLength;
+      int bestLength = (int)plainStats.dataLength;
       int bestEncoding = Types.PLAIN;
-      int numNonNilValues = (int)plainStats.valAt(Stats.NUM_NON_NIL_VALUES);
+      int numNonNilValues = (int)plainStats.numNonNilValues;
 
       if (intStatsCollector.minValue >= 0) {
         int vlqLength;
@@ -615,11 +609,10 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
 
     @Override
-    int getBestEncoding(DataColumnChunk.Reader primitiveReader, IPersistentMap plainStats) {
-      int plainLength = (int)RT.get(plainStats, Stats.DATA_LENGTH);
-      int bestLength = plainLength;
+    int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
+      int bestLength = (int)plainStats.dataLength;
       int bestEncoding = Types.PLAIN;
-      int numNonNilValues = (int)plainStats.valAt(Stats.NUM_NON_NIL_VALUES);
+      int numNonNilValues = (int)plainStats.numNonNilValues;
 
       if (longStatsCollector.minValue >= 0) {
         int vlqLength;
@@ -710,11 +703,11 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
 
     @Override
-    int getBestEncoding(DataColumnChunk.Reader primitiveReader, IPersistentMap plainStats) {
-      int plainLength = (int)RT.get(plainStats, Stats.DATA_LENGTH);
+    int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
+      int plainLength = (int)plainStats.dataLength;
       int bestLength = plainLength;
       int bestEncoding = Types.DELTA_LENGTH;
-      int numNonNilValues = (int)plainStats.valAt(Stats.NUM_NON_NIL_VALUES);
+      int numNonNilValues = (int)plainStats.numNonNilValues;
 
       int incrementalLength = estimateDataLength(Types.INCREMENTAL, primitiveReader, numNonNilValues);
       if (incrementalLength < plainLength) {

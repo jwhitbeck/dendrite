@@ -12,8 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
-
 import java.nio.ByteBuffer;
 
 public final class DictionaryPage {
@@ -57,9 +55,9 @@ public final class DictionaryPage {
     }
 
     @Override
-    public IPersistentMap stats() {
-      return Stats.dictionaryPageStats(numValues, headerLength() + bodyLength(), headerLength(),
-                                       compressedDataLength);
+    public Stats.Page stats() {
+      return Stats.createDictionaryPageStats(numValues, headerLength() + bodyLength(), headerLength(),
+                                             compressedDataLength);
     }
 
     @Override

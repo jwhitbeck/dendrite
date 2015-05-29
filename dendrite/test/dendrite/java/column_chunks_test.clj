@@ -100,7 +100,8 @@
                   (->> (.getPageHeaders reader)
                        rest    ; the first page is always inaccurate
                        butlast ; the last page can have any length
-                       (map (comp :length #(.stats ^IPageHeader %)))
+                       (map (fn [^IPageHeader h]
+                              (.length (.stats h))))
                        helpers/avg
                        double)))]
         (is (helpers/roughly 1024 (avg-page-length 1024)))

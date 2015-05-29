@@ -13,9 +13,6 @@
 package dendrite.java;
 
 import clojure.lang.Agent;
-import clojure.lang.ISeq;
-import clojure.lang.IPersistentCollection;
-import clojure.lang.ITransientCollection;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -74,12 +71,12 @@ public final class Pages {
     };
   }
 
-  public static IPersistentCollection getPagesStats(ISeq headers) {
-    ITransientCollection coll = ChunkedPersistentList.EMPTY.asTransient();
-    for (ISeq s = headers; s != null; s = s.next()) {
-      coll.conj(((IPageHeader)s.first()).stats());
+  public static List<Stats.Page> getPagesStats(Iterable<IPageHeader> headers) {
+    List<Stats.Page> pagesStats = new ArrayList<Stats.Page>();
+    for (IPageHeader header : headers) {
+      pagesStats.add(header.stats());
     }
-    return coll.persistent();
+    return pagesStats;
   }
 
   public static DataPage.Reader getDataPageReader(ByteBuffer bb, int maxRepetitionLevel,

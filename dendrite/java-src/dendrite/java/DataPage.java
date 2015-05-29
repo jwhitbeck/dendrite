@@ -12,8 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentMap;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -85,9 +83,10 @@ public final class DataPage {
     }
 
     @Override
-    public IPersistentMap stats() {
-      return Stats.dataPageStats(numValues, numNonNilValues, headerLength() + bodyLength(), headerLength(),
-                                 repetitionLevelsLength, definitionLevelsLength, compressedDataLength);
+    public Stats.Page stats() {
+      return Stats.createDataPageStats(numValues, numNonNilValues, headerLength() + bodyLength(),
+                                       headerLength(), repetitionLevelsLength, definitionLevelsLength,
+                                       compressedDataLength);
     }
 
     @Override

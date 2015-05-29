@@ -12,11 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IPersistentCollection;
-import clojure.lang.IPersistentMap;
-import clojure.lang.ISeq;
-import clojure.lang.RT;
-
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
@@ -67,8 +62,8 @@ public final class DataColumnChunk {
     }
 
     @Override
-    public IPersistentMap stats() {
-      return Stats.columnChunkStats(Pages.getPagesStats(RT.seq(getPageHeaders())));
+    public Stats.ColumnChunk stats() {
+      return Stats.createColumnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
