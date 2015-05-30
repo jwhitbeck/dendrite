@@ -15,7 +15,7 @@
             [dendrite.core :refer :all]
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Options Schema]
+  (:import [dendrite.java Schema]
            [java.util Date Calendar])
   (:refer-clojure :exclude [read pmap]))
 
@@ -24,63 +24,6 @@
 (def tmp-filename "target/foo.dend")
 
 (use-fixtures :each (fn [f] (f) (io/delete-file tmp-filename true)))
-
-(deftest invalid-options-are-caught
-  (testing "writer options"
-    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
-                                      (Options/getWriterOptions opts))
-         {:record-group-length (inc Integer/MAX_VALUE)}
-         ":record-group-length expects a positive int but got '2147483648'"
-         {:record-group-length "foo"}
-         ":record-group-length expects a positive int but got 'foo'"
-         {:record-group-length nil}
-         ":record-group-length expects a positive int but got 'null'"
-         {:record-group-length -1.5}
-         ":record-group-length expects a positive int but got '-1.5'"
-         {:data-page-length "foo"}
-         ":data-page-length expects a positive int but got 'foo'"
-         {:data-page-length nil}
-         ":data-page-length expects a positive int but got 'null'"
-         {:data-page-length -1.5}
-         ":data-page-length expects a positive int but got '-1.5'"
-         {:optimize-columns? "foo"}
-         ":optimize-columns\\? expects one of :all, :none, or :default but got 'foo'"
-         {:compression-thresholds :deflate}
-         ":compression-thresholds expects a map."
-         {:compression-thresholds {:deflate -0.2}}
-         ":compression-thresholds expects its keys to be symbols but got ':deflate'"
-         {:compression-thresholds {'deflate -0.2}}
-         ":compression-thresholds expects its values to be positive"
-         {:custom-types "foo"}
-         ":custom-types expects a map but got 'foo'"
-         {:invalid-input-handler "foo"}
-         ":invalid-input-handler expects a function"
-         {:invalid-option "foo"}
-         ":invalid-option is not a supported writer option"))
-  (testing "reader options"
-    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
-                                      (Options/getReaderOptions opts))
-         {:custom-types "foo"}
-         ":custom-types expects a map but got 'foo'"
-         {:invalid-option "foo"}
-         ":invalid-option is not a supported reader option."))
-  (testing "read options"
-    (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
-                                      (Options/getReadOptions opts))
-         {:entrypoint :foo}
-         ":entrypoint expects a seqable object but got ':foo'"
-         {:missing-fields-as-nil? nil}
-         ":missing-fields-as-nil\\? expects a boolean but got 'null'"
-         {:missing-fields-as-nil? "foo"}
-         ":missing-fields-as-nil\\? expects a boolean but got 'foo'"
-         {:readers "foo"}
-         ":readers expects a map but got 'foo'"
-         {:readers {:foo "foo"}}
-         "reader key should be a symbol but got ':foo'"
-         {:readers {'foo "foo"}}
-         "reader value for tag 'foo' should be a function but got 'foo'"
-         {:invalid-option "foo"}
-         ":invalid-option is not a supported read option.")))
 
 (defn- dremel-paper-writer ^dendrite.java.Writer []
   (doto (writer (Schema/readString dremel-paper-schema-str) tmp-filename)
@@ -315,7 +258,7 @@
                                     (.writeAll w records))))))
       (testing "throw error when invalid field is defined in custom-types"
         (is (thrown-with-msg?
-             IllegalArgumentException #"Key ':invalid' is not a valid custom-type field"
+             IllegalArgumentException #":invalid is not a valid custom type definition key"
              (helpers/throw-cause
               (.close (writer {:custom-types {'test-type {:invalid 'bar}}}
                               {:docid 'long :at 'test-type}

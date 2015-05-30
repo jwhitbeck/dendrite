@@ -15,10 +15,6 @@ package dendrite.java;
 import clojure.lang.AFn;
 import clojure.lang.BigInt;
 import clojure.lang.IFn;
-import clojure.lang.IMapEntry;
-import clojure.lang.IPersistentCollection;
-import clojure.lang.IPersistentMap;
-import clojure.lang.ISeq;
 import clojure.lang.Keyword;
 import clojure.lang.Numbers;
 import clojure.lang.Ratio;
@@ -30,7 +26,9 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
@@ -716,16 +714,11 @@ public final class Types {
   }
 
   static void fillCustomTypeDefinitionsSymbols(HashMap<Symbol, Integer> logicalTypesMap,
-                                               IPersistentMap customTypeDefinitions,
+                                               List<Options.CustomTypeDefinition> customTypeDefinitions,
                                                int nextCustomType) {
-    for (ISeq ks = RT.keys(customTypeDefinitions); ks != null; ks = ks.next()) {
-      Object o = ks.first();
-      if (!(o instanceof Symbol)) {
-        throw new IllegalArgumentException(String.format("Custom-type '%s' is not a symbol.", o));
-      }
-      Symbol sym = (Symbol) o;
-      if (!logicalTypesMap.containsKey(sym)) {
-        logicalTypesMap.put(sym, nextCustomType);
+    for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
+      if (!logicalTypesMap.containsKey(customTypeDefinition.typeSymbol)) {
+        logicalTypesMap.put(customTypeDefinition.typeSymbol, nextCustomType);
         nextCustomType += 1;
       }
     }
@@ -749,52 +742,6 @@ public final class Types {
     return maxType;
   }
 
-  final static Keyword
-    BASE_TYPE = Keyword.intern("base-type"),
-    COERCION_FN = Keyword.intern("coercion-fn"),
-    TO_BASE_TYPE_FN = Keyword.intern("to-base-type-fn"),
-    FROM_BASE_TYPE_FN = Keyword.intern("from-base-type-fn");
-
-  final static String validKeysMessage =
-    "Valid keys are :base-type, :coercion-fn, :to-base-type-fn, and :from-base-type-fn.";
-
-  static void checkCustomTypeDefinitionKeys(IPersistentMap customTypeDefinition) {
-    for (ISeq ks = RT.keys(customTypeDefinition); ks != null; ks = ks.next()) {
-      Object o = ks.first();
-      if (!(o instanceof Keyword)) {
-        throw new IllegalArgumentException(String.format("Key '%s' is not a keyword. " + validKeysMessage, o));
-      }
-      Keyword k = (Keyword) o;
-      if (!(k.equals(BASE_TYPE) || k.equals(COERCION_FN) || k.equals(TO_BASE_TYPE_FN) ||
-            k.equals(FROM_BASE_TYPE_FN))) {
-        String err = String.format("Key '%s' is not a valid custom-type field. " + validKeysMessage, k);
-        throw new IllegalArgumentException(err);
-      }
-    }
-  }
-
-  static Symbol getBaseSymbol(IPersistentMap customTypeDefinition) {
-    Object o = customTypeDefinition.valAt(BASE_TYPE);
-    if (o == null) {
-      throw new IllegalArgumentException("Required field :base-type is missing.");
-    }
-    if (!(o instanceof Symbol)) {
-      throw new IllegalArgumentException(String.format("Base type '%s' is not a symbol.", o));
-    }
-    return (Symbol)o;
-  }
-
-  static IFn getLogicalTypeFn(IPersistentMap customTypeDefinition, Keyword kw) {
-    Object o = customTypeDefinition.valAt(kw);
-    if (o == null) {
-      return null;
-    }
-    if (!(o instanceof IFn)) {
-      throw new IllegalArgumentException(String.format("%s expects a function.", kw));
-    }
-    return (IFn)o;
-  }
-
   static Integer tryGetType(Symbol sym, HashMap<Symbol, Integer> logicalTypesMap) {
     Integer type = primitiveTypes.get(sym);
     if (type == null) {
@@ -803,35 +750,26 @@ public final class Types {
     return type;
   }
 
-  static LogicalType parseCustomTypeDefinition(HashMap<Symbol, Integer> logicalTypesMap,
-                                               Symbol typeSym,
-                                               IPersistentMap customTypeDefinition) {
-    try {
-      checkCustomTypeDefinitionKeys(customTypeDefinition);
-      Symbol baseSym = getBaseSymbol(customTypeDefinition);
-      Integer baseType = tryGetType(baseSym, logicalTypesMap);
-      if (baseType == null) {
-        throw new IllegalArgumentException(String.format("Unknown base type '%s'.", baseSym));
-      }
-      return new LogicalType(typeSym,
-                             baseType,
-                             getLogicalTypeFn(customTypeDefinition, COERCION_FN),
-                             getLogicalTypeFn(customTypeDefinition, TO_BASE_TYPE_FN),
-                             getLogicalTypeFn(customTypeDefinition, FROM_BASE_TYPE_FN));
-    } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Error parsing custom-type '%s'.", typeSym), e);
+  static LogicalType asLogicalType(HashMap<Symbol, Integer> logicalTypesMap,
+                                   Options.CustomTypeDefinition customTypeDefinition) {
+    Integer baseType = tryGetType(customTypeDefinition.baseTypeSymbol, logicalTypesMap);
+    if (baseType == null) {
+      throw new IllegalArgumentException(String.format("Unknown base type '%s'.",
+                                                       customTypeDefinition.baseTypeSymbol));
     }
+    return new LogicalType(customTypeDefinition.typeSymbol,
+                           baseType,
+                           customTypeDefinition.coercionFn,
+                           customTypeDefinition.toBaseTypeFn,
+                           customTypeDefinition.fromBaseTypeFn);
   }
 
   static void fillCustomTypeDefinitions(LogicalType[] logicalTypes,
                                         HashMap<Symbol, Integer> logicalTypesMap,
-                                        IPersistentMap customTypeDefinitions) {
-    for (ISeq s = RT.seq(customTypeDefinitions); s != null; s = s.next()) {
-      IMapEntry entry = (IMapEntry)s.first();
-      Symbol sym = (Symbol)entry.key();
-      IPersistentMap customTypeDefinition = (IPersistentMap)entry.val();
-      Integer type = logicalTypesMap.get(sym);
-      logicalTypes[type] = parseCustomTypeDefinition(logicalTypesMap, sym, customTypeDefinition);
+                                        List<Options.CustomTypeDefinition> customTypeDefinitions) {
+    for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
+      int type = logicalTypesMap.get(customTypeDefinition.typeSymbol);
+      logicalTypes[type] = asLogicalType(logicalTypesMap, customTypeDefinition);
     }
   }
 
@@ -896,22 +834,22 @@ public final class Types {
 
   static CustomType[] getCustomTypesFromDefinitions(HashMap<Symbol, Integer> logicalTypesMap,
                                                     LogicalType[] logicalTypes,
-                                                    IPersistentMap customTypeDefinitions) {
-    CustomType[] customTypes = new CustomType[RT.count(customTypeDefinitions)];
+                                                    List<Options.CustomTypeDefinition> customTypeDefinitions) {
+    CustomType[] customTypes = new CustomType[customTypeDefinitions.size()];
     int i = 0;
-    for (ISeq ks = RT.keys(customTypeDefinitions); ks != null; ks = ks.next()) {
-      Symbol sym = (Symbol)ks.first();
-      int type = logicalTypesMap.get(sym);
+    for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
+      int type = logicalTypesMap.get(customTypeDefinition.typeSymbol);
       LogicalType lt = logicalTypes[type];
-      customTypes[i] = new CustomType(type, lt.baseType, sym);
+      customTypes[i] = new CustomType(type, lt.baseType, customTypeDefinition.typeSymbol);
       i += 1;
     }
     return customTypes;
   }
 
-  public static Types create(IPersistentMap customTypeDefinitions, CustomType[] customTypesInFile) {
+  public static Types create(List<Options.CustomTypeDefinition> customTypeDefinitions,
+                             CustomType[] customTypesInFile) {
     int estimatedNumTypes = builtInLogicalTypes.length
-      + Math.max(customTypesInFile.length, RT.count(customTypeDefinitions));
+      + Math.max(customTypesInFile.length, customTypeDefinitions.size());
     HashMap<Symbol,Integer> logicalTypesMap = new HashMap<Symbol,Integer>(2 * estimatedNumTypes);
     fillBuiltInLogicalTypeSymbols(logicalTypesMap);
     fillCustomTypeSymbols(logicalTypesMap, customTypesInFile);
@@ -923,7 +861,7 @@ public final class Types {
     fillCustomTypeDefinitions(logicalTypes, logicalTypesMap, customTypeDefinitions);
     fillEmptyCustomTypes(logicalTypes, customTypesInFile);
     CustomType[] customTypes;
-    if (RT.seq(customTypeDefinitions) != null) {
+    if (!customTypeDefinitions.isEmpty()) {
       customTypes = getCustomTypesFromDefinitions(logicalTypesMap, logicalTypes, customTypeDefinitions);
     } else {
       customTypes = customTypesInFile;
@@ -932,12 +870,12 @@ public final class Types {
     return new Types(logicalTypesMap, logicalTypes, customTypes);
   }
 
-  public static Types create(IPersistentMap customTypeDefinitions) {
+  public static Types create(List<Options.CustomTypeDefinition> customTypeDefinitions) {
     return create(customTypeDefinitions, new CustomType[]{});
   }
 
   public static Types create() {
-    return create(null);
+    return create(Collections.<Options.CustomTypeDefinition>emptyList());
   }
 
   final HashMap<Symbol,Integer> logicalTypesMap;

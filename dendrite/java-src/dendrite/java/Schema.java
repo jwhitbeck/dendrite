@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.LinkedList;
 import java.util.HashSet;
 
@@ -717,11 +718,10 @@ public abstract class Schema implements IWriteable {
       return _unparse(types, true, parse(types, unparsedSchema));
   }
 
-  public static Schema subSchema(Object entrypoint, Schema schema) {
-    ISeq ks = RT.seq(entrypoint);
+  public static Schema subSchema(List<Keyword> entrypoint, Schema schema) {
     Keyword parent = null;
     Schema s = schema;
-    while (ks != null && s != null) {
+    for (Keyword kw : entrypoint) {
       if (s instanceof Collection) {
         throw new IllegalArgumentException(String.format("Entrypoint '%s' contains repeated field '%s'.",
                                                          entrypoint, parent));
@@ -729,9 +729,11 @@ public abstract class Schema implements IWriteable {
         throw new IllegalArgumentException(String.format("Entrypoint '%s' contains column node at '%s'.",
                                                          entrypoint, parent));
       } else /* if (s instanceof Record) */{
-        parent = (Keyword)ks.first();
-        s = ((Record)s).get((Keyword)ks.first());
-        ks = ks.next();
+        parent = kw;
+        s = ((Record)s).get(kw);
+        if (s == null) {
+          break;
+        }
       }
     }
     return s;
@@ -750,10 +752,10 @@ public abstract class Schema implements IWriteable {
 
   private final static class QueryContext {
     final Types types;
-    final IPersistentMap readers;
+    final Map<Symbol,IFn> readers;
     final boolean isMissingFieldsAsNil;
     final LinkedList<Column> columns;
-    QueryContext(Types types, IPersistentMap readers, boolean isMissingFieldsAsNil) {
+    QueryContext(Types types, Map<Symbol,IFn> readers, boolean isMissingFieldsAsNil) {
       this.types = types;
       this.readers = readers;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
@@ -1050,7 +1052,7 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  public static QueryResult applyQuery(Types types, boolean isMissingFieldsAsNil, IPersistentMap readers,
+  public static QueryResult applyQuery(Types types, boolean isMissingFieldsAsNil, Map<Symbol,IFn> readers,
                                        Schema schema, Object query) {
     try {
       QueryContext context = new QueryContext(types, readers, isMissingFieldsAsNil);

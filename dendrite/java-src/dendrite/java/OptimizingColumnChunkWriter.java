@@ -14,10 +14,7 @@ package dendrite.java;
 
 import clojure.lang.AFn;
 import clojure.lang.IFn;
-import clojure.lang.IMapEntry;
-import clojure.lang.IPersistentMap;
 import clojure.lang.Symbol;
-import clojure.lang.RT;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -89,7 +86,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   private static final int PARTITION_LENGTH = 100;
 
-  public IColumnChunkWriter optimize(IPersistentMap compressionThresholds) {
+  public IColumnChunkWriter optimize(Map<Symbol,Double> compressionThresholds) {
     plainColumnChunkWriter.finish();
     DataColumnChunk.Reader primitiveReader
       = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
@@ -117,7 +114,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private int getBestCompression(int bestEncoding, DataColumnChunk.Reader primitiveReader,
-                                 Stats.ColumnChunk plainStats, IPersistentMap compressionThresholds) {
+                                 Stats.ColumnChunk plainStats, Map<Symbol,Double> compressionThresholds) {
     if (bestEncoding == Types.DICTIONARY || bestEncoding == Types.FREQUENCY) {
       return getDictionaryBestCompression(bestEncoding, plainStats, compressionThresholds);
     } else {
@@ -126,7 +123,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private int getRegularBestCompression(int encoding, DataColumnChunk.Reader primitiveReader,
-                                        Stats.ColumnChunk plainStats, IPersistentMap compressionThresholds) {
+                                        Stats.ColumnChunk plainStats,
+                                        Map<Symbol,Double> compressionThresholds) {
     IColumnChunkWriter writer
       = DataColumnChunk.Writer.create(types,
                                       primitiveColumn.withEncoding(encoding),
@@ -148,10 +146,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     int bestCompression = Types.NONE;
     int noCompressionLength = levelsLength + (int)(h.uncompressedDataLength() * nonNilValuesMultiplier);
     int bestLength = noCompressionLength;
-    for (Object o : compressionThresholds.without(Types.NONE_SYM)) {
-      IMapEntry e = (IMapEntry)o;
-      int compression = types.getCompression((Symbol)e.key());
-      double threshold = RT.doubleCast(e.val());
+    for (Map.Entry<Symbol,Double> e : compressionThresholds.entrySet()) {
+      int compression = types.getCompression(e.getKey());
+      if (compression == Types.NONE) {
+        continue;
+      }
+      double threshold = e.getValue();
       ICompressor compressor = types.getCompressor(compression);
       compressor.compress(dataBytes);
       compressor.finish();
@@ -174,7 +174,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private int getDictionaryBestCompression(int encoding, Stats.ColumnChunk plainStats,
-                                           IPersistentMap compressionThresholds) {
+                                           Map<Symbol,Double> compressionThresholds) {
     int indicesDataLength;
     if (encoding == Types.DICTIONARY) {
       indicesDataLength = estimateDictionaryIndicesColumnLength(plainStats);
@@ -190,10 +190,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     int bestCompression = Types.NONE;
     int noCompressionLength = indicesColumnLength + primitiveEncoder.length();
     int bestLength = noCompressionLength;
-    for (Object o : compressionThresholds.without(Types.NONE_SYM)) {
-      IMapEntry e = (IMapEntry)o;
-      int compression = types.getCompression((Symbol)e.key());
-      double threshold = (double)e.val();
+    for (Map.Entry<Symbol,Double> e : compressionThresholds.entrySet()) {
+      int compression = types.getCompression(e.getKey());
+      if (compression == Types.NONE) {
+        continue;
+      }
+      double threshold = e.getValue();
       ICompressor compressor = types.getCompressor(compression);
       compressor.compress(primitiveEncoder);
       compressor.finish();

@@ -24,6 +24,11 @@ import clojure.lang.Symbol;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public final class Options {
 
@@ -41,32 +46,113 @@ public final class Options {
     PMAP_FN = Keyword.intern("pmap-fn"),
     ALL = Keyword.intern("all"),
     NONE = Keyword.intern("none"),
-    DEFAULT = Keyword.intern("default");
+    DEFAULT = Keyword.intern("default"),
+    BASE_TYPE = Keyword.intern("base-type"),
+    COERCION_FN = Keyword.intern("coercion-fn"),
+    TO_BASE_TYPE_FN = Keyword.intern("to-base-type-fn"),
+    FROM_BASE_TYPE_FN = Keyword.intern("from-base-type-fn");
 
   public static final int DEFAULT_RECORD_GROUP_LENGTH = 128 * 1024 * 1024; // 128 MB
   public static final int DEFAULT_DATA_PAGE_LENGTH = 256 * 1024; // 256 KB
   public static final int DEFAULT_OPTIMIZE_COLUMNS = RecordGroup.ONLY_DEFAULT;
-  public static final IPersistentMap DEFAULT_COMPRESSION_THRESHOLDS
-    = new PersistentArrayMap(new Object[]{Types.DEFLATE_SYM, 1.5});
+  public static final Map<Symbol,Double> DEFAULT_COMPRESSION_THRESHOLDS;
   public static final boolean DEFAULT_MISSING_FIELDS_AS_NIL = true;
   public static final int DEFAULT_BUNDLE_SIZE = 256;
 
-  public static final class ReaderOptions {
-    public final IPersistentMap customTypeDefinitions;
-    public ReaderOptions(IPersistentMap customTypeDefinitions) {
-      this.customTypeDefinitions = customTypeDefinitions;
+  static {
+    DEFAULT_COMPRESSION_THRESHOLDS = new HashMap<Symbol, Double>();
+    DEFAULT_COMPRESSION_THRESHOLDS.put(Types.DEFLATE_SYM, 1.5);
+  }
+
+  public static final class CustomTypeDefinition {
+    public final Symbol typeSymbol;
+    public final Symbol baseTypeSymbol;
+    public final IFn coercionFn;
+    public final IFn toBaseTypeFn;
+    public final IFn fromBaseTypeFn;
+
+    CustomTypeDefinition(Symbol typeSymbol, Symbol baseTypeSymbol, IFn coercionFn, IFn toBaseTypeFn,
+                         IFn fromBaseTypeFn) {
+      this.typeSymbol = typeSymbol;
+      this.baseTypeSymbol = baseTypeSymbol;
+      this.coercionFn = coercionFn;
+      this.toBaseTypeFn = toBaseTypeFn;
+      this.fromBaseTypeFn = fromBaseTypeFn;
     }
   }
 
-  static IPersistentMap getCustomTypeDefinitions(IPersistentMap options) {
-    Object o = RT.get(options, CUSTOM_TYPES);
-    if (o == null) {
+  private static Keyword[] validCustomTypeDefinitionKeys
+    = new Keyword[]{BASE_TYPE, COERCION_FN, TO_BASE_TYPE_FN, FROM_BASE_TYPE_FN};
+
+  public static CustomTypeDefinition getCustomTypeDefinition(Symbol customTypeSymbol,
+                                                             IPersistentMap customTypeDefinitionMap) {
+    try {
+      checkValidKeys(customTypeDefinitionMap, validCustomTypeDefinitionKeys,
+                     "%s is not a valid custom type definition key");
+      return new CustomTypeDefinition(customTypeSymbol,
+                                      getBaseTypeSymbol(customTypeDefinitionMap),
+                                      getLogicalTypeFn(customTypeDefinitionMap, COERCION_FN),
+                                      getLogicalTypeFn(customTypeDefinitionMap, TO_BASE_TYPE_FN),
+                                      getLogicalTypeFn(customTypeDefinitionMap, FROM_BASE_TYPE_FN));
+    } catch (Exception e) {
+      throw new IllegalArgumentException(String.format("Error parsing custom-type '%s'.", customTypeSymbol),
+                                         e);
+    }
+  }
+
+  private static Symbol getBaseTypeSymbol(IPersistentMap customTypeDefinitionMap) {
+    Object o = RT.get(customTypeDefinitionMap, BASE_TYPE, notFound);
+    if (o == notFound) {
+      throw new IllegalArgumentException("Required field :base-type is missing.");
+    }
+    if (!(o instanceof Symbol)) {
+      throw new IllegalArgumentException(String.format("Base type '%s' is not a symbol.", o));
+    }
+    return (Symbol)o;
+  }
+
+  private static IFn getLogicalTypeFn(IPersistentMap customTypeDefinitionMap, Keyword kw) {
+    Object o = RT.get(customTypeDefinitionMap, kw, notFound);
+    if (o == notFound) {
       return null;
+    }
+    if (!(o instanceof IFn)) {
+      throw new IllegalArgumentException(String.format("%s expects a function.", kw));
+    }
+    return (IFn)o;
+  }
+
+  public static List<CustomTypeDefinition> getCustomTypeDefinitions(IPersistentMap options) {
+    Object o = RT.get(options, CUSTOM_TYPES, notFound);
+    if (o == notFound) {
+      return Collections.emptyList();
     } else if (o instanceof IPersistentMap) {
-      return (IPersistentMap)o;
+      List<CustomTypeDefinition> customTypeDefinitions = new ArrayList<CustomTypeDefinition>();
+      for (ISeq s = RT.seq(o); s != null; s = s.next()) {
+        IMapEntry e = (IMapEntry)s.first();
+        Object key = e.key();
+        Object val = e.val();
+        if (!(key instanceof Symbol)) {
+          throw new IllegalArgumentException(String.format("custom type key shoud be a symbol but got '%s'",
+                                                           key));
+        } else if (!(val instanceof IPersistentMap)) {
+          throw new IllegalArgumentException(String.format("custom type value should be a map but got '%s'",
+                                                           val));
+        } else {
+          customTypeDefinitions.add(getCustomTypeDefinition((Symbol)key, (IPersistentMap)val));
+        }
+      }
+      return customTypeDefinitions;
     } else {
       throw new IllegalArgumentException(String.format("%s expects a map but got '%s'",
                                                        CUSTOM_TYPES, o));
+    }
+  }
+
+  public static final class ReaderOptions {
+    public final List<CustomTypeDefinition> customTypeDefinitions;
+    public ReaderOptions(List<CustomTypeDefinition> customTypeDefinitions) {
+      this.customTypeDefinitions = customTypeDefinitions;
     }
   }
 
@@ -93,14 +179,15 @@ public final class Options {
     return new ReaderOptions(getCustomTypeDefinitions(options));
   }
 
-  public final static class ReadOptions {
+  public static final class ReadOptions {
     public final Object query;
-    public final ISeq entrypoint;
+    public final List<Keyword> entrypoint;
     public final boolean isMissingFieldsAsNil;
-    public final IPersistentMap readers;
+    public final Map<Symbol,IFn> readers;
     public final int bundleSize = DEFAULT_BUNDLE_SIZE;
 
-    public ReadOptions(Object query, ISeq entrypoint, boolean isMissingFieldsAsNil, IPersistentMap readers) {
+    public ReadOptions(Object query, List<Keyword> entrypoint, boolean isMissingFieldsAsNil,
+                       Map<Symbol,IFn> readers) {
       this.query = query;
       this.entrypoint = entrypoint;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
@@ -115,14 +202,26 @@ public final class Options {
     return RT.get(options, QUERY, Schema.SUB_SCHEMA);
   }
 
-  static ISeq getEntrypoint(IPersistentMap options) {
+  static List<Keyword> getEntrypoint(IPersistentMap options) {
     Object o = RT.get(options, ENTRYPOINT);
+    ISeq s;
     try {
-      return RT.seq(o);
+      s = RT.seq(o);
     } catch (Exception e) {
       throw new IllegalArgumentException(String.format("%s expects a seqable object but got '%s'",
                                                        ENTRYPOINT, o));
     }
+    List<Keyword> entrypoint = new ArrayList<Keyword>();
+    for (; s != null; s = s.next()) {
+      Object k = s.first();
+      if (!(k instanceof Keyword)) {
+        throw new IllegalArgumentException(String.format("entrypoint can only contain keywords, but got '%s'",
+                                                         k));
+      } else {
+        entrypoint.add((Keyword)k);
+      }
+    }
+    return entrypoint;
   }
 
   static boolean getMissingFieldsAsNil(IPersistentMap options) {
@@ -147,17 +246,18 @@ public final class Options {
     }
   }
 
-  static IPersistentMap getTagReaders(IPersistentMap options) {
+  static Map<Symbol,IFn> getTagReaders(IPersistentMap options) {
     Object o = RT.get(options, READERS);
     if (o == null) {
       return null;
     } else if (!(o instanceof IPersistentMap)) {
       throw new IllegalArgumentException(String.format("%s expects a map but got '%s'", READERS, o));
     }
-    IPersistentMap readers = (IPersistentMap)o;
-    for (Object obj : readers) {
+    Map<Symbol,IFn> readers = new HashMap<Symbol,IFn>();
+    for (Object obj : (IPersistentMap)o) {
       IMapEntry e = (IMapEntry)obj;
       checkTagReader(e.key(), e.val());
+      readers.put((Symbol)e.key(), (IFn)e.val());
     }
     return readers;
   }
@@ -171,18 +271,18 @@ public final class Options {
 
   }
 
-  public final static class WriterOptions {
+  public static final class WriterOptions {
     public final int recordGroupLength;
     public final int dataPageLength;
     public final int optimizationStrategy;
-    public final IPersistentMap compressionThresholds;
+    public final Map<Symbol,Double> compressionThresholds;
     public final IFn invalidInputHandler;
-    public final IPersistentMap customTypeDefinitions;
+    public final List<CustomTypeDefinition> customTypeDefinitions;
     public final int bundleSize = DEFAULT_BUNDLE_SIZE;
 
     public WriterOptions(int recordGroupLength, int dataPageLength, int optimizationStrategy,
-                         IPersistentMap compressionThresholds, IFn invalidInputHandler,
-                         IPersistentMap customTypeDefinitions) {
+                         Map<Symbol,Double> compressionThresholds, IFn invalidInputHandler,
+                         List<CustomTypeDefinition> customTypeDefinitions) {
       this.recordGroupLength = recordGroupLength;
       this.dataPageLength = dataPageLength;
       this.optimizationStrategy = optimizationStrategy;
@@ -242,7 +342,7 @@ public final class Options {
                                                      OPTIMIZE_COLUMNS, ALL, NONE, DEFAULT, o));
   }
 
-  static IPersistentMap getCompressionThresholds(IPersistentMap options) {
+  static Map<Symbol,Double> getCompressionThresholds(IPersistentMap options) {
     Object o = RT.get(options, COMPRESSION_THRESHOLDS);
     if (o == null) {
       return DEFAULT_COMPRESSION_THRESHOLDS;
@@ -250,8 +350,8 @@ public final class Options {
       throw new IllegalArgumentException(String.format("%s expects a map but got '%s'",
                                                        COMPRESSION_THRESHOLDS, o));
     }
-    IPersistentMap compressionThresholds = (IPersistentMap)o;
-    for (Object obj : compressionThresholds) {
+    Map<Symbol,Double> compressionThresholds = new HashMap<Symbol,Double>();
+    for (Object obj : (IPersistentMap)o) {
       IMapEntry entry = (IMapEntry)obj;
       Object key = entry.key();
       Object val = entry.val();
@@ -270,6 +370,7 @@ public final class Options {
         throw new IllegalArgumentException(String.format("%s expects its values to be positive but got %f",
                                                          COMPRESSION_THRESHOLDS, threshold));
       }
+      compressionThresholds.put((Symbol)key, threshold);
     }
     return compressionThresholds;
   }

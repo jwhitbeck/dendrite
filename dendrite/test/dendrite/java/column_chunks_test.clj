@@ -14,7 +14,7 @@
             [dendrite.test-helpers :as helpers :refer [leveled partition-by-record flatten-1]])
   (:import [dendrite.java LeveledValue ColumnChunks ChunkedPersistentList DataColumnChunk$Reader
             DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader
-            OptimizingColumnChunkWriter Schema$Column Types]
+            OptimizingColumnChunkWriter Schema$Column Options Types]
            [java.util Date Calendar]
            [java.text SimpleDateFormat]))
 
@@ -408,11 +408,13 @@
       (is (= output-values input-values))
       (is (= Types/INCREMENTAL (-> reader .column .encoding)))))
   (testing "incrementing dates"
-    (let [custom-types (Types/create {'date-str {:base-type 'string
-                                                 :to-base-type-fn #(locking simple-date-format
-                                                                     (.format simple-date-format %))
-                                                 :from-base-type-fn #(locking simple-date-format
-                                                                       (.parse simple-date-format %))}})
+    (let [custom-types (Types/create (Options/getCustomTypeDefinitions
+                                      {:custom-types
+                                       {'date-str {:base-type 'string
+                                                   :to-base-type-fn #(locking simple-date-format
+                                                                       (.format simple-date-format %))
+                                                   :from-base-type-fn #(locking simple-date-format
+                                                                         (.parse simple-date-format %))}}}))
           column (column-required (.getType custom-types 'date-str) Types/PLAIN Types/NONE)
           input-values (take 1000 (days-seq "2014-01-01"))
           reader (write-optimized-column-chunk-and-get-reader column custom-types {} input-values)

@@ -11,7 +11,7 @@
 (ns dendrite.java.types-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java CustomType Types]
+  (:import [dendrite.java CustomType Options Types]
            [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -128,28 +128,22 @@
 
 (deftest custom-types
   (testing "invalid configurations"
-    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex (Types/create custom-types))
-         {:foo {}} #"Custom-type ':foo' is not a symbol."
-         {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'bar'"
-         {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'")
-    (are [custom-types regex] (thrown-with-msg? IllegalArgumentException regex
-                                                (helpers/throw-cause (Types/create custom-types)))
-         {'foo {}} #"Required field :base-type is missing."
-         {'foo {:base-type :int}} #"Base type ':int' is not a symbol"
-         {'foo {:base-type 'in}} #"Unknown base type 'in'"
-         {'foo {:base-type 'int :invalid nil}} #"Key ':invalid' is not a valid custom-type field"
-         {'foo {:base-type 'int :coercion-fn 2}} #":coercion-fn expects a function"
-         {'foo {:base-type 'int :to-base-type-fn 2}} #":to-base-type-fn expects a function"
-         {'foo {:base-type 'int :from-base-type-fn 2}} #":from-base-type-fn expects a function"))
+    (are [custom-types regex]
+      (thrown-with-msg? IllegalArgumentException regex
+                        (Types/create (Options/getCustomTypeDefinitions {:custom-types custom-types})))
+      {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'bar'"
+      {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'"
+      {'foo {:base-type 'in}} #"Unknown base type 'in'"))
   (testing "custom-types work"
-    (let [my-types (Types/create {'foo {:base-type 'int
-                                        :coercion-fn int
-                                        :to-base-type-fn inc
-                                        :from-base-type-fn dec}
-                                  'bar {:base-type 'foo
-                                        :coercion-fn double
-                                        :to-base-type-fn (partial * 2)
-                                        :from-base-type-fn #(quot % 2)}})
+    (let [my-types (Types/create (Options/getCustomTypeDefinitions
+                                  {:custom-types {'foo {:base-type 'int
+                                                        :coercion-fn int
+                                                        :to-base-type-fn inc
+                                                        :from-base-type-fn dec}
+                                                  'bar {:base-type 'foo
+                                                        :coercion-fn double
+                                                        :to-base-type-fn (partial * 2)
+                                                        :from-base-type-fn #(quot % 2)}}}))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
       (testing "new types are incrementally assigned"
@@ -173,14 +167,16 @@
                 (CustomType. (.getType my-types 'bar) (.getType my-types 'foo) 'bar)])))))
   (testing "reading from file with defined custom-types"
     (let [my-types (Types/create
-                       {'foo {:base-type 'int
-                              :coercion-fn int
-                              :to-base-type-fn inc
-                              :from-base-type-fn dec}
-                        'bar {:base-type 'foo
-                              :coercion-fn double
-                              :to-base-type-fn (partial * 2)
-                              :from-base-type-fn #(quot % 2)}}
+                       (Options/getCustomTypeDefinitions
+                        {:custom-types
+                         {'foo {:base-type 'int
+                                :coercion-fn int
+                                :to-base-type-fn inc
+                                :from-base-type-fn dec}
+                          'bar {:base-type 'foo
+                                :coercion-fn double
+                                :to-base-type-fn (partial * 2)
+                                :from-base-type-fn #(quot % 2)}}})
                      (into-array [(CustomType. 20 Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
@@ -189,14 +185,16 @@
         (is (= 21 bar)))))
   (testing "reading from older file with defined custom-types that override newer logical types"
     (let [my-types (Types/create
-                       {'foo {:base-type 'int
-                              :coercion-fn int
-                              :to-base-type-fn inc
-                              :from-base-type-fn dec}
-                        'bar {:base-type 'foo
-                              :coercion-fn double
-                              :to-base-type-fn (partial * 2)
-                              :from-base-type-fn #(quot % 2)}}
+                       (Options/getCustomTypeDefinitions
+                        {:custom-types
+                         {'foo {:base-type 'int
+                                :coercion-fn int
+                                :to-base-type-fn inc
+                                :from-base-type-fn dec}
+                          'bar {:base-type 'foo
+                                :coercion-fn double
+                                :to-base-type-fn (partial * 2)
+                                :from-base-type-fn #(quot % 2)}}})
                      (into-array [(CustomType. Types/BYTE_BUFFER Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]

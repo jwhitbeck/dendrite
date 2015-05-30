@@ -13,7 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.Agent;
-import clojure.lang.IPersistentMap;
+import clojure.lang.Symbol;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -171,7 +172,7 @@ public final class Writer implements Closeable {
                      final FileChannel fileChannel,
                      final int targetRecordGroupLength,
                      final int bundleSize,
-                     final IPersistentMap compressionThresholds,
+                     final Map<Symbol,Double> compressionThresholds,
                      final Iterator<List<Object>> batchIterator) {
     return Agent.soloExecutor.submit(new Callable<WriteThreadResult>() {
         public WriteThreadResult call() throws IOException {

@@ -13,7 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.Agent;
-import clojure.lang.IPersistentMap;
+import clojure.lang.Symbol;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -99,7 +100,7 @@ public final class RecordGroup {
       return optimizingColumnChunkwriters.size() > 0;
     }
 
-    public void optimize(final IPersistentMap compressionThresholds) {
+    public void optimize(final Map<Symbol,Double> compressionThresholds) {
       if (canOptimize()) {
         List<Future<IColumnChunkWriter>> futures
           = new ArrayList<Future<IColumnChunkWriter>>(columnChunkWriters.length);

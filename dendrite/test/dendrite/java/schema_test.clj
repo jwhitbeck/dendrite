@@ -154,7 +154,7 @@
          (Schema/plain types {:foo (Schema/req (Col. 'int 'vlq))}))))
 
 (deftest entrypoints
-  (is (= test-unparsed-schema (->> test-schema (Schema/subSchema nil) (Schema/unparse types))))
+  (is (= test-unparsed-schema (->> test-schema (Schema/subSchema []) (Schema/unparse types))))
   (is (= (:links test-unparsed-schema) (->> test-schema (Schema/subSchema [:links]) (Schema/unparse types))))
   (is (= (get-in test-unparsed-schema [:links :backward])
          (->> test-schema (Schema/subSchema [:links :backward]) (Schema/unparse types))))
