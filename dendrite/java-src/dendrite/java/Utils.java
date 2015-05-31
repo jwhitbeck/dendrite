@@ -102,28 +102,4 @@ public final class Utils {
     throws IOException {
     return fileChannel.map(FileChannel.MapMode.READ_ONLY, offset, length);
   }
-
-  public static Object reduce(IFn fn, Object init, Object coll) {
-    Object ret = init;
-    for (ISeq s = RT.seq(coll); s != null; s = s.next()) {
-      ret = fn.invoke(ret, s.first());
-      if(RT.isReduced(ret)) {
-        return ret;
-      }
-    }
-    return ret;
-  }
-
-  public static ISeq repeat(final long n, final Object v) {
-    return new LazySeq(new AFn(){
-        public ISeq invoke() {
-          if (n == 0) {
-            return null;
-          } else {
-            return new Cons(v, repeat(n-1, v));
-          }
-        }
-      });
-  }
-
 }

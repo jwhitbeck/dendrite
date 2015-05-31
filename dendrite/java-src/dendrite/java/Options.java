@@ -43,7 +43,7 @@ public final class Options {
     ENTRYPOINT = Keyword.intern("entrypoint"),
     MISSING_FIELDS_AS_NIL = Keyword.intern("missing-fields-as-nil?"),
     READERS = Keyword.intern("readers"),
-    PMAP_FN = Keyword.intern("pmap-fn"),
+    MAP_FN = Keyword.intern("map-fn"),
     ALL = Keyword.intern("all"),
     NONE = Keyword.intern("none"),
     DEFAULT = Keyword.intern("default"),
@@ -185,18 +185,20 @@ public final class Options {
     public final boolean isMissingFieldsAsNil;
     public final Map<Symbol,IFn> readers;
     public final int bundleSize = DEFAULT_BUNDLE_SIZE;
+    public final IFn mapFn;
 
     public ReadOptions(Object query, List<Keyword> entrypoint, boolean isMissingFieldsAsNil,
-                       Map<Symbol,IFn> readers) {
+                       Map<Symbol,IFn> readers, IFn mapFn) {
       this.query = query;
       this.entrypoint = entrypoint;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
       this.readers = readers;
+      this.mapFn = mapFn;
     }
   }
 
   static Keyword[] validReadOptionKeys
-    = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS, PMAP_FN};
+    = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS, MAP_FN};
 
   static Object getQuery(IPersistentMap options) {
     return RT.get(options, QUERY, Schema.SUB_SCHEMA);
@@ -241,8 +243,8 @@ public final class Options {
       throw new IllegalArgumentException(String.format("reader key should be a symbol but got '%s'.", k));
     }
     if (!(v instanceof IFn)) {
-      throw new IllegalArgumentException
-        (String.format("reader value for tag '%s' should be a function but got '%s'", k, v));
+      throw new IllegalArgumentException(
+          String.format("reader value for tag '%s' should be a function but got '%s'", k, v));
     }
   }
 
@@ -262,13 +264,24 @@ public final class Options {
     return readers;
   }
 
+  static IFn getMapFn(IPersistentMap options) {
+    Object o = RT.get(options, MAP_FN, notFound);
+    if (o == notFound) {
+      return null;
+    } else if (!(o instanceof IFn)) {
+      throw new IllegalArgumentException(String.format("%s expects a function but got '%s'", MAP_FN, o));
+    } else {
+      return (IFn)o;
+    }
+  }
+
   public static ReadOptions getReadOptions(IPersistentMap options) {
     checkValidKeys(options, validReadOptionKeys, "%s is not a supported read option.");
     return new ReadOptions(getQuery(options),
                            getEntrypoint(options),
                            getMissingFieldsAsNil(options),
-                           getTagReaders(options));
-
+                           getTagReaders(options),
+                           getMapFn(options));
   }
 
   public static final class WriterOptions {

@@ -24,7 +24,7 @@
    help-cli-option])
 
 (defn schema [options filename]
-  (with-open [r (d/reader filename)]
+  (with-open [r (d/file-reader filename)]
     (let [schema (cond-> (d/schema r) (:plain options) d/plain)]
       (if (:pretty options)
         (pprint/pprint schema)
@@ -35,7 +35,7 @@
    help-cli-option])
 
 (defn metadata [options filename]
-  (with-open [r (d/reader filename)]
+  (with-open [r (d/file-reader filename)]
     (let [metadata (d/metadata r)]
       (if (:pretty options)
         (pprint/pprint metadata)
@@ -56,7 +56,7 @@
    help-cli-option])
 
 (defn read-file [cli-options filename]
-  (with-open [r (d/reader filename)]
+  (with-open [r (d/file-reader filename)]
     (let [opts (cond-> {}
                  (:query cli-options) (assoc :query (:query cli-options))
                  (:query-file cli-options) (assoc :query (:query-file cli-options))
@@ -106,7 +106,7 @@
       (throw (IllegalStateException. "must specify at least one of --schema or --schema-file.")))
     (let [opts (select-keys cli-options [:data-page-length :record-group-length
                                          :compression-thresholds :optimize-columns?])]
-      (with-open [w (d/writer opts schema filename)]
+      (with-open [w (d/file-writer opts schema filename)]
         (.writeAll w (pmap edn/read-string (line-seq (BufferedReader. *in*))))
         (when-let [metadata (or (:metadata cli-options) (:metadata-file cli-options))]
           (d/set-metadata! w metadata))))))
@@ -154,7 +154,7 @@
         record-group-stats)))
 
 (defn stats [options filename]
-  (with-open [r (d/reader filename)]
+  (with-open [r (d/file-reader filename)]
     (let [sort-col (:sort options)
           rows (cond->> (cond (:columns options)
                               (format-column-stats (:columns (d/stats r)) sort-col)

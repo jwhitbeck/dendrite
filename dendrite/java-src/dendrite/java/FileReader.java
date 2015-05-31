@@ -18,6 +18,7 @@ import clojure.lang.Agent;
 import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
 import clojure.lang.Keyword;
+import clojure.lang.IChunk;
 import clojure.lang.IChunkedSeq;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
@@ -48,7 +49,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-public final class FileReader implements Closeable {
+public final class FileReader implements Closeable, IReader {
 
   public final static Keyword
     RECORD_GROUPS = Keyword.intern("record-groups"),
@@ -100,27 +101,18 @@ public final class FileReader implements Closeable {
     return fileMetadata.metadata;
   }
 
-  View getView(Schema.QueryResult queryResult, int bundleSize) {
-    Assemble.Fn assembleFn = Assemble.getFn(queryResult.schema);
-    if (queryResult.columns.length == 0) {
-      return new EmptyView(fileMetadata.recordGroups, assembleFn.invoke(null));
-    } else {
-      return new LazyView(this, queryResult.columns, assembleFn, bundleSize);
-    }
-  }
-
-  Schema.QueryResult getQueryResult(Options.ReadOptions options, IFn pmapFn) {
+  Schema.QueryResult getQueryResult(Options.ReadOptions options) {
     Schema.QueryResult res = Schema.applyQuery(types,
                                                options.isMissingFieldsAsNil,
                                                options.readers,
                                                Schema.subSchema(options.entrypoint, fileMetadata.schema),
                                                options.query);
-    if (pmapFn != null) {
+    if (options.mapFn != null) {
       IFn fn = res.schema.fn;
       if (fn == null) {
-        fn = pmapFn;
+        fn = options.mapFn;
       } else {
-        fn = Utils.comp(pmapFn, fn);
+        fn = Utils.comp(options.mapFn, fn);
       }
       return new Schema.QueryResult(res.schema.withFn(fn), res.columns);
     } else {
@@ -128,12 +120,11 @@ public final class FileReader implements Closeable {
     }
   }
 
+  @Override
   public View read(Options.ReadOptions options) {
-    return getView(getQueryResult(options, null), options.bundleSize);
-  }
-
-  public View pmap(Options.ReadOptions options, IFn pmapFn) {
-    return getView(getQueryResult(options, pmapFn), options.bundleSize);
+    Schema.QueryResult queryResult = getQueryResult(options);
+    Assemble.Fn assembleFn = Assemble.getFn(queryResult.schema);
+    return new LazyView(queryResult.columns, assembleFn, options.bundleSize);
   }
 
   Iterator<RecordGroup.Reader> getRecordGroupReaders(Schema.Column[] columns, int bundleSize) {
@@ -228,7 +219,7 @@ public final class FileReader implements Closeable {
       .persistent();
   }
 
-  public IPersistentMap stats() throws IOException {
+  public IPersistentMap getStats() throws IOException {
     IPersistentVector[] paths = Schema.getPaths(fileMetadata.schema);
     Schema.Column[] columns = Schema.getColumns(fileMetadata.schema);
     List<Stats.RecordGroup> recordGroupsStats = new ArrayList<Stats.RecordGroup>();
@@ -279,7 +270,7 @@ public final class FileReader implements Closeable {
       });
   }
 
-  public Object schema() {
+  public Object getSchema() {
     return Schema.unparse(types, fileMetadata.schema);
   }
 
@@ -327,189 +318,148 @@ public final class FileReader implements Closeable {
     return new MetadataReadResult(Metadata.File.read(metadataBuffer), metadataLength);
   }
 
-  public static final class EmptyView extends View {
-
-    final Metadata.RecordGroup[] recordGroupsMetadata;
-    final Object assembledNilRecord;
-
-    EmptyView(Metadata.RecordGroup[] recordGroupsMetadata, Object assembledNilRecord) {
-      this.recordGroupsMetadata = recordGroupsMetadata;
-      this.assembledNilRecord = assembledNilRecord;
+  static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
+    if (!recordGroupReaders.hasNext()) {
+      return Collections.<Bundle>emptyList().iterator();
     }
+    return new AReadOnlyIterator<Bundle>() {
+      private Iterator<Bundle> bundleIterator = recordGroupReaders.next().iterator();
 
-    @Override
-    public ISeq seq() {
-      long totalNumRecords = 0;
-      for (int i=0; i<recordGroupsMetadata.length; ++i) {
-        totalNumRecords = recordGroupsMetadata[i].numRecords;
-      }
-      return Utils.repeat(totalNumRecords, assembledNilRecord);
-    }
-
-    Object reduce(long n, IFn reducef, Object init) {
-      Object ret = init;
-      for (long i=0; i<n; ++i) {
-        ret = reducef.invoke(ret, assembledNilRecord);
-      }
-      return ret;
-    }
-
-    @Override
-    public Object fold(int n, IFn combinef, IFn reducef) {
-      Object init = combinef.invoke();
-      Object foldedBundle = reduce(n, reducef, init);
-      Object ret = init;
-      for (int i=0; i<recordGroupsMetadata.length; ++i) {
-        long numRecords = recordGroupsMetadata[i].numRecords;
-        for (long j=0; j<(numRecords/n); ++j) {
-          ret = combinef.invoke(ret, foldedBundle);
+      private void step() {
+        if (recordGroupReaders.hasNext()) {
+          bundleIterator = recordGroupReaders.next().iterator();
+        } else {
+          bundleIterator = null;
         }
-        ret = combinef.invoke(ret, reduce(numRecords % n, reducef, init));
       }
-      return ret;
-    }
 
+      @Override
+        public boolean hasNext() {
+        if (bundleIterator == null) {
+          return false;
+        }
+        if (bundleIterator.hasNext()) {
+          return true;
+        } else {
+          step();
+          return hasNext();
+        }
+      }
+
+      @Override
+        public Bundle next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        return bundleIterator.next();
+      }
+    };
   }
 
-  public static final class LazyView extends View {
+  static Future<IChunk> getAssembleFuture(final Bundle bundle, final Assemble.Fn assembleFn) {
+    return Agent.soloExecutor.submit(new Callable<IChunk>() {
+        public ArrayChunk call() {
+          return new ArrayChunk(bundle.assemble(assembleFn));
+        }
+      });
+  }
+
+  private static Iterator<IChunk> getRecordChunksIterator(final Iterator<Bundle> bundlesIterator,
+                                                          final Assemble.Fn assembleFn) {
+    int n = 2 + Runtime.getRuntime().availableProcessors();
+    final LinkedList<Future<IChunk>> futures = new LinkedList<Future<IChunk>>();
+    int k = 0;
+    while (bundlesIterator.hasNext() && k < n) {
+      futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+    }
+    return new AReadOnlyIterator<IChunk>() {
+      @Override
+        public boolean hasNext() {
+        return !futures.isEmpty();
+      }
+
+      @Override
+        public IChunk next() {
+        Future<IChunk> fut = futures.pollFirst();
+        IChunk chunk = Utils.tryGetFuture(fut);
+        if (bundlesIterator.hasNext()) {
+          futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+        }
+        return chunk;
+      }
+    };
+  }
+
+  static Future<Object> getReducedChunkFuture(final Bundle bundle, final IFn reduceFn, final Object init,
+                                              final Assemble.Fn assembleFn) {
+    return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return bundle.reduce(reduceFn, assembleFn, init);
+        }
+      });
+  }
+
+  private static Iterator<Object> getReducedChunksIterator(final Iterator<Bundle> bundlesIterator,
+                                                           final IFn reduceFn,
+                                                           final Object init,
+                                                           final Assemble.Fn assembleFn) {
+    int n = 2 + Runtime.getRuntime().availableProcessors();
+    final LinkedList<Future<Object>> futures = new LinkedList<Future<Object>>();
+    int k = 0;
+    while (bundlesIterator.hasNext() && k < n) {
+      futures.addLast(getReducedChunkFuture(bundlesIterator.next(), reduceFn, init, assembleFn));
+    }
+    return new AReadOnlyIterator<Object>() {
+      @Override
+        public boolean hasNext() {
+        return !futures.isEmpty();
+      }
+
+      @Override
+        public Object next() {
+        Future<Object> fut = futures.pollFirst();
+        Object obj = Utils.tryGetFuture(fut);
+        if (bundlesIterator.hasNext()) {
+          futures.addLast(getReducedChunkFuture(bundlesIterator.next(), reduceFn, init, assembleFn));
+        }
+        return obj;
+      }
+    };
+  }
+
+  public final class LazyView extends View {
 
     private final Assemble.Fn assembleFn;
     private final Schema.Column[] queriedColumns;
-    private final FileReader reader;
-    private final int defaultBundleSize;
     private ISeq recordSeq = null;
 
-    LazyView(FileReader reader, Schema.Column[] queriedColumns, Assemble.Fn assembleFn,
-             int defaultBundleSize) {
-      this.reader = reader;
+    LazyView(Schema.Column[] queriedColumns, Assemble.Fn assembleFn, int defaultBundleSize) {
+      super(defaultBundleSize);
       this.queriedColumns = queriedColumns;
       this.assembleFn = assembleFn;
-      this.defaultBundleSize = defaultBundleSize;
     }
 
-    private static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
-      if (!recordGroupReaders.hasNext()) {
-        return Collections.<Bundle>emptyList().iterator();
-      }
-      return new AReadOnlyIterator<Bundle>() {
-        private Iterator<Bundle> bundleIterator = recordGroupReaders.next().iterator();
-
-        private void step() {
-          if (recordGroupReaders.hasNext()) {
-            bundleIterator = recordGroupReaders.next().iterator();
-          } else {
-            bundleIterator = null;
-          }
-        }
-
+    protected Iterable<IChunk> getRecordChunks(final int bundleSize) {
+      return new Iterable<IChunk>() {
         @Override
-        public boolean hasNext() {
-          if (bundleIterator == null) {
-            return false;
-          }
-          if (bundleIterator.hasNext()) {
-            return true;
-          } else {
-            step();
-            return hasNext();
-          }
+        public Iterator<IChunk> iterator() {
+          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize), assembleFn);
         }
+      };
+    }
 
+    protected Iterable<Object> getReducedChunkValues(final IFn f, final Object init, final int bundleSize) {
+      return new Iterable<Object>() {
         @Override
-        public Bundle next() {
-          if (!hasNext()) {
-            throw new NoSuchElementException();
-          }
-          return bundleIterator.next();
+        public Iterator<Object> iterator() {
+          return FileReader.getReducedChunksIterator(getBundlesIterator(bundleSize),
+                                                     f, init, assembleFn);
         }
       };
     }
 
     private Iterator<Bundle> getBundlesIterator(int bundleSize) {
-      return getBundlesIterator(reader.getRecordGroupReaders(queriedColumns, bundleSize));
-    }
-
-    private static Future<ArrayChunk> getAssembleFuture(final Bundle bundle, final Assemble.Fn assembleFn) {
-      return Agent.soloExecutor.submit(new Callable<ArrayChunk>() {
-          public ArrayChunk call() {
-                return new ArrayChunk(bundle.assemble(assembleFn));
-          }
-        });
-    }
-
-    private static Iterator<ArrayChunk> getRecordChunksIterator(final Iterator<Bundle> bundlesIterator,
-                                                                final Assemble.Fn assembleFn) {
-      int n = 2 + Runtime.getRuntime().availableProcessors();
-      final LinkedList<Future<ArrayChunk>> futures = new LinkedList<Future<ArrayChunk>>();
-      int k = 0;
-      while (bundlesIterator.hasNext() && k < n) {
-        futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
-      }
-      return new AReadOnlyIterator<ArrayChunk>() {
-        @Override
-        public boolean hasNext() {
-          return !futures.isEmpty();
-        }
-
-        @Override
-        public ArrayChunk next() {
-          Future<ArrayChunk> fut = futures.pollFirst();
-          ArrayChunk chunk = Utils.tryGetFuture(fut);
-          if (bundlesIterator.hasNext()) {
-            futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
-          }
-          return chunk;
-        }
-      };
-    }
-
-    private Iterator<ArrayChunk> getRecordChunksIterator(int bundleSize) {
-      return getRecordChunksIterator(getBundlesIterator(bundleSize), assembleFn);
-    }
-
-    private static ISeq getRecordChunkedSeq(final Iterator<ArrayChunk> recordChunksIterator) {
-      return new LazySeq(new AFn() {
-          public IChunkedSeq invoke() {
-            if (!recordChunksIterator.hasNext()) {
-              return null;
-            } else {
-              return new ChunkedCons(recordChunksIterator.next(), getRecordChunkedSeq(recordChunksIterator));
-            }
-          }
-        });
-    }
-
-    private ISeq getRecordChunkedSeq(int bundleSize) {
-      return getRecordChunkedSeq(getRecordChunksIterator(bundleSize));
-    }
-
-    @Override
-    public synchronized ISeq seq() {
-      if (recordSeq == null) {
-        recordSeq = RT.seq(getRecordChunkedSeq(defaultBundleSize));
-      }
-      return recordSeq;
-    }
-
-    @Override
-    public synchronized Object fold(final int n, final IFn combinef, final IFn reducef) {
-      throw new UnsupportedOperationException();
-      // final Object init = combinef.invoke();
-      // if (assembledBundleseq == null) {
-      //   IFn fn = new AFn() {
-      //       public Object invoke(Object bundle) {
-      //         return ((ReadBundle)bundle).reduce(reducef, assembleFn, init);
-      //       }
-      //     };
-      //   return reduce(combinef, init, Utils.pmap(fn, getBundlesSeq(n)));
-      // } else {
-      //   IFn fn = new AFn() {
-      //       public Object invoke(Object assembledBundle) {
-      //         return reduce(reducef, init, assembledBundle);
-      //       }
-      //     };
-      //   return reduce(reducef, init, Utils.pmap(fn, assembledBundleseq));
-      // }
+      return FileReader.getBundlesIterator(getRecordGroupReaders(queriedColumns, bundleSize));
     }
   }
 }

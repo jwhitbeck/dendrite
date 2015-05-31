@@ -72,6 +72,8 @@
        "reader key should be a symbol but got ':foo'"
        {:readers {'foo "foo"}}
        "reader value for tag 'foo' should be a function but got 'foo'"
+       {:map-fn "foo"}
+       ":map-fn expects a function but got 'foo'"
        {:invalid-option "foo"}
        ":invalid-option is not a supported read option."))
 

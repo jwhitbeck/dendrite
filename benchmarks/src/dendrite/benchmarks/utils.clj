@@ -152,7 +152,7 @@
 
 (defn json-file->dendrite-file [schema json-filename dendrite-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-              w (d/writer schema dendrite-filename)]
+              w (d/file-writer schema dendrite-filename)]
     (doseq [record (map #(json/parse-string % true) (line-seq r))]
       (.write w record))))
 
@@ -271,7 +271,7 @@
   (read-plain-text-file-parallel compression edn/read-string filename))
 
 (defn read-dendrite-file [filename]
-  (with-open [r (d/reader filename)]
+  (with-open [r (d/file-reader filename)]
     (last (d/read r))))
 
 (defn read-byte-buffer-file [n compression parse-fn filename]

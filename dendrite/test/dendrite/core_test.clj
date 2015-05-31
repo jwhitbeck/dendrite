@@ -22,13 +22,19 @@
 (set! *warn-on-reflection* true)
 
 (def tmp-filename "target/foo.dend")
+(def tmp-filename2 "target/bar.dend")
 
-(use-fixtures :each (fn [f] (f) (io/delete-file tmp-filename true)))
+(use-fixtures :each (fn [f]
+                      (f)
+                      (io/delete-file tmp-filename true)
+                      (io/delete-file tmp-filename2 true)))
 
-(defn- dremel-paper-writer ^dendrite.java.FileWriter []
-  (doto (file-writer (Schema/readString dremel-paper-schema-str) tmp-filename)
-    (.write dremel-paper-record1)
-    (.write dremel-paper-record2)))
+(defn- dremel-paper-writer
+  (^dendrite.java.FileWriter [] (dremel-paper-writer tmp-filename))
+  (^dendrite.java.FileWriter [filename]
+    (doto (file-writer (Schema/readString dremel-paper-schema-str) filename)
+      (.write dremel-paper-record1)
+      (.write dremel-paper-record2))))
 
 (deftest dremel-paper
   (.close (dremel-paper-writer))
@@ -282,9 +288,43 @@
   (is (chunked-seq? (with-open [r (file-reader tmp-filename)]
                       (doall (next (read r)))))))
 
-#_(deftest folding
+(deftest folding
   (.close (dremel-paper-writer))
   (with-open [r (file-reader tmp-filename)]
     (is (= 30 (->> (read r) (r/map :docid) (r/fold +))))
     (is (= 30 (->> (read r) (r/map :docid) (r/reduce +))))
     (is (= 40 (->> (read r) (r/map :docid) (r/reduce + 10))))))
+
+(deftest multiple-files
+  (.close (doto (dremel-paper-writer tmp-filename)
+            (set-metadata! :foo)))
+  (.close (doto (dremel-paper-writer tmp-filename2)
+            (set-metadata! :bar)))
+  (testing "reads"
+    (is (= (concat (with-open [r (file-reader tmp-filename)]
+                     (doall (read r)))
+                   (with-open [r (file-reader tmp-filename2)]
+                     (doall (read r))))
+           (with-open [r (files-reader [tmp-filename tmp-filename2])]
+             (doall (read r))))))
+  (testing "stats"
+    (is (= {(io/as-file tmp-filename) (with-open [r (file-reader tmp-filename)]
+                                          (stats r))
+            (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
+                                         (stats r))}
+           (with-open [r (files-reader [tmp-filename tmp-filename2])]
+             (stats r)))))
+  (testing "metadata"
+    (is (= {(io/as-file tmp-filename) (with-open [r (file-reader tmp-filename)]
+                                        (metadata r))
+            (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
+                                         (metadata r))}
+           (with-open [r (files-reader [tmp-filename tmp-filename2])]
+             (metadata r)))))
+  (testing "schema"
+    (is (= {(io/as-file tmp-filename) (with-open [r (file-reader tmp-filename)]
+                                        (schema r))
+            (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
+                                         (schema r))}
+           (with-open [r (files-reader [tmp-filename tmp-filename2])]
+             (schema r))))))

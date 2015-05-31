@@ -13,8 +13,9 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue Options FileReader Schema Types View FileWriter]
-           [java.nio ByteBuffer])
+  (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
+           [java.nio ByteBuffer]
+           [java.util LinkedHashMap Map])
   (:refer-clojure :exclude [read pmap]))
 
 (set! *warn-on-reflection* true)
@@ -86,16 +87,6 @@
   [schema]
   (Schema/plain (Types/create) schema))
 
-(defn file-reader
-  "Returns a dendrite reader for the provided file.
-
-  If provided, the options map supports the following keys:
-  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See docs for
-                  full explanation."
-  (^dendrite.java.FileReader [file] (file-reader nil file))
-  (^dendrite.java.FileReader [opts file]
-    (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
-
 (defn file-writer
   "Returns a dendrite writer that outputs to a file according to the provided schema.
 
@@ -117,7 +108,56 @@
                              full explanation."
   (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
   (^dendrite.java.FileWriter [opts schema file]
-    (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))
+                             (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))
+
+(defn set-metadata!
+  "Sets the user-defined metadata for this writer."
+  [^FileWriter writer metadata]
+  (.setMetadata writer (-> metadata pr-str Types/toByteArray ByteBuffer/wrap)))
+
+(defn file-reader
+  "Returns a dendrite reader for the provided file.
+
+  If provided, the options map supports the following keys:
+  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See docs for
+                  full explanation."
+  (^dendrite.java.FileReader [file] (file-reader nil file))
+  (^dendrite.java.FileReader [opts file]
+                             (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
+
+(defn files-reader
+  (^dendrite.java.FilesReader [files] (files-reader nil files))
+  (^dendrite.java.FilesReader [opts files]
+                              (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
+
+(defprotocol IReadable
+  (stats [_]
+    "Returns a map containing all the stats associated with this reader. The tree top-level keys
+    are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
+    summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging
+    to the same column. If called on a multiple-files reader, returns a map of file to stats.")
+  (metadata [_]
+    "Returns the user-defined metadata for this reader. If called on a multiple-files reader, returns a map of
+    file to metadata.")
+  (schema [_]
+    "Returns this reader's schema. If called on a multiple-files reader, returns a map of file to schema."))
+
+(defn- byte-buffer->edn [^ByteBuffer byte-buffer]
+  (-> byte-buffer Types/toByteArray Types/toString edn/read-string))
+
+(extend-protocol IReadable
+  dendrite.java.FileReader
+  (schema [reader] (.getSchema reader))
+  (metadata [reader] (byte-buffer->edn (.getMetadata reader)))
+  (stats [reader] (.getStats reader))
+  dendrite.java.FilesReader
+  (schema [reader] (.getSchemaByFile reader))
+  (metadata [reader] (reduce (fn [^Map hm [k v]]
+                               (doto hm
+                                 (.put k (byte-buffer->edn v))))
+                             (LinkedHashMap.)
+                             (.getMetadataByFile reader)))
+  (stats [reader] (.getStatsByFile reader)))
 
 (extend-type View
   clojure.core.protocols/CollReduce
@@ -141,34 +181,15 @@
   :entrypoint             - a sequence of keys to begin the query within a subset of the schema. Cannot
                             contain any keys to repeated fields. See docs for full explanation.
   :readers                - a map of query tag symbol to tag function. Default: nil. See docs for full
-                            explanation."
-  ([^FileReader reader] (read nil reader))
-  ([opts ^FileReader reader] (.read reader (Options/getReadOptions opts))))
+                            explanation.
+  :map-fn                 - apply this function to all records. This function is applied as part of the
+                            parallel assembly process."
+  ([^IReader reader] (read nil reader))
+  ([opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
 (defn pmap
   "Returns a view of all the records in the reader with the provided function applied to them. This is a
-  convenience function that is roughly equivalent to (read {:query (tag 'foo '_) :readers {'foo f}} reader).
+  convenience function that is equivalent to (read {:map-fn f} reader).
   See read for full details on available options."
-  ([f ^FileReader reader] (pmap nil f reader))
-  ([opts f ^FileReader reader] (.pmap reader (Options/getReadOptions opts) f)))
-
-(defn stats
-  "Returns a map containing all the stats associated with this reader. The tree top-level keys
-  are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
-  summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging
-  to the same column."
-  [^FileReader reader] (.stats reader))
-
-(defn schema
-  "Returns this reader's schema."
-  [^FileReader reader] (.schema reader))
-
-(defn set-metadata!
-  "Sets the user-defined metadata for this writer."
-  [^FileWriter writer metadata]
-  (.setMetadata writer (-> metadata pr-str Types/toByteArray ByteBuffer/wrap)))
-
-(defn metadata
-  "Returns the user-defined metadata for this reader."
-  [^FileReader reader]
-  (-> (.getMetadata reader) Types/toByteArray Types/toString edn/read-string))
+  ([f ^IReader reader] (pmap nil f reader))
+  ([opts f ^IReader reader] (.read reader (Options/getReadOptions (assoc opts :map-fn f)))))
