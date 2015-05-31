@@ -13,7 +13,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue  Options Reader Schema Types View Writer]
+  (:import [dendrite.java Col LeveledValue Options FileReader Schema Types View FileWriter]
            [java.nio ByteBuffer])
   (:refer-clojure :exclude [read pmap]))
 
@@ -86,17 +86,17 @@
   [schema]
   (Schema/plain (Types/create) schema))
 
-(defn reader
+(defn file-reader
   "Returns a dendrite reader for the provided file.
 
   If provided, the options map supports the following keys:
-  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See README for
-                   full explanation."
-  (^dendrite.java.Reader [file] (reader nil file))
-  (^dendrite.java.Reader [opts file]
-    (Reader/create (Options/getReaderOptions opts) (io/as-file file))))
+  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See docs for
+                  full explanation."
+  (^dendrite.java.FileReader [file] (file-reader nil file))
+  (^dendrite.java.FileReader [opts file]
+    (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
 
-(defn writer
+(defn file-writer
   "Returns a dendrite writer that outputs to a file according to the provided schema.
 
   If provided, the options map supports the following keys:
@@ -113,11 +113,11 @@
                              not conform to the schema, it will be passed to this function along with the
                              exception it triggered. By default, this option is nil and exceptions
                              triggered by invalid records are not caught.
-  :custom-types            - a map of of custom-type symbol to custom-type specification. See README for
+  :custom-types            - a map of of custom-type symbol to custom-type specification. See docs for
                              full explanation."
-  (^dendrite.java.Writer [schema file] (writer nil schema file))
-  (^dendrite.java.Writer [opts schema file]
-    (Writer/create (Options/getWriterOptions opts) schema (io/as-file file))))
+  (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
+  (^dendrite.java.FileWriter [opts schema file]
+    (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))
 
 (extend-type View
   clojure.core.protocols/CollReduce
@@ -137,38 +137,38 @@
   :missing-fields-as-nil? - should be true (default) or false. If true, then fields that are specified in the
                             query but are not present in this reader's schema will be read as nil values. If
                             false, querying for fields not present in the schema will throw an exception.
-  :query                  - the query. Default: '_. See README for full explanation.
+  :query                  - the query. Default: '_. See docs for full explanation.
   :entrypoint             - a sequence of keys to begin the query within a subset of the schema. Cannot
-                            contain any keys to repeated fields. See README for full explanation.
-  :readers                - a map of query tag symbol to tag function. Default: nil. See README for full
+                            contain any keys to repeated fields. See docs for full explanation.
+  :readers                - a map of query tag symbol to tag function. Default: nil. See docs for full
                             explanation."
-  ([^Reader reader] (read nil reader))
-  ([opts ^Reader reader] (.read reader (Options/getReadOptions opts))))
+  ([^FileReader reader] (read nil reader))
+  ([opts ^FileReader reader] (.read reader (Options/getReadOptions opts))))
 
 (defn pmap
   "Returns a view of all the records in the reader with the provided function applied to them. This is a
   convenience function that is roughly equivalent to (read {:query (tag 'foo '_) :readers {'foo f}} reader).
   See read for full details on available options."
-  ([f ^Reader reader] (pmap nil f reader))
-  ([opts f ^Reader reader] (.pmap reader (Options/getReadOptions opts) f)))
+  ([f ^FileReader reader] (pmap nil f reader))
+  ([opts f ^FileReader reader] (.pmap reader (Options/getReadOptions opts) f)))
 
 (defn stats
   "Returns a map containing all the stats associated with this reader. The tree top-level keys
   are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
   summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging
   to the same column."
-  [^Reader reader] (.stats reader))
+  [^FileReader reader] (.stats reader))
 
 (defn schema
   "Returns this reader's schema."
-  [^Reader reader] (.schema reader))
+  [^FileReader reader] (.schema reader))
 
 (defn set-metadata!
   "Sets the user-defined metadata for this writer."
-  [^Writer writer metadata]
+  [^FileWriter writer metadata]
   (.setMetadata writer (-> metadata pr-str Types/toByteArray ByteBuffer/wrap)))
 
 (defn metadata
   "Returns the user-defined metadata for this reader."
-  [^Reader reader]
+  [^FileReader reader]
   (-> (.getMetadata reader) Types/toByteArray Types/toString edn/read-string))

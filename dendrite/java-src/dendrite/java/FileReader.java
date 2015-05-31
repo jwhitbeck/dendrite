@@ -48,7 +48,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-public final class Reader implements Closeable {
+public final class FileReader implements Closeable {
 
   public final static Keyword
     RECORD_GROUPS = Keyword.intern("record-groups"),
@@ -82,18 +82,18 @@ public final class Reader implements Closeable {
   final Metadata.File fileMetadata;
   final long metadataLength;
 
-  private Reader(Types types, FileChannel fileChannel, Metadata.File fileMetadata, long metadataLength) {
+  private FileReader(Types types, FileChannel fileChannel, Metadata.File fileMetadata, long metadataLength) {
     this.types = types;
     this.fileChannel = fileChannel;
     this.fileMetadata = fileMetadata;
     this.metadataLength = metadataLength;
   }
 
-  public static Reader create(Options.ReaderOptions options, File file) throws IOException {
+  public static FileReader create(Options.ReaderOptions options, File file) throws IOException {
     FileChannel fileChannel = Utils.getReadingFileChannel(file);
     MetadataReadResult res = readMetadata(fileChannel);
     Types types = Types.create(options.customTypeDefinitions, res.fileMetadata.customTypes);
-    return new Reader(types, fileChannel, res.fileMetadata, res.metadataLength);
+    return new FileReader(types, fileChannel, res.fileMetadata, res.metadataLength);
   }
 
   public ByteBuffer getMetadata() {
@@ -375,11 +375,12 @@ public final class Reader implements Closeable {
 
     private final Assemble.Fn assembleFn;
     private final Schema.Column[] queriedColumns;
-    private final Reader reader;
+    private final FileReader reader;
     private final int defaultBundleSize;
     private ISeq recordSeq = null;
 
-    LazyView(Reader reader, Schema.Column[] queriedColumns, Assemble.Fn assembleFn, int defaultBundleSize) {
+    LazyView(FileReader reader, Schema.Column[] queriedColumns, Assemble.Fn assembleFn,
+             int defaultBundleSize) {
       this.reader = reader;
       this.queriedColumns = queriedColumns;
       this.assembleFn = assembleFn;

@@ -31,7 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public final class Writer implements Closeable {
+public final class FileWriter implements Closeable {
 
   private final Types types;
   private final Schema schema;
@@ -44,8 +44,8 @@ public final class Writer implements Closeable {
   private final int bundleSize;
   private boolean isClosed;
 
-  private Writer(Types types, Schema schema, FileChannel fileChannel, int bundleSize,
-                 Future<WriteThreadResult> writeThread, LinkedBlockingQueue<List<Object>> batchQueue) {
+  private FileWriter(Types types, Schema schema, FileChannel fileChannel, int bundleSize,
+                     Future<WriteThreadResult> writeThread, LinkedBlockingQueue<List<Object>> batchQueue) {
     this.types = types;
     this.schema = schema;
     this.fileChannel = fileChannel;
@@ -58,7 +58,7 @@ public final class Writer implements Closeable {
     this.isClosed = false;
   }
 
-  public static Writer create(Options.WriterOptions writerOptions, Object unparsedSchema, File file)
+  public static FileWriter create(Options.WriterOptions writerOptions, Object unparsedSchema, File file)
     throws IOException {
     Types types = Types.create(writerOptions.customTypeDefinitions);
     Schema schema = Schema.parse(types, unparsedSchema);
@@ -78,7 +78,7 @@ public final class Writer implements Closeable {
                                                              writerOptions.bundleSize,
                                                              writerOptions.compressionThresholds,
                                                              getBatchIterator(batchQueue));
-    return new Writer(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
+    return new FileWriter(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
   }
 
   private final static List<Object> poison = new ArrayList<Object>();

@@ -25,14 +25,14 @@
 
 (use-fixtures :each (fn [f] (f) (io/delete-file tmp-filename true)))
 
-(defn- dremel-paper-writer ^dendrite.java.Writer []
-  (doto (writer (Schema/readString dremel-paper-schema-str) tmp-filename)
+(defn- dremel-paper-writer ^dendrite.java.FileWriter []
+  (doto (file-writer (Schema/readString dremel-paper-schema-str) tmp-filename)
     (.write dremel-paper-record1)
     (.write dremel-paper-record2)))
 
 (deftest dremel-paper
   (.close (dremel-paper-writer))
-  (with-open [r (reader tmp-filename)]
+  (with-open [r (file-reader tmp-filename)]
     (testing "full schema"
       (is (= [dremel-paper-record1 dremel-paper-record2] (read r))))
     (testing "two fields example"
@@ -43,19 +43,19 @@
 
 (deftest file-random-records-write-read
   (let [records (take 100 (helpers/rand-test-records))]
-    (with-open [w (writer (Schema/readString helpers/test-schema-str) tmp-filename)]
+    (with-open [w (file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
       (.writeAll w records))
     (testing "full schema"
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))
     (testing "one field"
       (is (= (map #(select-keys % [:docid]) records)
-             (with-open [r (reader tmp-filename)]
+             (with-open [r (file-reader tmp-filename)]
                (doall (read {:query {:docid '_}} r))))))))
 
 (deftest empty-file-write-read
-  (.close (writer (Schema/readString helpers/test-schema-str) tmp-filename))
-  (with-open [r (reader tmp-filename)]
+  (.close (file-writer (Schema/readString helpers/test-schema-str) tmp-filename))
+  (with-open [r (file-reader tmp-filename)]
     (is (empty? (read r)))
     (is (zero? (-> r stats :global :data-length)))
     (is (pos? (-> r stats :global :length)))))
@@ -63,46 +63,46 @@
 (deftest flat-base-type-write-read
   (testing "required"
     (let [records (repeatedly 100 #(rand-int 100))]
-      (with-open [w (writer (Schema/req 'int) tmp-filename)]
+      (with-open [w (file-writer (Schema/req 'int) tmp-filename)]
         (.writeAll w records))
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r)))))))
   (testing "optional"
     (let [records (->> (repeatedly #(rand-int 100)) (helpers/rand-map 0.1 (constantly nil)) (take 100))]
-      (with-open [w (writer 'int tmp-filename)]
+      (with-open [w (file-writer 'int tmp-filename)]
         (.writeAll w records))
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))))
 
 (deftest flat-repeated-type-write-read
   (testing "repeated optional base type"
     (let [records (->> (repeatedly #(rand-int 100)) (helpers/rand-map 0.1 (constantly nil))
                        (partition 5) (take 20))]
-      (with-open [w (writer ['int] tmp-filename)]
+      (with-open [w (file-writer ['int] tmp-filename)]
         (.writeAll w records))
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r)))))))
   (testing "repeated required base type"
     (let [records (->> (repeatedly #(rand-int 100)) (partition 5) (take 20))]
-      (with-open [w (writer [(Schema/req 'int)] tmp-filename)]
+      (with-open [w (file-writer [(Schema/req 'int)] tmp-filename)]
         (.writeAll w records))
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r)))))))
   (testing "repeated records"
     (let [records (->> (helpers/rand-test-records) (partition 5) (take 20))]
-      (with-open [w (writer [(Schema/readString helpers/test-schema-str)] tmp-filename)]
+      (with-open [w (file-writer [(Schema/readString helpers/test-schema-str)] tmp-filename)]
         (.writeAll w records))
-      (is (= records (with-open [r (reader tmp-filename)]
+      (is (= records (with-open [r (file-reader tmp-filename)]
                        (doall (read r))))))))
 
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (Schema/readString helpers/test-schema-str)]
-    (with-open [w (writer {:optimize-columns? :all :compression-thresholds {}}
-                          test-schema
-                          tmp-filename)]
+    (with-open [w (file-writer {:optimize-columns? :all :compression-thresholds {}}
+                               test-schema
+                               tmp-filename)]
       (.writeAll w records))
-    (with-open [r (reader tmp-filename)]
+    (with-open [r (file-reader tmp-filename)]
       (testing "schema is indeed optimized"
         (is (= (str "#req "
                     "{:docid #req #col [long delta],"
@@ -127,33 +127,33 @@
   (let [test-metadata {:foo {:bar "test"} :baz [1 2 3]}]
     (with-open [w (dremel-paper-writer)]
       (set-metadata! w test-metadata))
-    (is (= test-metadata (with-open [r (reader tmp-filename)]
+    (is (= test-metadata (with-open [r (file-reader tmp-filename)]
                            (metadata r))))))
 
 (deftest corrupt-data
   (testing "corrupt file"
     (spit tmp-filename "random junk")
     (is (thrown-with-msg? IllegalStateException #"File is not a valid dendrite file."
-                          (with-open [f (reader tmp-filename)]))))
+                          (with-open [f (file-reader tmp-filename)]))))
   (testing "interrupted write"
     (spit tmp-filename "den1")
     (is (thrown-with-msg? IllegalStateException #"File is not a valid dendrite file."
-                          (with-open [f (reader tmp-filename)])))))
+                          (with-open [f (file-reader tmp-filename)])))))
 
 
 (deftest record-group-lengths
   (let [records (take 10000 (helpers/rand-test-records))]
     (letfn [(avg-record-group-length [target-length]
-              (with-open [w (writer {:record-group-length target-length}
-                                    (Schema/readString helpers/test-schema-str)
-                                    tmp-filename)]
+              (with-open [w (file-writer {:record-group-length target-length}
+                                         (Schema/readString helpers/test-schema-str)
+                                         tmp-filename)]
                 (.writeAll w records))
-              (with-open [r (reader tmp-filename)]
+              (with-open [r (file-reader tmp-filename)]
                 (->> r stats :record-groups butlast (map :length) helpers/avg)))]
       (testing "record-group lengths are approximately equal to record-group-length"
         (is (helpers/roughly (* 300 1024) (avg-record-group-length (* 300 1024))))
         (is (helpers/roughly (* 100 1024) (avg-record-group-length (* 100 1024))))
-        (is (= records (with-open [r (reader tmp-filename)]
+        (is (= records (with-open [r (file-reader tmp-filename)]
                          (doall (read r)))))))))
 
 (defn- throw-foo-fn [& args] (throw (Exception. "foo")))
@@ -167,12 +167,12 @@
     (.close (dremel-paper-writer))
     (is (thrown-with-msg?
          Exception #"foo"
-         (with-open [r (reader tmp-filename)]
+         (with-open [r (file-reader tmp-filename)]
            (pmap throw-foo-fn r)))))
   (testing "missing file exception"
     (is (thrown-with-msg?
          java.nio.file.NoSuchFileException #"/no/such/file"
-         (with-open [r (reader "/no/such/file")]
+         (with-open [r (file-reader "/no/such/file")]
            (read r))))))
 
 (deftest invalid-records
@@ -188,21 +188,21 @@
                  (.write w bad-record)))))))))
     (testing "invalid-input-handler can process exceptions"
       (let [error-atom (atom nil)]
-        (with-open [w (writer {:invalid-input-handler (fn [record e] (reset! error-atom record))}
-                              (Schema/readString dremel-paper-schema-str)
-                              tmp-filename)]
+        (with-open [w (file-writer {:invalid-input-handler (fn [record e] (reset! error-atom record))}
+                                   (Schema/readString dremel-paper-schema-str)
+                                   tmp-filename)]
           (.write w bad-record)
           (.write w dremel-paper-record1)
           (.write w dremel-paper-record2))
         (is (= @error-atom bad-record))
         (is (= [dremel-paper-record1 dremel-paper-record2]
-               (with-open [r (reader tmp-filename)]
+               (with-open [r (file-reader tmp-filename)]
                  (doall (read r)))))))))
 
 (deftest strict-queries
   (testing "queries fail when missing-fields-as-nil? is false and we query a missing field."
     (.close (dremel-paper-writer))
-    (with-open [r (reader tmp-filename)]
+    (with-open [r (file-reader tmp-filename)]
       (is (= [nil nil] (read {:query {:foo '_}} r)))
       (is (= [nil nil] (r/reduce conj [] (read {:query {:foo '_}} r))))
       (is (thrown-with-msg?
@@ -211,23 +211,23 @@
 
 (deftest entrypoints
   (let [records (take 100 (helpers/rand-test-records))]
-    (with-open [w (writer (Schema/readString helpers/test-schema-str) tmp-filename)]
+    (with-open [w (file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
       (.writeAll w records))
     (testing "sub records"
-      (is (= (map :links records) (with-open [r (reader tmp-filename)]
+      (is (= (map :links records) (with-open [r (file-reader tmp-filename)]
                                     (doall (read {:entrypoint [:links]} r))))))
     (testing "access a column directly"
-      (is (= (map :docid records) (with-open [r (reader tmp-filename)]
+      (is (= (map :docid records) (with-open [r (file-reader tmp-filename)]
                                     (doall (read {:entrypoint [:docid]} r))))))
     (testing "access a repeated column"
       (is (= (map #(get-in % [:links :backward]) records)
-             (with-open [r (reader tmp-filename)]
+             (with-open [r (file-reader tmp-filename)]
                (doall (read {:entrypoint [:links :backward]} r))))))))
 
 (deftest readers
   (testing "readers functions transform output"
     (.close (dremel-paper-writer))
-    (with-open [r (reader tmp-filename)]
+    (with-open [r (file-reader tmp-filename)]
       (is (= [{:name 3, :docid 10} {:name 1, :docid 20}]
              (read {:query {:docid '_ :name (Schema/tag 'foo '_)} :readers {'foo count}} r)))
       (is (thrown-with-msg?
@@ -235,7 +235,7 @@
            (helpers/throw-cause
             (read {:query {:docid '_ :name (Schema/tag 'foo '_)}} r))))))
   (testing "reader functions behave properly on missing fields"
-    (with-open [r (reader tmp-filename)]
+    (with-open [r (file-reader tmp-filename)]
       (is (= [true true]
              (read {:query (Schema/tag 'foo {:foo '_}) :readers {'foo empty?}} r)))
       (is (= [{:docid 10 :foo {:bar 0}} {:docid 20 :foo {:bar 0}}]
@@ -254,19 +254,19 @@
       (testing "throw error when the writer is not passed the :custom types option"
         (is (thrown-with-msg?
              IllegalArgumentException #"Unknown type: 'test-type'"
-             (helpers/throw-cause (with-open [w (writer {:docid 'long :at 'test-type} tmp-filename)]
+             (helpers/throw-cause (with-open [w (file-writer {:docid 'long :at 'test-type} tmp-filename)]
                                     (.writeAll w records))))))
       (testing "throw error when invalid field is defined in custom-types"
         (is (thrown-with-msg?
              IllegalArgumentException #":invalid is not a valid custom type definition key"
              (helpers/throw-cause
-              (.close (writer {:custom-types {'test-type {:invalid 'bar}}}
-                              {:docid 'long :at 'test-type}
-                              tmp-filename))))))
-      (with-open [w (writer {:custom-types custom-types} {:docid 'long :at 'test-type} tmp-filename)]
+              (.close (file-writer {:custom-types {'test-type {:invalid 'bar}}}
+                                   {:docid 'long :at 'test-type}
+                                   tmp-filename))))))
+      (with-open [w (file-writer {:custom-types custom-types} {:docid 'long :at 'test-type} tmp-filename)]
         (.writeAll w records))
       (testing "read as derived type when :custom-types option is passed"
-        (is (= records (with-open [r (reader {:custom-types custom-types} tmp-filename)]
+        (is (= records (with-open [r (file-reader {:custom-types custom-types} tmp-filename)]
                          (doall (read r))))))
       (testing "read as base type when :custom-types option is not passed"
         (is (= records-with-timestamps (with-open [r (file-reader tmp-filename)]
@@ -274,17 +274,17 @@
 
 (deftest pmap-convenience-function
   (.close (dremel-paper-writer))
-  (is (= [3 1] (with-open [r (reader tmp-filename)]
+  (is (= [3 1] (with-open [r (file-reader tmp-filename)]
                  (doall (pmap (comp count :name) r))))))
 
 (deftest chunkiness
   (.close (dremel-paper-writer))
-  (is (chunked-seq? (with-open [r (reader tmp-filename)]
+  (is (chunked-seq? (with-open [r (file-reader tmp-filename)]
                       (doall (next (read r)))))))
 
 #_(deftest folding
   (.close (dremel-paper-writer))
-  (with-open [r (reader tmp-filename)]
+  (with-open [r (file-reader tmp-filename)]
     (is (= 30 (->> (read r) (r/map :docid) (r/fold +))))
     (is (= 30 (->> (read r) (r/map :docid) (r/reduce +))))
     (is (= 40 (->> (read r) (r/map :docid) (r/reduce + 10))))))
