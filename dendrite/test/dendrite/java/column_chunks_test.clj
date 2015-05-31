@@ -86,6 +86,10 @@
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
         (is (= (map (partial helpers/map-leveled f) input-values)
                (flatten-1 reader-with-f)))))
+    (testing "metadata reports correct length"
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
+        (.write w input-values)
+        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -119,6 +123,10 @@
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
         (is (= (map (partial helpers/map-leveled f) input-values)
                (flatten-1 reader-with-f)))))
+    (testing "metadata reports correct length"
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
+        (.write w input-values)
+        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -140,6 +148,10 @@
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
         (is (= (map (partial helpers/map-leveled f) input-values)
                (flatten-1 reader-with-f)))))
+    (testing "metadata reports correct length"
+      (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
+        (.write w input-values)
+        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)

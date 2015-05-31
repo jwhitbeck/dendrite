@@ -77,7 +77,9 @@
         r (RecordGroup$Reader. helpers/default-types bb record-group-metadata (.columns query-result) 1000)]
     (testing "full schema"
       (is (= (seq bundle)
-             (seq (first r)))))))
+             (seq (first r)))))
+    (testing "metadata reports correct length"
+      (is (= (.length record-group-metadata) (.remaining bb))))))
 
 (deftest file-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
@@ -107,4 +109,6 @@
                                             (.columns query-result)
                                             1000)]
                  (seq (first r)))))))
+    (testing "metadata reports correct length"
+      (is (= (.length record-group-metadata) (.length (io/as-file tmp-file)))))
     (io/delete-file tmp-file)))
