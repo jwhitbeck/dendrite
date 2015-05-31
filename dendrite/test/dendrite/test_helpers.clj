@@ -10,10 +10,10 @@
 
 (ns dendrite.test-helpers
   (:require [clojure.string :as string])
-  (:import [dendrite.java ChunkedPersistentList LeveledValue MemoryOutputStream IOutputBuffer Types]
+  (:import [dendrite.java LeveledValue MemoryOutputStream IOutputBuffer Types]
            [java.io Writer]
            [java.nio ByteBuffer]
-           [java.util ArrayList Collections ListIterator Random UUID])
+           [java.util ArrayList Collections List ListIterator Random UUID])
   (:refer-clojure :exclude [rand-int]))
 
 (set! *warn-on-reflection* true)
@@ -180,10 +180,6 @@
      (catch Exception e#
        (throw (.getCause e#)))))
 
-(defn as-chunked-list
-  ^dendrite.java.ChunkedPersistentList [coll]
-  (persistent! (reduce conj! (transient ChunkedPersistentList/EMPTY) coll)))
-
 (defn flatten-1 [seqs]
   (letfn [(step [cs rs]
             (lazy-seq
@@ -198,10 +194,7 @@
 
 (defn as-list-iterators [leveled-values]
   (->> (for [column-values leveled-values]
-         (if (coll? column-values)
-           (let [l (ArrayList.)]
-             (doseq [v column-values]
-               (.add l v))
-             (.listIterator l))
+         (if (instance? List column-values)
+           (.listIterator ^List column-values)
            (.listIterator (Collections/singletonList column-values))))
        (into-array ListIterator)))

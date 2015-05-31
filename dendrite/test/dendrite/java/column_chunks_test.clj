@@ -12,7 +12,7 @@
   (:require [clojure.string :as string]
             [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers :refer [leveled partition-by-record flatten-1]])
-  (:import [dendrite.java LeveledValue ColumnChunks ChunkedPersistentList DataColumnChunk$Reader
+  (:import [dendrite.java LeveledValue ColumnChunks DataColumnChunk$Reader
             DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader
             OptimizingColumnChunkWriter Schema$Column Options Types]
            [java.util Date Calendar]

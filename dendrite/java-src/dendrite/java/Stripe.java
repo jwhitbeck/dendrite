@@ -17,12 +17,13 @@ import clojure.lang.AFn;
 import clojure.lang.Keyword;
 import clojure.lang.IPersistentVector;
 import clojure.lang.ISeq;
-import clojure.lang.ITransientCollection;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 public final class Stripe {
 
@@ -36,7 +37,6 @@ public final class Stripe {
       public boolean invoke(Object record, Object[] buffer) {
         try {
           stripeFn.invoke(buffer, record, false, 0, 0);
-          persistBuffer(buffer);
           return true;
         } catch (Exception e) {
           if (errorHandlerFn != null) {
@@ -48,15 +48,6 @@ public final class Stripe {
         }
       }
     };
-  }
-
-  static void persistBuffer(Object buffer[]) {
-    for (int i=0; i<buffer.length; ++i) {
-      Object o = buffer[i];
-      if (o instanceof ITransientCollection) {
-        buffer[i] = ((ITransientCollection)o).persistent();
-      }
-    }
   }
 
   static interface StripeFn {
@@ -85,13 +76,14 @@ public final class Stripe {
     }
   }
 
+  @SuppressWarnings("unchecked")
   static void appendRepeated(Object[] buffer, int colIdx, Object v) {
-    ITransientCollection coll = (ITransientCollection)buffer[colIdx];
-    if (coll == null) {
-      coll = ChunkedPersistentList.EMPTY.asTransient();
-      buffer[colIdx] = coll;
+    List<Object> list = (List<Object>)buffer[colIdx];
+    if (list == null) {
+      list = new ArrayList<Object>();
+      buffer[colIdx] = list;
     }
-    coll.conj(v);
+    list.add(v);
   }
 
   final static Object notFound = new Object();

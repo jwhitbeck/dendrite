@@ -167,15 +167,21 @@ public final class Assemble {
     return lv.definitionLevel;
   }
 
+  private static final IFn seqFn = new AFn() {
+      public Object invoke(Object o) {
+        return RT.seq(o);
+      }
+    };
+
   static Fn getRepeatedFn(Schema.Collection coll) {
     final int leafColumnIndex = coll.leafColumnIndex;
     final int repetitionLevel = coll.repetitionLevel;
     final int definitionLevel = coll.definitionLevel;
     final IEditableCollection emptyColl;
-    switch (coll.repetition) {
-    case Schema.SET: emptyColl = PersistentHashSet.EMPTY; break;
-    case Schema.VECTOR: emptyColl = PersistentVector.EMPTY; break;
-    default: /* Schema.LIST*/ emptyColl = ChunkedPersistentList.EMPTY; break;
+    if (coll.repetition == Schema.SET) {
+      emptyColl = PersistentHashSet.EMPTY;
+    } else {
+      emptyColl = PersistentVector.EMPTY;
     }
     final Fn repeatedElemFn = getFn(coll.repeatedSchema);
     final Fn repeatedFn = new Fn() {
@@ -196,7 +202,16 @@ public final class Assemble {
           return tr.persistent();
         }
       };
-    final IFn fn = coll.fn;
+    final IFn fn;
+    if (coll.repetition == Schema.LIST) {
+      if (coll.fn == null) {
+        fn = seqFn;
+      } else {
+        fn = Utils.comp(coll.fn, seqFn);
+      }
+    } else {
+      fn = coll.fn;
+    }
     if (fn == null) {
       return repeatedFn;
     } else {
