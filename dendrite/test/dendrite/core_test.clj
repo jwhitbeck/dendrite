@@ -268,14 +268,9 @@
       (testing "read as derived type when :custom-types option is passed"
         (is (= records (with-open [r (reader {:custom-types custom-types} tmp-filename)]
                          (doall (read r))))))
-      #_(testing "read as base type and warn when :custom-types option is not passed"
-        (binding [*err* (StringWriter.)]
-          (let [records-read (-> bb byte-buffer-reader read)]
-            (is (= records-with-timestamps records-read))
-            (is (every? #(re-find (re-pattern (str % " is not defined for type 'test-type', "
-                                                   "defaulting to clojure.core/identity."))
-                                  (str *err*))
-                        [:coercion-fn :to-base-type-fn :from-base-type-fn]))))))))
+      (testing "read as base type when :custom-types option is not passed"
+        (is (= records-with-timestamps (with-open [r (file-reader tmp-filename)]
+                                         (doall (read r)))))))))
 
 (deftest pmap-convenience-function
   (.close (dremel-paper-writer))
