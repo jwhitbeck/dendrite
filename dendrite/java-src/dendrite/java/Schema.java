@@ -1034,7 +1034,7 @@ public abstract class Schema implements IWriteable {
   private static Schema _applyQueryUntaggedSymbol(QueryContext context, Schema schema, Symbol query,
                                                   PersistentVector parents) {
     Schema s = _applyQuerySymbol(context, schema, query, parents);
-    if (s instanceof Column && !query.equals(SUB_SCHEMA)) {
+    if (s instanceof Column && schema != null && !query.equals(SUB_SCHEMA)) {
       Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
       context.appendColumn(col);
       return col;
