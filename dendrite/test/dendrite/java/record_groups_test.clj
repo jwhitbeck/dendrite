@@ -26,7 +26,7 @@
   (let [bundle-factory (Bundle$Factory. (Schema/getColumns dremel-paper-schema))
         dremel-bundle (->> (map list dremel-paper-record1-striped dremel-paper-record2-striped)
                            into-array
-                           (.create bundle-factory))
+                           (.create bundle-factory 2))
         w (doto (RecordGroup$Writer. types
                                      (Schema/getColumns dremel-paper-schema)
                                      test-target-data-page-length
@@ -57,7 +57,19 @@
                 [[(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil)
                   (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
                  [(LeveledValue. 0 2 nil)]]]
-               (seq (first r))))))))
+               (seq (first r))))))
+    (testing "no fields query"
+      (let [no-fields-query (Schema/applyQuery types
+                                               true
+                                               {}
+                                               dremel-paper-schema
+                                               {:foo '_})
+            r (RecordGroup$Reader. types
+                                   bb
+                                   record-group-metadata
+                                   (.columns no-fields-query)
+                                   100)]
+        (is (not (seq (first r))))))))
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))

@@ -248,28 +248,51 @@ public final class RecordGroup {
       }
       final Bundle.Factory bundleFactory = new Bundle.Factory(queriedColumns);
       final int numColumns = queriedColumns.length;
-      final List<Iterator<List<Object>>> partitionedColumnIterators
-        = new ArrayList<Iterator<List<Object>>>(numColumns);
-      for (IColumnChunkReader ccr : columnChunkReaders) {
-        partitionedColumnIterators.add(ccr.iterator());
-      }
-      return new AReadOnlyIterator<Bundle>() {
-        @Override
-        public boolean hasNext() {
-          return partitionedColumnIterators.get(0).hasNext();
-        }
-
-        @Override
-        public Bundle next() {
-          List[] columnValues = new List[numColumns];
-          int i = 0;
-          for (Iterator<List<Object>> pci : partitionedColumnIterators) {
-            columnValues[i] = pci.next();
-            i += 1;
+      if (numColumns == 0) {
+        final List[] emptyListArray = new List[]{};
+        return new AReadOnlyIterator<Bundle>() {
+          long remaining = numRecords;
+          @Override
+          public boolean hasNext() {
+            return remaining > 0;
           }
-          return bundleFactory.create(columnValues);
+
+          @Override
+          public Bundle next() {
+            if (remaining > bundleSize) {
+              remaining -= bundleSize;
+              return bundleFactory.create(bundleSize, emptyListArray);
+            } else {
+              Bundle bundle = bundleFactory.create((int)remaining, emptyListArray);
+              remaining = 0;
+              return bundle;
+            }
+          }
+        };
+      } else {
+        final List<Iterator<List<Object>>> partitionedColumnIterators
+          = new ArrayList<Iterator<List<Object>>>(numColumns);
+        for (IColumnChunkReader ccr : columnChunkReaders) {
+          partitionedColumnIterators.add(ccr.iterator());
         }
-      };
+        return new AReadOnlyIterator<Bundle>() {
+          @Override
+          public boolean hasNext() {
+            return partitionedColumnIterators.get(0).hasNext();
+          }
+
+          @Override
+          public Bundle next() {
+            List[] columnValues = new List[numColumns];
+            int i = 0;
+            for (Iterator<List<Object>> pci : partitionedColumnIterators) {
+              columnValues[i] = pci.next();
+              i += 1;
+            }
+            return bundleFactory.create(columnValues[0].size(), columnValues);
+          }
+        };
+      }
     }
 
     public long getNumRecords() {

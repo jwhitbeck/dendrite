@@ -29,7 +29,7 @@
            [(range 10) (range 10) (range 10) (range 10)]))))
 
 (deftest bundle-assembly
-  (let [test-bundle (.create (bundle-factory 2) (into-array List [(range 10) (range 10)]))]
+  (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
     (testing "assembly"
       (is (= (map (partial * 2) (range 10))
              (seq (.assemble test-bundle (reify Assemble$Fn

@@ -27,10 +27,10 @@ public final class Bundle implements Iterable<List> {
   private final boolean[] isColumnRepeated;
   private final int bundleSize;
 
-  Bundle(boolean[] isColumnRepeated, List[] columnValues) {
+  Bundle(int bundleSize, boolean[] isColumnRepeated, List[] columnValues) {
     this.isColumnRepeated = isColumnRepeated;
     this.columnValues = columnValues;
-    this.bundleSize = columnValues[0].size();
+    this.bundleSize = bundleSize;
   }
 
   public int size() {
@@ -101,7 +101,7 @@ public final class Bundle implements Iterable<List> {
     for (int i=0; i<columnValues.length; ++i) {
       takenColumnValues[i] = columnValues[i].subList(0, n);
     }
-    return new Bundle(isColumnRepeated, takenColumnValues);
+    return new Bundle(n, isColumnRepeated, takenColumnValues);
   }
 
   public Bundle drop(int n) {
@@ -110,7 +110,7 @@ public final class Bundle implements Iterable<List> {
       List values = columnValues[i];
       remainingColumnValues[i] = values.subList(n, values.size());
     }
-    return new Bundle(isColumnRepeated, remainingColumnValues);
+    return new Bundle(bundleSize - n, isColumnRepeated, remainingColumnValues);
   }
 
   public static final class Factory {
@@ -126,15 +126,16 @@ public final class Bundle implements Iterable<List> {
       }
     }
 
-    public Bundle create(List[] columnValues) {
-      return new Bundle(isColumnRepeated, columnValues);
+    public Bundle create(int bundleSize, List[] columnValues) {
+      return new Bundle(bundleSize, isColumnRepeated, columnValues);
     }
 
     @SuppressWarnings("unchecked")
     public Bundle stripe(Stripe.Fn stripeFn, List<Object> records) {
       List[] columnValues = new List[numColumns];
+      int bundleSize = records.size();
       for (int i=0; i<numColumns; ++i) {
-        columnValues[i] = new ArrayList(records.size());
+        columnValues[i] = new ArrayList(bundleSize);
       }
       Object[] buffer = new Object[numColumns];
       boolean success = false;
@@ -147,7 +148,7 @@ public final class Bundle implements Iterable<List> {
           }
         }
       }
-      return create(columnValues);
+      return create(bundleSize, columnValues);
     }
   }
 
