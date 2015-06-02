@@ -13,6 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.AFn;
+import clojure.lang.Agent;
 import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
 import clojure.lang.IChunk;
@@ -24,10 +25,14 @@ import clojure.lang.LazySeq;
 import clojure.lang.PersistentList;
 import clojure.lang.Seqable;
 import clojure.lang.Sequential;
+import clojure.lang.Reduced;
 import clojure.lang.RT;
 import clojure.lang.Util;
 
+import java.util.LinkedList;
 import java.util.Iterator;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 
 public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
@@ -46,6 +51,10 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
       isSeqSet = true;
     }
     return recordSeq;
+  }
+
+  public synchronized boolean isSeqSet() {
+    return isSeqSet;
   }
 
   @Override
@@ -89,15 +98,23 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
   private static Object reduceSeq(IFn f, Object start, ISeq records) {
     Object ret = start;
-    ISeq s = RT.seq(records);
+    IChunkedSeq s = (IChunkedSeq)RT.seq(records);
     while(s != null) {
-      if (s instanceof IChunkedSeq) {
-        IChunkedSeq cs = (IChunkedSeq)s;
-        ret = cs.chunkedFirst().reduce(f, ret);
-        s = RT.seq(cs.chunkedNext());
-      } else {
-        ret = f.invoke(ret, s.first());
-        s = RT.seq(s.next());
+      ret = s.chunkedFirst().reduce(f, ret);
+      if (RT.isReduced(ret)) {
+        return ((Reduced)ret).deref();
+      }
+      s = (IChunkedSeq)RT.seq(s.chunkedNext());
+    }
+    return ret;
+  }
+
+  private static Object reduceIterator(IFn f, Object start, Iterator<IChunk> chunksIterator) {
+    Object ret = start;
+    while (chunksIterator.hasNext()) {
+      ret = chunksIterator.next().reduce(f, ret);
+      if (RT.isReduced(ret)) {
+        return ((Reduced)ret).deref();
       }
     }
     return ret;
@@ -105,34 +122,97 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
   @Override
   public Object reduce(IFn f) {
-    ISeq s = RT.seq(seq());
-    if (s == null) {
-      return f.invoke();
-    } else {
-      Object first = RT.first(s);
-      s = RT.next(s);
+    if (isSeqSet()) {
+      ISeq s = RT.seq(seq());
       if (s == null) {
-        return first;
+        return f.invoke();
       } else {
-        Object second = RT.first(s);
-          Object ret = f.invoke(first, second);
-          return reduceSeq(f, ret, RT.next(s));
+        Object ret = RT.first(s);
+        s = RT.next(s);
+        if (s == null) {
+          return ret;
+        } else {
+          return reduceSeq(f, ret, s);
+        }
+      }
+    } else {
+      Iterator<IChunk> chunksIterator = getRecordChunks(defaultBundleSize).iterator();
+      boolean firstFound = false;
+      Object ret = null;
+      while (!firstFound && chunksIterator.hasNext()) {
+        IChunk chunk = chunksIterator.next();
+        if (chunk.count() > 0) {
+          firstFound = true;
+          ret = chunk.nth(0);
+          chunk = chunk.dropFirst();
+          ret = chunk.reduce(f, ret);
+        }
+      }
+      if (!firstFound) {
+        return f.invoke();
+      } else if (RT.isReduced(ret)) {
+        return ((Reduced)ret).deref();
+      } else {
+        return reduceIterator(f, ret, chunksIterator);
       }
     }
   }
 
   @Override
   public Object reduce(IFn f, Object start) {
-    return reduceSeq(f, start, seq());
+    if (isSeqSet()) {
+      return reduceSeq(f, start, seq());
+    } else {
+      return reduceIterator(f, start, getRecordChunks(defaultBundleSize).iterator());
+    }
   }
 
-  public Object fold(int n, IFn combinef, IFn reducef) {
+  private Future<Object> getReduceChunkFuture(final IChunk chunk, final IFn reducef, final Object init) {
+    return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return chunk.reduce(reducef, init);
+        }
+      });
+  }
+
+  private Object foldSeq(IFn combinef, IFn reducef) {
+    Object init = combinef.invoke();
+    int n = 2 + Runtime.getRuntime().availableProcessors();
+    final LinkedList<Future<Object>> futures = new LinkedList<Future<Object>>();
+    IChunkedSeq s = (IChunkedSeq)RT.seq(seq());
+    int k = 0;
+    while (s != null && k < n) {
+      futures.addLast(getReduceChunkFuture(s.chunkedFirst(), reducef, init));
+      s = (IChunkedSeq)RT.seq(s.chunkedNext());
+    }
+    Object ret = init;
+    while (!futures.isEmpty()) {
+      Future<Object> fut = futures.pollFirst();
+      Object o = Utils.tryGetFuture(fut);
+      ret = combinef.invoke(ret, o);
+      if (s != null) {
+        futures.addLast(getReduceChunkFuture(s.chunkedFirst(), reducef, init));
+        s = (IChunkedSeq)RT.seq(s.chunkedNext());
+      }
+    }
+    return ret;
+  }
+
+  private Object foldIterator(int n, IFn combinef, IFn reducef) {
     Object init = combinef.invoke();
     Object ret = init;
     for (Object reducedChunkValue : getReducedChunkValues(reducef, init, n)) {
       ret = combinef.invoke(ret, reducedChunkValue);
     }
     return ret;
+  }
+
+  public Object fold(int n, IFn combinef, IFn reducef) {
+    if (isSeqSet()) {
+      return foldSeq(combinef, reducef);
+    } else {
+      return foldIterator(n, combinef, reducef);
+    }
   }
 
   protected abstract Iterable<IChunk> getRecordChunks(int bundleSize);

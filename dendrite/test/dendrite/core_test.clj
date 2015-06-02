@@ -294,8 +294,19 @@
   (.close (dremel-paper-writer))
   (with-open [r (d/file-reader tmp-filename)]
     (is (= 30 (->> (d/read r) (r/map :docid) (r/fold +))))
+    (let [s (doto (d/read r) seq)]
+      (is (= 30 (->> s (r/map :docid) (r/fold +)))))
     (is (= 30 (->> (d/read r) (r/map :docid) (r/reduce +))))
     (is (= 40 (->> (d/read r) (r/map :docid) (r/reduce + 10))))))
+
+(deftest reducing
+  (.close (dremel-paper-writer))
+  (with-open [r (d/file-reader tmp-filename)]
+    (let [s (doto (d/read r) seq)]
+      (is (= 30 (->> s (r/map :docid) (reduce +))))
+      (is (= 40 (->> s (r/map :docid) (reduce + 10)))))
+    (is (= 30 (->> (d/read r) (r/map :docid) (reduce +))))
+    (is (= 40 (->> (d/read r) (r/map :docid) (reduce + 10))))))
 
 (deftest multiple-files
   (.close (doto (dremel-paper-writer tmp-filename)

@@ -178,16 +178,15 @@
 
 (extend-type View
   clojure.core.protocols/CollReduce
-  (coll-reduce [this f]
-    (reduce f (seq this)))
-  (coll-reduce [this f init]
-    (reduce f init (seq this)))
+  (coll-reduce
+    ([this f] (.reduce this f))
+    ([this f init] (.reduce this f init)))
   clojure.core.reducers/CollFold
   (coll-fold [this n combinef reducef]
     (.fold this n combinef reducef)))
 
 (defn read
-  "Returns a view of all the records in the reader. This view is Seqable (lazy), reducible, and foldable (per
+  "Returns a view of all the records in the reader. This view is seqable (lazy), reducible, and foldable (per
   clojure.core.reducers, in which case the folding is done as part of record assembly).
 
   If provided, the options map supports the following keys:
@@ -201,11 +200,11 @@
                             explanation.
   :map-fn                 - apply this function to all records. This function is applied as part of the
                             parallel assembly process."
-  ([^IReader reader] (read nil reader))
-  ([opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
+  (^dendrite.java.View [^IReader reader] (read nil reader))
+  (^dendrite.java.View [opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
 (defn map
-  "Returns a view of the records with the provided function applied to them as part of record assembly. This
-  is a convenience function such that (d/map f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
-  [f ^View view]
-  (.withMapFn view f))
+  "Returns a view of the records with the provided function applied to them as part of record assembly. As
+  with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
+  f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
+  ^dendrite.java.View [f ^View view] (.withMapFn view f))
