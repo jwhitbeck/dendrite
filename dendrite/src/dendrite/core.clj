@@ -16,7 +16,7 @@
   (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
            [java.nio ByteBuffer]
            [java.util LinkedHashMap Map])
-  (:refer-clojure :exclude [read pmap]))
+  (:refer-clojure :exclude [read map]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,7 +154,7 @@
   file-reader."
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
-                              (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
+    (FilesReader. (Options/getReaderOptions opts) (clojure.core/map io/as-file files))))
 
 (defn file->stats
   "Returns a map of file to that file's stats. See the stats function for full details."
@@ -204,9 +204,8 @@
   ([^IReader reader] (read nil reader))
   ([opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
-(defn pmap
-  "Returns a view of all the records in the reader with the provided function applied to them. This is a
-  convenience function that is equivalent to (read {:map-fn f} reader).
-  See read for full details on available options."
-  ([f ^IReader reader] (pmap nil f reader))
-  ([opts f ^IReader reader] (.read reader (Options/getReadOptions (assoc opts :map-fn f)))))
+(defn map
+  "Returns a view of the records with the provided function applied to them as part of record assembly. This
+  is a convenience function such that (d/map f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
+  [f ^View view]
+  (.withMapFn view f))

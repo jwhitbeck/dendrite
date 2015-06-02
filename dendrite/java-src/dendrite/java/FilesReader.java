@@ -209,6 +209,11 @@ public final class FilesReader implements Closeable, IReader {
     }
 
     @Override
+    public View withMapFn(IFn mapFn) {
+      return new LazyView(readOptions.withMapFn(mapFn));
+    }
+
+    @Override
     protected Iterable<IChunk> getRecordChunks(final int bundleSize) {
       return new Iterable<IChunk>() {
         @Override

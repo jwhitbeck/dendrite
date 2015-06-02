@@ -195,6 +195,12 @@ public final class Options {
       this.readers = readers;
       this.mapFn = mapFn;
     }
+
+    public ReadOptions withMapFn(IFn aMapFn) {
+      final IFn f = (mapFn == null)? aMapFn : Utils.comp(aMapFn, mapFn);
+      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
+                             this.readers, f);
+    }
   }
 
   static Keyword[] validReadOptionKeys

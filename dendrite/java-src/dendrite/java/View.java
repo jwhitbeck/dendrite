@@ -139,6 +139,8 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
   protected abstract Iterable<Object> getReducedChunkValues(IFn f, Object init, int bundleSize);
 
+  public abstract View withMapFn(IFn mapFn);
+
   private static ISeq getRecordChunkedSeq(final Iterator<IChunk> recordChunksIterator) {
     return new LazySeq(new AFn() {
         public IChunkedSeq invoke() {

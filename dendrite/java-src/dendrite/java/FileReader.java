@@ -122,9 +122,7 @@ public final class FileReader implements Closeable, IReader {
 
   @Override
   public View read(Options.ReadOptions options) {
-    Schema.QueryResult queryResult = getQueryResult(options);
-    Assemble.Fn assembleFn = Assemble.getFn(queryResult.schema);
-    return new LazyView(queryResult.columns, assembleFn, options.bundleSize);
+    return new LazyView(options);
   }
 
   Iterator<RecordGroup.Reader> getRecordGroupReaders(Schema.Column[] columns, int bundleSize) {
@@ -429,37 +427,61 @@ public final class FileReader implements Closeable, IReader {
 
   public final class LazyView extends View {
 
-    private final Assemble.Fn assembleFn;
-    private final Schema.Column[] queriedColumns;
-    private ISeq recordSeq = null;
+    private Options.ReadOptions options;
+    private Schema.QueryResult queryResult;
+    private Assemble.Fn assembleFn;
 
-    LazyView(Schema.Column[] queriedColumns, Assemble.Fn assembleFn, int defaultBundleSize) {
-      super(defaultBundleSize);
-      this.queriedColumns = queriedColumns;
-      this.assembleFn = assembleFn;
+    LazyView(Options.ReadOptions options) {
+      super(options.bundleSize);
+      this.options = options;
     }
 
+    private synchronized Schema.QueryResult getQueryResult() {
+      if (queryResult == null) {
+        queryResult = FileReader.this.getQueryResult(options);
+      }
+      return queryResult;
+    }
+
+    private synchronized Schema.Column[] getQueriedColumns() {
+      return getQueryResult().columns;
+    }
+
+    private synchronized Assemble.Fn getAssembleFn() {
+      if (assembleFn == null) {
+        assembleFn = Assemble.getFn(getQueryResult().schema);
+      }
+      return assembleFn;
+    }
+
+    @Override
+    public View withMapFn(IFn mapFn) {
+      return new LazyView(options.withMapFn(mapFn));
+    }
+
+    @Override
     protected Iterable<IChunk> getRecordChunks(final int bundleSize) {
       return new Iterable<IChunk>() {
         @Override
         public Iterator<IChunk> iterator() {
-          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize), assembleFn);
+          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize), getAssembleFn());
         }
       };
     }
 
+    @Override
     protected Iterable<Object> getReducedChunkValues(final IFn f, final Object init, final int bundleSize) {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
           return FileReader.getReducedChunksIterator(getBundlesIterator(bundleSize),
-                                                     f, init, assembleFn);
+                                                     f, init, getAssembleFn());
         }
       };
     }
 
     private Iterator<Bundle> getBundlesIterator(int bundleSize) {
-      return FileReader.getBundlesIterator(getRecordGroupReaders(queriedColumns, bundleSize));
+      return FileReader.getBundlesIterator(getRecordGroupReaders(getQueriedColumns(), bundleSize));
     }
   }
 }
