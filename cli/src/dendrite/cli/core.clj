@@ -25,7 +25,9 @@
 
 (defn schema [options filename]
   (with-open [r (d/file-reader filename)]
-    (let [schema (cond-> (d/schema r) (:plain options) d/plain)]
+    (let [schema (if (:plain options)
+                   (d/plain-schema r)
+                   (d/schema r))]
       (if (:pretty options)
         (pprint/pprint schema)
         (prn schema)))))
@@ -72,7 +74,7 @@
           record-strs (cond
                         (:head cli-options) (map str-fn (take (:head cli-options) (d/read opts r)))
                         (:tail cli-options) (map str-fn (take-last (:tail cli-options) (d/read opts r)))
-                        :else (d/pmap opts str-fn r))]
+                        :else (d/read (assoc opts :map-fn str-fn) r))]
       (doseq [s record-strs]
         (when (.checkError System/out)
           (System/exit 1))
