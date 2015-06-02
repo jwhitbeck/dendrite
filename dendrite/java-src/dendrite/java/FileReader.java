@@ -272,6 +272,10 @@ public final class FileReader implements Closeable, IReader {
     return Schema.unparse(types, fileMetadata.schema);
   }
 
+  public Object getPlainSchema() {
+    return Schema.unparsePlain(types, fileMetadata.schema);
+  }
+
   @Override
   public void close() throws IOException {
     fileChannel.close();

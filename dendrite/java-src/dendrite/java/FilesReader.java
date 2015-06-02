@@ -80,6 +80,16 @@ public final class FilesReader implements Closeable, IReader {
     return schemasByFile;
   }
 
+  public Map<File,Object> getPlainSchemaByFile() throws IOException {
+    Map<File,Object> schemasByFile = new LinkedHashMap<File,Object>();
+    for (File file : files) {
+      try (FileReader fileReader = FileReader.create(readerOptions, file)) {
+          schemasByFile.put(file, fileReader.getPlainSchema());
+      }
+    }
+    return schemasByFile;
+  }
+
   public Map<File,ByteBuffer> getMetadataByFile() throws IOException {
     Map<File,ByteBuffer> metadataByFile = new LinkedHashMap<File,ByteBuffer>();
     for (File file : files) {

@@ -340,7 +340,14 @@
             (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
                                          (d/schema r))}
            (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (d/file->schema r))))))
+             (d/file->schema r)))))
+  (testing "plain schema"
+    (is (= {(io/as-file tmp-filename) (with-open [r (d/file-reader tmp-filename)]
+                                        (d/plain-schema r))
+            (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
+                                         (d/plain-schema r))}
+           (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
+             (d/file->plain-schema r))))))
 
 (deftest writer-with-map-fn
   (let [records (take 100 (helpers/rand-test-records))

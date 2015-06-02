@@ -82,11 +82,6 @@
   [s]
   (Schema/readString s))
 
-(defn plain
-  "Returns the provided schema with all ecodings set to plain and all compressions set to none."
-  [schema]
-  (Schema/plain (Types/create) schema))
-
 (defn file-writer
   "Returns a dendrite writer that outputs to a file according to the provided schema.
 
@@ -148,6 +143,11 @@
   [^FileReader reader]
   (.getSchema reader))
 
+(defn plain-schema
+  "Returns this reader's schema with all encodings set to plain and all compressions set to none."
+  [^FileReader reader]
+  (.getPlainSchema reader))
+
 (defn files-reader
   "Returns a dendrite reader on the provided files (a seq of files or string paths). Reads will query each
   file in the provided order, opening and closing them as needed. Accepts all the same options as
@@ -175,6 +175,12 @@
   "Returns a map of file to that file's schema."
   [^FilesReader reader]
   (.getSchemaByFile reader))
+
+(defn file->plain-schema
+  "Returns a map of file to that file's schema with with all encodings set to plain and all compressions set
+  to none."
+  [^FilesReader reader]
+  (.getPlainSchemaByFile reader))
 
 (extend-type View
   clojure.core.protocols/CollReduce

@@ -149,9 +149,9 @@
           :links {:forward ['long] :backward '(long)}
           :docid 'long
           :ngrams [['string]]}
-         (Schema/plain types test-unparsed-schema)))
+         (Schema/unparsePlain types test-schema)))
   (is (= {:foo (Schema/req 'int)}
-         (Schema/plain types {:foo (Schema/req (Col. 'int 'vlq))}))))
+         (Schema/unparsePlain types (Schema/parse types {:foo (Schema/req (Col. 'int 'vlq))})))))
 
 (deftest entrypoints
   (is (= test-unparsed-schema (->> test-schema (Schema/subSchema []) (Schema/unparse types))))

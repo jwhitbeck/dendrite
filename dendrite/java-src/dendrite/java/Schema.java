@@ -668,6 +668,10 @@ public abstract class Schema implements IWriteable {
     return _unparse(types, false, schema);
   }
 
+  public static Object unparsePlain(Types types, Schema schema) {
+      return _unparse(types, true, schema);
+  }
+
   private static Object _unparse(Types types, boolean asPlain, Schema schema) {
     if (schema instanceof Column) {
       return _unparseColumn(types, asPlain, (Column)schema);
@@ -714,9 +718,6 @@ public abstract class Schema implements IWriteable {
     return wrapWithRepetition(_unparse(types, asPlain, coll.repeatedSchema), coll.repetition);
   }
 
-  public static Object plain(Types types, Object unparsedSchema) {
-      return _unparse(types, true, parse(types, unparsedSchema));
-  }
 
   public static Schema subSchema(List<Keyword> entrypoint, Schema schema) {
     Keyword parent = null;
