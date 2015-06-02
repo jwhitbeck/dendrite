@@ -127,39 +127,54 @@
   (^dendrite.java.FileReader [opts file]
                              (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
 
+(defn- byte-buffer->edn [^ByteBuffer byte-buffer]
+  (-> byte-buffer Types/toByteArray Types/toString edn/read-string))
+
+(defn stats
+  "Returns a map containing all the stats associated with this reader. The tree top-level keys
+  are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
+  summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging to
+  the same column."
+  [^FileReader reader]
+  (.getStats reader))
+
+(defn metadata
+  "Returns the user-defined metadata for this reader."
+  [^FileReader reader]
+  (byte-buffer->edn (.getMetadata reader)))
+
+(defn schema
+  "Returns this reader's schema."
+  [^FileReader reader]
+  (.getSchema reader))
+
 (defn files-reader
+  "Returns a dendrite reader on the provided files (a seq of files or string paths). Reads will query each
+  file in the provided order, opening and closing them as needed. Accepts all the same options as
+  file-reader."
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
                               (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
 
-(defprotocol IReadable
-  (stats [_]
-    "Returns a map containing all the stats associated with this reader. The tree top-level keys
-    are :global, :record-groups, and :columns, that, respectively, contain stats summed over the entire file,
-    summed across all column-chunks in the same record-groups, and summed across all column-chunks belonging
-    to the same column. If called on a multiple-files reader, returns a map of file to stats.")
-  (metadata [_]
-    "Returns the user-defined metadata for this reader. If called on a multiple-files reader, returns a map of
-    file to metadata.")
-  (schema [_]
-    "Returns this reader's schema. If called on a multiple-files reader, returns a map of file to schema."))
+(defn file->stats
+  "Returns a map of file to that file's stats. See the stats function for full details."
+  [^FilesReader reader]
+  (.getStatsByFile reader))
 
-(defn- byte-buffer->edn [^ByteBuffer byte-buffer]
-  (-> byte-buffer Types/toByteArray Types/toString edn/read-string))
+(defn file->metadata
+  "Returns a map of file to that file's user-defined metadata."
+  [^FilesReader reader]
+  (reduce (fn [^Map hm [k v]]
+            (doto hm
+              (.put k (byte-buffer->edn v))))
+          ; We use a LinkedHashMap to preserve the order of the files in the map.
+          (LinkedHashMap.)
+          (.getMetadataByFile reader)))
 
-(extend-protocol IReadable
-  dendrite.java.FileReader
-  (schema [reader] (.getSchema reader))
-  (metadata [reader] (byte-buffer->edn (.getMetadata reader)))
-  (stats [reader] (.getStats reader))
-  dendrite.java.FilesReader
-  (schema [reader] (.getSchemaByFile reader))
-  (metadata [reader] (reduce (fn [^Map hm [k v]]
-                               (doto hm
-                                 (.put k (byte-buffer->edn v))))
-                             (LinkedHashMap.)
-                             (.getMetadataByFile reader)))
-  (stats [reader] (.getStatsByFile reader)))
+(defn file->schema
+  "Returns a map of file to that file's schema."
+  [^FilesReader reader]
+  (.getSchemaByFile reader))
 
 (extend-type View
   clojure.core.protocols/CollReduce

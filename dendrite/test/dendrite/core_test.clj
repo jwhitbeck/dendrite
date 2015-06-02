@@ -313,21 +313,21 @@
             (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
                                          (stats r))}
            (with-open [r (files-reader [tmp-filename tmp-filename2])]
-             (stats r)))))
+             (file->stats r)))))
   (testing "metadata"
     (is (= {(io/as-file tmp-filename) (with-open [r (file-reader tmp-filename)]
                                         (metadata r))
             (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
                                          (metadata r))}
            (with-open [r (files-reader [tmp-filename tmp-filename2])]
-             (metadata r)))))
+             (file->metadata r)))))
   (testing "schema"
     (is (= {(io/as-file tmp-filename) (with-open [r (file-reader tmp-filename)]
                                         (schema r))
             (io/as-file tmp-filename2) (with-open [r (file-reader tmp-filename2)]
                                          (schema r))}
            (with-open [r (files-reader [tmp-filename tmp-filename2])]
-             (schema r))))))
+             (file->schema r))))))
 
 (deftest writer-with-map-fn
   (let [records (take 100 (helpers/rand-test-records))
