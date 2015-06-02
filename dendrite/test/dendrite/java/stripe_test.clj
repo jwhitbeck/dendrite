@@ -19,7 +19,7 @@
 (defn stripe-record [record schema]
   (let [n (count (Schema/getColumns schema))
         a (object-array n)]
-    (.invoke (Stripe/getFn helpers/default-types schema nil) record a)
+    (.invoke (Stripe/getFn helpers/default-types schema nil nil) record a)
     (seq a)))
 
 (deftest dremel-paper

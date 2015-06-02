@@ -75,7 +75,7 @@
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
         bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
-        stripe (Stripe/getFn helpers/default-types test-schema nil)
+        stripe (Stripe/getFn helpers/default-types test-schema nil nil)
         bundle (.stripe bundle-factory stripe records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
@@ -97,7 +97,7 @@
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
         bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
-        stripe (Stripe/getFn helpers/default-types test-schema nil)
+        stripe (Stripe/getFn helpers/default-types test-schema nil nil)
         bundle (.stripe bundle-factory stripe records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)

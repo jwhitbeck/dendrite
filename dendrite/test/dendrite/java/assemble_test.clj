@@ -55,7 +55,7 @@
 (def test-record-striped
   (let [n (count (Schema/getColumns test-schema))
         a (object-array n)]
-    (.invoke (Stripe/getFn helpers/default-types test-schema nil) test-record a)
+    (.invoke (Stripe/getFn helpers/default-types test-schema nil nil) test-record a)
     a))
 
 (deftest query-column-indices

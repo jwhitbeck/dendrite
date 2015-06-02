@@ -105,7 +105,9 @@
                              exception it triggered. By default, this option is nil and exceptions
                              triggered by invalid records are not caught.
   :custom-types            - a map of of custom-type symbol to custom-type specification. See docs for
-                             full explanation."
+                             full explanation.
+  :map-fn                  - apply this function to all written records before striping them to columns. This
+                             function is applied as part of the parallelized striping process."
   (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
   (^dendrite.java.FileWriter [opts schema file]
                              (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))

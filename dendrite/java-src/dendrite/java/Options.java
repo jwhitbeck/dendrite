@@ -292,22 +292,24 @@ public final class Options {
     public final IFn invalidInputHandler;
     public final List<CustomTypeDefinition> customTypeDefinitions;
     public final int bundleSize = DEFAULT_BUNDLE_SIZE;
+    public final IFn mapFn;
 
     public WriterOptions(int recordGroupLength, int dataPageLength, int optimizationStrategy,
                          Map<Symbol,Double> compressionThresholds, IFn invalidInputHandler,
-                         List<CustomTypeDefinition> customTypeDefinitions) {
+                         List<CustomTypeDefinition> customTypeDefinitions, IFn mapFn) {
       this.recordGroupLength = recordGroupLength;
       this.dataPageLength = dataPageLength;
       this.optimizationStrategy = optimizationStrategy;
       this.compressionThresholds = compressionThresholds;
       this.invalidInputHandler = invalidInputHandler;
       this.customTypeDefinitions = customTypeDefinitions;
+      this.mapFn = mapFn;
     }
   }
 
   final static Keyword[] validWriterOptionKeys
     = new Keyword[]{RECORD_GROUP_LENGTH, DATA_PAGE_LENGTH, OPTIMIZE_COLUMNS, COMPRESSION_THRESHOLDS,
-                    INVALID_INPUT_HANDLER, CUSTOM_TYPES};
+                    INVALID_INPUT_HANDLER, CUSTOM_TYPES, MAP_FN};
 
   final static Object notFound = new Object();
 
@@ -407,6 +409,7 @@ public final class Options {
                              getOptimizationStrategy(options),
                              getCompressionThresholds(options),
                              getInvalidInputHandler(options),
-                             getCustomTypeDefinitions(options));
+                             getCustomTypeDefinitions(options),
+                             getMapFn(options));
   }
 }

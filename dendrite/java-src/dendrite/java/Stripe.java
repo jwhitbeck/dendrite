@@ -31,23 +31,41 @@ public final class Stripe {
     boolean invoke(Object record, Object[] buffer);
   }
 
-  public static Fn getFn(Types types, Schema schema, final IFn errorHandlerFn) {
+  public static Fn getFn(Types types, Schema schema, final IFn mapFn, final IFn errorHandlerFn) {
     final StripeFn stripeFn = getStripeFn(types, schema, PersistentVector.EMPTY);
-    return new Fn() {
-      public boolean invoke(Object record, Object[] buffer) {
-        try {
-          stripeFn.invoke(buffer, record, false, 0, 0);
-          return true;
-        } catch (Exception e) {
-          if (errorHandlerFn != null) {
-            errorHandlerFn.invoke(record, e);
-            return false;
-          } else {
-            throw new IllegalArgumentException(String.format("Failed to stripe record '%s'", record), e);
+    if (mapFn == null) {
+      return new Fn() {
+        public boolean invoke(Object record, Object[] buffer) {
+          try {
+            stripeFn.invoke(buffer, record, false, 0, 0);
+            return true;
+          } catch (Exception e) {
+            if (errorHandlerFn != null) {
+              errorHandlerFn.invoke(record, e);
+              return false;
+            } else {
+              throw new IllegalArgumentException(String.format("Failed to stripe record '%s'", record), e);
+            }
           }
         }
-      }
-    };
+      };
+    } else {
+      return new Fn() {
+        public boolean invoke(Object record, Object[] buffer) {
+          try {
+            stripeFn.invoke(buffer, mapFn.invoke(record), false, 0, 0);
+            return true;
+          } catch (Exception e) {
+            if (errorHandlerFn != null) {
+              errorHandlerFn.invoke(record, e);
+              return false;
+            } else {
+              throw new IllegalArgumentException(String.format("Failed to stripe record '%s'", record), e);
+            }
+          }
+        }
+      };
+    }
   }
 
   static interface StripeFn {

@@ -328,3 +328,12 @@
                                          (schema r))}
            (with-open [r (files-reader [tmp-filename tmp-filename2])]
              (schema r))))))
+
+(deftest writer-with-map-fn
+  (let [records (take 100 (helpers/rand-test-records))
+        f #(select-keys % [:docid :is-active])]
+    (with-open [w (file-writer {:map-fn f} (Schema/readString helpers/test-schema-str) tmp-filename)]
+      (.writeAll w records))
+    (is (= (map f records)
+           (with-open [r (file-reader tmp-filename)]
+             (doall (read r)))))))
