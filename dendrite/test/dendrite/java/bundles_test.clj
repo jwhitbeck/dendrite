@@ -32,10 +32,11 @@
   (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
     (testing "assembly"
       (is (= (map (partial * 2) (range 10))
-             (seq (.assemble test-bundle (reify Assemble$Fn
-                                           (invoke [_ iterators]
-                                             (+ (.next ^Iterator (aget iterators 0))
-                                                (.next ^Iterator (aget iterators 1))))))))))
+             (chunk-cons (.assemble test-bundle (reify Assemble$Fn
+                                                  (invoke [_ iterators]
+                                                    (+ (.next ^Iterator (aget iterators 0))
+                                                       (.next ^Iterator (aget iterators 1))))))
+                         nil))))
     (testing "reduce"
       (is (= (->> (range 10) (map (partial * 2)) (reduce +))
              (.reduce test-bundle + (reify Assemble$Fn

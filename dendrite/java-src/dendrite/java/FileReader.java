@@ -360,8 +360,8 @@ public final class FileReader implements Closeable, IReader {
 
   static Future<IChunk> getAssembleFuture(final Bundle bundle, final Assemble.Fn assembleFn) {
     return Agent.soloExecutor.submit(new Callable<IChunk>() {
-        public ArrayChunk call() {
-          return new ArrayChunk(bundle.assemble(assembleFn));
+        public IChunk call() {
+          return bundle.assemble(assembleFn);
         }
       });
   }

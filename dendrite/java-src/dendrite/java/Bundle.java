@@ -12,6 +12,8 @@
 
 package dendrite.java;
 
+import clojure.lang.ArrayChunk;
+import clojure.lang.IChunk;
 import clojure.lang.IFn;
 
 import java.util.ArrayList;
@@ -25,12 +27,12 @@ public final class Bundle implements Iterable<List> {
 
   public final List[] columnValues;
   private final boolean[] isColumnRepeated;
-  private final int bundleSize;
+  private final int maxBundleSize;
 
-  Bundle(int bundleSize, boolean[] isColumnRepeated, List[] columnValues) {
+  Bundle(int maxBundleSize, boolean[] isColumnRepeated, List[] columnValues) {
     this.isColumnRepeated = isColumnRepeated;
     this.columnValues = columnValues;
-    this.bundleSize = bundleSize;
+    this.maxBundleSize = maxBundleSize;
   }
 
   public int size() {
@@ -78,19 +80,19 @@ public final class Bundle implements Iterable<List> {
     return columnIterators;
   }
 
-  public Object[] assemble(Assemble.Fn assemblyFn) {
+  public IChunk assemble(Assemble.Fn assemblyFn) {
     ListIterator[] columnIterators = getColumnIterators();
-    Object[] assembledRecords = new Object[bundleSize];
-    for (int i=0; i<bundleSize; ++i) {
+    Object[] assembledRecords = new Object[maxBundleSize];
+    for (int i=0; i<maxBundleSize; ++i) {
       assembledRecords[i] = assemblyFn.invoke(columnIterators);
     }
-    return assembledRecords;
+    return new ArrayChunk(assembledRecords);
   }
 
   public Object reduce(IFn reduceFn, Assemble.Fn assemblyFn, Object init) {
     Object ret = init;
     ListIterator[] columnIterators = getColumnIterators();
-    for (int i=0; i<bundleSize; ++i) {
+    for (int i=0; i<maxBundleSize; ++i) {
       ret = reduceFn.invoke(ret, assemblyFn.invoke(columnIterators));
     }
     return ret;
@@ -110,7 +112,7 @@ public final class Bundle implements Iterable<List> {
       List values = columnValues[i];
       remainingColumnValues[i] = values.subList(n, values.size());
     }
-    return new Bundle(bundleSize - n, isColumnRepeated, remainingColumnValues);
+    return new Bundle(maxBundleSize - n, isColumnRepeated, remainingColumnValues);
   }
 
   public static final class Factory {
