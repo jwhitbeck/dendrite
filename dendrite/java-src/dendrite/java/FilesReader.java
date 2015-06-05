@@ -228,7 +228,7 @@ public final class FilesReader implements Closeable, IReader {
       return new Iterable<IChunk>() {
         @Override
         public Iterator<IChunk> iterator() {
-          return getRecordChunks(readOptions, bundleSize);
+          return FilesReader.this.getRecordChunks(readOptions, bundleSize);
         }
       };
     }
@@ -238,7 +238,7 @@ public final class FilesReader implements Closeable, IReader {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
-          return getReducedChunkValues(readOptions, f, init, bundleSize);
+          return FilesReader.this.getReducedChunkValues(readOptions, f, init, bundleSize);
         }
       };
     }
