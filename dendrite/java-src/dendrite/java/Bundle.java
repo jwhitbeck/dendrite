@@ -49,9 +49,7 @@ public final class Bundle implements Iterable<List> {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null) {
-      return false;
-    } else if (!(o instanceof Bundle)) {
+    if (o == null || !(o instanceof Bundle)) {
       return false;
     } else {
       Bundle b = (Bundle)o;
@@ -68,6 +66,11 @@ public final class Bundle implements Iterable<List> {
         return true;
       }
     }
+  }
+
+  @Override
+  public int hashCode() {
+    throw new UnsupportedOperationException();
   }
 
   @SuppressWarnings("unchecked")

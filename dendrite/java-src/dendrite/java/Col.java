@@ -70,4 +70,10 @@ public final class Col extends Obj {
       encoding.equals(col.encoding) &&
       compression.equals(col.compression);
   }
+
+  @Override
+  public int hashCode() {
+    return type.hashCode() ^ encoding.hashCode() ^ compression.hashCode();
+  }
+
 }

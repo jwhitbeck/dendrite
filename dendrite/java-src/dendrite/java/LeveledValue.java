@@ -43,4 +43,9 @@ public final class LeveledValue {
     }
     return false;
   }
+
+  @Override
+  public int hashCode() {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -41,7 +41,7 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null) {
+      if (o == null || !(o instanceof ColumnChunk)) {
         return false;
       }
       ColumnChunk cc = (ColumnChunk) o;
@@ -49,6 +49,11 @@ public final class Metadata {
         numDataPages == cc.numDataPages &&
         dataPageOffset == cc.dataPageOffset &&
         dictionaryPageOffset == cc.dictionaryPageOffset;
+    }
+
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
     }
 
     public static ColumnChunk read(ByteBuffer bb) {
@@ -97,13 +102,18 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null) {
+      if (o == null || !(o instanceof RecordGroup)) {
         return false;
       }
       RecordGroup rg = (RecordGroup) o;
       return length == rg.length &&
         numRecords == rg.numRecords &&
         Arrays.equals(columnChunks, rg.columnChunks);
+    }
+
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
     }
 
     public static RecordGroup read(ByteBuffer bb) {
@@ -170,7 +180,7 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null) {
+      if (o == null || !(o instanceof File)) {
         return false;
       }
       File f = (File)o;
@@ -178,6 +188,11 @@ public final class Metadata {
         schema.equals(f.schema) &&
         Arrays.equals(customTypes, f.customTypes) &&
         metadata.equals(f.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
     }
 
     public static File read(ByteBuffer bb) {

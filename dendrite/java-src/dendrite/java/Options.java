@@ -186,7 +186,7 @@ public final class Options {
     public final List<Keyword> entrypoint;
     public final boolean isMissingFieldsAsNil;
     public final Map<Symbol,IFn> readers;
-    public final int bundleSize = DEFAULT_BUNDLE_SIZE;
+    public final int bundleSize;
     public final IFn mapFn;
     public final IFn sampleFn;
     public final IFn filterFn;
@@ -200,6 +200,7 @@ public final class Options {
       this.mapFn = mapFn;
       this.sampleFn = sampleFn;
       this.filterFn = filterFn;
+      this.bundleSize = DEFAULT_BUNDLE_SIZE;
     }
 
     public ReadOptions withMapFn(IFn aMapFn) {
@@ -321,7 +322,7 @@ public final class Options {
     public final Map<Symbol,Double> compressionThresholds;
     public final IFn invalidInputHandler;
     public final List<CustomTypeDefinition> customTypeDefinitions;
-    public final int bundleSize = DEFAULT_BUNDLE_SIZE;
+    public final int bundleSize;
     public final IFn mapFn;
 
     public WriterOptions(int recordGroupLength, int dataPageLength, int optimizationStrategy,
@@ -334,6 +335,7 @@ public final class Options {
       this.invalidInputHandler = invalidInputHandler;
       this.customTypeDefinitions = customTypeDefinitions;
       this.mapFn = mapFn;
+      this.bundleSize = DEFAULT_BUNDLE_SIZE;
     }
   }
 

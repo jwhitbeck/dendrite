@@ -12,9 +12,13 @@
 
 package dendrite.java;
 
+import java.nio.charset.Charset;
+
 final class Constants {
 
+  static final Charset utf8Charset = Charset.forName("UTF-8");
   static final String magicString = "den1";
-  static final byte[] magicBytes = magicString.getBytes();
+  static final byte[] magicBytes = magicString.getBytes(utf8Charset);
+
 
 }

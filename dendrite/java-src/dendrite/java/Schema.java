@@ -222,6 +222,11 @@ public abstract class Schema implements IWriteable {
       fn == s.fn;
   }
 
+  @Override
+  public int hashCode() {
+    throw new UnsupportedOperationException();
+  }
+
   public static Schema read(ByteBuffer bb) {
     int type = bb.get();
     switch (type) {
@@ -306,6 +311,11 @@ public abstract class Schema implements IWriteable {
         columnIndex == col.columnIndex;
     }
 
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
+    }
+
     public static Column read(ByteBuffer bb) {
       return new Column(Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
@@ -330,11 +340,16 @@ public abstract class Schema implements IWriteable {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null) {
+      if (o == null || !(o instanceof Field)) {
         return false;
       }
       Field f = (Field)o;
       return name.equals(f.name) && value.equals(f.value);
+    }
+
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -435,6 +450,11 @@ public abstract class Schema implements IWriteable {
         Arrays.equals(fields, r.fields);
     }
 
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
+    }
+
     public static Record read(ByteBuffer bb) {
       return new Record(Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
@@ -507,6 +527,11 @@ public abstract class Schema implements IWriteable {
       Collection c = (Collection)o;
       return leafColumnIndex == c.leafColumnIndex &&
         repeatedSchema.equals(c.repeatedSchema);
+    }
+
+    @Override
+    public int hashCode() {
+      throw new UnsupportedOperationException();
     }
 
     public static Collection read(ByteBuffer bb) {

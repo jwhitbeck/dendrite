@@ -178,7 +178,7 @@ public final class FileWriter implements Closeable {
         public WriteThreadResult call() throws IOException {
           ArrayList<Metadata.RecordGroup> recordGroupsMetadata = new ArrayList<Metadata.RecordGroup>();
           Iterator<Bundle> bundleIterator = getBundleIterator(bundleFactory, stripeFn, batchIterator);
-          long nextNumRecordsForLengthCheck = 10 * bundleSize;
+          long nextNumRecordsForLengthCheck = 10L * bundleSize;
           while (bundleIterator.hasNext()) {
             Bundle bundle = bundleIterator.next();
             while (true) {

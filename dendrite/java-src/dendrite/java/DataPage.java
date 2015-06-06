@@ -429,7 +429,6 @@ public final class DataPage {
     private final int n;
     private int i;
     private int nextRepetitionLevel;
-    private boolean seenFirstValue = false;
 
     private RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
                                   IDecoder decoder, Object nullValue, int maxDefinitionLevel) {

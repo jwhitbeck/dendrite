@@ -431,7 +431,6 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       }
       int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats) + encodedDictionary.length();
       if (frequencyLength < bestLength) {
-        bestLength = frequencyLength;
         bestEncoding = Types.FREQUENCY;
       }
       return bestEncoding;
@@ -492,7 +491,6 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
     @Override
     int getBestEncoding(DataColumnChunk.Reader primitiveReader, Stats.ColumnChunk plainStats) {
-      int plainLength = (int)plainStats.dataLength;
       int bestLength = (int)plainStats.dataLength;
       int bestEncoding = Types.PLAIN;
       int numNonNilValues = (int)plainStats.numNonNilValues;

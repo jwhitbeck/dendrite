@@ -23,7 +23,6 @@ import clojure.lang.Symbol;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.Charset;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -567,20 +566,18 @@ public final class Types {
     return new IntFixedBitWidthPackedRunLength.Decoder(bb, Bytes.getBitWidth(maxLevel));
   }
 
-  final static Charset utf8Charset = Charset.forName("UTF-8");
-
   public static byte[] toByteArray(String s) {
     if (s == null) {
       return null;
     }
-    return s.getBytes(utf8Charset);
+    return s.getBytes(Constants.utf8Charset);
   }
 
   public static String toString(byte[] bs) {
     if (bs == null) {
       return null;
     }
-    return new String(bs, utf8Charset);
+    return new String(bs, Constants.utf8Charset);
   }
 
   public static Symbol toSymbol(String s) {

@@ -37,13 +37,18 @@ public final class CustomType implements IWriteable {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null) {
+    if (o == null || !(o instanceof CustomType)) {
       return false;
     }
     CustomType ct = (CustomType) o;
     return type == ct.type &&
       baseType == ct.baseType &&
       sym.equals(ct.sym);
+  }
+
+  @Override
+  public int hashCode() {
+    throw new UnsupportedOperationException();
   }
 
   public static CustomType read(ByteBuffer bb){

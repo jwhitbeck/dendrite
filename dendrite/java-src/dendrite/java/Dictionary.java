@@ -23,12 +23,12 @@ import java.util.Map;
 public final class Dictionary {
 
   // Dictionary values are encoded as ints
-  private final static int MAX_DISTINCT_VALUES = Integer.MAX_VALUE - 1;
+  private static final int MAX_DISTINCT_VALUES = Integer.MAX_VALUE - 1;
 
-  public final static class Decoder implements IDecoder {
+  public static final class Decoder implements IDecoder {
 
-    final IIntDecoder indicesDecoder;
-    final Object[] dictionary;
+    private final IIntDecoder indicesDecoder;
+    private final Object[] dictionary;
 
     public Decoder(IIntDecoder indicesDecoder, Object[] dictionary) {
       this.dictionary = dictionary;
@@ -47,9 +47,9 @@ public final class Dictionary {
 
   }
 
-  private final static class DictionaryIndex {
-    final int idx;
-    int cnt;
+  private static final class DictionaryIndex {
+    private final int idx;
+    private int cnt;
 
     DictionaryIndex(int idx) {
       this.idx = idx;
@@ -59,8 +59,8 @@ public final class Dictionary {
 
   public static class Encoder implements IEncoder {
 
-    final HashMap<Object, DictionaryIndex> dictionaryIndex;
-    final IEncoder indicesEncoder;
+    private final HashMap<Object, DictionaryIndex> dictionaryIndex;
+    private final IEncoder indicesEncoder;
 
     Encoder(IEncoder indicesEncoder) {
       this.indicesEncoder = indicesEncoder;
@@ -119,7 +119,7 @@ public final class Dictionary {
       return dict;
     }
 
-    final static Comparator<DictionaryIndex> mostFrequentFirst = new Comparator<DictionaryIndex>() {
+    private static final Comparator<DictionaryIndex> mostFrequentFirst = new Comparator<DictionaryIndex>() {
       public int compare(DictionaryIndex dia, DictionaryIndex dib) {
             if (dia.cnt > dib.cnt) {
               return -1; // sort by descending cnt
@@ -182,7 +182,7 @@ public final class Dictionary {
     }
   }
 
-  private final static class ByteArrayEncoder extends Encoder {
+  private static final class ByteArrayEncoder extends Encoder {
 
     ByteArrayEncoder(IEncoder indicesEncoder) {
       super(indicesEncoder);

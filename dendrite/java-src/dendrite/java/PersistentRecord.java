@@ -24,6 +24,7 @@ import clojure.lang.ITransientMap;
 import clojure.lang.PersistentArrayMap;
 
 import java.util.Iterator;
+import java.io.Serializable;
 
 public class PersistentRecord extends APersistentMap {
 
@@ -182,7 +183,7 @@ public class PersistentRecord extends APersistentMap {
     }
   }
 
-  final static class KeywordIndexHashMap {
+  final static class KeywordIndexHashMap implements Serializable {
 
     final long[] hashArray;
     final Keyword[] kws;
@@ -238,7 +239,7 @@ public class PersistentRecord extends APersistentMap {
       while (s < kwCnt) {
         s <<= 1;
       }
-      return s <<= 1;
+      return s << 1;
     }
   }
 
