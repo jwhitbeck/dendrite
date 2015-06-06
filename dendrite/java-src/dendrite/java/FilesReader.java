@@ -219,8 +219,13 @@ public final class FilesReader implements Closeable, IReader {
     }
 
     @Override
-    public View withMapFn(IFn mapFn) {
-      return new LazyView(readOptions.withMapFn(mapFn));
+    protected Options.ReadOptions getReadOptions() {
+      return readOptions;
+    }
+
+    @Override
+    protected View withOptions(Options.ReadOptions readOptions) {
+      return new LazyView(readOptions);
     }
 
     @Override
