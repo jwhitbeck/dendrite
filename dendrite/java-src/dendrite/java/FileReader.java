@@ -358,21 +358,111 @@ public final class FileReader implements Closeable, IReader {
     };
   }
 
-  static Future<IChunk> getAssembleFuture(final Bundle bundle, final Assemble.Fn assembleFn) {
-    return Agent.soloExecutor.submit(new Callable<IChunk>() {
-        public IChunk call() {
-          return bundle.assemble(assembleFn);
-        }
-      });
+  private static interface IAssembleFutureFactory {
+    Future<IChunk> get(Bundle bundle);
+  }
+
+  private final static class AssembleFutureFactory implements IAssembleFutureFactory {
+    private final Assemble.Fn assembleFn;
+
+    AssembleFutureFactory(Assemble.Fn assembleFn) {
+      this.assembleFn = assembleFn;
+    }
+
+    @Override
+    public Future<IChunk> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<IChunk>() {
+          public IChunk call() {
+            return bundle.assemble(assembleFn);
+          }
+        });
+    }
+  }
+
+  private final static class AssembleSampledFutureFactory implements IAssembleFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn sampleFn;
+
+    AssembleSampledFutureFactory(Assemble.Fn assembleFn, IFn sampleFn) {
+      this.assembleFn = assembleFn;
+      this.sampleFn = sampleFn;
+    }
+
+    @Override
+    public Future<IChunk> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<IChunk>() {
+          public IChunk call() {
+            return bundle.assembleSampled(assembleFn, sampleFn);
+          }
+        });
+    }
+  }
+
+  private final static class AssembleFilteredFutureFactory implements IAssembleFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn filterFn;
+
+    AssembleFilteredFutureFactory(Assemble.Fn assembleFn, IFn filterFn) {
+      this.assembleFn = assembleFn;
+      this.filterFn = filterFn;
+    }
+
+    @Override
+    public Future<IChunk> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<IChunk>() {
+          public IChunk call() {
+            return bundle.assembleFiltered(assembleFn, filterFn);
+          }
+        });
+    }
+  }
+
+  private final static class AssembleSampledAndFilteredFutureFactory implements IAssembleFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn sampleFn;
+    private final IFn filterFn;
+
+    AssembleSampledAndFilteredFutureFactory(Assemble.Fn assembleFn, IFn sampleFn, IFn filterFn) {
+      this.assembleFn = assembleFn;
+      this.sampleFn = sampleFn;
+      this.filterFn = filterFn;
+    }
+
+    @Override
+    public Future<IChunk> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<IChunk>() {
+          public IChunk call() {
+            return bundle.assembleSampledAndFiltered(assembleFn, sampleFn, filterFn);
+          }
+        });
+    }
+  }
+
+  private IAssembleFutureFactory getAssembleFutureFactory(Assemble.Fn assembleFn,
+                                                          IFn sampleFn,
+                                                          IFn filterFn) {
+    if (sampleFn == null) {
+      if (filterFn == null) {
+        return new AssembleFutureFactory(assembleFn);
+      } else {
+        return new AssembleFilteredFutureFactory(assembleFn, filterFn);
+      }
+    } else {
+      if (filterFn == null) {
+        return new AssembleSampledFutureFactory(assembleFn, sampleFn);
+      } else {
+        return new AssembleSampledAndFilteredFutureFactory(assembleFn, sampleFn, filterFn);
+      }
+    }
   }
 
   private static Iterator<IChunk> getRecordChunksIterator(final Iterator<Bundle> bundlesIterator,
-                                                          final Assemble.Fn assembleFn) {
+                                                          final IAssembleFutureFactory assembleFutureFactory) {
     int n = 2 + Runtime.getRuntime().availableProcessors();
     final LinkedList<Future<IChunk>> futures = new LinkedList<Future<IChunk>>();
     int k = 0;
     while (bundlesIterator.hasNext() && k < n) {
-      futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+      futures.addLast(assembleFutureFactory.get(bundlesIterator.next()));
     }
     return new AReadOnlyIterator<IChunk>() {
       @Override
@@ -385,31 +475,134 @@ public final class FileReader implements Closeable, IReader {
         Future<IChunk> fut = futures.pollFirst();
         IChunk chunk = Utils.tryGetFuture(fut);
         if (bundlesIterator.hasNext()) {
-          futures.addLast(getAssembleFuture(bundlesIterator.next(), assembleFn));
+          futures.addLast(assembleFutureFactory.get(bundlesIterator.next()));
         }
         return chunk;
       }
     };
   }
 
-  static Future<Object> getReducedChunkFuture(final Bundle bundle, final IFn reduceFn, final Object init,
-                                              final Assemble.Fn assembleFn) {
-    return Agent.soloExecutor.submit(new Callable<Object>() {
+  private static interface IReduceFutureFactory {
+    Future<Object> get(Bundle bundle);
+  }
+
+  private static final class ReduceFutureFactory implements IReduceFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn reduceFn;
+    private final Object init;
+
+    ReduceFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init) {
+      this.assembleFn = assembleFn;
+      this.reduceFn = reduceFn;
+      this.init = init;
+    }
+
+    @Override
+    public Future<Object> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
           return bundle.reduce(reduceFn, assembleFn, init);
         }
       });
+    }
+  }
+
+  private static final class ReduceSampledFutureFactory implements IReduceFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn reduceFn;
+    private final Object init;
+    private final IFn sampleFn;
+
+    ReduceSampledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn) {
+      this.assembleFn = assembleFn;
+      this.reduceFn = reduceFn;
+      this.init = init;
+      this.sampleFn = sampleFn;
+    }
+
+    @Override
+    public Future<Object> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return bundle.reduceSampled(reduceFn, assembleFn, sampleFn, init);
+        }
+      });
+    }
+  }
+
+  private static final class ReduceFilteredFutureFactory implements IReduceFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn reduceFn;
+    private final Object init;
+    private final IFn filterFn;
+
+    ReduceFilteredFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn filterFn) {
+      this.assembleFn = assembleFn;
+      this.reduceFn = reduceFn;
+      this.init = init;
+      this.filterFn = filterFn;
+    }
+
+    @Override
+    public Future<Object> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return bundle.reduceFiltered(reduceFn, assembleFn, filterFn, init);
+        }
+      });
+    }
+  }
+
+  private static final class ReduceSampledAndFilteredFutureFactory implements IReduceFutureFactory {
+    private final Assemble.Fn assembleFn;
+    private final IFn reduceFn;
+    private final Object init;
+    private final IFn sampleFn;
+    private final IFn filterFn;
+
+    ReduceSampledAndFilteredFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn,
+                                          IFn filterFn) {
+      this.assembleFn = assembleFn;
+      this.reduceFn = reduceFn;
+      this.init = init;
+      this.sampleFn = sampleFn;
+      this.filterFn = filterFn;
+    }
+
+    @Override
+    public Future<Object> get(final Bundle bundle) {
+      return Agent.soloExecutor.submit(new Callable<Object>() {
+        public Object call() {
+          return bundle.reduceSampledAndFiltered(reduceFn, assembleFn, sampleFn, filterFn, init);
+        }
+      });
+    }
+  }
+
+  private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, Object init, Assemble.Fn assembleFn,
+                                                      IFn sampleFn, IFn filterFn) {
+    if (sampleFn == null) {
+      if (filterFn == null) {
+        return new ReduceFutureFactory(assembleFn, reduceFn, init);
+      } else {
+        return new ReduceFilteredFutureFactory(assembleFn, reduceFn, init, filterFn);
+      }
+    } else {
+      if (filterFn == null) {
+        return new ReduceSampledFutureFactory(assembleFn, reduceFn, init, sampleFn);
+      } else {
+        return new ReduceSampledAndFilteredFutureFactory(assembleFn, reduceFn, init, sampleFn, filterFn);
+      }
+    }
   }
 
   private static Iterator<Object> getReducedChunksIterator(final Iterator<Bundle> bundlesIterator,
-                                                           final IFn reduceFn,
-                                                           final Object init,
-                                                           final Assemble.Fn assembleFn) {
+                                                           final IReduceFutureFactory reduceFutureFactory) {
     int n = 2 + Runtime.getRuntime().availableProcessors();
     final LinkedList<Future<Object>> futures = new LinkedList<Future<Object>>();
     int k = 0;
     while (bundlesIterator.hasNext() && k < n) {
-      futures.addLast(getReducedChunkFuture(bundlesIterator.next(), reduceFn, init, assembleFn));
+      futures.addLast(reduceFutureFactory.get(bundlesIterator.next()));
     }
     return new AReadOnlyIterator<Object>() {
       @Override
@@ -422,7 +615,7 @@ public final class FileReader implements Closeable, IReader {
         Future<Object> fut = futures.pollFirst();
         Object obj = Utils.tryGetFuture(fut);
         if (bundlesIterator.hasNext()) {
-          futures.addLast(getReducedChunkFuture(bundlesIterator.next(), reduceFn, init, assembleFn));
+          futures.addLast(reduceFutureFactory.get(bundlesIterator.next()));
         }
         return obj;
       }
@@ -473,7 +666,10 @@ public final class FileReader implements Closeable, IReader {
       return new Iterable<IChunk>() {
         @Override
         public Iterator<IChunk> iterator() {
-          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize), getAssembleFn());
+          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize),
+                                                    getAssembleFutureFactory(getAssembleFn(),
+                                                                             options.sampleFn,
+                                                                             options.filterFn));
         }
       };
     }
@@ -484,7 +680,11 @@ public final class FileReader implements Closeable, IReader {
         @Override
         public Iterator<Object> iterator() {
           return FileReader.getReducedChunksIterator(getBundlesIterator(bundleSize),
-                                                     f, init, getAssembleFn());
+                                                     getReduceFutureFactory(f,
+                                                                            init,
+                                                                            getAssembleFn(),
+                                                                            options.sampleFn,
+                                                                            options.filterFn));
         }
       };
     }

@@ -37,6 +37,37 @@
                                                     (+ (.next ^Iterator (aget iterators 0))
                                                        (.next ^Iterator (aget iterators 1))))))
                          nil))))
+    (testing "sampled assembly"
+      (is (= (->> (map (partial * 2) (range 10)) (partition 2) (map second))
+             (chunk-cons (.assembleSampled test-bundle
+                                           (reify Assemble$Fn
+                                             (invoke [_ iterators]
+                                               (+ (.next ^Iterator (aget iterators 0))
+                                                  (.next ^Iterator (aget iterators 1)))))
+                                           odd?)
+                         nil))))
+    (testing "filtered assembly"
+      (is (= (filter #(pos? (mod % 4)) (map (partial * 2) (range 10)))
+             (chunk-cons (.assembleFiltered test-bundle
+                                            (reify Assemble$Fn
+                                              (invoke [_ iterators]
+                                                (+ (.next ^Iterator (aget iterators 0))
+                                                   (.next ^Iterator (aget iterators 1)))))
+                                            #(pos? (mod % 4)))
+                         nil))))
+    (testing "sampled and filtered assembly"
+      (is (= (->> (map (partial * 2) (range 10)) (partition 2) (map second) (filter #(zero? (mod % 3))))
+             (chunk-cons (.assembleSampledAndFiltered test-bundle
+                                                      (reify Assemble$Fn
+                                                        (invoke [_ iterators]
+                                                          (+ (.next ^Iterator (aget iterators 0))
+                                                             (.next ^Iterator (aget iterators 1)))))
+                                                      odd?
+                                                      #(zero? (mod % 3)))
+                         nil))))))
+
+(deftest bundle-reduction
+  (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
     (testing "reduce"
       (is (= (->> (range 10) (map (partial * 2)) (reduce +))
              (.reduce test-bundle + (reify Assemble$Fn
@@ -47,7 +78,39 @@
              (.reduce test-bundle + (reify Assemble$Fn
                                       (invoke [_ iterators]
                                         (+ (.next ^Iterator (aget iterators 0))
-                                           (.next ^Iterator (aget iterators 1))))) 10))))))
+                                           (.next ^Iterator (aget iterators 1))))) 10))))
+    (testing "sampled reduce"
+      (is (= (->> (range 10) (map (partial * 2)) (partition 2) (map second) (reduce +))
+             (.reduceSampled test-bundle
+                             +
+                             (reify Assemble$Fn
+                               (invoke [_ iterators]
+                                 (+ (.next ^Iterator (aget iterators 0))
+                                    (.next ^Iterator (aget iterators 1)))))
+                             odd?
+                             0))))
+    (testing "filtered reduce"
+      (is (= (->> (range 10) (map (partial * 2)) (filter #(zero? (mod % 4))) (reduce +))
+             (.reduceFiltered test-bundle
+                             +
+                             (reify Assemble$Fn
+                               (invoke [_ iterators]
+                                 (+ (.next ^Iterator (aget iterators 0))
+                                    (.next ^Iterator (aget iterators 1)))))
+                             #(zero? (mod % 4))
+                             0))))
+    (testing "sampled and filtered reduce"
+      (is (= (->> (range 10) (map (partial * 2)) (partition 2) (map second)
+                  (filter #(zero? (mod % 3))) (reduce +))
+             (.reduceSampledAndFiltered test-bundle
+                                        +
+                                        (reify Assemble$Fn
+                                          (invoke [_ iterators]
+                                            (+ (.next ^Iterator (aget iterators 0))
+                                               (.next ^Iterator (aget iterators 1)))))
+                                        odd?
+                                        #(zero? (mod % 3))
+                                        0))))))
 
 (deftest stripe-and-assemble
   (let [num-columns 10

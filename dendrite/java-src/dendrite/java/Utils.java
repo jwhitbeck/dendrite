@@ -69,6 +69,14 @@ public final class Utils {
     }
   }
 
+  public static IFn and(final IFn fna, final IFn fnb) {
+    return new AFn() {
+      public Object invoke(Object o) {
+        return RT.booleanCast(fna.invoke(o)) && RT.booleanCast(fnb.invoke(o));
+      }
+    };
+  }
+
   public static <T> T tryGetFuture(Future<T> fut) {
     try {
       return fut.get();

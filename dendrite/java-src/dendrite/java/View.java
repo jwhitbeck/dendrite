@@ -227,14 +227,25 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     return withOptions(getReadOptions().withMapFn(mapFn));
   }
 
+  public View withSampleFn(IFn sampleFn) {
+    return withOptions(getReadOptions().withSampleFn(sampleFn));
+  }
+
+  public View withFilterFn(IFn filterFn) {
+    return withOptions(getReadOptions().withFilterFn(filterFn));
+  }
+
   private static ISeq getRecordChunkedSeq(final Iterator<IChunk> recordChunksIterator) {
     return new LazySeq(new AFn() {
         public IChunkedSeq invoke() {
-          if (!recordChunksIterator.hasNext()) {
-            return null;
-          } else {
-            return new ChunkedCons(recordChunksIterator.next(), getRecordChunkedSeq(recordChunksIterator));
+          IChunk nextChunk = null;
+          while (recordChunksIterator.hasNext()) {
+            nextChunk = recordChunksIterator.next();
+            if (nextChunk.count() > 0) {
+              return new ChunkedCons(nextChunk, getRecordChunkedSeq(recordChunksIterator));
+            }
           }
+          return null;
         }
       });
   }

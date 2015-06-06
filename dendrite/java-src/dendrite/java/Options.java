@@ -44,6 +44,8 @@ public final class Options {
     MISSING_FIELDS_AS_NIL = Keyword.intern("missing-fields-as-nil?"),
     READERS = Keyword.intern("readers"),
     MAP_FN = Keyword.intern("map-fn"),
+    SAMPLE_FN = Keyword.intern("sample-fn"),
+    FILTER_FN = Keyword.intern("filter-fn"),
     ALL = Keyword.intern("all"),
     NONE = Keyword.intern("none"),
     DEFAULT = Keyword.intern("default"),
@@ -186,21 +188,41 @@ public final class Options {
     public final Map<Symbol,IFn> readers;
     public final int bundleSize = DEFAULT_BUNDLE_SIZE;
     public final IFn mapFn;
+    public final IFn sampleFn;
+    public final IFn filterFn;
 
     public ReadOptions(Object query, List<Keyword> entrypoint, boolean isMissingFieldsAsNil,
-                       Map<Symbol,IFn> readers, IFn mapFn) {
+                       Map<Symbol,IFn> readers, IFn mapFn, IFn sampleFn, IFn filterFn) {
       this.query = query;
       this.entrypoint = entrypoint;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
       this.readers = readers;
       this.mapFn = mapFn;
+      this.sampleFn = sampleFn;
+      this.filterFn = filterFn;
     }
 
     public ReadOptions withMapFn(IFn aMapFn) {
       final IFn f = (mapFn == null)? aMapFn : Utils.comp(aMapFn, mapFn);
       return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
-                             this.readers, f);
+                             this.readers, f, sampleFn, filterFn);
     }
+
+
+    public ReadOptions withSampleFn(IFn aSampleFn) {
+      if (sampleFn != null) {
+        throw new IllegalArgumentException("Cannot define multiple sample functions.");
+      }
+      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
+                             this.readers, mapFn, aSampleFn, filterFn);
+    }
+
+    public ReadOptions withFilterFn(IFn aFilterFn) {
+      final IFn f = (filterFn == null)? aFilterFn : Utils.and(filterFn, aFilterFn);
+      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
+                             this.readers, mapFn, sampleFn, f);
+    }
+
   }
 
   static Keyword[] validReadOptionKeys
@@ -270,12 +292,12 @@ public final class Options {
     return readers;
   }
 
-  static IFn getMapFn(IPersistentMap options) {
-    Object o = RT.get(options, MAP_FN, notFound);
+  static IFn getFn(Keyword key, IPersistentMap options) {
+    Object o = RT.get(options, key, notFound);
     if (o == notFound) {
       return null;
     } else if (!(o instanceof IFn)) {
-      throw new IllegalArgumentException(String.format("%s expects a function but got '%s'", MAP_FN, o));
+      throw new IllegalArgumentException(String.format("%s expects a function but got '%s'", key, o));
     } else {
       return (IFn)o;
     }
@@ -287,7 +309,9 @@ public final class Options {
                            getEntrypoint(options),
                            getMissingFieldsAsNil(options),
                            getTagReaders(options),
-                           getMapFn(options));
+                           getFn(MAP_FN, options),
+                           getFn(SAMPLE_FN, options),
+                           getFn(FILTER_FN, options));
   }
 
   public static final class WriterOptions {
@@ -416,6 +440,6 @@ public final class Options {
                              getCompressionThresholds(options),
                              getInvalidInputHandler(options),
                              getCustomTypeDefinitions(options),
-                             getMapFn(options));
+                             getFn(MAP_FN, options));
   }
 }

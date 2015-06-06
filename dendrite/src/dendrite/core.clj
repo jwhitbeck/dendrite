@@ -16,7 +16,7 @@
   (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
            [java.nio ByteBuffer]
            [java.util LinkedHashMap Map])
-  (:refer-clojure :exclude [read map]))
+  (:refer-clojure :exclude [read map filter remove]))
 
 (set! *warn-on-reflection* true)
 
@@ -214,3 +214,21 @@
   with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
   f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
   ^dendrite.java.View [f ^View view] (.withMapFn view f))
+
+(defn sample
+  "Returns a view of the records with the provided function applied to them as part of record assembly. As
+  with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
+  f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
+  ^dendrite.java.View [f ^View view] (.withSampleFn view f))
+
+(defn filter
+  "Returns a view of the records with the provided function applied to them as part of record assembly. As
+  with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
+  f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
+  ^dendrite.java.View [f ^View view] (.withFilterFn view f))
+
+(defn remove
+  "Returns a view of the records with the provided function applied to them as part of record assembly. As
+  with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
+  f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
+  ^dendrite.java.View [f ^View view] (.withFilterFn view (complement f)))

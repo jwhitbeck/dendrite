@@ -15,6 +15,7 @@ package dendrite.java;
 import clojure.lang.ArrayChunk;
 import clojure.lang.IChunk;
 import clojure.lang.IFn;
+import clojure.lang.RT;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,11 +29,13 @@ public final class Bundle implements Iterable<List> {
   public final List[] columnValues;
   private final boolean[] isColumnRepeated;
   private final int maxBundleSize;
+  private final long firstRecordIndex;
 
-  Bundle(int maxBundleSize, boolean[] isColumnRepeated, List[] columnValues) {
+  Bundle(int maxBundleSize, long firstRecordIndex, boolean[] isColumnRepeated, List[] columnValues) {
     this.isColumnRepeated = isColumnRepeated;
     this.columnValues = columnValues;
     this.maxBundleSize = maxBundleSize;
+    this.firstRecordIndex = firstRecordIndex;
   }
 
   public int size() {
@@ -89,6 +92,68 @@ public final class Bundle implements Iterable<List> {
     return new ArrayChunk(assembledRecords);
   }
 
+  private void skip(ListIterator[] columnIterators) {
+    int n = columnIterators.length;
+    for (int i=0; i<n; ++i) {
+      if (isColumnRepeated[i]) {
+        ((RepeatedValuesIterator)columnIterators[i]).skip();
+      } else {
+        columnIterators[i].next();
+      }
+    }
+  }
+
+  public IChunk assembleSampled(Assemble.Fn assemblyFn, IFn sampleFn) {
+    ListIterator[] columnIterators = getColumnIterators();
+    Object[] assembledRecords = new Object[maxBundleSize];
+    int n = 0;
+    long recordIndex = firstRecordIndex;
+    for (int i=0; i<maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
+        assembledRecords[n] = assemblyFn.invoke(columnIterators);
+        n += 1;
+      } else {
+        skip(columnIterators);
+      }
+      recordIndex += 1;
+    }
+    return new ArrayChunk(assembledRecords, 0, n);
+  }
+
+  public IChunk assembleFiltered(Assemble.Fn assemblyFn, IFn filterFn) {
+    ListIterator[] columnIterators = getColumnIterators();
+    Object[] assembledRecords = new Object[maxBundleSize];
+    int n = 0;
+    for (int i=0; i<maxBundleSize; ++i) {
+      Object o = assemblyFn.invoke(columnIterators);
+      if (RT.booleanCast(filterFn.invoke(o))) {
+        assembledRecords[n] = o;
+        n += 1;
+      }
+    }
+    return new ArrayChunk(assembledRecords, 0, n);
+  }
+
+  public IChunk assembleSampledAndFiltered(Assemble.Fn assemblyFn, IFn sampleFn, IFn filterFn) {
+    ListIterator[] columnIterators = getColumnIterators();
+    Object[] assembledRecords = new Object[maxBundleSize];
+    int n = 0;
+    long recordIndex = firstRecordIndex;
+    for (int i=0; i<maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
+        Object o = assemblyFn.invoke(columnIterators);
+        if (RT.booleanCast(filterFn.invoke(o))) {
+          assembledRecords[n] = o;
+          n += 1;
+        }
+      } else {
+        skip(columnIterators);
+      }
+      recordIndex += 1;
+    }
+    return new ArrayChunk(assembledRecords, 0, n);
+  }
+
   public Object reduce(IFn reduceFn, Assemble.Fn assemblyFn, Object init) {
     Object ret = init;
     ListIterator[] columnIterators = getColumnIterators();
@@ -98,12 +163,58 @@ public final class Bundle implements Iterable<List> {
     return ret;
   }
 
+  public Object reduceSampled(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn, Object init) {
+    Object ret = init;
+    ListIterator[] columnIterators = getColumnIterators();
+    long recordIndex = firstRecordIndex;
+    for (int i=0; i<maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
+        ret = reduceFn.invoke(ret, assemblyFn.invoke(columnIterators));
+      } else {
+        skip(columnIterators);
+      }
+      recordIndex += 1;
+    }
+    return ret;
+  }
+
+  public Object reduceFiltered(IFn reduceFn, Assemble.Fn assemblyFn, IFn filterFn, Object init) {
+    Object ret = init;
+    ListIterator[] columnIterators = getColumnIterators();
+    for (int i=0; i<maxBundleSize; ++i) {
+      Object o = assemblyFn.invoke(columnIterators);
+      if (RT.booleanCast(filterFn.invoke(o))) {
+        ret = reduceFn.invoke(ret, o);
+      }
+    }
+    return ret;
+  }
+
+  public Object reduceSampledAndFiltered(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn,
+                                         IFn filterFn, Object init) {
+    Object ret = init;
+    ListIterator[] columnIterators = getColumnIterators();
+    long recordIndex = firstRecordIndex;
+    for (int i=0; i<maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
+        Object o = assemblyFn.invoke(columnIterators);
+        if (RT.booleanCast(filterFn.invoke(o))) {
+          ret = reduceFn.invoke(ret, o);
+        }
+      } else {
+        skip(columnIterators);
+      }
+      recordIndex += 1;
+    }
+    return ret;
+  }
+
   public Bundle take(int n) {
     List[] takenColumnValues = new List[columnValues.length];
     for (int i=0; i<columnValues.length; ++i) {
       takenColumnValues[i] = columnValues[i].subList(0, n);
     }
-    return new Bundle(n, isColumnRepeated, takenColumnValues);
+    return new Bundle(n, firstRecordIndex, isColumnRepeated, takenColumnValues);
   }
 
   public Bundle drop(int n) {
@@ -112,24 +223,28 @@ public final class Bundle implements Iterable<List> {
       List values = columnValues[i];
       remainingColumnValues[i] = values.subList(n, values.size());
     }
-    return new Bundle(maxBundleSize - n, isColumnRepeated, remainingColumnValues);
+    return new Bundle(maxBundleSize - n, firstRecordIndex, isColumnRepeated, remainingColumnValues);
   }
 
   public static final class Factory {
 
     private final boolean[] isColumnRepeated;
     private final int numColumns;
+    private long nextFirstRecordIndex;
 
     public Factory(Schema.Column[] columns) {
       this.numColumns = columns.length;
       this.isColumnRepeated = new boolean[numColumns];
+      this.nextFirstRecordIndex = 0;
       for (int i=0; i<columns.length; ++i) {
         isColumnRepeated[i] = (columns[i].repetitionLevel > 0);
       }
     }
 
     public Bundle create(int bundleSize, List[] columnValues) {
-      return new Bundle(bundleSize, isColumnRepeated, columnValues);
+      Bundle b = new Bundle(bundleSize, nextFirstRecordIndex, isColumnRepeated, columnValues);
+      nextFirstRecordIndex += bundleSize;
+      return b;
     }
 
     @SuppressWarnings("unchecked")
@@ -171,6 +286,20 @@ public final class Bundle implements Iterable<List> {
     @Override
     public void add(Object o) {
       throw new UnsupportedOperationException();
+    }
+
+    void skip() {
+      if (isPreviousCalled) {
+        isPreviousCalled = false;
+        step();
+      } else if (currentIterator != null) {
+        if (currentIterator.hasNext()) {
+          step();
+        } else {
+          step();
+          skip();
+        }
+      }
     }
 
     void step() {
