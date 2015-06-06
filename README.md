@@ -24,7 +24,7 @@ preserving backwards compatibility of APIs or binary compatibility of files.
 ## Basic usage
 
 ```clojure
-[dendrite "0.2.4"]
+[dendrite "0.3.0"]
 
 (require '[dendrite.core :as d])
 
@@ -56,8 +56,8 @@ preserving backwards compatibility of APIs or binary compatibility of files.
 
 ;;; write the records to a file
 (with-open [w (d/file-writer schema "/path/to/file.den")]
-  (d/write! w record1)
-  (d/write! w record2))
+  (.write w record1)
+  (.write w record2))
 
 ;;; read the full records from the file
 (with-open [r (d/file-reader "/path/to/file.den")]
