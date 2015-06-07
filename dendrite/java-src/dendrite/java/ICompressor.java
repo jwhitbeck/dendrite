@@ -13,6 +13,6 @@
 package dendrite.java;
 
 public interface ICompressor extends IOutputBuffer {
-  int uncompressedLength();
+  int getUncompressedLength();
   void compress(IWriteable writeable);
 }

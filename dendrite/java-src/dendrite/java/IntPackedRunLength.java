@@ -37,8 +37,8 @@ public final class IntPackedRunLength {
     }
 
     @Override
-    public int numEncodedValues() {
-      return int32Decoder.numEncodedValues();
+    public int getNumEncodedValues() {
+      return int32Decoder.getNumEncodedValues();
     }
   }
 
@@ -83,7 +83,7 @@ public final class IntPackedRunLength {
     public void finish() {
       if (!isFinished) {
         rleEncoder.setWidth(maxWidth);
-        ByteBuffer intBufferReader = intBuffer.byteBuffer();
+        ByteBuffer intBufferReader = intBuffer.toByteBuffer();
         for (int j=0; j<numBufferedValues; ++j) {
           rleEncoder.encode(Bytes.readUInt(intBufferReader));
         }
@@ -93,12 +93,12 @@ public final class IntPackedRunLength {
     }
 
     @Override
-    public int length() {
-      return 1 + rleEncoder.length();
+    public int getLength() {
+      return 1 + rleEncoder.getLength();
     }
 
     @Override
-    public int estimatedLength() {
+    public int getEstimatedLength() {
       int estimatedNumOctoplets = (numBufferedValues / 8) + 1;
       return 1 + Bytes.getNumUIntBytes(estimatedNumOctoplets << 1)
         + (estimatedNumOctoplets * maxWidth) + Bytes.getNumUIntBytes(numBufferedValues);
@@ -112,7 +112,7 @@ public final class IntPackedRunLength {
     }
 
     @Override
-    public int numEncodedValues() {
+    public int getNumEncodedValues() {
       return numBufferedValues;
     }
   }

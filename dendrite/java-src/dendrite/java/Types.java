@@ -558,11 +558,11 @@ public final class Types {
     NONE_SYM = Symbol.intern("none"),
     DEFLATE_SYM = Symbol.intern("deflate");
 
-  public static IEncoder levelsEncoder(int maxLevel) {
+  public static IEncoder createLevelsEncoder(int maxLevel) {
     return new IntFixedBitWidthPackedRunLength.Encoder(Bytes.getBitWidth(maxLevel));
   }
 
-  public static IIntDecoder levelsDecoder(ByteBuffer bb, int maxLevel) {
+  public static IIntDecoder createLevelsDecoder(ByteBuffer bb, int maxLevel) {
     return new IntFixedBitWidthPackedRunLength.Decoder(bb, Bytes.getBitWidth(maxLevel));
   }
 
@@ -977,11 +977,11 @@ public final class Types {
     }
     return new IEncoder() {
       public void encode(Object o) { enc.encode(f.invoke(o)); }
-      public int numEncodedValues() { return enc.numEncodedValues(); }
+      public int getNumEncodedValues() { return enc.getNumEncodedValues(); }
       public void reset() { enc.reset(); }
       public void finish() { enc.finish(); }
-      public int length() { return enc.length(); }
-      public int estimatedLength() { return enc.estimatedLength(); }
+      public int getLength() { return enc.getLength(); }
+      public int getEstimatedLength() { return enc.getEstimatedLength(); }
       public void writeTo(MemoryOutputStream mos) { mos.write(enc); }
     };
   }
@@ -1013,10 +1013,10 @@ public final class Types {
         final IDecoder dec = decoderFactory.create(bb);
         return new IDecoder() {
           public Object decode() { return f.invoke(dec.decode()); }
-          public int numEncodedValues() { return dec.numEncodedValues(); }
+          public int getNumEncodedValues() { return dec.getNumEncodedValues(); }
         };
       }
-      public Object nullValue() { return (fn == null)? null : fn.invoke(null); }
+      public Object getNullValue() { return (fn == null)? null : fn.invoke(null); }
     };
   }
 

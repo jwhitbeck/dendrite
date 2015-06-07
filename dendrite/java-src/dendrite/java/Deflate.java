@@ -35,13 +35,13 @@ public final class Deflate {
     @Override
     public void compress(IWriteable writeable) {
       inputBuffer.write(writeable);
-      deflater.setInput(inputBuffer.buffer, 0, inputBuffer.length());
+      deflater.setInput(inputBuffer.buffer, 0, inputBuffer.getLength());
       deflater.finish();
-      outputBuffer.ensureRemainingCapacity(inputBuffer.length());
+      outputBuffer.ensureRemainingCapacity(inputBuffer.getLength());
       deflater.deflate(outputBuffer.buffer, 0, outputBuffer.buffer.length - outputBuffer.position);
       while (!deflater.finished()) {
         int prevBufferLength = outputBuffer.buffer.length;
-        outputBuffer.ensureRemainingCapacity(prevBufferLength + inputBuffer.length());
+        outputBuffer.ensureRemainingCapacity(prevBufferLength + inputBuffer.getLength());
         deflater.deflate(outputBuffer.buffer, prevBufferLength,
                          outputBuffer.buffer.length - prevBufferLength);
       }
@@ -56,18 +56,18 @@ public final class Deflate {
     }
 
     @Override
-    public int uncompressedLength() {
-      return inputBuffer.length();
+    public int getUncompressedLength() {
+      return inputBuffer.getLength();
     }
 
     @Override
-    public int length() {
-      return outputBuffer.length();
+    public int getLength() {
+      return outputBuffer.getLength();
     }
 
     @Override
-    public int estimatedLength() {
-      return outputBuffer.length();
+    public int getEstimatedLength() {
+      return outputBuffer.getLength();
     }
 
     @Override

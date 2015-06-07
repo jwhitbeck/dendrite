@@ -182,27 +182,27 @@ public final class FileWriter implements Closeable {
           while (bundleIterator.hasNext()) {
             Bundle bundle = bundleIterator.next();
             while (true) {
-              long currentNumRecords = recordGroupWriter.numRecords();
+              long currentNumRecords = recordGroupWriter.getNumRecords();
               if (currentNumRecords >= nextNumRecordsForLengthCheck) {
-                int estimatedLength = recordGroupWriter.estimatedLength();
+                int estimatedLength = recordGroupWriter.getEstimatedLength();
                 if (estimatedLength >= targetRecordGroupLength) {
                   if (recordGroupWriter.canOptimize()) {
                     recordGroupWriter.optimize(compressionThresholds);
                   } else {
                     recordGroupWriter.finish();
-                    recordGroupsMetadata.add(recordGroupWriter.metadata());
+                    recordGroupsMetadata.add(recordGroupWriter.getMetadata());
                     recordGroupWriter.writeTo(fileChannel);
                     recordGroupWriter.reset();
                     nextNumRecordsForLengthCheck = currentNumRecords / 2;
                   }
                 } else {
-                  nextNumRecordsForLengthCheck = Thresholds.nextCheckThreshold(currentNumRecords,
-                                                                               estimatedLength,
-                                                                               targetRecordGroupLength);
+                  nextNumRecordsForLengthCheck = Thresholds.getNextCheckThreshold(currentNumRecords,
+                                                                                  estimatedLength,
+                                                                                  targetRecordGroupLength);
                 }
               } else {
                 long remainingRecordsBeforeCheck = nextNumRecordsForLengthCheck - currentNumRecords;
-                if (bundle.size() <= remainingRecordsBeforeCheck) {
+                if (bundle.getNumRecords() <= remainingRecordsBeforeCheck) {
                   recordGroupWriter.write(bundle);
                   break;
                 } else {
@@ -212,12 +212,12 @@ public final class FileWriter implements Closeable {
               }
             }
           }
-          if (recordGroupWriter.numRecords() > 0) {
+          if (recordGroupWriter.getNumRecords() > 0) {
             if (recordGroupWriter.canOptimize()) {
               recordGroupWriter.optimize(compressionThresholds);
             }
             recordGroupWriter.finish();
-            recordGroupsMetadata.add(recordGroupWriter.metadata());
+            recordGroupsMetadata.add(recordGroupWriter.getMetadata());
             recordGroupWriter.writeTo(fileChannel);
           }
           return new WriteThreadResult(recordGroupsMetadata.toArray(new Metadata.RecordGroup[]{}),
@@ -254,9 +254,9 @@ public final class FileWriter implements Closeable {
   void writeFooter(Metadata.File fileMetadata) throws IOException {
     MemoryOutputStream mos = new MemoryOutputStream();
     mos.write(fileMetadata);
-    Bytes.writeFixedInt(mos, mos.length());
+    Bytes.writeFixedInt(mos, mos.getLength());
     mos.write(Constants.magicBytes);
-    fileChannel.write(mos.byteBuffer());
+    fileChannel.write(mos.toByteBuffer());
   }
 
   public void write(Object record) {

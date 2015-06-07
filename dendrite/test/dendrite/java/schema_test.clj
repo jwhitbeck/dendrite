@@ -154,12 +154,12 @@
          (Schema/unparsePlain types (Schema/parse types {:foo (Schema/req (Col. 'int 'vlq))})))))
 
 (deftest entrypoints
-  (is (= test-unparsed-schema (->> test-schema (Schema/subSchema []) (Schema/unparse types))))
-  (is (= (:links test-unparsed-schema) (->> test-schema (Schema/subSchema [:links]) (Schema/unparse types))))
+  (is (= test-unparsed-schema (->> test-schema (Schema/getSubSchema []) (Schema/unparse types))))
+  (is (= (:links test-unparsed-schema) (->> test-schema (Schema/getSubSchema [:links]) (Schema/unparse types))))
   (is (= (get-in test-unparsed-schema [:links :backward])
-         (->> test-schema (Schema/subSchema [:links :backward]) (Schema/unparse types))))
+         (->> test-schema (Schema/getSubSchema [:links :backward]) (Schema/unparse types))))
   (are [entrypoint regex] (thrown-with-msg? IllegalArgumentException regex
-                                            (Schema/subSchema entrypoint test-schema))
+                                            (Schema/getSubSchema entrypoint test-schema))
        [:name :language] #"Entrypoint '\[:name :language\]' contains repeated field ':name'"
        [:docid :foo] #"Entrypoint '\[:docid :foo\]' contains column node at ':docid'"))
 

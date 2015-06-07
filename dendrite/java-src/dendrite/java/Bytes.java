@@ -211,7 +211,7 @@ public final class Bytes {
       if ((currentByte & 0x80) == 0) {
         mos.write(byteBuffer);
         byte[] bytesLittleEndian = mos.buffer;
-        int length = mos.length();
+        int length = mos.getLength();
         byte[] bytesBigEndian = new byte[length];
         for(int i=0; i<length; ++i) {
           bytesBigEndian[i] = bytesLittleEndian[length-i-1];

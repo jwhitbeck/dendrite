@@ -171,7 +171,7 @@
     (dotimes [i num-pages]
       (Pages/writeTo mos writer))
     (testing "read page-by-page"
-      (let [data-page-readers (Pages/getDataPageReaders (.byteBuffer mos)
+      (let [data-page-readers (Pages/getDataPageReaders (.toByteBuffer mos)
                                                         num-pages
                                                         (:max-repetition-level levels)
                                                         (:max-definition-level levels)
@@ -183,7 +183,7 @@
     (testing "read partitionned"
       (let [partition-length 31
             partitioned-values (Pages/readAndPartitionDataPages
-                                (.byteBuffer mos)
+                                (.toByteBuffer mos)
                                 num-pages
                                 partition-length
                                 (:max-repetition-level levels)
@@ -197,7 +197,7 @@
       (let [partition-length 31
             f #(if % (* 2 %) ::null)
             partitioned-values (Pages/readAndPartitionDataPages
-                                (.byteBuffer mos)
+                                (.toByteBuffer mos)
                                 num-pages
                                 partition-length
                                 (:max-repetition-level levels)
@@ -210,7 +210,7 @@
     (testing "trying to read dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a dictionary page type"
                             (first (Pages/readAndPartitionDataPagesWithDictionary
-                                    (.byteBuffer mos)
+                                    (.toByteBuffer mos)
                                     num-pages
                                     31
                                     (:max-repetition-level levels)
@@ -242,12 +242,12 @@
       (let [dictionary-decoder-factory (.getDecoderFactory types Types/STRING Types/PLAIN)
             indices-decoder-factory (.getDecoderFactory types Types/INT Types/PLAIN)
             dictionary-reader (Pages/getDictionaryPageReader
-                               (.byteBuffer mos)
+                               (.toByteBuffer mos)
                                dictionary-decoder-factory
                                (.getDecompressorFactory types Types/NONE))
             dictionary (.read dictionary-reader)
             data-page-readers (Pages/getDataPageReaders
-                               (.next dictionary-reader)
+                               (.getNextBuffer dictionary-reader)
                                num-pages
                                (:max-repetition-level levels)
                                (:max-definition-level levels)
@@ -262,7 +262,7 @@
     (testing "read partitionned"
       (let [partition-length 31
             partitioned-values (Pages/readAndPartitionDataPagesWithDictionary
-                                (.byteBuffer mos)
+                                (.toByteBuffer mos)
                                 num-pages
                                 partition-length
                                 (:max-repetition-level levels)
@@ -280,7 +280,7 @@
       (let [partition-length 31
             f #(if % (str "foo" %) ::null)
             partitioned-values (Pages/readAndPartitionDataPagesWithDictionary
-                                (.byteBuffer mos)
+                                (.toByteBuffer mos)
                                 num-pages
                                 partition-length
                                 (:max-repetition-level levels)
@@ -297,7 +297,7 @@
     (testing "trying to read without dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a data page type"
                             (first (Pages/readAndPartitionDataPages
-                                    (.byteBuffer mos)
+                                    (.toByteBuffer mos)
                                     num-pages
                                     31
                                     (:max-repetition-level levels)

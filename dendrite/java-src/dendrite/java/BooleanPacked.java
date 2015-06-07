@@ -69,8 +69,8 @@ public final class BooleanPacked {
     }
 
     @Override
-    public int estimatedLength() {
-      return super.estimatedLength() + (position == 0? 0 : 1);
+    public int getEstimatedLength() {
+      return super.getEstimatedLength() + (position == 0? 0 : 1);
     }
   }
 

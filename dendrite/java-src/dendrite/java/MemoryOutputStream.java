@@ -39,12 +39,12 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   public void finish() {}
 
   @Override
-  public int length() {
+  public int getLength() {
     return position;
   }
 
   @Override
-  public int estimatedLength() {
+  public int getEstimatedLength() {
     return position;
   }
 
@@ -102,7 +102,7 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
     writable.writeTo(this);
   }
 
-  public ByteBuffer byteBuffer() {
+  public ByteBuffer toByteBuffer() {
     return ByteBuffer.wrap(buffer, 0, position);
   }
 

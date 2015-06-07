@@ -16,8 +16,8 @@ import java.nio.ByteBuffer;
 
 public interface IColumnChunkWriter extends IOutputBuffer {
   void write(Iterable<Object> values);
-  Schema.Column column();
-  Metadata.ColumnChunk metadata();
-  int numDataPages();
-  ByteBuffer byteBuffer();
+  Schema.Column getColumn();
+  Metadata.ColumnChunk getMetadata();
+  int getNumDataPages();
+  ByteBuffer toByteBuffer();
 }

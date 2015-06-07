@@ -14,5 +14,5 @@ package dendrite.java;
 
 public interface IEncoder extends IOutputBuffer {
   void encode(Object o);
-  int numEncodedValues();
+  int getNumEncodedValues();
 }

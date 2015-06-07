@@ -39,7 +39,7 @@ public final class Pages {
   }
 
   public static void writeTo(MemoryOutputStream mos, IPageWriter writer) {
-    mos.write(writer.header().type());
+    mos.write(writer.getHeader().getType());
     mos.write(writer);
   }
 
@@ -62,7 +62,7 @@ public final class Pages {
               throw new NoSuchElementException();
             }
             IPageHeader header = readHeader(byteBuffer);
-            byteBuffer = Bytes.sliceAhead(byteBuffer, header.bodyLength());
+            byteBuffer = Bytes.sliceAhead(byteBuffer, header.getBodyLength());
             i += 1;
             return header;
           }
@@ -74,7 +74,7 @@ public final class Pages {
   public static List<Stats.Page> getPagesStats(Iterable<IPageHeader> headers) {
     List<Stats.Page> pagesStats = new ArrayList<Stats.Page>();
     for (IPageHeader header : headers) {
-      pagesStats.add(header.stats());
+      pagesStats.add(header.getStats());
     }
     return pagesStats;
   }
@@ -114,7 +114,7 @@ public final class Pages {
             }
             DataPage.Reader reader = getDataPageReader(byteBuffer, maxRepetitionLevel, maxDefinitionLevel,
                                                        decoderFactory, decompressorFactory);
-            byteBuffer = reader.next();
+            byteBuffer = reader.getNextBuffer();
             i += 1;
             return reader;
           }
@@ -213,7 +213,7 @@ public final class Pages {
                                                                              indicesDecoderFactory,
                                                                              dictDecoderFactory);
           Iterator<DataPage.Reader> pageIterator
-            = getDataPageReaders(dictReader.next(), n, maxRepetitionLevel, maxDefinitionLevel,
+            = getDataPageReaders(dictReader.getNextBuffer(), n, maxRepetitionLevel, maxDefinitionLevel,
                                  dataDecoderFactory, null).iterator();
           ReadResult res = readAndPartitionDataPage(pageIterator.next(),
                                                     new ArrayList<Object>(partitionLength),

@@ -38,7 +38,7 @@ public final class Bundle implements Iterable<List> {
     this.firstRecordIndex = firstRecordIndex;
   }
 
-  public int size() {
+  public int getNumRecords() {
     return columnValues[0].size();
   }
 

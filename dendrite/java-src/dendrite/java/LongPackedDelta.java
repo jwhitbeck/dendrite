@@ -57,7 +57,7 @@ public final class LongPackedDelta {
       }
     }
 
-    private static BigInteger valueOfUnsignedLong(long l) {
+    private static BigInteger getValueOfUnsignedLong(long l) {
       if (l >= 0) {
         return BigInteger.valueOf(l);
       } else {
@@ -66,7 +66,7 @@ public final class LongPackedDelta {
     }
 
     private void setCurrentValueFromMiniBlockBuffer() {
-      BigInteger nextRelativeDelta = valueOfUnsignedLong(miniblockBuffer[miniblockPosition]);
+      BigInteger nextRelativeDelta = getValueOfUnsignedLong(miniblockBuffer[miniblockPosition]);
       BigInteger delta = nextRelativeDelta.add(blockMinDelta);
       blockCurrentValue = blockCurrentValue.add(delta);
       miniblockPosition += 1;
@@ -135,13 +135,13 @@ public final class LongPackedDelta {
       bestEncoding.reset();
       flushBlockWithNumMiniBlocks(bestEncoding, miniblockLength, blockLength);
 
-      int minLength = bestEncoding.length();
+      int minLength = bestEncoding.getLength();
 
       miniblockLength <<= 1;
       while (miniblockLength <= Math.min(MAX_BLOCK_LENGTH, blockLength)) {
         currentEncoding.reset();
         flushBlockWithNumMiniBlocks(currentEncoding, miniblockLength, blockLength);
-        int currentLength = currentEncoding.length();
+        int currentLength = currentEncoding.getLength();
         if (currentLength < minLength) {
           MemoryOutputStream tmp = bestEncoding;
           bestEncoding = currentEncoding;
@@ -249,11 +249,11 @@ public final class LongPackedDelta {
     }
 
     @Override
-    public int estimatedLength() {
+    public int getEstimatedLength() {
       if (numEncodedValues == 0) {
         return position; // very rough estimate when we haven't flushed anything yet
       }
-      return super.estimatedLength() * (int)(1 + (double)position / (double)numEncodedValues);
+      return super.getEstimatedLength() * (int)(1 + (double)position / (double)numEncodedValues);
     }
 
   }

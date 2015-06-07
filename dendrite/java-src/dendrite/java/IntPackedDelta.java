@@ -126,13 +126,13 @@ public final class IntPackedDelta {
       bestEncoding.reset();
       flushBlockWithNumMiniBlocks(bestEncoding, miniblockLength, blockLength);
 
-      int minLength = bestEncoding.length();
+      int minLength = bestEncoding.getLength();
 
       miniblockLength <<= 1;
       while (miniblockLength <= Math.min(MAX_BLOCK_LENGTH, blockLength)) {
         currentEncoding.reset();
         flushBlockWithNumMiniBlocks(currentEncoding, miniblockLength, blockLength);
-        int currentLength = currentEncoding.length();
+        int currentLength = currentEncoding.getLength();
         if (currentLength < minLength) {
           MemoryOutputStream tmp = bestEncoding;
           bestEncoding = currentEncoding;
@@ -238,11 +238,11 @@ public final class IntPackedDelta {
     }
 
     @Override
-    public int estimatedLength() {
+    public int getEstimatedLength() {
       if (numEncodedValues == 0) {
         return position; // very rough estimate when we haven't flushed anything yet
       }
-      return super.estimatedLength() * (int)(1 + (double)position / (double)numEncodedValues);
+      return super.getEstimatedLength() * (int)(1 + (double)position / (double)numEncodedValues);
     }
 
   }

@@ -162,14 +162,14 @@ public final class IntFixedBitWidthPackedRunLength {
     }
 
     @Override
-    public int estimatedLength() {
+    public int getEstimatedLength() {
       if (numOccurencesRleValue > 0) {
-        return super.estimatedLength() + Bytes.getNumUIntBytes(numBufferedOctuplets << 1)
-          + octupletBuffer.length() + Bytes.getNumUIntBytes(rleValue)
+        return super.getEstimatedLength() + Bytes.getNumUIntBytes(numBufferedOctuplets << 1)
+          + octupletBuffer.getLength() + Bytes.getNumUIntBytes(rleValue)
           + Bytes.getBitWidth(numOccurencesRleValue << 1);
       } else {
-        return super.estimatedLength() + Bytes.getNumUIntBytes(numBufferedOctuplets << 1)
-          + octupletBuffer.length() + ((currentOctupletPosition > 0)? width : 0);
+        return super.getEstimatedLength() + Bytes.getNumUIntBytes(numBufferedOctuplets << 1)
+          + octupletBuffer.getLength() + ((currentOctupletPosition > 0)? width : 0);
       }
     }
 

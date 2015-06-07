@@ -60,7 +60,7 @@
       (.encode encoder x))
     (dotimes [_ n] (.finish encoder))
     (.writeTo encoder mos)
-    (-> mos .byteBuffer .array seq)))
+    (-> mos .toByteBuffer .array seq)))
 
 (defn test-finish-idempotence [encoder-constructor input-seq]
   (let [finish-fn (fn [n] (finish-repeatedly n encoder-constructor input-seq))]
@@ -171,7 +171,7 @@
         (.encode enc i))
       (.write mos enc)
       (let [dictionary (.getDictionary enc)
-            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.byteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.toByteBuffer mos)) dictionary)
             read-ints (repeatedly n #(.decode dec))]
         (is (= read-ints rand-ints)))))
   (testing "byte-array encoding"
@@ -184,6 +184,6 @@
         (.encode enc ba))
       (.write mos enc)
       (let [dictionary (into-array (.getDictionary enc))
-            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.byteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.toByteBuffer mos)) dictionary)
             read-byte-arrays (repeatedly n #(.decode dec))]
         (is (= (map seq read-byte-arrays) (map seq rand-byte-arrays)))))))

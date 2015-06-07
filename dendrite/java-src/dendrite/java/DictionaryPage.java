@@ -29,34 +29,34 @@ public final class DictionaryPage {
     }
 
     @Override
-    public int type() { return Pages.DICTIONARY; }
+    public int getType() { return Pages.DICTIONARY; }
 
     @Override
-    public int headerLength() {
+    public int getHeaderLength() {
       return Bytes.getNumUIntBytes(numValues)
         + Bytes.getNumUIntBytes(compressedDataLength) + Bytes.getNumUIntBytes(uncompressedDataLength);
     }
 
     @Override
-    public int bodyLength() {
+    public int getBodyLength() {
       return compressedDataLength;
     }
 
-    public int byteOffsetData() {
+    public int getByteOffsetData() {
       return 0;
     }
 
-    public int compressedDataLength() {
+    public int getCompressedDataLength() {
       return compressedDataLength;
     }
 
-    public int uncompressedDataLength() {
+    public int getUncompressedDataLength() {
       return uncompressedDataLength;
     }
 
     @Override
-    public Stats.Page stats() {
-      return Stats.createDictionaryPageStats(numValues, headerLength() + bodyLength(), headerLength(),
+    public Stats.Page getStats() {
+      return Stats.createDictionaryPageStats(numValues, getHeaderLength() + getBodyLength(), getHeaderLength(),
                                              compressedDataLength);
     }
 
@@ -89,8 +89,8 @@ public final class DictionaryPage {
     }
 
     @Override
-    public int numValues() {
-      return dataEncoder.numEncodedValues();
+    public int getNumValues() {
+      return dataEncoder.getNumEncodedValues();
     }
 
     @Override
@@ -99,9 +99,9 @@ public final class DictionaryPage {
     }
 
     @Override
-    public Header header() {
-      int length = dataEncoder.length();
-      return new Header(numValues(), (compressor != null)? compressor.length() : length, length);
+    public Header getHeader() {
+      int length = dataEncoder.getLength();
+      return new Header(getNumValues(), (compressor != null)? compressor.getLength() : length, length);
     }
 
     @Override
@@ -125,20 +125,20 @@ public final class DictionaryPage {
     }
 
     @Override
-    public int length() {
-      Header h = header();
-      return h.headerLength() + h.bodyLength();
+    public int getLength() {
+      Header h = getHeader();
+      return h.getHeaderLength() + h.getBodyLength();
     }
 
     @Override
-    public int estimatedLength() {
-      return length();
+    public int getEstimatedLength() {
+      return getLength();
     }
 
     @Override
     public void writeTo(MemoryOutputStream mos) {
       finish();
-      mos.write(header());
+      mos.write(getHeader());
       if (compressor != null) {
         mos.write(compressor);
       } else {
@@ -171,29 +171,29 @@ public final class DictionaryPage {
     }
 
     @Override
-    public ByteBuffer next() {
-      return Bytes.sliceAhead(bb, header.bodyLength());
+    public ByteBuffer getNextBuffer() {
+      return Bytes.sliceAhead(bb, header.getBodyLength());
     }
 
     @Override
-    public Header header() {
+    public Header getHeader() {
       return header;
     }
 
     private IDecoder getDecoder() {
-      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
+      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.getByteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();
         byteBuffer = decompressor.decompress(byteBuffer,
-                                             header.compressedDataLength(),
-                                             header.uncompressedDataLength());
+                                             header.getCompressedDataLength(),
+                                             header.getUncompressedDataLength());
       }
       return decoderFactory.create(byteBuffer);
     }
 
     public Object[] read() {
       IDecoder decoder = getDecoder();
-      Object[] a = new Object[decoder.numEncodedValues()];
+      Object[] a = new Object[decoder.getNumEncodedValues()];
       int i = 0;
       while (i < a.length) {
         a[i] = decoder.decode();

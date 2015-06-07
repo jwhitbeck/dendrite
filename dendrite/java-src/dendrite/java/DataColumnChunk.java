@@ -62,17 +62,17 @@ public final class DataColumnChunk {
     }
 
     @Override
-    public Stats.ColumnChunk stats() {
+    public Stats.ColumnChunk getStats() {
       return Stats.createColumnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
-    public Metadata.ColumnChunk metadata() {
+    public Metadata.ColumnChunk getMetadata() {
       return columnChunkMetadata;
     }
 
     @Override
-    public Schema.Column column() {
+    public Schema.Column getColumn() {
       return column;
     }
   }
@@ -116,24 +116,24 @@ public final class DataColumnChunk {
     public abstract void write(Iterable<Object> values);
 
     @Override
-    public Schema.Column column() {
+    public Schema.Column getColumn() {
       return column;
     }
 
     @Override
-    public ByteBuffer byteBuffer() {
+    public ByteBuffer toByteBuffer() {
       finish();
-      return mos.byteBuffer();
+      return mos.toByteBuffer();
     }
 
     @Override
-    public Metadata.ColumnChunk metadata() {
+    public Metadata.ColumnChunk getMetadata() {
       finish();
-      return new Metadata.ColumnChunk(length(), numPages, 0, 0);
+      return new Metadata.ColumnChunk(getLength(), numPages, 0, 0);
     }
 
     @Override
-    public int numDataPages() {
+    public int getNumDataPages() {
       return numPages;
     }
 
@@ -150,14 +150,14 @@ public final class DataColumnChunk {
     }
 
     @Override
-    public int length() {
+    public int getLength() {
       finish();
-      return mos.length();
+      return mos.getLength();
     }
 
     @Override
-    public int estimatedLength() {
-      return mos.length() + pageWriter.estimatedLength();
+    public int getEstimatedLength() {
+      return mos.getLength() + pageWriter.getEstimatedLength();
     }
 
     @Override
@@ -167,10 +167,10 @@ public final class DataColumnChunk {
     }
 
     void flushDataPageWriter() {
-      if (pageWriter.numValues() > 0) {
+      if (pageWriter.getNumValues() > 0) {
         Pages.writeTo(mos, pageWriter);
         numPages += 1;
-        nextNumValuesForPageLengthCheck = pageWriter.numValues() / 2;
+        nextNumValuesForPageLengthCheck = pageWriter.getNumValues() / 2;
         pageWriter.reset();
       }
     }
@@ -185,24 +185,25 @@ public final class DataColumnChunk {
     public void write(Iterable<Object> values) {
       Iterator<Object> vi = values.iterator();
       while (vi.hasNext()) {
-        if (pageWriter.numValues() >= targetDataPageLength) {
+        if (pageWriter.getNumValues() >= targetDataPageLength) {
           // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
           // fully realized when read, this can lead to memory issues when deserializng so we cap the total
           // number of values in a page here to one value per byte.
           flushDataPageWriter();
         }
-        int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.numValues();
+        int numValuesBeforeNextCheck = nextNumValuesForPageLengthCheck - pageWriter.getNumValues();
         while (numValuesBeforeNextCheck > 0 && vi.hasNext()) {
           pageWriter.write(vi.next());
           numValuesBeforeNextCheck -= 1;
         }
         if (vi.hasNext() && numValuesBeforeNextCheck == 0) {
-          if (pageWriter.estimatedLength() > targetDataPageLength) {
+          if (pageWriter.getEstimatedLength() > targetDataPageLength) {
             flushDataPageWriter();
           } else {
-            nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
-                                                                            pageWriter.estimatedLength(),
-                                                                            targetDataPageLength);
+            nextNumValuesForPageLengthCheck
+              = Thresholds.getNextCheckThreshold(pageWriter.getNumValues(),
+                                                 pageWriter.getEstimatedLength(),
+                                                 targetDataPageLength);
           }
         }
       }
@@ -218,22 +219,23 @@ public final class DataColumnChunk {
     public void write(Iterable<Object> leveledValues) {
       Iterator<Object> lvi = leveledValues.iterator();
       while (lvi.hasNext()) {
-        if (pageWriter.numValues() >= targetDataPageLength) {
+        if (pageWriter.getNumValues() >= targetDataPageLength) {
           // Some pages compress "infinitely" well (e.g., a run-length encoded list of zeros). Since pages are
           // fully realized when read, this can lead to memory issues when deserializng so we cap the total
           // number of values in a page here to one value per byte.
           flushDataPageWriter();
         }
-        while (pageWriter.numValues() <= nextNumValuesForPageLengthCheck && lvi.hasNext()) {
+        while (pageWriter.getNumValues() <= nextNumValuesForPageLengthCheck && lvi.hasNext()) {
           pageWriter.write(lvi.next());
         }
-        if (pageWriter.numValues() > nextNumValuesForPageLengthCheck) {
-          if (pageWriter.estimatedLength() > targetDataPageLength) {
+        if (pageWriter.getNumValues() > nextNumValuesForPageLengthCheck) {
+          if (pageWriter.getEstimatedLength() > targetDataPageLength) {
             flushDataPageWriter();
           } else {
-            nextNumValuesForPageLengthCheck = Thresholds.nextCheckThreshold(pageWriter.numValues(),
-                                                                            pageWriter.estimatedLength(),
-                                                                            targetDataPageLength);
+            nextNumValuesForPageLengthCheck
+              = Thresholds.getNextCheckThreshold(pageWriter.getNumValues(),
+                                                 pageWriter.getEstimatedLength(),
+                                                 targetDataPageLength);
           }
         }
       }

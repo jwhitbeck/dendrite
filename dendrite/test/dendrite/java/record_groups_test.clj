@@ -33,7 +33,7 @@
                                      RecordGroup/NONE)
             (.write dremel-bundle)
             .finish)
-        record-group-metadata (.metadata w)
+        record-group-metadata (.getMetadata w)
         bb (helpers/output-buffer->byte-buffer w)]
     (testing "full schema"
       (let [r (RecordGroup$Reader. types
@@ -83,7 +83,7 @@
                                      RecordGroup/NONE)
             (.write bundle)
             .finish)
-        record-group-metadata (.metadata w)
+        record-group-metadata (.getMetadata w)
         bb (helpers/output-buffer->byte-buffer w)
         query-result (Schema/applyQuery helpers/default-types true {} test-schema '_)
         r (RecordGroup$Reader. helpers/default-types bb record-group-metadata (.columns query-result) 1000)]
@@ -106,7 +106,7 @@
             (.write bundle)
             (.optimize {'deflate 2.0})
             .finish)
-        record-group-metadata (.metadata w)
+        record-group-metadata (.getMetadata w)
         tmp-file (io/as-file "target/tmp_file")
         query-result (Schema/applyQuery helpers/default-types true {}
                                         (.withColumns test-schema (.columns w)) '_)]

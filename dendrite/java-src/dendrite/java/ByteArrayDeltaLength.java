@@ -81,15 +81,15 @@ public final class ByteArrayDeltaLength {
     }
 
     @Override
-    public int length() {
+    public int getLength() {
       return Bytes.getNumUIntBytes(numValues)
-        + Bytes.getNumUIntBytes(lengthsEncoder.length()) + lengthsEncoder.length()
-        + byteArrayBuffer.length();
+        + Bytes.getNumUIntBytes(lengthsEncoder.getLength()) + lengthsEncoder.getLength()
+        + byteArrayBuffer.getLength();
     }
 
-    public int estimatedLength() {
-      int estimatedLengthsEncoderLength = lengthsEncoder.estimatedLength();
-      return Bytes.getNumUIntBytes(numValues) + byteArrayBuffer.length()
+    public int getEstimatedLength() {
+      int estimatedLengthsEncoderLength = lengthsEncoder.getEstimatedLength();
+      return Bytes.getNumUIntBytes(numValues) + byteArrayBuffer.getLength()
         + Bytes.getNumUIntBytes(estimatedLengthsEncoderLength) + estimatedLengthsEncoderLength;
     }
 
@@ -97,13 +97,13 @@ public final class ByteArrayDeltaLength {
     public void writeTo(MemoryOutputStream memoryOutputStream) {
       finish();
       Bytes.writeUInt(memoryOutputStream, numValues);
-      Bytes.writeUInt(memoryOutputStream, lengthsEncoder.length());
+      Bytes.writeUInt(memoryOutputStream, lengthsEncoder.getLength());
       lengthsEncoder.writeTo(memoryOutputStream);
       byteArrayBuffer.writeTo(memoryOutputStream);
     }
 
     @Override
-    public int numEncodedValues() {
+    public int getNumEncodedValues() {
       return numValues;
     }
   }

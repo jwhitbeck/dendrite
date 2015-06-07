@@ -25,9 +25,9 @@
     (doto compressor
       (.compress mos)
       (.writeTo compressed-mos))
-    (let [bb (.byteBuffer compressed-mos)]
+    (let [bb (.toByteBuffer compressed-mos)]
       (-> decompressor
-          (.decompress bb (.length compressor) (.uncompressedLength compressor))
+          (.decompress bb (.getLength compressor) (.getUncompressedLength compressor))
           .array
           (String. "UTF-8")))))
 

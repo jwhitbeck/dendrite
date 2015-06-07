@@ -31,13 +31,13 @@ public abstract class AEncoder implements IEncoder {
   public void finish() {}
 
   @Override
-  public int length() {
-    return Bytes.getNumUIntBytes(numValues) +  mos.length();
+  public int getLength() {
+    return Bytes.getNumUIntBytes(numValues) +  mos.getLength();
   }
 
   @Override
-  public int estimatedLength() {
-    return length();
+  public int getEstimatedLength() {
+    return getLength();
   }
 
   @Override
@@ -48,7 +48,7 @@ public abstract class AEncoder implements IEncoder {
   }
 
   @Override
-  public int numEncodedValues() {
+  public int getNumEncodedValues() {
     return numValues;
   }
 

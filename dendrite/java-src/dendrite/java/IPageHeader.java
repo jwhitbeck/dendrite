@@ -13,8 +13,8 @@
 package dendrite.java;
 
 public interface IPageHeader {
-  int type();
-  int headerLength();
-  int bodyLength();
-  Stats.Page stats();
+  int getType();
+  int getHeaderLength();
+  int getBodyLength();
+  Stats.Page getStats();
 }

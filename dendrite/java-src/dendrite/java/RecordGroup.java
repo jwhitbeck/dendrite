@@ -87,7 +87,7 @@ public final class RecordGroup {
     private final static int PARALLEL_THRESHOLD = 128;
 
     public void write(Bundle bundle) {
-      int numRecordsInBundle = bundle.size();
+      int numRecordsInBundle = bundle.getNumRecords();
       numRecords += numRecordsInBundle;
       if (numRecordsInBundle >= PARALLEL_THRESHOLD) {
         writeParallel(bundle);
@@ -113,7 +113,7 @@ public final class RecordGroup {
         }
         for (Future<IColumnChunkWriter> fut : futures) {
           IColumnChunkWriter ccw = Utils.tryGetFuture(fut);
-          columnChunkWriters[ccw.column().columnIndex] = ccw;
+          columnChunkWriters[ccw.getColumn().columnIndex] = ccw;
         }
         optimizingColumnChunkwriters.clear();
       }
@@ -122,25 +122,25 @@ public final class RecordGroup {
     public Schema.Column[] columns() {
       Schema.Column[] columns = new Schema.Column[columnChunkWriters.length];
       for (int i=0; i<columnChunkWriters.length; ++i) {
-        columns[i] = columnChunkWriters[i].column();
+        columns[i] = columnChunkWriters[i].getColumn();
       }
       return columns;
     }
 
-    public long numRecords() {
+    public long getNumRecords() {
       return numRecords;
     }
 
-    public int numColumns() {
+    public int getNumColumns() {
       return columnChunkWriters.length;
     }
 
-    public Metadata.RecordGroup metadata() {
+    public Metadata.RecordGroup getMetadata() {
       Metadata.ColumnChunk[] columnChunksMetadata = new Metadata.ColumnChunk[columnChunkWriters.length];
       for (int i=0; i<columnChunkWriters.length; ++i) {
-        columnChunksMetadata[i] = columnChunkWriters[i].metadata();
+        columnChunksMetadata[i] = columnChunkWriters[i].getMetadata();
       }
-      return new Metadata.RecordGroup(length(), numRecords, columnChunksMetadata);
+      return new Metadata.RecordGroup(getLength(), numRecords, columnChunksMetadata);
     }
 
     @Override
@@ -168,19 +168,19 @@ public final class RecordGroup {
     }
 
     @Override
-    public int length() {
+    public int getLength() {
       int length = 0;
       for (int i=0; i<columnChunkWriters.length; ++i) {
-        length += columnChunkWriters[i].length();
+        length += columnChunkWriters[i].getLength();
       }
       return length;
     }
 
     @Override
-    public int estimatedLength() {
+    public int getEstimatedLength() {
       int estimatedLength = 0;
       for (int i=0; i<columnChunkWriters.length; ++i) {
-        estimatedLength += columnChunkWriters[i].estimatedLength();
+        estimatedLength += columnChunkWriters[i].getEstimatedLength();
       }
       return estimatedLength;
     }
@@ -197,7 +197,7 @@ public final class RecordGroup {
     public void writeTo(FileChannel fileChannel) throws IOException {
       finish();
       for (int i=0; i<columnChunkWriters.length; ++i) {
-        fileChannel.write(columnChunkWriters[i].byteBuffer());
+        fileChannel.write(columnChunkWriters[i].toByteBuffer());
       }
     }
 
@@ -302,7 +302,7 @@ public final class RecordGroup {
     public List<Stats.ColumnChunk> getColumnChunkStats() {
       List<Stats.ColumnChunk> columnChunkStats = new ArrayList<Stats.ColumnChunk>(columnChunkReaders.length);
       for (int i=0; i<columnChunkReaders.length; ++i) {
-        columnChunkStats.add(columnChunkReaders[i].stats());
+        columnChunkStats.add(columnChunkReaders[i].getStats());
       }
       return columnChunkStats;
     }

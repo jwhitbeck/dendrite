@@ -744,7 +744,7 @@ public abstract class Schema implements IWriteable {
   }
 
 
-  public static Schema subSchema(List<Keyword> entrypoint, Schema schema) {
+  public static Schema getSubSchema(List<Keyword> entrypoint, Schema schema) {
     Keyword parent = null;
     Schema s = schema;
     for (Keyword kw : entrypoint) {
@@ -855,8 +855,8 @@ public abstract class Schema implements IWriteable {
     return ret;
   }
 
-  private static String missingFieldsErrorMessage(PersistentVector parents,
-                                                  IPersistentCollection missingFields) {
+  private static String getMissingFieldsErrorMessage(PersistentVector parents,
+                                                     IPersistentCollection missingFields) {
     StringBuilder sb = new StringBuilder("The following fields don't exist: ");
     for (ISeq s = RT.seq(missingFields); s != null; s = s.next()) {
       sb.append(parents.cons((Keyword)s.first()));
@@ -887,7 +887,7 @@ public abstract class Schema implements IWriteable {
       HashSet<Keyword> availableFieldNames = getFieldNameSet(record);
       IPersistentMap missingFieldsQuery = removeKeys(query, availableFieldNames);
       if (!context.isMissingFieldsAsNil && RT.seq(missingFieldsQuery) != null) {
-        throw new IllegalArgumentException(missingFieldsErrorMessage(parents, RT.keys(missingFieldsQuery)));
+        throw new IllegalArgumentException(getMissingFieldsErrorMessage(parents, RT.keys(missingFieldsQuery)));
       }
       ArrayList<Field> fieldsList = new ArrayList<Field>();
       for (ISeq s = RT.seq(missingFieldsQuery); s != null; s = s.next()) {
@@ -1092,32 +1092,32 @@ public abstract class Schema implements IWriteable {
 
   public static Column[] getColumns(Schema schema) {
     List<Column> columns = new ArrayList<Column>();
-    _getColumns(schema, columns);
+    getColumns(schema, columns);
     return columns.toArray(new Column[]{});
   }
 
-  private static void _getColumns(Schema schema, List<Column> columns) {
+  private static void getColumns(Schema schema, List<Column> columns) {
     if (schema instanceof Column) {
       columns.add((Column)schema);
     } else if (schema instanceof Record) {
       Record rec = (Record)schema;
       Field[] fields = rec.fields;
       for (int i=0; i<fields.length; ++i) {
-        _getColumns(fields[i].value, columns);
+        getColumns(fields[i].value, columns);
       }
     } else /* if (schema instanceof Collection) */{
       Collection coll = (Collection)schema;
-      _getColumns(coll.repeatedSchema, columns);
+      getColumns(coll.repeatedSchema, columns);
     }
   }
 
   public static IPersistentVector[] getPaths(Schema schema) {
     List<IPersistentVector> paths = new ArrayList<IPersistentVector>();
-    _getPaths(schema, paths, PersistentVector.EMPTY);
+    getPaths(schema, paths, PersistentVector.EMPTY);
     return paths.toArray(new IPersistentVector[]{});
   }
 
-  private static void _getPaths(Schema schema, List<IPersistentVector> paths, IPersistentVector path) {
+  private static void getPaths(Schema schema, List<IPersistentVector> paths, IPersistentVector path) {
     if (schema instanceof Column) {
       paths.add(path);
     } else if (schema instanceof Record) {
@@ -1125,11 +1125,11 @@ public abstract class Schema implements IWriteable {
       Field[] fields = rec.fields;
       for (int i=0; i<fields.length; ++i) {
         Field field = fields[i];
-        _getPaths(field.value, paths, path.cons(field.name));
+        getPaths(field.value, paths, path.cons(field.name));
       }
     } else /* if (schema instanceof Collection) */{
       Collection coll = (Collection)schema;
-      _getPaths(coll.repeatedSchema, paths, path.cons(null));
+      getPaths(coll.repeatedSchema, paths, path.cons(null));
     }
   }
 

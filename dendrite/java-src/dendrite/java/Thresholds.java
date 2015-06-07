@@ -14,7 +14,7 @@ package dendrite.java;
 
 public final class Thresholds {
 
-  public static int nextCheckThreshold(final int idx, final int value, final int target) {
+  public static int getNextCheckThreshold(final int idx, final int value, final int target) {
     if (value == 0) {
       return idx + 1;
     }
@@ -25,7 +25,7 @@ public final class Thresholds {
     return nextIdx;
   }
 
-  public static long nextCheckThreshold(final long idx, final long value, final long target) {
+  public static long getNextCheckThreshold(final long idx, final long value, final long target) {
     if (value == 0) {
       return idx + 1;
     }

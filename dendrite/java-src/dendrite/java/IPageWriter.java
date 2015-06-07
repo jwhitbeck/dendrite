@@ -14,6 +14,6 @@ package dendrite.java;
 
 public interface IPageWriter extends IOutputBuffer {
   void write(Object value);
-  int numValues();
-  IPageHeader header();
+  int getNumValues();
+  IPageHeader getHeader();
 }

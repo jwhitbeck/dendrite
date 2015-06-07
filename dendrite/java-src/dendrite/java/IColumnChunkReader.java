@@ -16,7 +16,7 @@ import java.util.List;
 
 public interface IColumnChunkReader extends Iterable<List<Object>> {
   Iterable<IPageHeader> getPageHeaders();
-  Schema.Column column();
-  Stats.ColumnChunk stats();
-  Metadata.ColumnChunk metadata();
+  Schema.Column getColumn();
+  Stats.ColumnChunk getStats();
+  Metadata.ColumnChunk getMetadata();
 }

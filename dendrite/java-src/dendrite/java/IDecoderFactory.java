@@ -16,5 +16,5 @@ import java.nio.ByteBuffer;
 
 public interface IDecoderFactory {
   IDecoder create(ByteBuffer bb);
-  Object nullValue();
+  Object getNullValue();
 }

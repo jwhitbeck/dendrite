@@ -40,21 +40,21 @@ public final class DataPage {
     }
 
     @Override
-    public int type() { return Pages.DATA; }
+    public int getType() { return Pages.DATA; }
 
     @Override
-    public int headerLength() {
+    public int getHeaderLength() {
       return Bytes.getNumUIntBytes(numValues)
         + Bytes.getNumUIntBytes(repetitionLevelsLength) + Bytes.getNumUIntBytes(definitionLevelsLength)
         + Bytes.getNumUIntBytes(compressedDataLength) + Bytes.getNumUIntBytes(uncompressedDataLength);
     }
 
     @Override
-    public int bodyLength() {
+    public int getBodyLength() {
       return repetitionLevelsLength + definitionLevelsLength + compressedDataLength;
     }
 
-    public int byteOffsetData() {
+    public int getByteOffsetData() {
       return repetitionLevelsLength + definitionLevelsLength;
     }
 
@@ -66,26 +66,26 @@ public final class DataPage {
       return definitionLevelsLength > 0;
     }
 
-    public int byteOffsetRepetitionLevels() {
+    public int getByteOffsetRepetitionLevels() {
       return 0;
     }
 
-    public int byteOffsetDefinitionLevels() {
+    public int getByteOffsetDefinitionLevels() {
       return repetitionLevelsLength;
     }
 
-    public int compressedDataLength() {
+    public int getCompressedDataLength() {
       return compressedDataLength;
     }
 
-    public int uncompressedDataLength() {
+    public int getUncompressedDataLength() {
       return uncompressedDataLength;
     }
 
     @Override
-    public Stats.Page stats() {
-      return Stats.createDataPageStats(numValues, numNonNilValues, headerLength() + bodyLength(),
-                                       headerLength(), repetitionLevelsLength, definitionLevelsLength,
+    public Stats.Page getStats() {
+      return Stats.createDataPageStats(numValues, numNonNilValues, getHeaderLength() + getBodyLength(),
+                                       getHeaderLength(), repetitionLevelsLength, definitionLevelsLength,
                                        compressedDataLength);
     }
 
@@ -129,17 +129,19 @@ public final class DataPage {
       if (maxDefinitionLevel == 0) {
         return new RequiredValuesWriter(dataEncoder, compressor);
       } else if (maxRepetitionLevel == 0) {
-        return new NonRepeatedValuesWriter(Types.levelsEncoder(maxDefinitionLevel), dataEncoder, compressor);
+        return new NonRepeatedValuesWriter(Types.createLevelsEncoder(maxDefinitionLevel),
+                                           dataEncoder,
+                                           compressor);
       } else {
-        return new RepeatedValuesWriter(Types.levelsEncoder(maxRepetitionLevel),
-                                        Types.levelsEncoder(maxDefinitionLevel),
+        return new RepeatedValuesWriter(Types.createLevelsEncoder(maxRepetitionLevel),
+                                        Types.createLevelsEncoder(maxDefinitionLevel),
                                         dataEncoder,
                                         compressor);
       }
     }
 
     @Override
-    public int numValues() {
+    public int getNumValues() {
       return numValues;
     }
 
@@ -148,31 +150,31 @@ public final class DataPage {
         return 1;
       } else if (compressionRatio > 0) {
         return compressionRatio;
-      } else if (dataEncoder.numEncodedValues() > 0) {
+      } else if (dataEncoder.getNumEncodedValues() > 0) {
         return 0.5; // default compression ratio guess when we don't have any data.
       } else {
         return 0;
       }
     }
 
-    private Header provisionalHeader() {
-      int estimatedDataLength = dataEncoder.estimatedLength();
+    private Header getProvisionalHeader() {
+      int estimatedDataLength = dataEncoder.getEstimatedLength();
       return new Header(numValues,
-                        dataEncoder.numEncodedValues(),
-                        (repetitionLevelEncoder != null)? repetitionLevelEncoder.estimatedLength() : 0,
-                        (definitionLevelEncoder != null)? definitionLevelEncoder.estimatedLength() : 0,
+                        dataEncoder.getNumEncodedValues(),
+                        (repetitionLevelEncoder != null)? repetitionLevelEncoder.getEstimatedLength() : 0,
+                        (definitionLevelEncoder != null)? definitionLevelEncoder.getEstimatedLength() : 0,
                         (int)(estimatedDataLength * getCompressionRatio()),
                         estimatedDataLength);
     }
 
     @Override
-    public Header header() {
-      int length = dataEncoder.length();
+    public Header getHeader() {
+      int length = dataEncoder.getLength();
       return new Header(numValues,
-                        dataEncoder.numEncodedValues(),
-                        (repetitionLevelEncoder != null)? repetitionLevelEncoder.length() : 0,
-                        (definitionLevelEncoder != null)? definitionLevelEncoder.length() : 0,
-                        (compressor != null)? compressor.length() : length,
+                        dataEncoder.getNumEncodedValues(),
+                        (repetitionLevelEncoder != null)? repetitionLevelEncoder.getLength() : 0,
+                        (definitionLevelEncoder != null)? definitionLevelEncoder.getLength() : 0,
+                        (compressor != null)? compressor.getLength() : length,
                         length);
     }
 
@@ -204,28 +206,28 @@ public final class DataPage {
         dataEncoder.finish();
         if (compressor != null) {
           compressor.compress(dataEncoder);
-          compressionRatio = (double)compressor.length() / (double)compressor.uncompressedLength();
+          compressionRatio = (double)compressor.getLength() / (double)compressor.getUncompressedLength();
         }
         isFinished = true;
       }
     }
 
     @Override
-    public int length() {
-      Header h = header();
-      return h.headerLength() + h.bodyLength();
+    public int getLength() {
+      Header h = getHeader();
+      return h.getHeaderLength() + h.getBodyLength();
     }
 
     @Override
-    public int estimatedLength() {
-      Header h = provisionalHeader();
-      return h.headerLength() + h.bodyLength();
+    public int getEstimatedLength() {
+      Header h = getProvisionalHeader();
+      return h.getHeaderLength() + h.getBodyLength();
     }
 
     @Override
     public void writeTo(MemoryOutputStream mos) {
       finish();
-      mos.write(header());
+      mos.write(getHeader());
       if (repetitionLevelEncoder != null) {
         mos.write(repetitionLevelEncoder);
       }
@@ -319,12 +321,12 @@ public final class DataPage {
     }
 
     @Override
-    public ByteBuffer next() {
-      return Bytes.sliceAhead(bb, header.bodyLength());
+    public ByteBuffer getNextBuffer() {
+      return Bytes.sliceAhead(bb, header.getBodyLength());
     }
 
     @Override
-    public Header header() {
+    public Header getHeader() {
       return header;
     }
 
@@ -334,30 +336,30 @@ public final class DataPage {
         return new RequiredValueIterator(getDataDecoder());
       } else if (maxRepetitionLevel == 0) {
         return new NonRepeatedValueIterator(getDefinitionLevelsDecoder(), getDataDecoder(),
-                                            decoderFactory.nullValue());
+                                            decoderFactory.getNullValue());
       } else {
         return new RepeatedValueIterator(getRepetitionLevelsDecoder(), getDefinitionLevelsDecoder(),
-                                         getDataDecoder(), decoderFactory.nullValue(), maxDefinitionLevel);
+                                         getDataDecoder(), decoderFactory.getNullValue(), maxDefinitionLevel);
       }
     }
 
     private IIntDecoder getRepetitionLevelsDecoder() {
-      return Types.levelsDecoder(Bytes.sliceAhead(bb, header.byteOffsetRepetitionLevels()),
-                                 maxRepetitionLevel);
+      return Types.createLevelsDecoder(Bytes.sliceAhead(bb, header.getByteOffsetRepetitionLevels()),
+                                       maxRepetitionLevel);
     }
 
     private IIntDecoder getDefinitionLevelsDecoder() {
-      return Types.levelsDecoder(Bytes.sliceAhead(bb, header.byteOffsetDefinitionLevels()),
-                                 maxDefinitionLevel);
+      return Types.createLevelsDecoder(Bytes.sliceAhead(bb, header.getByteOffsetDefinitionLevels()),
+                                       maxDefinitionLevel);
     }
 
     private IDecoder getDataDecoder() {
-      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.byteOffsetData());
+      ByteBuffer byteBuffer = Bytes.sliceAhead(bb, header.getByteOffsetData());
       if (decompressorFactory != null) {
         IDecompressor decompressor = decompressorFactory.create();
         byteBuffer = decompressor.decompress(byteBuffer,
-                                             header.compressedDataLength(),
-                                             header.uncompressedDataLength());
+                                             header.getCompressedDataLength(),
+                                             header.getUncompressedDataLength());
       }
       return decoderFactory.create(byteBuffer);
     }
@@ -370,7 +372,7 @@ public final class DataPage {
     private int i;
 
     private RequiredValueIterator(IDecoder decoder) {
-      this.n = decoder.numEncodedValues();
+      this.n = decoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;
     }
@@ -396,7 +398,7 @@ public final class DataPage {
     private int i;
 
     NonRepeatedValueIterator(IIntDecoder definitionLevelsDecoder, IDecoder decoder, Object nullValue) {
-      this.n = definitionLevelsDecoder.numEncodedValues();
+      this.n = definitionLevelsDecoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;
       this.definitionLevelsDecoder = definitionLevelsDecoder;
@@ -432,7 +434,7 @@ public final class DataPage {
 
     private RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
                                   IDecoder decoder, Object nullValue, int maxDefinitionLevel) {
-      this.n = repetitionLevelsDecoder.numEncodedValues();
+      this.n = repetitionLevelsDecoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;
       this.repetitionLevelsDecoder = repetitionLevelsDecoder;

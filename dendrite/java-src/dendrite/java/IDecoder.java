@@ -14,5 +14,5 @@ package dendrite.java;
 
 public interface IDecoder {
   Object decode();
-  int numEncodedValues();
+  int getNumEncodedValues();
 }

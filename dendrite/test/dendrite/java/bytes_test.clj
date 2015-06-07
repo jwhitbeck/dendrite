@@ -21,7 +21,7 @@
     (doseq [x input-seq]
       (write-fn mos x))
     (let [n (count input-seq)
-          bb (.byteBuffer mos)]
+          bb (.toByteBuffer mos)]
       (repeatedly n #(read-fn bb)))))
 
 (deftest read-write-bytes
@@ -136,7 +136,7 @@
     (let [mos (MemoryOutputStream. 10)
           ints (->> (range 8) (map int) int-array)]
       (Bytes/writePackedInts32 mos ints 3 8)
-      (let [bb (.byteBuffer mos)]
+      (let [bb (.toByteBuffer mos)]
         (is (= [(.get bb) (.get bb) (.get bb)]
                (->> ["10001000" "11000110" "11111010"]
                     (map (comp unchecked-byte #(Integer/parseInt % 2)))))))))
@@ -164,7 +164,7 @@
     (let [mos (MemoryOutputStream. 10)
           longs (long-array (range 8))]
       (Bytes/writePackedInts64 mos longs 3 8)
-      (let [bb (.byteBuffer mos)]
+      (let [bb (.toByteBuffer mos)]
         (is (= [(.get bb) (.get bb) (.get bb)]
                (->> ["10001000" "11000110" "11111010"]
                     (map (comp unchecked-byte #(Integer/parseInt % 2)))))))))

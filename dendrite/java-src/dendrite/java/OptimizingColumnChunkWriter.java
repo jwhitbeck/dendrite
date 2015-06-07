@@ -89,15 +89,15 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   public IColumnChunkWriter optimize(Map<Symbol,Double> compressionThresholds) {
     plainColumnChunkWriter.finish();
     DataColumnChunk.Reader primitiveReader
-      = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
-                                   plainColumnChunkWriter.metadata(),
+      = new DataColumnChunk.Reader(types, plainColumnChunkWriter.toByteBuffer(),
+                                   plainColumnChunkWriter.getMetadata(),
                                    primitiveColumn, PARTITION_LENGTH);
-    Stats.ColumnChunk plainStats = primitiveReader.stats();
+    Stats.ColumnChunk plainStats = primitiveReader.getStats();
     int bestEncoding = getBestEncoding(primitiveReader, plainStats);
     int bestCompression = getBestCompression(bestEncoding, primitiveReader, plainStats, compressionThresholds);
     DataColumnChunk.Reader plainReader
-      = new DataColumnChunk.Reader(types, plainColumnChunkWriter.byteBuffer(),
-                                   plainColumnChunkWriter.metadata(),
+      = new DataColumnChunk.Reader(types, plainColumnChunkWriter.toByteBuffer(),
+                                   plainColumnChunkWriter.getMetadata(),
                                    column, PARTITION_LENGTH);
     IColumnChunkWriter optimizedWriter
       = ColumnChunks.createWriter(types,
@@ -131,12 +131,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
                                       plainColumnChunkWriter.targetDataPageLength);
     copyAtLeastOnePage(primitiveReader, writer);
     writer.finish();
-    ByteBuffer bb = writer.byteBuffer();
+    ByteBuffer bb = writer.toByteBuffer();
     DataPage.Header h = (DataPage.Header)Pages.readHeader(bb);
-    double nonNilValuesMultiplier = (double)plainStats.numNonNilValues / (double)h.stats().numNonNilValues;
+    double nonNilValuesMultiplier = (double)plainStats.numNonNilValues / (double)h.getStats().numNonNilValues;
     final ByteBuffer dataByteBuffer = bb.slice();
-    dataByteBuffer.position(h.byteOffsetData());
-    dataByteBuffer.limit(h.bodyLength());
+    dataByteBuffer.position(h.getByteOffsetData());
+    dataByteBuffer.limit(h.getBodyLength());
     IWriteable dataBytes = new IWriteable() {
         public void writeTo(MemoryOutputStream mos) {
           mos.write(dataByteBuffer);
@@ -144,7 +144,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       };
     int levelsLength = estimateLevelsLength(plainStats);
     int bestCompression = Types.NONE;
-    int noCompressionLength = levelsLength + (int)(h.uncompressedDataLength() * nonNilValuesMultiplier);
+    int noCompressionLength = levelsLength + (int)(h.getUncompressedDataLength() * nonNilValuesMultiplier);
     int bestLength = noCompressionLength;
     for (Map.Entry<Symbol,Double> e : compressionThresholds.entrySet()) {
       int compression = types.getCompression(e.getKey());
@@ -155,7 +155,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       ICompressor compressor = types.getCompressor(compression);
       compressor.compress(dataBytes);
       compressor.finish();
-      int length = (int)(compressor.length() * nonNilValuesMultiplier) + levelsLength;
+      int length = (int)(compressor.getLength() * nonNilValuesMultiplier) + levelsLength;
       double compressionRatio = (double)noCompressionLength / (double)length;
       if (compressionRatio >= threshold && length < bestLength) {
         bestLength = length;
@@ -168,7 +168,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   private void copyAtLeastOnePage(DataColumnChunk.Reader primitiveReader,
                                   IColumnChunkWriter columnChunkWriter) {
     Iterator<DataPage.Reader> i = primitiveReader.getPageReaders().iterator();
-    while (i.hasNext() && columnChunkWriter.numDataPages() == 0) {
+    while (i.hasNext() && columnChunkWriter.getNumDataPages() == 0) {
       columnChunkWriter.write(i.next());
     }
   }
@@ -188,7 +188,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     }
     primitiveEncoder.finish();
     int bestCompression = Types.NONE;
-    int noCompressionLength = indicesColumnLength + primitiveEncoder.length();
+    int noCompressionLength = indicesColumnLength + primitiveEncoder.getLength();
     int bestLength = noCompressionLength;
     for (Map.Entry<Symbol,Double> e : compressionThresholds.entrySet()) {
       int compression = types.getCompression(e.getKey());
@@ -199,7 +199,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       ICompressor compressor = types.getCompressor(compression);
       compressor.compress(primitiveEncoder);
       compressor.finish();
-      int length = indicesColumnLength + compressor.length();
+      int length = indicesColumnLength + compressor.getLength();
       double compressionRatio = (double)noCompressionLength / (double)length;
       if (compressionRatio >= threshold && length < bestLength) {
         bestLength = length;
@@ -245,22 +245,22 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   @Override
-  public Schema.Column column() {
+  public Schema.Column getColumn() {
     return column;
   }
 
   @Override
-  public ByteBuffer byteBuffer() {
+  public ByteBuffer toByteBuffer() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public int numDataPages() {
+  public int getNumDataPages() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public Metadata.ColumnChunk metadata() {
+  public Metadata.ColumnChunk getMetadata() {
     throw new UnsupportedOperationException();
   }
 
@@ -275,13 +275,13 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   @Override
-  public int length() {
+  public int getLength() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public int estimatedLength() {
-    return plainColumnChunkWriter.estimatedLength();
+  public int getEstimatedLength() {
+    return plainColumnChunkWriter.getEstimatedLength();
   }
 
   @Override
@@ -378,14 +378,14 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   boolean isDictionaryTooLarge(IOutputBuffer encodedDictionary) {
     int targetDataPageLength = plainColumnChunkWriter.targetDataPageLength;
-    int unCompressedLength = encodedDictionary.length();
+    int unCompressedLength = encodedDictionary.getLength();
     if (unCompressedLength < targetDataPageLength) {
       return false;
     } else {
       ICompressor compressor = types.getCompressor(Types.DEFLATE);
       compressor.compress(encodedDictionary);
       compressor.finish();
-      return compressor.length() > targetDataPageLength;
+      return compressor.getLength() > targetDataPageLength;
     }
   }
 
@@ -400,7 +400,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       pageWriter.write(o);
     }
     pageWriter.finish();
-    Stats.Page pageStats = pageWriter.header().stats();
+    Stats.Page pageStats = pageWriter.getHeader().getStats();
     int numNonNilValuesInPage = (int)pageStats.numNonNilValues;
     double mult = ((double)numNonNilValues/(double)numNonNilValuesInPage);
     return (int)(pageStats.dataLength * mult);
@@ -424,12 +424,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       }
       int bestLength = (int)plainStats.dataLength;
       int bestEncoding = Types.PLAIN;
-      int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats) + encodedDictionary.length();
+      int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats) + encodedDictionary.getLength();
       if (dictionaryLength < bestLength) {
         bestLength = dictionaryLength;
         bestEncoding = Types.DICTIONARY;
       }
-      int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats) + encodedDictionary.length();
+      int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats) + encodedDictionary.getLength();
       if (frequencyLength < bestLength) {
         bestEncoding = Types.FREQUENCY;
       }
@@ -537,13 +537,13 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
         IOutputBuffer encodedDictionary = getEncodedDictionary();
         if (!isDictionaryTooLarge(encodedDictionary)) {
           int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats)
-            + encodedDictionary.length();
+            + encodedDictionary.getLength();
           if (dictionaryLength < bestLength) {
             bestLength = dictionaryLength;
             bestEncoding = Types.DICTIONARY;
           }
           int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats)
-            + encodedDictionary.length();
+            + encodedDictionary.getLength();
           if (frequencyLength < bestLength) {
             bestLength = frequencyLength;
             bestEncoding = Types.FREQUENCY;
@@ -648,13 +648,13 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
         IOutputBuffer encodedDictionary = getEncodedDictionary();
         if (!isDictionaryTooLarge(encodedDictionary)) {
           int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats)
-            + encodedDictionary.length();
+            + encodedDictionary.getLength();
           if (dictionaryLength < bestLength) {
             bestLength = dictionaryLength;
             bestEncoding = Types.DICTIONARY;
           }
           int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats)
-            + encodedDictionary.length();
+            + encodedDictionary.getLength();
           if (frequencyLength < bestLength) {
             bestLength = frequencyLength;
             bestEncoding = Types.FREQUENCY;
@@ -720,12 +720,12 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
         if (isDictionaryTooLarge(encodedDictionary)) {
           return bestEncoding;
         }
-        int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats) + encodedDictionary.length();
+        int dictionaryLength = estimateDictionaryIndicesColumnLength(plainStats) + encodedDictionary.getLength();
         if (dictionaryLength < bestLength) {
           bestLength = dictionaryLength;
           bestEncoding = Types.DICTIONARY;
         }
-        int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats) + encodedDictionary.length();
+        int frequencyLength = estimateFrequencyIndicesColumnLength(plainStats) + encodedDictionary.getLength();
         if (frequencyLength < bestLength) {
           bestLength = frequencyLength;
           bestEncoding = Types.FREQUENCY;

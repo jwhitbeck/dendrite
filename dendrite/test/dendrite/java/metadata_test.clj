@@ -52,7 +52,7 @@
         rand-schemas (repeatedly 100 rand-schema)]
     (doseq [^Schema schema rand-schemas]
       (Schema/writeTo mos schema))
-    (let [bb (.byteBuffer mos)
+    (let [bb (.toByteBuffer mos)
           read-schemas (repeatedly 100 #(Schema/read bb))]
       (is (= read-schemas rand-schemas)))))
 
@@ -65,7 +65,7 @@
           rand-column-chunk-metadatas (repeatedly 100 rand-column-chunk-metadata)]
       (doseq [^Metadata$ColumnChunk column-chunk-metadata rand-column-chunk-metadatas]
         (.writeTo column-chunk-metadata mos))
-      (let [bb (.byteBuffer mos)
+      (let [bb (.toByteBuffer mos)
             read-column-chunk-metadatas (repeatedly 100 #(Metadata$ColumnChunk/read bb))]
         (is (= read-column-chunk-metadatas rand-column-chunk-metadatas))))))
 
@@ -81,7 +81,7 @@
           rand-record-group-metadatas (repeatedly 100 rand-record-group-metadata)]
       (doseq [^Metadata$RecordGroup record-group-metadata rand-record-group-metadatas]
         (.writeTo record-group-metadata mos))
-      (let [bb (.byteBuffer mos)
+      (let [bb (.toByteBuffer mos)
             read-record-group-metadatas (repeatedly 100 #(Metadata$RecordGroup/read bb))]
         (is (= read-record-group-metadatas rand-record-group-metadatas))))))
 
@@ -94,7 +94,7 @@
           rand-custom-types (repeatedly 100 rand-custom-type)]
       (doseq [^CustomType custom-type rand-custom-types]
         (.writeTo custom-type mos))
-      (let [bb (.byteBuffer mos)
+      (let [bb (.toByteBuffer mos)
             read-custom-types (repeatedly 100 #(CustomType/read bb))]
         (is (= read-custom-types rand-custom-types))))))
 
@@ -110,6 +110,6 @@
           rand-file-metadatas (repeatedly 100 rand-file-metadata)]
       (doseq [^Metadata$File file-metadata rand-file-metadatas]
         (.writeTo file-metadata mos))
-      (let [bb (.byteBuffer mos)
+      (let [bb (.toByteBuffer mos)
             read-file-metadatas (repeatedly 100 #(Metadata$File/read bb))]
         (is (= read-file-metadatas rand-file-metadatas))))))

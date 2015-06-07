@@ -55,17 +55,17 @@ public final class FrequencyColumnChunk {
     }
 
     @Override
-    public Stats.ColumnChunk stats() {
+    public Stats.ColumnChunk getStats() {
       return Stats.createColumnChunkStats(Pages.getPagesStats(getPageHeaders()));
     }
 
     @Override
-    public Metadata.ColumnChunk metadata() {
+    public Metadata.ColumnChunk getMetadata() {
       return columnChunkMetadata;
     }
 
     @Override
-    public Schema.Column column() {
+    public Schema.Column getColumn() {
       return column;
     }
 
@@ -110,36 +110,36 @@ public final class FrequencyColumnChunk {
     }
 
     @Override
-    public Schema.Column column() {
+    public Schema.Column getColumn() {
       return column;
     }
 
     @Override
-    public ByteBuffer byteBuffer() {
+    public ByteBuffer toByteBuffer() {
       mos.reset();
       mos.write(this);
-      return mos.byteBuffer();
+      return mos.toByteBuffer();
     }
 
     @Override
-    public int numDataPages() {
-      return tempIndicesColumnChunkWriter.numDataPages();
+    public int getNumDataPages() {
+      return tempIndicesColumnChunkWriter.getNumDataPages();
     }
 
     @Override
-    public Metadata.ColumnChunk metadata() {
+    public Metadata.ColumnChunk getMetadata() {
       finish();
-      return new Metadata.ColumnChunk(length(),
-                                      frequencyIndicesColumnChunkWriter.metadata().numDataPages,
-                                      dictionaryLength(),
+      return new Metadata.ColumnChunk(getLength(),
+                                      frequencyIndicesColumnChunkWriter.getMetadata().numDataPages,
+                                      getDictionaryLength(),
                                       0);
     }
 
     void updateDictionaryLengthEstimates() {
-      IPageHeader h = dictPageWriter.header();
+      IPageHeader h = dictPageWriter.getHeader();
       bytesPerDictionaryValue
-        = (int)((double)h.bodyLength() / (double)dictPageWriter.numValues());
-      dictionaryHeaderLength = h.headerLength();
+        = (int)((double)h.getBodyLength() / (double)dictPageWriter.getNumValues());
+      dictionaryHeaderLength = h.getHeaderLength();
     }
 
     IDecoderFactory getFrequencyMappedIndicesDecoderFactory() {
@@ -150,7 +150,7 @@ public final class FrequencyColumnChunk {
           final IIntDecoder intDecoder = (IIntDecoder)intDecoderFactory.create(bb);
           return new IDecoder() {
             public Object decode() { return indicesByFrequency[intDecoder.decodeInt()]; }
-            public int numEncodedValues() { return intDecoder.numEncodedValues(); }
+            public int getNumEncodedValues() { return intDecoder.getNumEncodedValues(); }
           };
         }
       };
@@ -161,8 +161,8 @@ public final class FrequencyColumnChunk {
       if (!isFinished) {
         tempIndicesColumnChunkWriter.finish();
         Iterable<DataPage.Reader> dataPageReaders
-          = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.byteBuffer(),
-                                     tempIndicesColumnChunkWriter.metadata().numDataPages,
+          = Pages.getDataPageReaders(tempIndicesColumnChunkWriter.toByteBuffer(),
+                                     tempIndicesColumnChunkWriter.getMetadata().numDataPages,
                                      column.repetitionLevel,
                                      column.definitionLevel,
                                      getFrequencyMappedIndicesDecoderFactory(),
@@ -187,27 +187,29 @@ public final class FrequencyColumnChunk {
     }
 
     @Override
-    public int length() {
+    public int getLength() {
       finish();
-      return dictionaryLength() + frequencyIndicesColumnChunkWriter.length();
+      return getDictionaryLength() + frequencyIndicesColumnChunkWriter.getLength();
     }
 
-    private int dictionaryLength() {
-      return 1 + dictPageWriter.length();
+    private int getDictionaryLength() {
+      return 1 + dictPageWriter.getLength();
     }
 
     @Override
-    public int estimatedLength() {
-      return estimatedDictionaryLength() + tempIndicesColumnChunkWriter.estimatedLength();
+    public int getEstimatedLength() {
+      return estimatedDictionaryLength() + tempIndicesColumnChunkWriter.getEstimatedLength();
     }
 
     private int estimatedDictionaryLength() {
       if (bytesPerDictionaryValue > 0) {
-        return 1 + dictionaryHeaderLength + (int)(dictEncoder.numDictionaryValues() * bytesPerDictionaryValue);
-      } else if (dictEncoder.numDictionaryValues() > 0) {
+        return 1 + dictionaryHeaderLength
+          + (int)(dictEncoder.getNumDictionaryValues() * bytesPerDictionaryValue);
+      } else if (dictEncoder.getNumDictionaryValues() > 0) {
         encodeDictionaryPage();
         updateDictionaryLengthEstimates();
-        return 1 + dictionaryHeaderLength + (int)(dictEncoder.numDictionaryValues() * bytesPerDictionaryValue);
+        return 1 + dictionaryHeaderLength
+          + (int)(dictEncoder.getNumDictionaryValues() * bytesPerDictionaryValue);
       } else {
         return 1;
       }

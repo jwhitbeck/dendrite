@@ -41,8 +41,8 @@ public final class Dictionary {
     }
 
     @Override
-    public int numEncodedValues() {
-      return indicesDecoder.numEncodedValues();
+    public int getNumEncodedValues() {
+      return indicesDecoder.getNumEncodedValues();
     }
 
   }
@@ -74,8 +74,8 @@ public final class Dictionary {
     }
 
     @Override
-    public int numEncodedValues() {
-      return indicesEncoder.numEncodedValues();
+    public int getNumEncodedValues() {
+      return indicesEncoder.getNumEncodedValues();
     }
 
     @Override
@@ -89,13 +89,13 @@ public final class Dictionary {
     }
 
     @Override
-    public int estimatedLength() {
-      return indicesEncoder.estimatedLength();
+    public int getEstimatedLength() {
+      return indicesEncoder.getEstimatedLength();
     }
 
     @Override
-    public int length() {
-      return indicesEncoder.length();
+    public int getLength() {
+      return indicesEncoder.getLength();
     }
 
     @Override
@@ -107,7 +107,7 @@ public final class Dictionary {
       dictionaryIndex.clear();
     }
 
-    public int numDictionaryValues() {
+    public int getNumDictionaryValues() {
       return dictionaryIndex.size();
     }
 
@@ -217,8 +217,8 @@ public final class Dictionary {
     }
 
     @Override
-    public Object nullValue() {
-      return dictDecoderFactory.nullValue();
+    public Object getNullValue() {
+      return dictDecoderFactory.getNullValue();
     }
   }
 }

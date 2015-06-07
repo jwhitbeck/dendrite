@@ -98,7 +98,8 @@
        (cons (cons fst in-record) (partition-by-record remaining))))))
 
 (defn map-leveled [f leveled-values]
-  (map (fn [^LeveledValue lv] (.apply lv f)) leveled-values))
+  (map (fn [^LeveledValue lv] (LeveledValue. (.repetitionLevel lv) (.definitionLevel lv) (f (.value lv))))
+       leveled-values))
 
 (defn avg [coll] (/ (reduce + coll) (count coll)))
 
@@ -118,7 +119,7 @@
 (defn output-buffer->byte-buffer ^java.nio.ByteBuffer [^IOutputBuffer output-buffer]
   (let [mos (MemoryOutputStream.)]
     (.writeTo output-buffer mos)
-    (.byteBuffer mos)))
+    (.toByteBuffer mos)))
 
 (def test-schema-str
   "#req

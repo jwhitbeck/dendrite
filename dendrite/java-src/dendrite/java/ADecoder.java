@@ -25,7 +25,7 @@ public abstract class ADecoder implements IDecoder {
   }
 
   @Override
-  public int numEncodedValues() {
+  public int getNumEncodedValues() {
     return numValues;
   }
 }

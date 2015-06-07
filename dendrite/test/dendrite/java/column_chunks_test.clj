@@ -32,7 +32,7 @@
    [^Schema$Column column target-data-page-length types input-values]
    (let [w (ColumnChunks/createWriter types column target-data-page-length)]
      (.write w input-values)
-     (ColumnChunks/createReader types (.byteBuffer w) (.metadata w) column 100))))
+     (ColumnChunks/createReader types (.toByteBuffer w) (.getMetadata w) column 100))))
 
 (defn read-flat [^IColumnChunkReader reader])
 
@@ -45,7 +45,8 @@
    (let [w (OptimizingColumnChunkWriter/create custom-types column test-target-data-page-length)]
      (.write w input-values)
      (let [opt-w (.optimize w compression-thresholds)]
-       (ColumnChunks/createReader custom-types (.byteBuffer opt-w) (.metadata opt-w) (.column opt-w) 100)))))
+       (ColumnChunks/createReader custom-types (.toByteBuffer opt-w) (.getMetadata opt-w) (.getColumn opt-w)
+                                  100)))))
 
 (defn- column-repeated ^Schema$Column [type encoding compression]
   (Schema$Column. 0 2 3 type encoding compression 0 -1 nil))
@@ -89,7 +90,7 @@
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
-        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
+        (is (= (.remaining (.toByteBuffer w)) (.length (.getMetadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -105,7 +106,7 @@
                        rest    ; the first page is always inaccurate
                        butlast ; the last page can have any length
                        (map (fn [^IPageHeader h]
-                              (.length (.stats h))))
+                              (.length (.getStats h))))
                        helpers/avg
                        double)))]
         (is (helpers/roughly 1024 (avg-page-length 1024)))
@@ -126,7 +127,7 @@
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
-        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
+        (is (= (.remaining (.toByteBuffer w)) (.length (.getMetadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -151,7 +152,7 @@
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
-        (is (= (.remaining (.byteBuffer w)) (.length (.metadata w))))))
+        (is (= (.remaining (.toByteBuffer w)) (.length (.getMetadata w))))))
     (testing "repeatable writes"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -168,14 +169,14 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "mostly true booleans"
     (let [column (column-required Types/BOOLEAN Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-biased-bool 0.98))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding))))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding))))))
 
 (deftest find-best-int-encodings
   (testing "random ints"
@@ -184,7 +185,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "random ints (non-repeated)"
     (let [column (column-non-repeated Types/INT Types/PLAIN Types/NONE)
           input-values (->> (repeatedly helpers/rand-int)
@@ -193,28 +194,28 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "random ints (repeated)"
     (let [column (column-repeated Types/INT Types/PLAIN Types/NONE)
           input-values (rand-repeated-values column 100 (repeatedly helpers/rand-int))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "random small ints"
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-int-bits 10))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PACKED_RUN_LENGTH (-> reader .column .encoding)))))
+      (is (= Types/PACKED_RUN_LENGTH (-> reader .getColumn .encoding)))))
   (testing "increasing ints"
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (->> (range) (map int) (take 1000))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA (-> reader .column .encoding)))))
+      (is (= Types/DELTA (-> reader .getColumn .encoding)))))
   (testing "small selection of random ints"
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           random-ints (repeatedly 100 helpers/rand-int)
@@ -222,7 +223,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "skewed selection of random ints"
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (concat (repeatedly 255 helpers/rand-int)
@@ -230,7 +231,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/FREQUENCY (-> reader .column .encoding)))))
+      (is (= Types/FREQUENCY (-> reader .getColumn .encoding)))))
   (testing "small random unsigned ints with an occasional large one."
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-int-bits 7))
@@ -239,7 +240,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/VLQ (-> reader .column .encoding)))))
+      (is (= Types/VLQ (-> reader .getColumn .encoding)))))
   (testing "small random signed ints with an occasional large one."
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-int-bits 7))
@@ -250,14 +251,14 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/ZIG_ZAG (-> reader .column .encoding)))))
+      (is (= Types/ZIG_ZAG (-> reader .getColumn .encoding)))))
   (testing "small selection of chars"
     (let [column (column-required Types/CHAR Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(rand-nth [\c \return \u1111]))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding))))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding))))))
 
 
 (deftest find-best-long-encodings
@@ -267,14 +268,14 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "random small longs"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-long-bits 10))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA (-> reader .column .encoding)))))
+      (is (= Types/DELTA (-> reader .getColumn .encoding)))))
   (testing "small random unsigned longs with an occasional large one."
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-long-bits 7))
@@ -283,7 +284,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/VLQ (-> reader .column .encoding)))))
+      (is (= Types/VLQ (-> reader .getColumn .encoding)))))
   (testing "small random signed longs with an occasional large one."
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-long-bits 7))
@@ -294,28 +295,28 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/ZIG_ZAG (-> reader .column .encoding)))))
+      (is (= Types/ZIG_ZAG (-> reader .getColumn .encoding)))))
   (testing "increasing longs"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (->> (range) (map long) (take 1000))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA (-> reader .column .encoding)))))
+      (is (= Types/DELTA (-> reader .getColumn .encoding)))))
   (testing "increasing timestamps"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(System/nanoTime))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA (-> reader .column .encoding)))))
+      (is (= Types/DELTA (-> reader .getColumn .encoding)))))
   (testing "incrementing dates as a custom-type"
     (let [column (column-required Types/INST Types/PLAIN Types/NONE)
           input-values (take 1000 (days-seq "2014-01-01"))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA (-> reader .column .encoding)))))
+      (is (= Types/DELTA (-> reader .getColumn .encoding)))))
   (testing "small selection of random longs"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           random-longs (repeatedly 100 helpers/rand-long)
@@ -323,7 +324,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "skewed selection of random longs"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (concat (repeatedly 255 helpers/rand-long)
@@ -331,7 +332,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/FREQUENCY (-> reader .column .encoding))))))
+      (is (= Types/FREQUENCY (-> reader .getColumn .encoding))))))
 
 (deftest find-best-float-encodings
   (testing "random floats"
@@ -340,7 +341,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "small selection of random floats"
     (let [column (column-required Types/FLOAT Types/PLAIN Types/NONE)
           random-floats (repeatedly 100 helpers/rand-float)
@@ -348,7 +349,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "skewed selection of random floats"
     (let [column (column-required Types/FLOAT Types/PLAIN Types/NONE)
           input-values (concat (repeatedly 255 helpers/rand-float)
@@ -356,7 +357,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/FREQUENCY (-> reader .column .encoding))))))
+      (is (= Types/FREQUENCY (-> reader .getColumn .encoding))))))
 
 (deftest find-best-double-encodings
   (testing "random doubles"
@@ -365,7 +366,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "small selection of random doubles"
     (let [column (column-required Types/DOUBLE Types/PLAIN Types/NONE)
           random-doubles (repeatedly 100 helpers/rand-double)
@@ -373,7 +374,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "skewed selection of random doubles"
     (let [column (column-required Types/DOUBLE Types/PLAIN Types/NONE)
           input-values (concat (repeatedly 255 helpers/rand-double)
@@ -381,7 +382,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/FREQUENCY (-> reader .column .encoding))))))
+      (is (= Types/FREQUENCY (-> reader .getColumn .encoding))))))
 
 (deftest find-best-byte-array-encodings
   (testing "random byte arrays"
@@ -390,35 +391,35 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= (map seq output-values) (map seq input-values)))
-      (is (= Types/DELTA_LENGTH (-> reader .column .encoding)))))
+      (is (= Types/DELTA_LENGTH (-> reader .getColumn .encoding)))))
   (testing "random byte buffers"
     (let [column (column-required Types/BYTE_BUFFER Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 helpers/rand-byte-buffer)
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= (map helpers/byte-buffer->seq output-values) (map helpers/byte-buffer->seq input-values)))
-      (is (= Types/DELTA_LENGTH (-> reader .column .encoding)))))
+      (is (= Types/DELTA_LENGTH (-> reader .getColumn .encoding)))))
   (testing "random big ints"
     (let [column (column-required Types/BIGINT Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-bigint 100))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DELTA_LENGTH (-> reader .column .encoding)))))
+      (is (= Types/DELTA_LENGTH (-> reader .getColumn .encoding)))))
   (testing "random big decimals"
     (let [column (column-required Types/BIGDEC Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-bigdec 40))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/INCREMENTAL (-> reader .column .encoding)))))
+      (is (= Types/INCREMENTAL (-> reader .getColumn .encoding)))))
   (testing "random ratios"
     (let [column (column-required Types/RATIO Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(helpers/rand-ratio 40))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/INCREMENTAL (-> reader .column .encoding)))))
+      (is (= Types/INCREMENTAL (-> reader .getColumn .encoding)))))
   (testing "incrementing dates"
     (let [custom-types (Types/create (Options/getCustomTypeDefinitions
                                       {:custom-types
@@ -432,21 +433,21 @@
           reader (write-optimized-column-chunk-and-get-reader column custom-types {} input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/INCREMENTAL (-> reader .column .encoding)))))
+      (is (= Types/INCREMENTAL (-> reader .getColumn .encoding)))))
   (testing "small set of keywords"
     (let [column (column-required Types/KEYWORD Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(rand-nth [:foo ::bar :baz]))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "small set of symbols"
     (let [column (column-required Types/SYMBOL Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 #(rand-nth ['foo 'bar 'baz]))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/DICTIONARY (-> reader .column .encoding))))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding))))))
 
 (deftest find-best-fixed-length-byte-array-encodings
   (testing "random byte arrays"
@@ -455,14 +456,14 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= (map seq output-values) (map seq input-values)))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "UUIDs"
     (let [column (column-required Types/UUID Types/PLAIN Types/NONE)
           input-values (repeatedly 1000 helpers/rand-uuid)
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
-      (is (= Types/PLAIN (-> reader .column .encoding)))))
+      (is (= Types/PLAIN (-> reader .getColumn .encoding)))))
   (testing "small selection of random byte arrays"
     (let [column (column-required Types/FIXED_LENGTH_BYTE_ARRAY Types/PLAIN Types/NONE)
           rand-byte-arrays (repeatedly 10 #(helpers/rand-byte-array 16))
@@ -470,7 +471,7 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= (map seq output-values) (map seq input-values)))
-      (is (= Types/DICTIONARY (-> reader .column .encoding)))))
+      (is (= Types/DICTIONARY (-> reader .getColumn .encoding)))))
   (testing "skewed selection of random byte arrays"
     (let [column (column-required Types/FIXED_LENGTH_BYTE_ARRAY Types/PLAIN Types/NONE)
           input-values (concat (repeatedly 255 #(helpers/rand-byte-array 10))
@@ -478,4 +479,4 @@
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= (map seq output-values) (map seq input-values)))
-      (is (= Types/FREQUENCY (-> reader .column .encoding))))))
+      (is (= Types/FREQUENCY (-> reader .getColumn .encoding))))))

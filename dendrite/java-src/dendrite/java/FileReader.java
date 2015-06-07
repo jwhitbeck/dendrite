@@ -105,7 +105,7 @@ public final class FileReader implements Closeable, IReader {
     Schema.QueryResult res = Schema.applyQuery(types,
                                                options.isMissingFieldsAsNil,
                                                options.readers,
-                                               Schema.subSchema(options.entrypoint, fileMetadata.schema),
+                                               Schema.getSubSchema(options.entrypoint, fileMetadata.schema),
                                                options.query);
     if (options.mapFn != null) {
       IFn fn = res.schema.fn;

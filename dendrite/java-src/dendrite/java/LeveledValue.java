@@ -12,9 +12,8 @@
 
 package dendrite.java;
 
-import clojure.lang.IFn;
-
 public final class LeveledValue {
+
   final public int repetitionLevel;
   final public int definitionLevel;
   final public Object value;
@@ -23,14 +22,6 @@ public final class LeveledValue {
     this.repetitionLevel = repetitionLevel;
     this.definitionLevel = definitionLevel;
     this.value = value;
-  }
-
-  public LeveledValue apply(final IFn fn){
-    return new LeveledValue(repetitionLevel, definitionLevel, fn.invoke(value));
-  }
-
-  public LeveledValue assoc(final Object v){
-    return new LeveledValue(repetitionLevel, definitionLevel, v);
   }
 
   @Override

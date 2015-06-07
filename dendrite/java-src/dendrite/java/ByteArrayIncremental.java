@@ -37,8 +37,8 @@ public final class ByteArrayIncremental {
       int prefixLength = prefixLengthsDecoder.decodeInt();
       buffer.position = prefixLength;
       byteArrayDecoder.decodeInto(buffer);
-      byte[] byteArray = new byte[buffer.length()];
-      System.arraycopy(buffer.buffer, 0, byteArray, 0, buffer.length());
+      byte[] byteArray = new byte[buffer.getLength()];
+      System.arraycopy(buffer.buffer, 0, byteArray, 0, buffer.getLength());
       return byteArray;
     }
 
@@ -91,31 +91,31 @@ public final class ByteArrayIncremental {
     }
 
     @Override
-    public int length() {
-      return Bytes.getNumUIntBytes(prefixLengthsEncoder.length())
+    public int getLength() {
+      return Bytes.getNumUIntBytes(prefixLengthsEncoder.getLength())
         + Bytes.getNumUIntBytes(numValues)
-        + prefixLengthsEncoder.length() + byteArrayEncoder.length();
+        + prefixLengthsEncoder.getLength() + byteArrayEncoder.getLength();
     }
 
     @Override
-    public int estimatedLength() {
-      int estimatedPrefixLengthsEncoderLength = prefixLengthsEncoder.estimatedLength();
+    public int getEstimatedLength() {
+      int estimatedPrefixLengthsEncoderLength = prefixLengthsEncoder.getEstimatedLength();
       return Bytes.getNumUIntBytes(estimatedPrefixLengthsEncoderLength)
         + Bytes.getNumUIntBytes(numValues)
-        + estimatedPrefixLengthsEncoderLength + byteArrayEncoder.length();
+        + estimatedPrefixLengthsEncoderLength + byteArrayEncoder.getLength();
     }
 
     @Override
     public void writeTo(MemoryOutputStream memoryOutputStream) {
       finish();
       Bytes.writeUInt(memoryOutputStream, numValues);
-      Bytes.writeUInt(memoryOutputStream, prefixLengthsEncoder.length());
+      Bytes.writeUInt(memoryOutputStream, prefixLengthsEncoder.getLength());
       prefixLengthsEncoder.writeTo(memoryOutputStream);
       byteArrayEncoder.writeTo(memoryOutputStream);
     }
 
     @Override
-    public int numEncodedValues() {
+    public int getNumEncodedValues() {
       return numValues;
     }
 
