@@ -169,10 +169,18 @@
         (pprint/print-table (filter (-> rows first keys set) stats-column-order) rows)
         (pprint/print-table rows)))))
 
+(def custom-types-cli-options
+  [help-cli-option])
+
+(defn custom-types [options filename]
+  (with-open [r (d/file-reader filename)]
+    (prn (d/custom-types r))))
+
 (def commands {"schema" [schema schema-cli-options]
                "read" [read-file read-cli-options]
                "meta" [metadata metadata-cli-options]
                "stats" [stats stats-cli-options]
+               "custom-types" [custom-types custom-types-cli-options]
                "write" [write-file write-cli-options]})
 
 (def main-help-str

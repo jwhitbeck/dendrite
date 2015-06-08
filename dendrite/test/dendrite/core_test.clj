@@ -20,8 +20,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def tmp-filename "target/foo.dend")
-(def tmp-filename2 "target/bar.dend")
+(def tmp-filename "target/foo.den")
+(def tmp-filename2 "target/bar.den")
 
 (use-fixtures :each (fn [f]
                       (f)
@@ -248,35 +248,37 @@
                      r))))))
 
 (deftest custom-types
-  (testing "write/read custom types"
-    (let [t1 (.getTime (Calendar/getInstance))
-          t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
-          records [{:docid 1 :at t1} {:docid 2 :at t2}]
-          records-with-timestamps [{:docid 1 :at (.getTime t1)} {:docid 2 :at (.getTime t2)}]
-          custom-types {'test-type {:base-type 'long
-                                    :coercion-fn identity
-                                    :to-base-type-fn #(.getTime ^Date %)
-                                    :from-base-type-fn #(Date. (long %))}}]
-      (testing "throw error when the writer is not passed the :custom types option"
-        (is (thrown-with-msg?
-             IllegalArgumentException #"Unknown type: 'test-type'"
-             (helpers/throw-cause (with-open [w (d/file-writer {:docid 'long :at 'test-type} tmp-filename)]
-                                    (.writeAll w records))))))
-      (testing "throw error when invalid field is defined in custom-types"
-        (is (thrown-with-msg?
-             IllegalArgumentException #":invalid is not a valid custom type definition key"
-             (helpers/throw-cause
-              (.close (d/file-writer {:custom-types {'test-type {:invalid 'bar}}}
-                                     {:docid 'long :at 'test-type}
-                                     tmp-filename))))))
-      (with-open [w (d/file-writer {:custom-types custom-types} {:docid 'long :at 'test-type} tmp-filename)]
-        (.writeAll w records))
-      (testing "read as derived type when :custom-types option is passed"
-        (is (= records (with-open [r (d/file-reader {:custom-types custom-types} tmp-filename)]
-                         (doall (d/read r))))))
-      (testing "read as base type when :custom-types option is not passed"
-        (is (= records-with-timestamps (with-open [r (d/file-reader tmp-filename)]
-                                         (doall (d/read r)))))))))
+  (let [t1 (.getTime (Calendar/getInstance))
+        t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
+        records [{:docid 1 :at t1} {:docid 2 :at t2}]
+        records-with-timestamps [{:docid 1 :at (.getTime t1)} {:docid 2 :at (.getTime t2)}]
+        custom-types {'test-type {:base-type 'long
+                                  :coercion-fn identity
+                                  :to-base-type-fn #(.getTime ^Date %)
+                                  :from-base-type-fn #(Date. (long %))}}]
+    (testing "throw error when the writer is not passed the :custom types option"
+      (is (thrown-with-msg?
+           IllegalArgumentException #"Unknown type: 'test-type'"
+           (helpers/throw-cause (with-open [w (d/file-writer {:docid 'long :at 'test-type} tmp-filename)]
+                                  (.writeAll w records))))))
+    (testing "throw error when invalid field is defined in custom-types"
+      (is (thrown-with-msg?
+           IllegalArgumentException #":invalid is not a valid custom type definition key"
+           (helpers/throw-cause
+            (.close (d/file-writer {:custom-types {'test-type {:invalid 'bar}}}
+                                   {:docid 'long :at 'test-type}
+                                   tmp-filename))))))
+    (with-open [w (d/file-writer {:custom-types custom-types} {:docid 'long :at 'test-type} tmp-filename)]
+      (.writeAll w records))
+    (testing "read as derived type when :custom-types option is passed"
+      (is (= records (with-open [r (d/file-reader {:custom-types custom-types} tmp-filename)]
+                       (doall (d/read r))))))
+    (testing "read as base type when :custom-types option is not passed"
+      (is (= records-with-timestamps (with-open [r (d/file-reader tmp-filename)]
+                                       (doall (d/read r))))))
+    (testing "retrieve custom-type mappings"
+      (is (= {'test-type 'long} (with-open [r (d/file-reader tmp-filename)]
+                                  (d/custom-types r)))))))
 
 (deftest view-mappping
   (testing "dremel paper records"

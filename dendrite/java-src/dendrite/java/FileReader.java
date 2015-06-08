@@ -19,6 +19,7 @@ import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
+import clojure.lang.Symbol;
 
 import java.io.Closeable;
 import java.io.File;
@@ -29,9 +30,11 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -86,6 +89,14 @@ public final class FileReader implements Closeable, IReader {
 
   public ByteBuffer getMetadata() {
     return fileMetadata.metadata;
+  }
+
+  public Map<Symbol, Symbol> getCustomTypeMappings() {
+    Map<Symbol, Symbol> customTypeMappings = new HashMap<Symbol, Symbol>();
+    for (CustomType ct : fileMetadata.customTypes) {
+      customTypeMappings.put(ct.sym, types.getTypeSymbol(ct.baseType));
+    }
+    return customTypeMappings;
   }
 
   Schema.QueryResult getQueryResult(Options.ReadOptions options) {

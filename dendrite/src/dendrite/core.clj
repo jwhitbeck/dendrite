@@ -138,6 +138,11 @@
   [^FileReader reader]
   (byte-buffer->edn (.getMetadata reader)))
 
+(defn custom-types
+  "Returns a map of custom-type to base-type."
+  [^FileReader reader]
+  (.getCustomTypeMappings reader))
+
 (defn schema
   "Returns this reader's schema."
   [^FileReader reader]
