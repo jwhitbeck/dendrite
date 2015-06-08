@@ -29,7 +29,7 @@ import java.util.ListIterator;
 
 public final class Assemble {
 
-  public static interface Fn {
+  public interface Fn {
     Object invoke(ListIterator[] iterators);
   }
 
@@ -88,8 +88,8 @@ public final class Assemble {
     };
   }
 
-  static interface RecordConstructorFn {
-    public IPersistentCollection invoke(ListIterator[] iterators);
+  interface RecordConstructorFn {
+    IPersistentCollection invoke(ListIterator[] iterators);
   }
 
   static RecordConstructorFn getRecordConstructorFn(final Keyword[] fieldNames, final Fn[] fieldAssemblyFns) {

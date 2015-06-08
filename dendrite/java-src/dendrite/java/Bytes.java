@@ -17,8 +17,6 @@ import java.nio.ByteBuffer;
 
 public final class Bytes {
 
-  private static int DEFAULT_BUFFER_LENGTH = 1024;
-
   public static void writeFixedInt(final MemoryOutputStream os, final int i) {
     os.write(i);
     os.write(i >>  8);
@@ -209,16 +207,17 @@ public final class Bytes {
         shift -= 8;
       }
       if ((currentByte & 0x80) == 0) {
-        mos.write(byteBuffer);
-        byte[] bytesLittleEndian = mos.buffer;
-        int length = mos.getLength();
-        byte[] bytesBigEndian = new byte[length];
-        for(int i=0; i<length; ++i) {
-          bytesBigEndian[i] = bytesLittleEndian[length-i-1];
-        }
-        return new BigInteger(bytesBigEndian);
+        break;
       }
     }
+    mos.write(byteBuffer);
+    byte[] bytesLittleEndian = mos.buffer;
+    int length = mos.getLength();
+    byte[] bytesBigEndian = new byte[length];
+    for(int i=0; i<length; ++i) {
+      bytesBigEndian[i] = bytesLittleEndian[length-i-1];
+    }
+    return new BigInteger(bytesBigEndian);
   }
 
   private static BigInteger encodeZigZag(final BigInteger bi) {
@@ -370,7 +369,7 @@ public final class Bytes {
     final int mask = ~((-1) << width);
     int currentBytes = 0;
     int availableBits = 0;
-    for (int i=0; i<length; ++i) {
+    for (int i=offset; i<offset+length; ++i) {
       while (availableBits < width) {
         currentBytes |= ((int) bb.get() & 0xff) << availableBits;
         availableBits += 8;
@@ -405,7 +404,7 @@ public final class Bytes {
     final long mask = ~((long)-1 << width);
     long currentBytes = 0;
     int availableBits = 0;
-    for (int i=0; i<length; ++i) {
+    for (int i=offset; i<offset+length; ++i) {
       while (availableBits < width) {
         currentBytes |= ((long) bb.get() & 0xff) << availableBits;
         availableBits += 8;
@@ -476,7 +475,7 @@ public final class Bytes {
     final long mask = ~(((long)(-1)) << width);
     long currentBytes = 0;
     int availableBits = 0;
-    for (int i=0; i<length; ++i) {
+    for (int i=offset; i<offset+length; ++i) {
       while (availableBits < width) {
         currentBytes |= ((long) bb.get() & 0xff) << availableBits;
         availableBits += 8;
@@ -515,7 +514,7 @@ public final class Bytes {
     long currentBytesLo = 0;
     long currentBytesHi = 0;
     int availableBits = 0;
-    for (int i=0; i<length; ++i) {
+    for (int i=offset; i<offset+length; ++i) {
       while (availableBits < width) {
         long b = (long) bb.get() & 0xff;
         currentBytesLo |= b << availableBits;

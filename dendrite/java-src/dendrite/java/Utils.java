@@ -24,9 +24,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 public final class Utils {

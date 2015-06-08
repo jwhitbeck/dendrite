@@ -205,7 +205,6 @@ public class PersistentRecord extends APersistentMap {
 
     private void insert(Keyword k, long i) {
       int hasheq = k.hasheq();
-      long hv = presenceBit | ((long) hasheq & hasheqMask) | ((i << 32) & idxMask);
       int j = hasheq & mask;
       while (hashArray[j] != 0){
         if ((int)(hashArray[j] & hasheqMask) == hasheq) {
@@ -213,17 +212,18 @@ public class PersistentRecord extends APersistentMap {
         }
         j = (j + 1) & mask;
       }
+      long hv = presenceBit | ((long) hasheq & hasheqMask) | ((i << 32) & idxMask);
       hashArray[j] = hv;
     }
 
     public int get(Keyword k) {
       int hasheq = k.hasheq();
-      long lhasheq = ((long)hasheq) & hasheqMask;
       int j = hasheq & mask;
       long hv = hashArray[j];
       if (hv == 0) {
         return -1;
       }
+      long lhasheq = ((long)hasheq) & hasheqMask;
       while ((hv & hasheqMask) != lhasheq) {
         j = (j + 1) & mask;
         hv = hashArray[j];

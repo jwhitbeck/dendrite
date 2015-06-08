@@ -13,7 +13,6 @@
 package dendrite.java;
 
 import clojure.lang.AFn;
-import clojure.lang.ArraySeq;
 import clojure.lang.EdnReader;
 import clojure.lang.IFn;
 import clojure.lang.IMapEntry;
@@ -212,7 +211,7 @@ public abstract class Schema implements IWriteable {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || !(o instanceof Schema)) {
+    if (!(o instanceof Schema)) {
       return false;
     }
     Schema s = (Schema)o;
@@ -340,7 +339,7 @@ public abstract class Schema implements IWriteable {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null || !(o instanceof Field)) {
+      if (!(o instanceof Field)) {
         return false;
       }
       Field f = (Field)o;
@@ -567,10 +566,6 @@ public abstract class Schema implements IWriteable {
     return (o instanceof IPersistentMap) && (firstKey(o) instanceof Keyword);
   }
 
-  private static boolean isRepeated(int repetition) {
-    return repetition != OPTIONAL && repetition != REQUIRED;
-  }
-
   private static final class SchemaParseException extends RuntimeException {
     SchemaParseException(String msg, Throwable cause) {
       super(msg, cause);
@@ -581,7 +576,7 @@ public abstract class Schema implements IWriteable {
                                LinkedList<Column> columns, Object o) {
     try {
       if (isCol(o)) {
-        return _parseCol(types, parents, repLvl, defLvl, columns, asCol(o));
+        return _parseCol(types, repLvl, defLvl, columns, asCol(o));
       } else if (isRecord(o)) {
         return _parseRecord(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentMap) {
@@ -597,8 +592,7 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _parseCol(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                  LinkedList<Column> columns, Col col) {
+  private static Schema _parseCol(Types types, int repLvl, int defLvl, LinkedList<Column> columns, Col col) {
     int type = types.getType(col.type);
     Column column = new Column(isRequired(col)? REQUIRED : OPTIONAL,
                                repLvl,
@@ -802,7 +796,7 @@ public abstract class Schema implements IWriteable {
     }
 
     boolean hasLeaf() {
-      return columns.size() > 0;
+      return !columns.isEmpty();
     }
   }
 

@@ -12,8 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IFn;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;

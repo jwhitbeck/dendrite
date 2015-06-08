@@ -14,7 +14,6 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -246,7 +245,7 @@ public final class DataPage {
   }
 
   private static final class RequiredValuesWriter extends Writer {
-    private RequiredValuesWriter(IEncoder dataEncoder, ICompressor compressor) {
+    RequiredValuesWriter(IEncoder dataEncoder, ICompressor compressor) {
       super(null, null, dataEncoder, compressor);
     }
 
@@ -258,8 +257,8 @@ public final class DataPage {
   }
 
   private static final class NonRepeatedValuesWriter extends Writer {
-    private NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder,
-                                    ICompressor compressor) {
+    NonRepeatedValuesWriter(IEncoder definitionLevelEncoder, IEncoder dataEncoder,
+                            ICompressor compressor) {
       super(null, definitionLevelEncoder, dataEncoder, compressor);
     }
 
@@ -276,8 +275,8 @@ public final class DataPage {
   }
 
   private static final class RepeatedValuesWriter extends Writer {
-    private RepeatedValuesWriter(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder,
-                                 IEncoder dataEncoder, ICompressor compressor) {
+    RepeatedValuesWriter(IEncoder repetitionLevelEncoder, IEncoder definitionLevelEncoder,
+                         IEncoder dataEncoder, ICompressor compressor) {
       super(repetitionLevelEncoder, definitionLevelEncoder, dataEncoder, compressor);
     }
 
@@ -373,7 +372,7 @@ public final class DataPage {
     private final int n;
     private int i;
 
-    private RequiredValueIterator(IDecoder decoder) {
+    RequiredValueIterator(IDecoder decoder) {
       this.n = decoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;
@@ -434,8 +433,8 @@ public final class DataPage {
     private int i;
     private int nextRepetitionLevel;
 
-    private RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
-                                  IDecoder decoder, Object nullValue, int maxDefinitionLevel) {
+    RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
+                          IDecoder decoder, Object nullValue, int maxDefinitionLevel) {
       this.n = repetitionLevelsDecoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;

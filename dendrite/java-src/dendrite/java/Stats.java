@@ -48,15 +48,15 @@ public final class Stats {
     }
   }
 
-  public static final Page
+  public static Page
     createDataPageStats(long numValues, long numNonNilValues, long length, long headerLength,
                         long repetitionLevelsLength, long definitionLevelLength, long dataLength) {
     return new Page(numValues, numNonNilValues, length, headerLength, repetitionLevelsLength,
                     definitionLevelLength, dataLength, 0, 0, 0);
   }
 
-  public static final Page createDictionaryPageStats(long numValues, long length,
-                                                     long dictionaryHeaderLength, long dictionaryLength) {
+  public static Page createDictionaryPageStats(long numValues, long length,
+                                               long dictionaryHeaderLength, long dictionaryLength) {
     return new Page(0, 0, 0, 0, 0, 0, 0, numValues, dictionaryHeaderLength, dictionaryLength);
   }
 
@@ -91,7 +91,7 @@ public final class Stats {
     }
   }
 
-  public static final ColumnChunk createColumnChunkStats(List<Page> pagesStats) {
+  public static ColumnChunk createColumnChunkStats(List<Page> pagesStats) {
     long numPages = 0;
     long numValues = 0;
     long numNonNilValues = 0;

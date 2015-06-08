@@ -35,6 +35,8 @@ public final class RecordGroup {
 
   public static final class Writer implements IOutputBuffer, IFileWriteable {
 
+    private static final int PARALLEL_THRESHOLD = 128;
+
     private final IColumnChunkWriter[] columnChunkWriters;
     private final ArrayList<OptimizingColumnChunkWriter> optimizingColumnChunkwriters;
     private long numRecords;
@@ -43,7 +45,6 @@ public final class RecordGroup {
                   int optimizationStrategy) {
       columnChunkWriters = new IColumnChunkWriter[columns.length];
       this.optimizingColumnChunkwriters = new ArrayList<OptimizingColumnChunkWriter>();
-      int numOptimizingColumnChunkWriters = 0;
       for (int i=0; i<columns.length; ++i) {
         if (optimizationStrategy == ALL || (optimizationStrategy == ONLY_DEFAULT
                                             && columns[i].encoding == Types.PLAIN
@@ -83,8 +84,6 @@ public final class RecordGroup {
         columnChunkWriters[i].write(bundle.columnValues[i]);
       }
     }
-
-    private static final int PARALLEL_THRESHOLD = 128;
 
     public void write(Bundle bundle) {
       int numRecordsInBundle = bundle.getNumRecords();

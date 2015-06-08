@@ -90,7 +90,7 @@ public final class IntFixedBitWidthPackedRunLength {
     private int numOccurencesRleValue = 0;
     private int[] currentOctuplet = new int[8];
     private int currentOctupletPosition = 0;
-    private MemoryOutputStream octupletBuffer = new MemoryOutputStream();
+    private final MemoryOutputStream octupletBuffer = new MemoryOutputStream();
     private int numBufferedOctuplets;
     private int rleThreshold;
     private int width;

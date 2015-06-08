@@ -12,26 +12,13 @@
 
 package dendrite.java;
 
-import clojure.lang.AFn;
 import clojure.lang.Agent;
-import clojure.lang.ArrayChunk;
-import clojure.lang.ChunkedCons;
-import clojure.lang.Cons;
 import clojure.lang.IChunk;
-import clojure.lang.IChunkedSeq;
 import clojure.lang.IFn;
-import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;
-import clojure.lang.ISeq;
-import clojure.lang.ITransientCollection;
-import clojure.lang.ITransientMap;
 import clojure.lang.Keyword;
-import clojure.lang.LazySeq;
 import clojure.lang.PersistentArrayMap;
-import clojure.lang.RT;
-import clojure.lang.Seqable;
-import clojure.lang.Sequential;
 
 import java.io.Closeable;
 import java.io.File;
@@ -359,7 +346,7 @@ public final class FileReader implements Closeable, IReader {
     };
   }
 
-  private static interface IAssembleFutureFactory {
+  private interface IAssembleFutureFactory {
     Future<IChunk> get(Bundle bundle);
   }
 
@@ -483,7 +470,7 @@ public final class FileReader implements Closeable, IReader {
     };
   }
 
-  private static interface IReduceFutureFactory {
+  private interface IReduceFutureFactory {
     Future<Object> get(Bundle bundle);
   }
 

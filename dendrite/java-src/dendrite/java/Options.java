@@ -16,15 +16,11 @@ import clojure.lang.IFn;
 import clojure.lang.IMapEntry;
 import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
-import clojure.lang.ITransientCollection;
 import clojure.lang.Keyword;
-import clojure.lang.PersistentArrayMap;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -402,11 +398,11 @@ public final class Options {
     for (Object obj : (IPersistentMap)o) {
       IMapEntry entry = (IMapEntry)obj;
       Object key = entry.key();
-      Object val = entry.val();
       if (!(key instanceof Symbol)) {
         throw new IllegalArgumentException(String.format("%s expects its keys to be symbols but got '%s'",
                                                          COMPRESSION_THRESHOLDS, key));
       }
+      Object val = entry.val();
       double threshold;
       try {
         threshold = RT.doubleCast(val);

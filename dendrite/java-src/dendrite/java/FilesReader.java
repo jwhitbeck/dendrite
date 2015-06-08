@@ -211,7 +211,7 @@ public final class FilesReader implements Closeable, IReader {
 
   private class LazyView extends View {
 
-    private Options.ReadOptions readOptions;
+    private final Options.ReadOptions readOptions;
 
     LazyView(Options.ReadOptions readOptions) {
       super(readOptions.bundleSize);

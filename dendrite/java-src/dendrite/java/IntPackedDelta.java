@@ -19,7 +19,7 @@ public final class IntPackedDelta {
 
   public static final class Decoder extends AIntDecoder {
 
-    private int[] miniblockBuffer = new int[128];
+    private final int[] miniblockBuffer = new int[128];
     private int miniblockPosition = 0;
     private int miniblockLength = 0;
     private int currentMiniblockIndex = 0;
@@ -93,7 +93,6 @@ public final class IntPackedDelta {
   public static final class Encoder extends AEncoder {
 
     private static final int MAX_BLOCK_LENGTH = 128;
-    private static final int MAX_MINIBLOCK_LENGTH = 32;
     private static final int MIN_MINIBLOCK_LENGTH = 8;
 
     private long[] valueBuffer = new long[MAX_BLOCK_LENGTH + 1];
@@ -118,7 +117,7 @@ public final class IntPackedDelta {
 
     private MemoryOutputStream getBestMiniblockEncodingForBlock() {
       int blockLength = getBlockLength(position);
-      computeDeltas(blockLength);
+      computeDeltas();
       computeFrameOfReference();
 
       int miniblockLength = MIN_MINIBLOCK_LENGTH;
@@ -182,7 +181,7 @@ public final class IntPackedDelta {
       return maxBitWidth;
     }
 
-    private void computeDeltas(int blockLength) {
+    private void computeDeltas() {
       minDelta = Long.MAX_VALUE;
       for (int j=0; j<position-1; ++j) {
         long delta = valueBuffer[j+1] - valueBuffer[j];

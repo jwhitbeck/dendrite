@@ -24,6 +24,8 @@ import java.util.Map;
 
 public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter {
 
+  private static final int PARTITION_LENGTH = 100;
+
   final Schema.Column column;
   final Schema.Column primitiveColumn;
   final DataColumnChunk.Writer plainColumnChunkWriter;
@@ -53,7 +55,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       statsCollector = new ByteArrayStatsCollector(targetDataPageLength); break;
     case Types.FIXED_LENGTH_BYTE_ARRAY:
       statsCollector = new ByteArrayStatsCollector(targetDataPageLength); break;
-    default: statsCollector = new StatsCollector(targetDataPageLength);
+    default: statsCollector = new StatsCollector(targetDataPageLength); break;
     }
     DataPage.Writer statsPageWriter
       = DataPage.Writer.create(column.repetitionLevel,
@@ -84,8 +86,6 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   abstract int getBestEncoding(DataColumnChunk.Reader plainReader, Stats.ColumnChunk plainStats);
 
-  private static final int PARTITION_LENGTH = 100;
-
   public IColumnChunkWriter optimize(Map<Symbol,Double> compressionThresholds) {
     plainColumnChunkWriter.finish();
     DataColumnChunk.Reader primitiveReader
@@ -101,7 +101,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
                                    column, PARTITION_LENGTH);
     IColumnChunkWriter optimizedWriter
       = ColumnChunks.createWriter(types,
-                                  getColumnWith(types, column, column.type, bestEncoding, bestCompression),
+                                  getColumnWith(column, column.type, bestEncoding, bestCompression),
                                   plainColumnChunkWriter.targetDataPageLength);
     copyTo(plainReader, optimizedWriter);
     return optimizedWriter;
@@ -296,16 +296,14 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     } else {
       plainEncoding = Types.PLAIN;
     }
-    return getColumnWith(types, column, column.type, plainEncoding, Types.NONE);
+    return getColumnWith(column, column.type, plainEncoding, Types.NONE);
   }
 
   private static Schema.Column getPrimitiveColumn(Types types, Schema.Column column) {
-    return getColumnWith(types, column, types.getPrimitiveType(column.type), column.encoding,
-                         column.compression);
+    return getColumnWith(column, types.getPrimitiveType(column.type), column.encoding, column.compression);
   }
 
-  private static Schema.Column getColumnWith(Types types, Schema.Column column, int type, int encoding,
-                                             int compression) {
+  private static Schema.Column getColumnWith(Schema.Column column, int type, int encoding, int compression) {
     return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
                              type, encoding, compression, column.columnIndex, -1, null);
   }
@@ -315,7 +313,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     final HashMap<Object, Integer> frequencies;
     final int maxDictionarySize;
 
-    private StatsCollector(int maxDictionarySize) {
+    StatsCollector(int maxDictionarySize) {
       this.maxDictionarySize = maxDictionarySize;
       this.frequencies = new HashMap<Object, Integer>();
     }
@@ -346,8 +344,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   private static final class BooleanColumnChunk extends OptimizingColumnChunkWriter {
 
-    private BooleanColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
-                               Schema.Column column, StatsCollector statsCollector) {
+    BooleanColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+                       Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
 
@@ -408,7 +406,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   private static final class DefaultColumnChunk extends OptimizingColumnChunkWriter {
 
-    private DefaultColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+    DefaultColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
                                Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
@@ -442,7 +440,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     private int minValue = Integer.MAX_VALUE;
     private int maxValue = Integer.MIN_VALUE;
 
-    private IntStatsCollector(int maxDictionarySize) {
+    IntStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
@@ -463,8 +461,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
     private final IntStatsCollector intStatsCollector;
 
-    private IntColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
-                           StatsCollector statsCollector) {
+    IntColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter, Schema.Column column,
+                   StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
       this.intStatsCollector = (IntStatsCollector)statsCollector;
     }
@@ -561,7 +559,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     private long minValue = Long.MAX_VALUE;
     private long maxValue = Long.MIN_VALUE;
 
-    private LongStatsCollector(int maxDictionarySize) {
+    LongStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
@@ -671,7 +669,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
     private Map<Object, Integer> unwrappedFrequencies = null;
 
-    private ByteArrayStatsCollector(int maxDictionarySize) {
+    ByteArrayStatsCollector(int maxDictionarySize) {
       super(maxDictionarySize);
     }
 
@@ -697,8 +695,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   private static class ByteArrayColumnChunk extends OptimizingColumnChunkWriter {
 
-    private ByteArrayColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
-                                 Schema.Column column, StatsCollector statsCollector) {
+    ByteArrayColumnChunk(Types types, DataColumnChunk.Writer plainColumnChunkWriter,
+                         Schema.Column column, StatsCollector statsCollector) {
       super(types, plainColumnChunkWriter, column, statsCollector);
     }
 

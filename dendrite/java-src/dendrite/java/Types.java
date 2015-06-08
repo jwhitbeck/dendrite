@@ -502,12 +502,14 @@ public final class Types {
       case ZIG_ZAG: return IntZigZag.decoderFactory;
       case PACKED_RUN_LENGTH: return IntPackedRunLength.decoderFactory;
       case DELTA: return IntPackedDelta.decoderFactory;
+      default: throw new IllegalStateException();
       }
     case LONG: switch (encoding) {
       case PLAIN: return LongPlain.decoderFactory;
       case VLQ: return LongVlq.decoderFactory;
       case ZIG_ZAG: return LongZigZag.decoderFactory;
       case DELTA: return LongPackedDelta.decoderFactory;
+      default: throw new IllegalStateException();
       }
     case FLOAT: return FloatPlain.decoderFactory;
     case DOUBLE: return DoublePlain.decoderFactory;
@@ -515,9 +517,10 @@ public final class Types {
       case PLAIN: return ByteArrayPlain.decoderFactory;
       case INCREMENTAL: return ByteArrayIncremental.decoderFactory;
       case DELTA_LENGTH: return ByteArrayDeltaLength.decoderFactory;
+      default: throw new IllegalStateException();
       }
     case FIXED_LENGTH_BYTE_ARRAY: return FixedLengthByteArrayPlain.decoderFactory;
-    default: return null; // never reaches here
+    default: throw new IllegalStateException();
     }
   }
 
@@ -530,12 +533,14 @@ public final class Types {
       case ZIG_ZAG: return new IntZigZag.Encoder();
       case PACKED_RUN_LENGTH: return new IntPackedRunLength.Encoder();
       case DELTA: return new IntPackedDelta.Encoder();
+      default: throw new IllegalStateException();
       }
     case LONG: switch (encoding) {
       case PLAIN: return new LongPlain.Encoder();
       case VLQ: return new LongVlq.Encoder();
       case ZIG_ZAG: return new LongZigZag.Encoder();
       case DELTA: return new LongPackedDelta.Encoder();
+      default: throw new IllegalStateException();
       }
     case FLOAT: return new FloatPlain.Encoder();
     case DOUBLE: return new DoublePlain.Encoder();
@@ -543,9 +548,10 @@ public final class Types {
       case PLAIN: return new ByteArrayPlain.Encoder();
       case INCREMENTAL: return new ByteArrayIncremental.Encoder();
       case DELTA_LENGTH: return new ByteArrayDeltaLength.Encoder();
+      default: throw new IllegalStateException();
       }
     case FIXED_LENGTH_BYTE_ARRAY: return new FixedLengthByteArrayPlain.Encoder();
-    default: return null; // never reaches here
+    default: throw new IllegalStateException();
     }
   }
 

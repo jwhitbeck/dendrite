@@ -33,7 +33,7 @@ public final class HashableByteArray {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || !(o instanceof HashableByteArray)) {
+    if (!(o instanceof HashableByteArray)) {
       return false;
     }
     return Arrays.equals(array, ((HashableByteArray)o).array);

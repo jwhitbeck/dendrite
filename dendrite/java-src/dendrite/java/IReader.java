@@ -12,9 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.Counted;
-import clojure.lang.IFn;
-
 public interface IReader {
   View read(Options.ReadOptions options);
 }

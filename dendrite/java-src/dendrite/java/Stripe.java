@@ -27,7 +27,9 @@ import java.util.Map;
 
 public final class Stripe {
 
-  public static interface Fn {
+  private static final Object notFound = new Object();
+
+  public interface Fn {
     boolean invoke(Object record, Object[] buffer);
   }
 
@@ -68,7 +70,7 @@ public final class Stripe {
     }
   }
 
-  static interface StripeFn {
+  interface StripeFn {
     void invoke(Object[] buffer, Object obj, boolean isParentNil, int repetitionLevel, int definitionLevel);
   }
 
@@ -103,8 +105,6 @@ public final class Stripe {
     }
     list.add(v);
   }
-
-  static final Object notFound = new Object();
 
   static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
                                            final IPersistentVector parents) {

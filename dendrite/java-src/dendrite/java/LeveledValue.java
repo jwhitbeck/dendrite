@@ -30,7 +30,7 @@ public final class LeveledValue {
       LeveledValue lv = (LeveledValue)o;
       return lv.repetitionLevel == repetitionLevel && lv.definitionLevel == definitionLevel
         && ((value == null && lv.value == null)
-            || (value != null && lv.value !=null && lv.value.equals(value)));
+            || (lv.value !=null && lv.value.equals(value)));
     }
     return false;
   }

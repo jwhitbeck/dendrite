@@ -20,7 +20,7 @@ public final class LongPackedDelta {
 
   public static final class Decoder extends ADecoder {
 
-    private long[] miniblockBuffer = new long[128];
+    private final long[] miniblockBuffer = new long[128];
     private int miniblockPosition = 0;
     private int miniblockLength = 0;
     private int currentMiniblockIndex = 0;
@@ -101,8 +101,8 @@ public final class LongPackedDelta {
 
   public static final class Encoder extends AEncoder {
 
+    private static final BigInteger INFINITY = BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(2);
     private static final int MAX_BLOCK_LENGTH = 128;
-    private static final int MAX_MINIBLOCK_LENGTH = 32;
     private static final int MIN_MINIBLOCK_LENGTH = 8;
 
     private BigInteger[] valueBuffer = new BigInteger[MAX_BLOCK_LENGTH + 1];
@@ -127,7 +127,7 @@ public final class LongPackedDelta {
 
     private MemoryOutputStream getBestMiniblockEncodingForBlock() {
       int blockLength = getBlockLength(position);
-      computeDeltas(blockLength);
+      computeDeltas();
       computeFrameOfReference();
 
       int miniblockLength = MIN_MINIBLOCK_LENGTH;
@@ -191,9 +191,7 @@ public final class LongPackedDelta {
       return maxBitWidth;
     }
 
-    private static final BigInteger INFINITY = BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(2);
-
-    private void computeDeltas(int blockLength) {
+    private void computeDeltas() {
       minDelta = INFINITY;
       for (int j=0; j<position-1; ++j) {
         BigInteger delta = valueBuffer[j+1].subtract(valueBuffer[j]);

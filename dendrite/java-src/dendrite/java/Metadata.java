@@ -41,7 +41,7 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null || !(o instanceof ColumnChunk)) {
+      if (!(o instanceof ColumnChunk)) {
         return false;
       }
       ColumnChunk cc = (ColumnChunk) o;
@@ -102,7 +102,7 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null || !(o instanceof RecordGroup)) {
+      if (!(o instanceof RecordGroup)) {
         return false;
       }
       RecordGroup rg = (RecordGroup) o;
@@ -180,7 +180,7 @@ public final class Metadata {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null || !(o instanceof File)) {
+      if (!(o instanceof File)) {
         return false;
       }
       File f = (File)o;

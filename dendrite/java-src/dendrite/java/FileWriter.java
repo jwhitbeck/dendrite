@@ -19,7 +19,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -33,6 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public final class FileWriter implements Closeable {
 
+  private static final List<Object> poison = new ArrayList<Object>();
   private final Types types;
   private final Schema schema;
   private final FileChannel fileChannel;
@@ -80,8 +80,6 @@ public final class FileWriter implements Closeable {
                                                              getBatchIterator(batchQueue));
     return new FileWriter(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
   }
-
-  private static final List<Object> poison = new ArrayList<Object>();
 
   private static Iterator<List<Object>> getBatchIterator(final LinkedBlockingQueue<List<Object>> batchQueue) {
     return new AReadOnlyIterator<List<Object>>() {
