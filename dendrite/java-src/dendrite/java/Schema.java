@@ -84,100 +84,12 @@ public abstract class Schema implements IWriteable {
     REQUIRED_TYPE = Keyword.intern("dendrite", "required"),
     READERS = Keyword.intern("readers");
 
-  public static boolean isRequired(Object o) {
-    IPersistentMap meta = RT.meta(o);
-    return meta != null && meta.valAt(TYPE) == REQUIRED_TYPE;
-  }
-
-  public static Object req(Object o) {
-    if (isRequired(o)) {
-      throw new IllegalArgumentException("Cannot mark a field as required multiple times.");
-    }
-    IPersistentMap meta = RT.meta(o);
-    Object oldType = RT.get(meta, TYPE);
-    if (oldType != null) {
-      return ((IObj)o).withMeta(meta.assoc(OLD_TYPE, oldType).assoc(TYPE, REQUIRED_TYPE));
-    }
-    return ((IObj)o).withMeta((IPersistentMap)RT.assoc(meta, TYPE, REQUIRED_TYPE));
-  }
-
-  public static Object unreq(Object o) {
-    if (isRequired(o)) {
-      IPersistentMap meta = RT.meta(o);
-      Object oldType = meta.valAt(OLD_TYPE);
-      if (oldType != null) {
-        return ((IObj)o).withMeta(meta.without(OLD_TYPE).assoc(TYPE, oldType));
-      }
-      return ((IObj)o).withMeta(meta.without(TYPE));
-    }
-    return o;
-  }
-
-  private static boolean isTagged(Object o) {
-    IPersistentMap meta = RT.meta(o);
-    return meta != null && meta.valAt(TYPE) == TAGGED_TYPE;
-  }
-
-  public static Object getTag(Object o) {
-    IPersistentMap meta = RT.meta(o);
-    return meta.valAt(TAG);
-  }
-
-  public static Object tag(Object tag, Object o) {
-    if (isTagged(o)) {
-      throw new IllegalArgumentException("Cannot tag an element multiple times.");
-    }
-    IPersistentMap meta = RT.meta(o);
-    Object oldType = RT.get(meta, TYPE);
-    if (oldType != null){
-      return ((IObj)o).withMeta(meta.assoc(OLD_TYPE, oldType).assoc(TYPE, TAGGED_TYPE).assoc(TAG, tag));
-    }
-    return ((IObj)o).withMeta((IPersistentMap)RT.assoc(RT.assoc(meta, TYPE, TAGGED_TYPE), TAG, tag));
-  }
-
-  public static Object untag(Object o) {
-    if (isTagged(o)) {
-      IPersistentMap meta = RT.meta(o);
-      Object oldType = meta.valAt(OLD_TYPE);
-      if (oldType != null) {
-        return ((IObj)o).withMeta(meta.without(OLD_TYPE).assoc(TYPE, oldType).without(TAG));
-      }
-      return ((IObj)o).withMeta(meta.without(TYPE).without(TAG));
-    }
-    return o;
-  }
-
-  private static IFn parseReq = new AFn() {
-      public Object invoke(Object o) {
-        return req(o);
-      }
-    };
-
-  private static IFn parseCol = new AFn() {
-      public Object invoke(Object vs) {
-        switch (RT.count(vs)) {
-        case 1: return new Col((Symbol)RT.first(vs));
-        case 2: return new Col((Symbol)RT.first(vs), (Symbol)RT.second(vs));
-        case 3: return new Col((Symbol)RT.first(vs), (Symbol)RT.second(vs), (Symbol)RT.third(vs));
-        default: throw new IllegalArgumentException(String.format("Invalid col: '%s'.", vs));
-        }
-      }
-    };
-
-  public static Object readString(String s) {
-    IPersistentMap opts = new PersistentArrayMap(new Object[]{
-        READERS, new PersistentArrayMap(new Object[]{
-            REQ, parseReq,
-            COL, parseCol})});
-    return EdnReader.readString(s, opts);
-  }
-
   public final int repetition;
   public final int repetitionLevel;
   public final int definitionLevel;
   public final IFn fn;
 
-  private Schema(int repetition, int repetitionLevel, int definitionLevel, IFn fn) {
+  Schema(int repetition, int repetitionLevel, int definitionLevel, IFn fn) {
     this.repetition = repetition;
     this.repetitionLevel = repetitionLevel;
     this.definitionLevel = definitionLevel;
@@ -542,6 +454,92 @@ public abstract class Schema implements IWriteable {
     }
   }
 
+
+  public static boolean isRequired(Object o) {
+    return RT.get(RT.meta(o), TYPE) == REQUIRED_TYPE;
+  }
+
+  public static Object req(Object o) {
+    if (isRequired(o)) {
+      throw new IllegalArgumentException("Cannot mark a field as required multiple times.");
+    }
+    IPersistentMap meta = RT.meta(o);
+    Object oldType = RT.get(meta, TYPE);
+    if (oldType != null) {
+      return ((IObj)o).withMeta(meta.assoc(OLD_TYPE, oldType).assoc(TYPE, REQUIRED_TYPE));
+    }
+    return ((IObj)o).withMeta((IPersistentMap)RT.assoc(meta, TYPE, REQUIRED_TYPE));
+  }
+
+  public static Object unreq(Object o) {
+    if (isRequired(o)) {
+      IPersistentMap meta = RT.meta(o);
+      Object oldType = RT.get(meta, OLD_TYPE);
+      if (oldType != null) {
+        return ((IObj)o).withMeta(meta.without(OLD_TYPE).assoc(TYPE, oldType));
+      }
+      return ((IObj)o).withMeta(meta.without(TYPE));
+    }
+    return o;
+  }
+
+  private static boolean isTagged(Object o) {
+    return RT.get(RT.meta(o), TYPE) == TAGGED_TYPE;
+  }
+
+  public static Object getTag(Object o) {
+    return RT.get(RT.meta(o), TAG);
+  }
+
+  public static Object tag(Object tag, Object o) {
+    if (isTagged(o)) {
+      throw new IllegalArgumentException("Cannot tag an element multiple times.");
+    }
+    IPersistentMap meta = RT.meta(o);
+    Object oldType = RT.get(meta, TYPE);
+    if (oldType != null){
+      return ((IObj)o).withMeta(meta.assoc(OLD_TYPE, oldType).assoc(TYPE, TAGGED_TYPE).assoc(TAG, tag));
+    }
+    return ((IObj)o).withMeta((IPersistentMap)RT.assoc(RT.assoc(meta, TYPE, TAGGED_TYPE), TAG, tag));
+  }
+
+  public static Object untag(Object o) {
+    if (isTagged(o)) {
+      IPersistentMap meta = RT.meta(o);
+      Object oldType = RT.get(o, OLD_TYPE);
+      if (oldType != null) {
+        return ((IObj)o).withMeta(meta.without(OLD_TYPE).assoc(TYPE, oldType).without(TAG));
+      }
+      return ((IObj)o).withMeta(meta.without(TYPE).without(TAG));
+    }
+    return o;
+  }
+
+  private static IFn parseReq = new AFn() {
+      public Object invoke(Object o) {
+        return req(o);
+      }
+    };
+
+  private static IFn parseCol = new AFn() {
+      public Object invoke(Object vs) {
+        switch (RT.count(vs)) {
+        case 1: return new Col((Symbol)RT.first(vs));
+        case 2: return new Col((Symbol)RT.first(vs), (Symbol)RT.second(vs));
+        case 3: return new Col((Symbol)RT.first(vs), (Symbol)RT.second(vs), (Symbol)RT.third(vs));
+        default: throw new IllegalArgumentException(String.format("Invalid col: '%s'.", vs));
+        }
+      }
+    };
+
+  public static Object readString(String s) {
+    IPersistentMap opts = new PersistentArrayMap(new Object[]{
+        READERS, new PersistentArrayMap(new Object[]{
+            REQ, parseReq,
+            COL, parseCol})});
+    return EdnReader.readString(s, opts);
+  }
+
   private static Object firstKey(Object o) {
     IMapEntry e = (IMapEntry)RT.first(RT.seq(o));
     if (e == null) {
@@ -571,17 +569,28 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _parse(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                               LinkedList<Column> columns, Object o) {
+  public static Schema parse(Types types, Object unparsedSchema) {
+    try {
+      return parse(types, PersistentVector.EMPTY, 0, 0, new LinkedList<Column>(), unparsedSchema);
+    } catch (SchemaParseException e) {
+      String msg = String.format("Failed to parse schema '%s'. %s.", unparsedSchema, e.getMessage());
+      throw new IllegalArgumentException(msg, e.getCause());
+    } catch (Exception e) {
+      throw new IllegalArgumentException(String.format("Failed to parse schema '%s'.", unparsedSchema), e);
+    }
+  }
+
+  private static Schema parse(Types types, IPersistentVector parents, int repLvl, int defLvl,
+                              LinkedList<Column> columns, Object o) {
     try {
       if (isCol(o)) {
-        return _parseCol(types, repLvl, defLvl, columns, asCol(o));
+        return parseCol(types, repLvl, defLvl, columns, asCol(o));
       } else if (isRecord(o)) {
-        return _parseRecord(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
+        return parseRecord(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentMap) {
-        return _parseMap(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
+        return parseMap(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentCollection) {
-        return _parseRepeated(types, parents, repLvl, defLvl, columns, (IPersistentCollection)o);
+        return parseRepeated(types, parents, repLvl, defLvl, columns, (IPersistentCollection)o);
       }
       throw new IllegalArgumentException(String.format("Unsupported schema element '%s'", o));
     } catch (SchemaParseException e) {
@@ -591,7 +600,7 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _parseCol(Types types, int repLvl, int defLvl, LinkedList<Column> columns, Col col) {
+  private static Schema parseCol(Types types, int repLvl, int defLvl, LinkedList<Column> columns, Col col) {
     int type = types.getType(col.type);
     Column column = new Column(isRequired(col)? REQUIRED : OPTIONAL,
                                repLvl,
@@ -611,8 +620,8 @@ public abstract class Schema implements IWriteable {
     return columns.getLast().columnIndex;
   }
 
-  private static Schema _parseRecord(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                     LinkedList<Column> columns, IPersistentMap record) {
+  private static Schema parseRecord(Types types, IPersistentVector parents, int repLvl, int defLvl,
+                                    LinkedList<Column> columns, IPersistentMap record) {
     int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
     int repetition = isRequired(record)? REQUIRED : OPTIONAL;
     Field[] fields = new Field[RT.count(record)];
@@ -620,7 +629,7 @@ public abstract class Schema implements IWriteable {
     for (Object o : record) {
       IMapEntry e = (IMapEntry)o;
       Keyword name = (Keyword)e.key();
-      fields[i] = new Field(name, _parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val()));
+      fields[i] = new Field(name, parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val()));
       i += 1;
     }
     int leafColumnIndex = getLeafColumnIndex(columns);
@@ -638,8 +647,8 @@ public abstract class Schema implements IWriteable {
     throw new IllegalArgumentException(String.format("Unsupported repeated schema element '%s'", o));
   }
 
-  private static Schema _parseRepeated(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                       LinkedList<Column> columns, IPersistentCollection coll) {
+  private static Schema parseRepeated(Types types, IPersistentVector parents, int repLvl, int defLvl,
+                                      LinkedList<Column> columns, IPersistentCollection coll) {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
@@ -647,7 +656,7 @@ public abstract class Schema implements IWriteable {
       throw new IllegalArgumentException("Repeated element cannot also be required.");
     }
     Object elem = RT.first(coll);
-    Schema repeatedSchema = _parse(types, parents.cons(null), repLvl + 1, defLvl + 1, columns, elem);
+    Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, defLvl + 1, columns, elem);
     return new Collection(getRepeatedRepetition(coll),
                           repLvl + 1,
                           defLvl + 1,
@@ -656,8 +665,8 @@ public abstract class Schema implements IWriteable {
                           null);
   }
 
-  private static Schema _parseMap(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                  LinkedList<Column> columns, IPersistentMap map) {
+  private static Schema parseMap(Types types, IPersistentVector parents, int repLvl, int defLvl,
+                                 LinkedList<Column> columns, IPersistentMap map) {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
@@ -666,38 +675,27 @@ public abstract class Schema implements IWriteable {
     }
     IMapEntry e = (IMapEntry)RT.first(map);
     IPersistentMap elem = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
-    Schema keyValueRecord = _parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, columns,
-                                         (IPersistentMap)req(elem));
+    Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, columns,
+                                        (IPersistentMap)req(elem));
     return new Collection(MAP, repLvl + 1, defLvl + 1, getLeafColumnIndex(columns), keyValueRecord, null);
   }
 
-  public static Schema parse(Types types, Object unparsedSchema) {
-    try {
-      return _parse(types, PersistentVector.EMPTY, 0, 0, new LinkedList<Column>(), unparsedSchema);
-    } catch (SchemaParseException e) {
-      String msg = String.format("Failed to parse schema '%s'. %s.", unparsedSchema, e.getMessage());
-      throw new IllegalArgumentException(msg, e.getCause());
-    } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Failed to parse schema '%s'.", unparsedSchema), e);
-    }
+  public static Object unparse(Types types, Schema schema) {
+    return unparse(types, false, schema);
   }
 
-  public static Object unparse(Types types, Schema schema) {
-    return _unparse(types, false, schema);
+  private static Object unparse(Types types, boolean asPlain, Schema schema) {
+    if (schema instanceof Column) {
+      return unparseColumn(types, asPlain, (Column)schema);
+    } else if (schema instanceof Record) {
+      return unparseRecord(types, asPlain, (Record)schema);
+    } else /* if (schema instanceof Schema.Collection) */ {
+      return unparseCollection(types, asPlain, (Collection)schema);
+    }
   }
 
   public static Object unparsePlain(Types types, Schema schema) {
-      return _unparse(types, true, schema);
-  }
-
-  private static Object _unparse(Types types, boolean asPlain, Schema schema) {
-    if (schema instanceof Column) {
-      return _unparseColumn(types, asPlain, (Column)schema);
-    } else if (schema instanceof Record) {
-      return _unparseRecord(types, asPlain, (Record)schema);
-    } else /* if (schema instanceof Schema.Collection) */ {
-      return _unparseCollection(types, asPlain, (Collection)schema);
-    }
+    return unparse(types, true, schema);
   }
 
   private static Object wrapWithRepetition(Object o, int repetition) {
@@ -711,7 +709,7 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Object _unparseColumn(Types types, boolean asPlain, Column column) {
+  private static Object unparseColumn(Types types, boolean asPlain, Column column) {
     if (asPlain || (column.encoding == Types.PLAIN && column.compression == Types.NONE)) {
       return wrapWithRepetition(types.getTypeSymbol(column.type), column.repetition);
     }
@@ -722,19 +720,18 @@ public abstract class Schema implements IWriteable {
     return wrapWithRepetition(col, column.repetition);
   }
 
-  private static Object _unparseRecord(Types types, boolean asPlain, Record record) {
+  private static Object unparseRecord(Types types, boolean asPlain, Record record) {
     ITransientMap rec = PersistentArrayMap.EMPTY.asTransient();
     Field[] fields = record.fields;
     for (Field field : fields) {
-      rec = rec.assoc(field.name, _unparse(types, asPlain, field.value));
+      rec = rec.assoc(field.name, unparse(types, asPlain, field.value));
     }
     return wrapWithRepetition(rec.persistent(), record.repetition);
   }
 
-  private static Object _unparseCollection(Types types, boolean asPlain, Collection coll) {
-    return wrapWithRepetition(_unparse(types, asPlain, coll.repeatedSchema), coll.repetition);
+  private static Object unparseCollection(Types types, boolean asPlain, Collection coll) {
+    return wrapWithRepetition(unparse(types, asPlain, coll.repeatedSchema), coll.repetition);
   }
-
 
   public static Schema getSubSchema(List<Keyword> entrypoint, Schema schema) {
     Keyword parent = null;
@@ -798,38 +795,50 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQuery(QueryContext context, Schema schema, Object query,
-                                    PersistentVector parents) {
+  public static QueryResult applyQuery(Types types, boolean isMissingFieldsAsNil, Map<Symbol,IFn> readers,
+                                       Schema schema, Object query) {
+    try {
+      QueryContext context = new QueryContext(types, readers, isMissingFieldsAsNil);
+      Schema s =  applyQuery(context, schema, query, PersistentVector.EMPTY);
+      return new QueryResult(s, context.columns.toArray(new Column[]{}));
+    } catch (Exception e) {
+      throw new IllegalArgumentException(String.format("Invalid query '%s' for schema '%s'.", query,
+                                                       unparse(types, schema)), e);
+    }
+  }
+
+  private static Schema applyQuery(QueryContext context, Schema schema, Object query,
+                                   PersistentVector parents) {
     if (isTagged(query)) {
       if (query instanceof Symbol) {
-        return _applyQueryTaggedSymbol(context, schema, (Symbol)query, parents);
+        return applyQueryTaggedSymbol(context, schema, (Symbol)query, parents);
       } else {
-        return _applyQueryTagged(context, schema, query, parents);
+        return applyQueryTagged(context, schema, query, parents);
       }
     } else if (isRecord(query)) {
-      return _applyQueryRecord(context, schema, (IPersistentMap)query, parents);
+      return applyQueryRecord(context, schema, (IPersistentMap)query, parents);
     } else if (query instanceof IPersistentMap) {
-      return _applyQueryMap(context, schema, (IPersistentMap)query, parents);
+      return applyQueryMap(context, schema, (IPersistentMap)query, parents);
     } else if (query instanceof IPersistentSet) {
-      return _applyQuerySet(context, schema, (IPersistentSet)query, parents);
+      return applyQuerySet(context, schema, (IPersistentSet)query, parents);
     } else if (query instanceof IPersistentVector) {
-      return _applyQueryVector(context, schema, (IPersistentVector)query, parents);
+      return applyQueryVector(context, schema, (IPersistentVector)query, parents);
     } else if (query instanceof IPersistentList) {
-      return _applyQueryList(context, schema, (IPersistentList)query, parents);
+      return applyQueryList(context, schema, (IPersistentList)query, parents);
     } else if (query instanceof Symbol) {
-      return _applyQueryUntaggedSymbol(context, schema, (Symbol)query, parents);
+      return applyQueryUntaggedSymbol(context, schema, (Symbol)query, parents);
     }
     throw new IllegalArgumentException(String.format("Unable to parse query element '%s'.", query));
   }
 
-  private static Schema _applyQueryTagged(QueryContext context, Schema schema, Object query,
-                                          PersistentVector parents) {
+  private static Schema applyQueryTagged(QueryContext context, Schema schema, Object query,
+                                         PersistentVector parents) {
     Symbol tag = (Symbol)getTag(query);
     IFn fn = (IFn)RT.get(context.readers, tag);
     if (fn == null) {
       throw new IllegalArgumentException(String.format("No reader function was provided for tag '%s'.", tag));
     }
-    return _applyQuery(context, schema, untag(query), parents).withFn(fn);
+    return applyQuery(context, schema, untag(query), parents).withFn(fn);
   }
 
   private static HashSet<Keyword> getFieldNameSet(Record record) {
@@ -860,15 +869,15 @@ public abstract class Schema implements IWriteable {
     return sb.toString();
   }
 
-  private static Schema _applyQueryRecord(QueryContext context, Schema schema, IPersistentMap query,
-                                          PersistentVector parents) {
+  private static Schema applyQueryRecord(QueryContext context, Schema schema, IPersistentMap query,
+                                         PersistentVector parents) {
     if (schema == null) {
       Field[] fields = new Field[RT.count(query)];
       int i = 0;
       for (ISeq s = RT.seq(query); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());
-        fields[i] = new Field(name, _applyQuery(context, null, e.val(), parents.cons(name)));
+        fields[i] = new Field(name, applyQuery(context, null, e.val(), parents.cons(name)));
         i += 1;
       }
       return Record.missing(fields);
@@ -886,13 +895,13 @@ public abstract class Schema implements IWriteable {
       for (ISeq s = RT.seq(missingFieldsQuery); s != null; s = s.next()) {
         IMapEntry e = (IMapEntry)s.first();
         Keyword name = (Keyword)(e.key());
-        fieldsList.add(new Field(name, _applyQuery(context, null, e.val(), parents.cons(name))));
+        fieldsList.add(new Field(name, applyQuery(context, null, e.val(), parents.cons(name))));
       }
       for (ISeq s = RT.seq(record.fields); s != null; s = s.next()) {
         Field field = (Field)s.first();
         if (query.containsKey(field.name)) {
-          fieldsList.add(new Field(field.name, _applyQuery(context, field.value, RT.get(query, field.name),
-                                                           parents.cons(field.name))));
+          fieldsList.add(new Field(field.name, applyQuery(context, field.value, RT.get(query, field.name),
+                                                          parents.cons(field.name))));
         }
       }
       record = record.withFields(fieldsList.toArray(new Field[]{}));
@@ -904,8 +913,8 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQueryMap(QueryContext context, Schema schema, IPersistentMap query,
-                                       PersistentVector parents) {
+  private static Schema applyQueryMap(QueryContext context, Schema schema, IPersistentMap query,
+                                      PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(MAP);
     } else if (schema.repetition != MAP) {
@@ -919,10 +928,10 @@ public abstract class Schema implements IWriteable {
     IMapEntry e = (IMapEntry)RT.first(query);
     Object keyValueQuery = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
     Collection map = (Collection)schema;
-    map = map.withRepeatedSchema(_applyQuery(context,
-                                             map.repeatedSchema,
-                                             keyValueQuery,
-                                             parents.cons(null)));
+    map = map.withRepeatedSchema(applyQuery(context,
+                                            map.repeatedSchema,
+                                            keyValueQuery,
+                                            parents.cons(null)));
     if (context.hasLeaf()) {
       return map.withLeafColumnIndex(context.getLeafColumnIndex());
     } else {
@@ -930,8 +939,8 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQuerySet(QueryContext context, Schema schema, IPersistentSet query,
-                                       PersistentVector parents) {
+  private static Schema applyQuerySet(QueryContext context, Schema schema, IPersistentSet query,
+                                      PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(SET);
     } else if (schema.repetition != SET) {
@@ -940,11 +949,11 @@ public abstract class Schema implements IWriteable {
                                                        repetitionStrings[schema.repetition]));
 
     }
-    return _applyQueryRepeated(context, SET, schema, query, parents);
+    return applyQueryRepeated(context, SET, schema, query, parents);
   }
 
-  private static Schema _applyQueryVector(QueryContext context, Schema schema, IPersistentVector query,
-                                          PersistentVector parents) {
+  private static Schema applyQueryVector(QueryContext context, Schema schema, IPersistentVector query,
+                                         PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(VECTOR);
     } else if (schema.repetition != LIST
@@ -956,11 +965,11 @@ public abstract class Schema implements IWriteable {
                                                        repetitionStrings[schema.repetition]));
 
     }
-    return _applyQueryRepeated(context, VECTOR, schema, query, parents);
+    return applyQueryRepeated(context, VECTOR, schema, query, parents);
   }
 
-  private static Schema _applyQueryList(QueryContext context, Schema schema, IPersistentList query,
-                                        PersistentVector parents) {
+  private static Schema applyQueryList(QueryContext context, Schema schema, IPersistentList query,
+                                       PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(LIST);
     } else if (schema.repetition != LIST
@@ -972,14 +981,14 @@ public abstract class Schema implements IWriteable {
                                                        repetitionStrings[schema.repetition]));
 
     }
-    return _applyQueryRepeated(context, LIST, schema, query, parents);
+    return applyQueryRepeated(context, LIST, schema, query, parents);
   }
 
-  private static Schema _applyQueryRepeated(QueryContext context, int repetition, Schema schema,
-                                            IPersistentCollection query, PersistentVector parents) {
+  private static Schema applyQueryRepeated(QueryContext context, int repetition, Schema schema,
+                                           IPersistentCollection query, PersistentVector parents) {
     Collection coll = (Collection)schema;
     coll = coll.withRepetition(repetition)
-      .withRepeatedSchema(_applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
+      .withRepeatedSchema(applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
     if (context.hasLeaf()) {
       return coll.withLeafColumnIndex(context.getLeafColumnIndex());
     } else {
@@ -987,14 +996,14 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQuerySubSchema(QueryContext context, Schema schema) {
+  private static Schema applyQuerySubSchema(QueryContext context, Schema schema) {
     if (schema instanceof Column) {
       Column col = ((Column)schema).withQueryColumnIndex(context.getNextQueryColumnIndex());
       context.appendColumn(col);
       return col;
     } else if (schema instanceof Collection) {
       Collection coll = (Collection)schema;
-      return coll.withRepeatedSchema(_applyQuerySubSchema(context, coll.repeatedSchema))
+      return coll.withRepeatedSchema(applyQuerySubSchema(context, coll.repeatedSchema))
         .withLeafColumnIndex(context.getLeafColumnIndex());
     } else /* if (schema instanceof Record) */ {
       Record rec = (Record)schema;
@@ -1002,18 +1011,18 @@ public abstract class Schema implements IWriteable {
       Field[] newFields = new Field[fields.length];
       for (int i=0; i<fields.length; ++i) {
         Field field = fields[i];
-        newFields[i] = new Field(field.name, _applyQuerySubSchema(context, field.value));
+        newFields[i] = new Field(field.name, applyQuerySubSchema(context, field.value));
       }
       return rec.withFields(newFields).withLeafColumnIndex(context.getLeafColumnIndex());
     }
   }
 
-  private static Schema _applyQuerySymbol(QueryContext context, Schema schema, Symbol query,
-                                          PersistentVector parents) {
+  private static Schema applyQuerySymbol(QueryContext context, Schema schema, Symbol query,
+                                         PersistentVector parents) {
     if (schema == null) {
       return Column.missing();
     } else if (query.equals(SUB_SCHEMA)) {
-      return _applyQuerySubSchema(context, schema);
+      return applyQuerySubSchema(context, schema);
     } else if (schema instanceof Record) {
       throw new IllegalArgumentException(String.format("Element at path %s is a record, not a value.",
                                                        parents));
@@ -1033,14 +1042,14 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQueryTaggedSymbol(QueryContext context, Schema schema, Symbol query,
-                                                PersistentVector parents) {
+  private static Schema applyQueryTaggedSymbol(QueryContext context, Schema schema, Symbol query,
+                                               PersistentVector parents) {
     Symbol tag = (Symbol)getTag(query);
     IFn fn = (IFn)RT.get(context.readers, tag);
     if (fn == null) {
       throw new IllegalArgumentException(String.format("No reader function was provided for tag '%s'.", tag));
     }
-    Schema s = _applyQuerySymbol(context, schema, (Symbol)untag(query), parents).withFn(fn);
+    Schema s = applyQuerySymbol(context, schema, (Symbol)untag(query), parents).withFn(fn);
     if (s instanceof Column && !query.equals(SUB_SCHEMA)) {
       Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
       context.appendColumn(col);
@@ -1050,9 +1059,9 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema _applyQueryUntaggedSymbol(QueryContext context, Schema schema, Symbol query,
-                                                  PersistentVector parents) {
-    Schema s = _applyQuerySymbol(context, schema, query, parents);
+  private static Schema applyQueryUntaggedSymbol(QueryContext context, Schema schema, Symbol query,
+                                                 PersistentVector parents) {
+    Schema s = applyQuerySymbol(context, schema, query, parents);
     if (s instanceof Column && schema != null && !query.equals(SUB_SCHEMA)) {
       Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
       context.appendColumn(col);
@@ -1069,18 +1078,6 @@ public abstract class Schema implements IWriteable {
     public QueryResult(Schema schema, Column[] columns) {
       this.schema = schema;
       this.columns = columns;
-    }
-  }
-
-  public static QueryResult applyQuery(Types types, boolean isMissingFieldsAsNil, Map<Symbol,IFn> readers,
-                                       Schema schema, Object query) {
-    try {
-      QueryContext context = new QueryContext(types, readers, isMissingFieldsAsNil);
-      Schema s =  _applyQuery(context, schema, query, PersistentVector.EMPTY);
-      return new QueryResult(s, context.columns.toArray(new Column[]{}));
-    } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Invalid query '%s' for schema '%s'.", query,
-                                                       unparse(types, schema)), e);
     }
   }
 
