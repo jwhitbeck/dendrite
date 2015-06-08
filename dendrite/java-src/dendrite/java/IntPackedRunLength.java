@@ -108,7 +108,7 @@ public final class IntPackedRunLength {
     public void writeTo(MemoryOutputStream memoryOutputStream) {
       finish();
       memoryOutputStream.write(maxWidth);
-      rleEncoder.writeTo(memoryOutputStream);
+      memoryOutputStream.write(rleEncoder);
     }
 
     @Override

@@ -75,7 +75,7 @@ public final class Deflate {
 
     @Override
     public void writeTo(MemoryOutputStream mos) {
-      outputBuffer.writeTo(mos);
+      mos.write(outputBuffer);
     }
 
   }

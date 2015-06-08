@@ -38,7 +38,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
   private ISeq recordSeq = null;
   private boolean isSeqSet = false;
-  final int defaultBundleSize;
+  protected final int defaultBundleSize;
 
   View(int defaultBundleSize) {
     this.defaultBundleSize = defaultBundleSize;

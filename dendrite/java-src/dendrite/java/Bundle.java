@@ -49,22 +49,11 @@ public final class Bundle implements Iterable<List> {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || !(o instanceof Bundle)) {
+    if (!(o instanceof Bundle)) {
       return false;
     } else {
       Bundle b = (Bundle)o;
-      if (columnValues.length != b.columnValues.length) {
-        return false;
-      } else {
-        for (int i=0; i<columnValues.length; ++i) {
-          List l = columnValues[i];
-          List ol = b.columnValues[i];
-          if (!l.equals(ol)) {
-            return false;
-          }
-        }
-        return true;
-      }
+      return Arrays.equals(columnValues, b.columnValues);
     }
   }
 
@@ -272,12 +261,12 @@ public final class Bundle implements Iterable<List> {
     }
   }
 
-  static final class RepeatedValuesIterator implements ListIterator<Object> {
+  private static final class RepeatedValuesIterator implements ListIterator<Object> {
 
-    final Iterator<List<Object>> listIterator;
-    Iterator<Object> currentIterator;
-    Object previousValue;
-    boolean isPreviousCalled;
+    private final Iterator<List<Object>> listIterator;
+    private Iterator<Object> currentIterator;
+    private Object previousValue;
+    private boolean isPreviousCalled;
 
     RepeatedValuesIterator(List<List<Object>> repeatedValues) {
       this.listIterator = repeatedValues.iterator();
@@ -305,7 +294,7 @@ public final class Bundle implements Iterable<List> {
       }
     }
 
-    void step() {
+    private void step() {
       if (listIterator.hasNext()) {
         currentIterator = listIterator.next().iterator();
       } else {

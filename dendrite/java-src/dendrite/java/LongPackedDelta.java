@@ -225,8 +225,7 @@ public final class LongPackedDelta {
 
     private void flushBlock() {
       if (position > 0) {
-        MemoryOutputStream fullBlockEncoding = getBestMiniblockEncodingForBlock();
-        fullBlockEncoding.writeTo(mos);
+        mos.write(getBestMiniblockEncodingForBlock());
         numEncodedValues += position;
       }
       position = 0;

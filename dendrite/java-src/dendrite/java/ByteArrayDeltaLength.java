@@ -98,8 +98,8 @@ public final class ByteArrayDeltaLength {
       finish();
       Bytes.writeUInt(memoryOutputStream, numValues);
       Bytes.writeUInt(memoryOutputStream, lengthsEncoder.getLength());
-      lengthsEncoder.writeTo(memoryOutputStream);
-      byteArrayBuffer.writeTo(memoryOutputStream);
+      memoryOutputStream.write(lengthsEncoder);
+      memoryOutputStream.write(byteArrayBuffer);
     }
 
     @Override

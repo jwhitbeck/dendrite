@@ -202,9 +202,9 @@ public final class Dictionary {
   }
 
   public static final class DecoderFactory implements IDecoderFactory {
-    final Object[] dictionary;
-    final IDecoderFactory intDecoderFactory;
-    final IDecoderFactory dictDecoderFactory;
+    private final Object[] dictionary;
+    private final IDecoderFactory intDecoderFactory;
+    private final IDecoderFactory dictDecoderFactory;
 
     public DecoderFactory(Object[] dictionary, IDecoderFactory intDecoderFactory,
                           IDecoderFactory dictDecoderFactory) {

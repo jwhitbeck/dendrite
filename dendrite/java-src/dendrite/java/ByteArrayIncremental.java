@@ -110,8 +110,8 @@ public final class ByteArrayIncremental {
       finish();
       Bytes.writeUInt(memoryOutputStream, numValues);
       Bytes.writeUInt(memoryOutputStream, prefixLengthsEncoder.getLength());
-      prefixLengthsEncoder.writeTo(memoryOutputStream);
-      byteArrayEncoder.writeTo(memoryOutputStream);
+      memoryOutputStream.write(prefixLengthsEncoder);
+      memoryOutputStream.write(byteArrayEncoder);
     }
 
     @Override

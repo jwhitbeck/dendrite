@@ -402,8 +402,7 @@ public abstract class Schema implements IWriteable {
     }
 
     public Schema get(Keyword name) {
-      for (int i=0; i<fields.length; ++i) {
-        Field field = fields[i];
+      for (Field field : fields) {
         if (field.name.equals(name)) {
           return field.value;
         }
@@ -422,8 +421,8 @@ public abstract class Schema implements IWriteable {
 
     private void writeFieldsTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, RT.count(fields));
-      for (int i=0; i<fields.length; ++i) {
-        mos.write(fields[i]);
+      for (Field field : fields) {
+        mos.write(field);
       }
     }
 
@@ -726,8 +725,7 @@ public abstract class Schema implements IWriteable {
   private static Object _unparseRecord(Types types, boolean asPlain, Record record) {
     ITransientMap rec = PersistentArrayMap.EMPTY.asTransient();
     Field[] fields = record.fields;
-    for (int i=0; i<fields.length; ++i) {
-      Field field = fields[i];
+    for (Field field : fields) {
       rec = rec.assoc(field.name, _unparse(types, asPlain, field.value));
     }
     return wrapWithRepetition(rec.persistent(), record.repetition);
@@ -1098,8 +1096,8 @@ public abstract class Schema implements IWriteable {
     } else if (schema instanceof Record) {
       Record rec = (Record)schema;
       Field[] fields = rec.fields;
-      for (int i=0; i<fields.length; ++i) {
-        getColumns(fields[i].value, columns);
+      for (Field field : fields) {
+        getColumns(field.value, columns);
       }
     } else /* if (schema instanceof Collection) */ {
       Collection coll = (Collection)schema;
@@ -1119,8 +1117,7 @@ public abstract class Schema implements IWriteable {
     } else if (schema instanceof Record) {
       Record rec = (Record)schema;
       Field[] fields = rec.fields;
-      for (int i=0; i<fields.length; ++i) {
-        Field field = fields[i];
+      for (Field field : fields) {
         getPaths(field.value, paths, path.cons(field.name));
       }
     } else /* if (schema instanceof Collection) */ {

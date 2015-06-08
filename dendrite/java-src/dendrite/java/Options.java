@@ -57,6 +57,8 @@ public final class Options {
   public static final boolean DEFAULT_MISSING_FIELDS_AS_NIL = true;
   public static final int DEFAULT_BUNDLE_SIZE = 256;
 
+  private static final Object notFound = new Object();
+
   static {
     DEFAULT_COMPRESSION_THRESHOLDS = new HashMap<Symbol, Double>();
     DEFAULT_COMPRESSION_THRESHOLDS.put(Types.DEFLATE_SYM, 1.5);
@@ -159,8 +161,8 @@ public final class Options {
     for (ISeq s = RT.seq(options); s != null; s = s.next()) {
       Object key = ((IMapEntry)s.first()).key();
       boolean valid = false;
-      for (int i=0; i<validKeys.length; ++i) {
-        if (key == validKeys[i]) {
+      for (Object validKey : validKeys) {
+        if (key == validKey) {
           valid = true;
           break;
         }
@@ -171,7 +173,7 @@ public final class Options {
     }
   }
 
-  static Keyword[] validReaderOptionKeys = new Keyword[]{CUSTOM_TYPES};
+  private static Keyword[] validReaderOptionKeys = new Keyword[]{CUSTOM_TYPES};
 
   public static ReaderOptions getReaderOptions(IPersistentMap options) {
     checkValidKeys(options, validReaderOptionKeys, "%s is not a supported reader option.");
@@ -223,14 +225,14 @@ public final class Options {
 
   }
 
-  static Keyword[] validReadOptionKeys
+  private static Keyword[] validReadOptionKeys
     = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS, MAP_FN};
 
-  static Object getQuery(IPersistentMap options) {
+  private static Object getQuery(IPersistentMap options) {
     return RT.get(options, QUERY, Schema.SUB_SCHEMA);
   }
 
-  static List<Keyword> getEntrypoint(IPersistentMap options) {
+  private static List<Keyword> getEntrypoint(IPersistentMap options) {
     Object o = RT.get(options, ENTRYPOINT);
     ISeq s;
     try {
@@ -252,7 +254,7 @@ public final class Options {
     return entrypoint;
   }
 
-  static boolean getMissingFieldsAsNil(IPersistentMap options) {
+  private static boolean getMissingFieldsAsNil(IPersistentMap options) {
     Object o = RT.get(options, MISSING_FIELDS_AS_NIL, notFound);
     if (o == notFound) {
       return DEFAULT_MISSING_FIELDS_AS_NIL;
@@ -264,7 +266,7 @@ public final class Options {
     }
   }
 
-  static void checkTagReader(Object k, Object v) {
+  private static void checkTagReader(Object k, Object v) {
     if (!(k instanceof Symbol)) {
       throw new IllegalArgumentException(String.format("reader key should be a symbol but got '%s'.", k));
     }
@@ -274,7 +276,7 @@ public final class Options {
     }
   }
 
-  static Map<Symbol,IFn> getTagReaders(IPersistentMap options) {
+  private static Map<Symbol,IFn> getTagReaders(IPersistentMap options) {
     Object o = RT.get(options, READERS);
     if (o == null) {
       return null;
@@ -290,7 +292,7 @@ public final class Options {
     return readers;
   }
 
-  static IFn getFn(Keyword key, IPersistentMap options) {
+  private static IFn getFn(Keyword key, IPersistentMap options) {
     Object o = RT.get(options, key, notFound);
     if (o == notFound) {
       return null;
@@ -336,13 +338,11 @@ public final class Options {
     }
   }
 
-  static final Keyword[] validWriterOptionKeys
+  private static final Keyword[] validWriterOptionKeys
     = new Keyword[]{RECORD_GROUP_LENGTH, DATA_PAGE_LENGTH, OPTIMIZE_COLUMNS, COMPRESSION_THRESHOLDS,
                     INVALID_INPUT_HANDLER, CUSTOM_TYPES, MAP_FN};
 
-  static final Object notFound = new Object();
-
-  static int getPositiveInt(IPersistentMap options, Keyword key, int defaultValue) {
+  private static int getPositiveInt(IPersistentMap options, Keyword key, int defaultValue) {
     Object o = RT.get(options, key, notFound);
     if (o == notFound) {
       return defaultValue;
@@ -360,15 +360,15 @@ public final class Options {
     }
   }
 
-  static int getRecordGroupLength(IPersistentMap options) {
+  private static int getRecordGroupLength(IPersistentMap options) {
     return getPositiveInt(options, RECORD_GROUP_LENGTH, DEFAULT_RECORD_GROUP_LENGTH);
   }
 
-  static int getDataPageLength(IPersistentMap options) {
+  private static int getDataPageLength(IPersistentMap options) {
     return getPositiveInt(options, DATA_PAGE_LENGTH, DEFAULT_DATA_PAGE_LENGTH);
   }
 
-  static int getOptimizationStrategy(IPersistentMap options) {
+  private static int getOptimizationStrategy(IPersistentMap options) {
     Object o = RT.get(options, OPTIMIZE_COLUMNS, notFound);
     if (o == notFound) {
       return DEFAULT_OPTIMIZE_COLUMNS;
@@ -386,7 +386,7 @@ public final class Options {
                                                      OPTIMIZE_COLUMNS, ALL, NONE, DEFAULT, o));
   }
 
-  static Map<Symbol,Double> getCompressionThresholds(IPersistentMap options) {
+  private static Map<Symbol,Double> getCompressionThresholds(IPersistentMap options) {
     Object o = RT.get(options, COMPRESSION_THRESHOLDS);
     if (o == null) {
       return DEFAULT_COMPRESSION_THRESHOLDS;
@@ -419,7 +419,7 @@ public final class Options {
     return compressionThresholds;
   }
 
-  static IFn getInvalidInputHandler(IPersistentMap options) {
+  private static IFn getInvalidInputHandler(IPersistentMap options) {
     Object o = RT.get(options, INVALID_INPUT_HANDLER, notFound);
     if (o == notFound) {
       return null;

@@ -135,14 +135,14 @@ public final class FrequencyColumnChunk {
                                       0);
     }
 
-    void updateDictionaryLengthEstimates() {
+    private void updateDictionaryLengthEstimates() {
       IPageHeader h = dictPageWriter.getHeader();
       bytesPerDictionaryValue
         = (int)((double)h.getBodyLength() / (double)dictPageWriter.getNumValues());
       dictionaryHeaderLength = h.getHeaderLength();
     }
 
-    IDecoderFactory getFrequencyMappedIndicesDecoderFactory() {
+    private IDecoderFactory getFrequencyMappedIndicesDecoderFactory() {
       final int[] indicesByFrequency = dictEncoder.getIndicesByFrequency();
       final IDecoderFactory intDecoderFactory = Types.getPrimitiveDecoderFactory(Types.INT, Types.VLQ);
       return new ADecoderFactory() {

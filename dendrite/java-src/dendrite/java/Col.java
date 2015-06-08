@@ -62,7 +62,7 @@ public final class Col extends Obj {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || (!(o instanceof Col))) {
+    if ((!(o instanceof Col))) {
       return false;
     }
     Col col = (Col)o;

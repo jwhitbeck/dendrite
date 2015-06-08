@@ -44,11 +44,11 @@ public final class Types {
     BYTE_ARRAY = -6,
     FIXED_LENGTH_BYTE_ARRAY = -7;
 
-  static boolean isPrimitive(int type) {
+  private static boolean isPrimitive(int type) {
     return type < 0;
   }
 
-  static int i(int type) {
+  private static int i(int type) {
     return - type - 1;
   }
 
@@ -91,9 +91,9 @@ public final class Types {
       }
     };
 
-  static final Symbol[] primitiveTypeSymbols;
-  static final HashMap<Symbol,Integer> primitiveTypes;
-  static final IFn[] primitiveCoercionFns;
+  private static final Symbol[] primitiveTypeSymbols;
+  private static final HashMap<Symbol,Integer> primitiveTypes;
+  private static final IFn[] primitiveCoercionFns;
 
   static {
     primitiveTypeSymbols = new Symbol[-FIXED_LENGTH_BYTE_ARRAY];
@@ -411,7 +411,7 @@ public final class Types {
                                        }
                                      });
 
-  static final LogicalType[] builtInLogicalTypes;
+  private static final LogicalType[] builtInLogicalTypes;
 
   static {
     builtInLogicalTypes = new LogicalType[BYTE_BUFFER+1];
@@ -428,11 +428,11 @@ public final class Types {
     builtInLogicalTypes[BYTE_BUFFER] = byteBufferType;
   }
 
-  static void fillBuiltInLogicalTypes(LogicalType[] logicalTypes) {
+  private static void fillBuiltInLogicalTypes(LogicalType[] logicalTypes) {
     System.arraycopy(builtInLogicalTypes, 0, logicalTypes, 0, builtInLogicalTypes.length);
   }
 
-  static void fillBuiltInLogicalTypeSymbols(HashMap<Symbol,Integer> logicalTypesMap) {
+  private static void fillBuiltInLogicalTypeSymbols(HashMap<Symbol,Integer> logicalTypesMap) {
     for (int i=0; i<builtInLogicalTypes.length; ++i) {
       LogicalType lt = builtInLogicalTypes[i];
       if (lt != null) {
@@ -453,11 +453,7 @@ public final class Types {
     INCREMENTAL = 7,
     DELTA_LENGTH = 8;
 
-  boolean isDictionary(int encoding) {
-    return encoding == DICTIONARY || encoding == FREQUENCY;
-  }
-
-  static final int[][] validEncodings;
+  private static final int[][] validEncodings;
 
   static {
     validEncodings = new int[-FIXED_LENGTH_BYTE_ARRAY][];
@@ -470,8 +466,8 @@ public final class Types {
     validEncodings[i(FIXED_LENGTH_BYTE_ARRAY)] = new int[] {PLAIN, DICTIONARY, FREQUENCY};
   }
 
-  static final Symbol[] encodingSymbols;
-  static final HashMap<Symbol,Integer> encodings;
+  private static final Symbol[] encodingSymbols;
+  private static final HashMap<Symbol,Integer> encodings;
 
   static final Symbol PLAIN_SYM = Symbol.intern("plain");
 
@@ -689,7 +685,7 @@ public final class Types {
     return new UUID(Bytes.readFixedLong(bb), Bytes.readFixedLong(bb));
   }
 
-  static final class LogicalType {
+  private static final class LogicalType {
     final Symbol sym;
     final int baseType;
     final IFn coercionFn;
@@ -705,10 +701,10 @@ public final class Types {
     }
   }
 
-  static int getMaxCustomType(CustomType[] customTypes) {
+  private static int getMaxCustomType(CustomType[] customTypes) {
     int maxType = Integer.MIN_VALUE;
-    for (int i=0; i<customTypes.length; ++i) {
-      int type = customTypes[i].type;
+    for (CustomType customType : customTypes) {
+      int type = customType.type;
       if (type > maxType) {
         maxType = type;
       }
@@ -716,9 +712,10 @@ public final class Types {
     return maxType;
   }
 
-  static void fillCustomTypeDefinitionsSymbols(HashMap<Symbol, Integer> logicalTypesMap,
-                                               List<Options.CustomTypeDefinition> customTypeDefinitions,
-                                               int nextCustomType) {
+  private static void fillCustomTypeDefinitionsSymbols(
+                          HashMap<Symbol, Integer> logicalTypesMap,
+                          List<Options.CustomTypeDefinition> customTypeDefinitions,
+                          int nextCustomType) {
     for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
       if (!logicalTypesMap.containsKey(customTypeDefinition.typeSymbol)) {
         logicalTypesMap.put(customTypeDefinition.typeSymbol, nextCustomType);
@@ -727,15 +724,14 @@ public final class Types {
     }
   }
 
-  static void fillCustomTypeSymbols(HashMap<Symbol, Integer> logicalTypesMap,
-                                    CustomType[] customTypes) {
-    for (int i=0; i<customTypes.length; ++i) {
-      CustomType ct = customTypes[i];
-      logicalTypesMap.put(ct.sym, ct.type);
+  private static void fillCustomTypeSymbols(HashMap<Symbol, Integer> logicalTypesMap,
+                                            CustomType[] customTypes) {
+    for (CustomType customType : customTypes) {
+      logicalTypesMap.put(customType.sym, customType.type);
     }
   }
 
-  static int getMaxType(HashMap<Symbol, Integer> logicalTypesMap) {
+  private static int getMaxType(HashMap<Symbol, Integer> logicalTypesMap) {
     int maxType = Integer.MIN_VALUE;
     for (Integer i : logicalTypesMap.values()) {
       if (i > maxType) {
@@ -745,7 +741,7 @@ public final class Types {
     return maxType;
   }
 
-  static Integer tryGetType(Symbol sym, HashMap<Symbol, Integer> logicalTypesMap) {
+  private static Integer tryGetType(Symbol sym, HashMap<Symbol, Integer> logicalTypesMap) {
     Integer type = primitiveTypes.get(sym);
     if (type == null) {
       type = logicalTypesMap.get(sym);
@@ -753,8 +749,8 @@ public final class Types {
     return type;
   }
 
-  static LogicalType asLogicalType(HashMap<Symbol, Integer> logicalTypesMap,
-                                   Options.CustomTypeDefinition customTypeDefinition) {
+  private static LogicalType asLogicalType(HashMap<Symbol, Integer> logicalTypesMap,
+                                           Options.CustomTypeDefinition customTypeDefinition) {
     Integer baseType = tryGetType(customTypeDefinition.baseTypeSymbol, logicalTypesMap);
     if (baseType == null) {
       throw new IllegalArgumentException(String.format("Unknown base type '%s'.",
@@ -767,26 +763,25 @@ public final class Types {
                            customTypeDefinition.fromBaseTypeFn);
   }
 
-  static void fillCustomTypeDefinitions(LogicalType[] logicalTypes,
-                                        HashMap<Symbol, Integer> logicalTypesMap,
-                                        List<Options.CustomTypeDefinition> customTypeDefinitions) {
+  private static void fillCustomTypeDefinitions(LogicalType[] logicalTypes,
+                                                HashMap<Symbol, Integer> logicalTypesMap,
+                                                List<Options.CustomTypeDefinition> customTypeDefinitions) {
     for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
       int type = logicalTypesMap.get(customTypeDefinition.typeSymbol);
       logicalTypes[type] = asLogicalType(logicalTypesMap, customTypeDefinition);
     }
   }
 
-  static void fillEmptyCustomTypes(LogicalType[] logicalTypes,
-                                   CustomType[] customTypes) {
-    for (int i=0; i<customTypes.length; ++i) {
-      CustomType ct = customTypes[i];
+  private static void fillEmptyCustomTypes(LogicalType[] logicalTypes,
+                                           CustomType[] customTypes) {
+    for (CustomType ct : customTypes) {
       if (logicalTypes[ct.type] == null) {
         logicalTypes[ct.type] = new LogicalType(ct.sym, ct.baseType, null, null, null);
       }
     }
   }
 
-  static void flattenLogicalType(LogicalType[] logicalTypes, int type, boolean[] visited) {
+  private static void flattenLogicalType(LogicalType[] logicalTypes, int type, boolean[] visited) {
     LogicalType logicalType = logicalTypes[type];
     if (logicalType == null) {
       return;
@@ -828,16 +823,17 @@ public final class Types {
                                          Utils.comp(fromBaseTypeFns.toArray(new IFn[]{})));
   }
 
-  static void flattenLogicalTypes(LogicalType[] logicalTypes) {
+  private static void flattenLogicalTypes(LogicalType[] logicalTypes) {
     boolean[] visited = new boolean[logicalTypes.length];
     for (int i=0; i<logicalTypes.length; ++i) {
       flattenLogicalType(logicalTypes, i, visited);
     }
   }
 
-  static CustomType[] getCustomTypesFromDefinitions(HashMap<Symbol, Integer> logicalTypesMap,
-                                                    LogicalType[] logicalTypes,
-                                                    List<Options.CustomTypeDefinition> customTypeDefinitions) {
+  private static CustomType[] getCustomTypesFromDefinitions(
+                                  HashMap<Symbol, Integer> logicalTypesMap,
+                                  LogicalType[] logicalTypes,
+                                  List<Options.CustomTypeDefinition> customTypeDefinitions) {
     CustomType[] customTypes = new CustomType[customTypeDefinitions.size()];
     int i = 0;
     for (Options.CustomTypeDefinition customTypeDefinition : customTypeDefinitions) {
@@ -881,9 +877,9 @@ public final class Types {
     return create(Collections.<Options.CustomTypeDefinition>emptyList());
   }
 
-  final HashMap<Symbol,Integer> logicalTypesMap;
-  final LogicalType[] logicalTypes;
-  final CustomType[] customTypes;
+  private final HashMap<Symbol,Integer> logicalTypesMap;
+  private final LogicalType[] logicalTypes;
+  private final CustomType[] customTypes;
 
   Types(HashMap<Symbol,Integer> logicalTypesMap, LogicalType[] logicalTypes, CustomType[] customTypes) {
     this.logicalTypesMap = logicalTypesMap;
@@ -925,8 +921,8 @@ public final class Types {
   public int getEncoding(int type, Symbol sym) {
     int encoding = getEncoding(sym);
     int[] encodingsForType = listEncodingsForType(type);
-    for (int i=0; i<encodingsForType.length; ++i) {
-      if (encodingsForType[i] == encoding) {
+    for (int encodingForType : encodingsForType) {
+      if (encodingForType == encoding) {
         return encoding;
       }
     }

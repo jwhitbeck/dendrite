@@ -30,29 +30,29 @@ public class PersistentRecord extends APersistentMap {
 
   public static final Object UNDEFINED = new Object();
 
-  static final PersistentRecord EMPTY
+  private static final PersistentRecord EMPTY
     = new PersistentRecord(null, KeywordIndexHashMap.EMPTY, new Object[]{});
-  final KeywordIndexHashMap hm;
-  final Object[] ovs;
-  final int cnt;
-  final IPersistentMap _meta;
+  private final KeywordIndexHashMap hashMap;
+  private final Object[] orderedValues;
+  private final int cnt;
+  private final IPersistentMap meta;
 
   PersistentRecord(IPersistentMap meta, KeywordIndexHashMap hashMap,
                    Object[] orderedValues) {
-    hm = hashMap;
-    ovs = orderedValues;
-    _meta = meta;
+    this.hashMap = hashMap;
+    this.orderedValues = orderedValues;
+    this.meta = meta;
     int c = 0;
-    for (int i=0; i<ovs.length; ++i) {
-      if (ovs[i] != UNDEFINED) {
+    for (Object v : orderedValues) {
+      if (v != UNDEFINED) {
         c += 1;
       }
     }
-    cnt = c;
+    this.cnt = c;
   }
 
   public PersistentRecord withMeta(IPersistentMap meta) {
-    return new PersistentRecord(meta, hm, ovs);
+    return new PersistentRecord(meta, hashMap, orderedValues);
   }
 
   IPersistentMap asEditableMap() {
@@ -82,12 +82,12 @@ public class PersistentRecord extends APersistentMap {
   @Override
   public IMapEntry entryAt(Object key) {
     if (key instanceof Keyword) {
-      int i = hm.get((Keyword)key);
+      int i = hashMap.get((Keyword)key);
       if (i >= 0) {
-        if (ovs[i] == UNDEFINED) {
+        if (orderedValues[i] == UNDEFINED) {
           return null;
         }
-        return new MapEntry(hm.kws[i], ovs[i]);
+        return new MapEntry(hashMap.keywords[i], orderedValues[i]);
       }
       return null;
     }
@@ -97,15 +97,15 @@ public class PersistentRecord extends APersistentMap {
   @Override
   public boolean containsKey(Object key) {
     if (key instanceof Keyword) {
-      int i = hm.get((Keyword)key);
-      return i >= 0 && ovs[i] != UNDEFINED;
+      int i = hashMap.get((Keyword)key);
+      return i >= 0 && orderedValues[i] != UNDEFINED;
     }
     return false;
   }
 
   @Override
   public IPersistentMap empty() {
-    return (IPersistentMap) EMPTY.withMeta(_meta);
+    return (IPersistentMap) EMPTY.withMeta(meta);
   }
 
   @Override
@@ -116,7 +116,7 @@ public class PersistentRecord extends APersistentMap {
   @Override
   public ISeq seq() {
     if (cnt > 0) {
-      return new Seq(hm.kws, ovs, cnt, 0, 0);
+      return new Seq(hashMap.keywords, orderedValues, cnt, 0, 0);
     }
     return null;
   }
@@ -124,12 +124,13 @@ public class PersistentRecord extends APersistentMap {
   @Override
   public Object valAt(Object key, Object notFound) {
     if (key instanceof Keyword) {
-      int i = hm.get((Keyword)key);
+      int i = hashMap.get((Keyword)key);
       if (i >= 0) {
-        if (ovs[i] == UNDEFINED) {
+        Object v = orderedValues[i];
+        if (v == UNDEFINED) {
           return notFound;
         }
-        return ovs[i];
+        return v;
       }
       return notFound;
     }
@@ -154,10 +155,10 @@ public class PersistentRecord extends APersistentMap {
 
       @Override
       public Object next() {
-        while (ovs [i] == UNDEFINED) {
+        while (orderedValues[i] == UNDEFINED) {
           i += 1;
         }
-        MapEntry me = new MapEntry(hm.kws[i], ovs[i]);
+        MapEntry me = new MapEntry(hashMap.keywords[i], orderedValues[i]);
         i += 1;
         c += 1;
         return me;
@@ -172,34 +173,34 @@ public class PersistentRecord extends APersistentMap {
 
   public static final class Factory {
 
-    final KeywordIndexHashMap hm;
+    final KeywordIndexHashMap hashMap;
 
     public Factory(Keyword[] keywords) {
-      hm = new KeywordIndexHashMap(keywords);
+      this.hashMap = new KeywordIndexHashMap(keywords);
     }
 
     public PersistentRecord create(Object [] orderedValues) {
-      return new PersistentRecord(null, hm, orderedValues);
+      return new PersistentRecord(null, hashMap, orderedValues);
     }
   }
 
   static final class KeywordIndexHashMap implements Serializable {
 
     final long[] hashArray;
-    final Keyword[] kws;
-    final int mask;
-    static final long hasheqMask  = 0x00000000ffffffffL;
-    static final long idxMask     = 0x7fffffff00000000L;
-    static final long presenceBit = 0x8000000000000000L;
+    final Keyword[] keywords;
+    private final int mask;
+    private static final long hasheqMask  = 0x00000000ffffffffL;
+    private static final long idxMask     = 0x7fffffff00000000L;
+    private static final long presenceBit = 0x8000000000000000L;
     static final KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(new Keyword[]{});
 
     public KeywordIndexHashMap(Keyword[] keywords) {
-      kws = keywords;
+      this.keywords = keywords;
       int size = hashArraySize(keywords.length);
       hashArray = new long[size];
       mask = size - 1;
-      for (int i=0; i<kws.length; ++i) {
-        insert(kws[i], i);
+      for (int i=0; i<keywords.length; ++i) {
+        insert(keywords[i], i);
       }
     }
 
@@ -243,33 +244,33 @@ public class PersistentRecord extends APersistentMap {
     }
   }
 
-  static class Seq extends ASeq implements Counted {
+  private static class Seq extends ASeq implements Counted {
 
-    final Keyword[] kws;
-    final Object[] ovs;
-    final int cnt;
-    final int i;
-    final int c;
+    private final Keyword[] keywords;
+    private final Object[] orderedValues;
+    private final int cnt;
+    private final int i;
+    private final int c;
 
-    Seq(Keyword[] kws, Object[] ovs, int cnt, int i, int c) {
-      this.kws = kws;
-      this.ovs = ovs;
+    Seq(Keyword[] keywords, Object[] orderedValues, int cnt, int i, int c) {
+      this.keywords = keywords;
+      this.orderedValues = orderedValues;
       this.cnt = cnt;
       int j = i;
-      while (ovs[j] == UNDEFINED) {
+      while (orderedValues[j] == UNDEFINED) {
         j += 1;
       }
       this.i = j;
       this.c = c;
     }
 
-    Seq(IPersistentMap meta, Keyword[] kws, Object[] ovs, int cnt, int i, int c) {
+    Seq(IPersistentMap meta, Keyword[] keywords, Object[] orderedValues, int cnt, int i, int c) {
       super(meta);
-      this.kws = kws;
-      this.ovs = ovs;
+      this.keywords = keywords;
+      this.orderedValues = orderedValues;
       this.cnt = cnt;
       int j = i;
-      while (ovs[j] == UNDEFINED) {
+      while (orderedValues[j] == UNDEFINED) {
         j += 1;
       }
       this.i = j;
@@ -278,13 +279,13 @@ public class PersistentRecord extends APersistentMap {
 
     @Override
     public Object first() {
-      return new MapEntry(kws[i], ovs[i]);
+      return new MapEntry(keywords[i], orderedValues[i]);
     }
 
     @Override
     public ISeq next() {
-      if ( c + 1 < cnt ) {
-        return new Seq(kws, ovs, cnt, i+1, c+1);
+      if (c + 1 < cnt) {
+        return new Seq(keywords, orderedValues, cnt, i+1, c+1);
       }
       return null;
     }
@@ -296,7 +297,7 @@ public class PersistentRecord extends APersistentMap {
 
     @Override
     public Seq withMeta(IPersistentMap meta) {
-      return new Seq(meta, kws, ovs, cnt, i, c);
+      return new Seq(meta, keywords, orderedValues, cnt, i, c);
     }
   }
 }

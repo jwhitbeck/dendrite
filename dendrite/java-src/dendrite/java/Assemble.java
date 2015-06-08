@@ -55,7 +55,7 @@ public final class Assemble {
     }
   }
 
-  static Fn getMissingValueFn(Schema schema) {
+  private static Fn getMissingValueFn(Schema schema) {
     IFn fn = schema.fn;
     final Object v = (fn != null)? fn.invoke(null) : null;
     return new Fn() {
@@ -65,7 +65,7 @@ public final class Assemble {
     };
   }
 
-  static Fn getNonRepeatedValueFn(Schema.Column column) {
+  private static Fn getNonRepeatedValueFn(Schema.Column column) {
     final int colIdx = column.queryColumnIndex;
     // NOTE: the column.fn is applied by the decoder for greater efficiency
     return new Fn() {
@@ -76,7 +76,7 @@ public final class Assemble {
   }
 
   @SuppressWarnings("unchecked")
-  static Fn getRepeatedValueFn(Schema.Column column) {
+  private static Fn getRepeatedValueFn(Schema.Column column) {
     // NOTE: the column.fn is applied by the decoder for greater efficiency
     final int colIdx = column.queryColumnIndex;
     return new Fn() {
@@ -88,11 +88,12 @@ public final class Assemble {
     };
   }
 
-  interface RecordConstructorFn {
+  private interface RecordConstructorFn {
     IPersistentCollection invoke(ListIterator[] iterators);
   }
 
-  static RecordConstructorFn getRecordConstructorFn(final Keyword[] fieldNames, final Fn[] fieldAssemblyFns) {
+  private static RecordConstructorFn getRecordConstructorFn(final Keyword[] fieldNames,
+                                                            final Fn[] fieldAssemblyFns) {
     final PersistentRecord.Factory factory = new PersistentRecord.Factory(fieldNames);
     final int n = fieldAssemblyFns.length;
     return new RecordConstructorFn() {
@@ -107,7 +108,7 @@ public final class Assemble {
     };
   }
 
-  static Fn getRecordFn(Schema.Record record) {
+  private static Fn getRecordFn(Schema.Record record) {
     Schema.Field[] fields = record.fields;
     int n = fields.length;
     final Keyword[] fieldNames = new Keyword[n];
@@ -146,7 +147,7 @@ public final class Assemble {
   }
 
   @SuppressWarnings("unchecked")
-  static int getNextRepetitionLevel(ListIterator[] iterators, int colIdx) {
+  private static int getNextRepetitionLevel(ListIterator[] iterators, int colIdx) {
     ListIterator<LeveledValue> i = iterators[colIdx];
     if (!i.hasNext()) {
       return 0;
@@ -157,7 +158,7 @@ public final class Assemble {
   }
 
   @SuppressWarnings("unchecked")
-  static int getNextDefinitionLevel(ListIterator[] iterators, int colIdx) {
+  private static int getNextDefinitionLevel(ListIterator[] iterators, int colIdx) {
     ListIterator<LeveledValue> i = iterators[colIdx];
     if (!i.hasNext()) {
       return 0;
@@ -173,7 +174,7 @@ public final class Assemble {
       }
     };
 
-  static Fn getRepeatedFn(Schema.Collection coll) {
+  private static Fn getRepeatedFn(Schema.Collection coll) {
     final int leafColumnIndex = coll.leafColumnIndex;
     final int repetitionLevel = coll.repetitionLevel;
     final int definitionLevel = coll.definitionLevel;
@@ -223,7 +224,7 @@ public final class Assemble {
     }
   }
 
-  static Fn getMapFn(Schema.Collection coll) {
+  private static Fn getMapFn(Schema.Collection coll) {
     final Fn listFn = getFn(coll.withRepetition(Schema.LIST).withFn(null));
     final Fn mapFn = new Fn() {
         public Object invoke(ListIterator[] iterators) {

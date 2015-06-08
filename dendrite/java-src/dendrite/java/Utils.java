@@ -57,8 +57,8 @@ public final class Utils {
       return new AFn() {
         public Object invoke(Object o) {
           Object ret = o;
-          for (int i=0; i<fs.length; ++i) {
-            ret = fs[i].invoke(ret);
+          for (IFn f : fs) {
+            ret = f.invoke(ret);
           }
           return ret;
         }

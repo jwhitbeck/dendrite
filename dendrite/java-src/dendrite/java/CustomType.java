@@ -37,7 +37,7 @@ public final class CustomType implements IWriteable {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || !(o instanceof CustomType)) {
+    if (!(o instanceof CustomType)) {
       return false;
     }
     CustomType ct = (CustomType) o;

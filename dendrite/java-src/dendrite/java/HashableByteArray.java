@@ -25,8 +25,8 @@ public final class HashableByteArray {
   @Override
   public int hashCode() {
     int hash = 1;
-    for (int i=0; i<array.length; ++i) {
-      hash = 31 * hash + (int)array[i];
+    for (byte b : array) {
+      hash = 31 * hash + (int)b;
     }
     return hash;
   }

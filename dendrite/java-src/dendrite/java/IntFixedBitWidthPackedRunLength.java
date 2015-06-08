@@ -206,7 +206,7 @@ public final class IntFixedBitWidthPackedRunLength {
     }
 
     private void flushBitPackedBuffer() {
-      octupletBuffer.writeTo(mos);
+      mos.write(octupletBuffer);
       octupletBuffer.reset();
     }
 

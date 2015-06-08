@@ -112,7 +112,7 @@ public final class FileReader implements Closeable, IReader {
     return new LazyView(options);
   }
 
-  Iterator<RecordGroup.Reader> getRecordGroupReaders(Schema.Column[] columns, int bundleSize) {
+  private Iterator<RecordGroup.Reader> getRecordGroupReaders(Schema.Column[] columns, int bundleSize) {
     return getRecordGroupReaders(types, fileChannel, Constants.magicBytes.length,
                                  fileMetadata.recordGroups, columns, bundleSize);
   }
@@ -284,7 +284,7 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  static MetadataReadResult readMetadata(FileChannel fileChannel) throws IOException {
+  private static MetadataReadResult readMetadata(FileChannel fileChannel) throws IOException {
     long length = fileChannel.size();
     long lastMagicBytesPosition = length - Constants.magicBytes.length;
     ByteBuffer lastMagicBytesBuffer
@@ -308,7 +308,7 @@ public final class FileReader implements Closeable, IReader {
     return new MetadataReadResult(Metadata.File.read(metadataBuffer), metadataLength);
   }
 
-  static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
+  private static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
     if (!recordGroupReaders.hasNext()) {
       return Collections.<Bundle>emptyList().iterator();
     }

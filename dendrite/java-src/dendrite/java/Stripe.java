@@ -70,11 +70,11 @@ public final class Stripe {
     }
   }
 
-  interface StripeFn {
+  private interface StripeFn {
     void invoke(Object[] buffer, Object obj, boolean isParentNil, int repetitionLevel, int definitionLevel);
   }
 
-  static StripeFn getStripeFn(Types types, Schema schema, IPersistentVector parents) {
+  private static StripeFn getStripeFn(Types types, Schema schema, IPersistentVector parents) {
     if (schema instanceof Schema.Column) {
       if (schema.repetition == Schema.OPTIONAL) {
         return getOptionalValueStripeFn(types, (Schema.Column)schema, parents);
@@ -97,7 +97,7 @@ public final class Stripe {
   }
 
   @SuppressWarnings("unchecked")
-  static void appendRepeated(Object[] buffer, int colIdx, Object v) {
+  private static void appendRepeated(Object[] buffer, int colIdx, Object v) {
     List<Object> list = (List<Object>)buffer[colIdx];
     if (list == null) {
       list = new ArrayList<Object>();
@@ -106,8 +106,8 @@ public final class Stripe {
     list.add(v);
   }
 
-  static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
-                                           final IPersistentVector parents) {
+  private static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
+                                                   final IPersistentVector parents) {
     final IFn coercionFn = types.getCoercionFn(column.type);
     final int colIdx = column.columnIndex;
     final int maxDefinitionLevel = column.definitionLevel;
@@ -150,8 +150,8 @@ public final class Stripe {
     }
   }
 
-  static StripeFn getRequiredValueStripeFn(Types types, Schema.Column column,
-                                           final IPersistentVector parents) {
+  private static StripeFn getRequiredValueStripeFn(Types types, Schema.Column column,
+                                                   final IPersistentVector parents) {
     final IFn coercionFn = types.getCoercionFn(column.type);
     final int colIdx = column.columnIndex;
     final int maxDefinitionLevel = column.definitionLevel;
@@ -200,8 +200,8 @@ public final class Stripe {
     }
   }
 
-  static StripeFn getOptionalRecordStripeFn(Types types, Schema.Record record,
-                                            final IPersistentVector parents) {
+  private static StripeFn getOptionalRecordStripeFn(Types types, Schema.Record record,
+                                                    final IPersistentVector parents) {
     Schema.Field[] fields = record.fields;
     final StripeFn[] fieldStripeFns = new StripeFn[fields.length];
     final Keyword[] fieldNames = new Keyword[fields.length];
@@ -223,8 +223,8 @@ public final class Stripe {
     };
   }
 
-  static StripeFn getRequiredRecordStripeFn(Types types, Schema.Record record,
-                                            final IPersistentVector parents) {
+  private static StripeFn getRequiredRecordStripeFn(Types types, Schema.Record record,
+                                                    final IPersistentVector parents) {
     Schema.Field[] fields = record.fields;
     final StripeFn[] fieldStripeFns = new StripeFn[fields.length];
     final Keyword[] fieldNames = new Keyword[fields.length];
@@ -249,21 +249,21 @@ public final class Stripe {
     };
   }
 
-  static IFn keyValueFn = new AFn() {
+  private static IFn keyValueFn = new AFn() {
       public Object invoke(Object o) {
         Map.Entry e = (Map.Entry)o;
         return new PersistentArrayMap(new Object[]{Schema.KEY, e.getKey(), Schema.VAL, e.getValue()});
       }
     };
 
-  static ISeq seq(Object o) {
+  private static ISeq seq(Object o) {
     if (o == notFound) {
       return null;
     }
     return RT.seq(o);
   }
 
-  static StripeFn getMapStripeFn(Types types, Schema.Collection map, final IPersistentVector parents) {
+  private static StripeFn getMapStripeFn(Types types, Schema.Collection map, final IPersistentVector parents) {
     final StripeFn repeatedStripeFn = getStripeFn(types, map.withRepetition(Schema.LIST), parents);
     return new StripeFn() {
       public void invoke(Object[] buffer, Object mapObj, boolean isParentNil, int repetitionLevel,
@@ -285,7 +285,8 @@ public final class Stripe {
     };
   }
 
-  static StripeFn getRepeatedStripeFn(Types types, Schema.Collection coll, final IPersistentVector parents) {
+  private static StripeFn getRepeatedStripeFn(Types types, Schema.Collection coll,
+                                              final IPersistentVector parents) {
     final StripeFn repeatedElementStripeFn = getStripeFn(types, coll.repeatedSchema, parents.cons(null));
     final int curRepetitionLevel = coll.repetitionLevel;
     final int curDefinitionLevel = coll.definitionLevel;

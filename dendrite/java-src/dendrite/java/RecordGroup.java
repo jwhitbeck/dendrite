@@ -145,8 +145,8 @@ public final class RecordGroup {
     @Override
     public void reset() {
       numRecords = 0;
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        columnChunkWriters[i].reset();
+      for (IColumnChunkWriter columnChunkWriter : columnChunkWriters) {
+        columnChunkWriter.reset();
       }
     }
 
@@ -169,8 +169,8 @@ public final class RecordGroup {
     @Override
     public int getLength() {
       int length = 0;
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        length += columnChunkWriters[i].getLength();
+      for (IColumnChunkWriter columnChunkWriter : columnChunkWriters) {
+        length += columnChunkWriter.getLength();
       }
       return length;
     }
@@ -178,8 +178,8 @@ public final class RecordGroup {
     @Override
     public int getEstimatedLength() {
       int estimatedLength = 0;
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        estimatedLength += columnChunkWriters[i].getEstimatedLength();
+      for (IColumnChunkWriter columnChunkWriter : columnChunkWriters) {
+        estimatedLength += columnChunkWriter.getEstimatedLength();
       }
       return estimatedLength;
     }
@@ -187,16 +187,16 @@ public final class RecordGroup {
     @Override
     public void writeTo(MemoryOutputStream mos) {
       finish();
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        mos.write(columnChunkWriters[i]);
+      for (IColumnChunkWriter columnChunkWriter : columnChunkWriters) {
+        mos.write(columnChunkWriter);
       }
     }
 
     @Override
     public void writeTo(FileChannel fileChannel) throws IOException {
       finish();
-      for (int i=0; i<columnChunkWriters.length; ++i) {
-        fileChannel.write(columnChunkWriters[i].toByteBuffer());
+      for (IColumnChunkWriter columnChunkWriter : columnChunkWriters) {
+        fileChannel.write(columnChunkWriter.toByteBuffer());
       }
     }
 
@@ -300,8 +300,8 @@ public final class RecordGroup {
 
     public List<Stats.ColumnChunk> getColumnChunkStats() {
       List<Stats.ColumnChunk> columnChunkStats = new ArrayList<Stats.ColumnChunk>(columnChunkReaders.length);
-      for (int i=0; i<columnChunkReaders.length; ++i) {
-        columnChunkStats.add(columnChunkReaders[i].getStats());
+      for (IColumnChunkReader columnChunkReader : columnChunkReaders) {
+        columnChunkStats.add(columnChunkReader.getStats());
       }
       return columnChunkStats;
     }

@@ -154,7 +154,7 @@ public final class FileWriter implements Closeable {
     };
   }
 
-  static final class WriteThreadResult {
+  private static final class WriteThreadResult {
     final Metadata.RecordGroup[] recordGroupsMetadata;
     final Schema.Column[] columns;
 
@@ -164,7 +164,7 @@ public final class FileWriter implements Closeable {
     }
   }
 
-  static Future<WriteThreadResult>
+  private static Future<WriteThreadResult>
     startWriteThread(final RecordGroup.Writer recordGroupWriter,
                      final Bundle.Factory bundleFactory,
                      final Stripe.Fn stripeFn,
@@ -229,7 +229,7 @@ public final class FileWriter implements Closeable {
     this.metadata = metadata;
   }
 
-  void flushBatch() {
+  private void flushBatch() {
     if (writeThread.isDone()) {
       // If the writeThread finished while we are still writing, it likely means it threw an exception.
       try {
@@ -250,7 +250,7 @@ public final class FileWriter implements Closeable {
     }
   }
 
-  void writeFooter(Metadata.File fileMetadata) throws IOException {
+  private void writeFooter(Metadata.File fileMetadata) throws IOException {
     MemoryOutputStream mos = new MemoryOutputStream();
     mos.write(fileMetadata);
     Bytes.writeFixedInt(mos, mos.getLength());

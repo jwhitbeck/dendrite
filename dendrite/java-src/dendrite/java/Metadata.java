@@ -79,8 +79,8 @@ public final class Metadata {
 
     private void writeColumnChunksTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, columnChunks.length);
-      for (int i=0; i<columnChunks.length; ++i) {
-        mos.write(columnChunks[i]);
+      for (ColumnChunk columnChunk : columnChunks) {
+        mos.write(columnChunk);
       }
     }
 
@@ -140,8 +140,8 @@ public final class Metadata {
 
     private void writeRecordGroupsTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, recordGroups.length);
-      for (int i=0; i<recordGroups.length; ++i) {
-        mos.write(recordGroups[i]);
+      for (RecordGroup recordGroup : recordGroups) {
+        mos.write(recordGroup);
       }
     }
 
@@ -156,8 +156,8 @@ public final class Metadata {
 
     private void writeCustomTypesTo(MemoryOutputStream mos) {
       Bytes.writeUInt(mos, customTypes.length);
-      for (int i=0; i<customTypes.length; ++i) {
-        mos.write(customTypes[i]);
+      for (CustomType customType: customTypes) {
+        mos.write(customType);
       }
     }
 

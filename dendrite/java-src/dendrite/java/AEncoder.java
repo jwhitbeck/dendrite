@@ -44,7 +44,7 @@ public abstract class AEncoder implements IEncoder {
   public void writeTo(final MemoryOutputStream memoryOutputStream) {
     finish();
     Bytes.writeUInt(memoryOutputStream, numValues);
-    mos.writeTo(memoryOutputStream);
+    memoryOutputStream.write(mos);
   }
 
   @Override

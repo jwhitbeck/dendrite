@@ -14,9 +14,9 @@ package dendrite.java;
 
 public final class LeveledValue {
 
-  final public int repetitionLevel;
-  final public int definitionLevel;
-  final public Object value;
+  public final int repetitionLevel;
+  public final int definitionLevel;
+  public final Object value;
 
   public LeveledValue(final int repetitionLevel, final int definitionLevel, final Object value) {
     this.repetitionLevel = repetitionLevel;
