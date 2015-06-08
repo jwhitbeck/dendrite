@@ -18,7 +18,7 @@ import java.util.List;
 
 public final class DictionaryColumnChunk {
 
-  public final static class Reader implements IColumnChunkReader {
+  public static final class Reader implements IColumnChunkReader {
 
     private final ByteBuffer bb;
     private final Metadata.ColumnChunk columnChunkMetadata;

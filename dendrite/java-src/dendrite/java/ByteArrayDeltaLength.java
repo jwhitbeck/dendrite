@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 
 public final class ByteArrayDeltaLength {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     private final IntPackedDelta.Decoder lengthsDecoder;
 
@@ -43,7 +43,7 @@ public final class ByteArrayDeltaLength {
     }
   }
 
-  public final static class Encoder implements IEncoder {
+  public static final class Encoder implements IEncoder {
 
     private final IntPackedDelta.Encoder lengthsEncoder;
     private final MemoryOutputStream byteArrayBuffer;
@@ -108,7 +108,7 @@ public final class ByteArrayDeltaLength {
     }
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

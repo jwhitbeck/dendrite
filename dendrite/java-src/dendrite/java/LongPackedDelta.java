@@ -18,7 +18,7 @@ import java.util.Arrays;
 
 public final class LongPackedDelta {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     private long[] miniblockBuffer = new long[128];
     private int miniblockPosition = 0;
@@ -89,7 +89,7 @@ public final class LongPackedDelta {
       currentMiniblockIndex = -1;
       blockCurrentValue = BigInteger.valueOf(Bytes.readSLong(bb));
       if (numMiniblocks > 0) {
-        blockMinDelta = Bytes.readSIntVLQ(bb);
+        blockMinDelta = Bytes.readSIntVlq(bb);
         for (int i=0; i<numMiniblocks; ++i) {
           miniblockBitWidths[i] = (int)bb.get() & 0xff;
         }
@@ -99,7 +99,7 @@ public final class LongPackedDelta {
   }
 
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     private static final int MAX_BLOCK_LENGTH = 128;
     private static final int MAX_MINIBLOCK_LENGTH = 32;
@@ -167,7 +167,7 @@ public final class LongPackedDelta {
       Bytes.writeUInt(memoryOutputStream, position);
       Bytes.writeSLong(memoryOutputStream, startValue);
       if (numMiniblocks > 0){
-        Bytes.writeSIntVLQ(memoryOutputStream, minDelta);
+        Bytes.writeSIntVlq(memoryOutputStream, minDelta);
         for (int j=0; j<numMiniblocks; ++j) {
           memoryOutputStream.write(miniblockBitWidths[j]);
         }
@@ -258,7 +258,7 @@ public final class LongPackedDelta {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

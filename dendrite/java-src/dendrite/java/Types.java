@@ -17,8 +17,8 @@ import clojure.lang.BigInt;
 import clojure.lang.IFn;
 import clojure.lang.Keyword;
 import clojure.lang.Numbers;
-import clojure.lang.Ratio;
 import clojure.lang.RT;
+import clojure.lang.Ratio;
 import clojure.lang.Symbol;
 
 import java.math.BigDecimal;
@@ -27,15 +27,15 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 public final class Types {
 
   // Primitive types
-  public final static int
+  public static final int
     BOOLEAN = -1,
     INT = -2,
     LONG = -3,
@@ -52,37 +52,37 @@ public final class Types {
     return - type - 1;
   }
 
-  public final static IFn asBoolean = new AFn() {
+  public static final IFn asBoolean = new AFn() {
       public Object invoke(Object o) {
         return RT.booleanCast(o);
       }
     };
 
-  public final static IFn asInt = new AFn() {
+  public static final IFn asInt = new AFn() {
       public Object invoke(Object o) {
         return RT.intCast(o);
       }
     };
 
-  public final static IFn asLong = new AFn() {
+  public static final IFn asLong = new AFn() {
       public Object invoke(Object o) {
         return RT.longCast(o);
       }
     };
 
-  public final static IFn asFloat = new AFn() {
+  public static final IFn asFloat = new AFn() {
       public Object invoke(Object o) {
         return RT.floatCast(o);
       }
     };
 
-  public final static IFn asDouble = new AFn() {
+  public static final IFn asDouble = new AFn() {
       public Object invoke(Object o) {
         return RT.doubleCast(o);
       }
     };
 
-  public final static IFn asByteArray = new AFn() {
+  public static final IFn asByteArray = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof byte[]) {
           return o;
@@ -91,9 +91,9 @@ public final class Types {
       }
     };
 
-  final static Symbol[] primitiveTypeSymbols;
-  final static HashMap<Symbol,Integer> primitiveTypes;
-  final static IFn[] primitiveCoercionFns;
+  static final Symbol[] primitiveTypeSymbols;
+  static final HashMap<Symbol,Integer> primitiveTypes;
+  static final IFn[] primitiveCoercionFns;
 
   static {
     primitiveTypeSymbols = new Symbol[-FIXED_LENGTH_BYTE_ARRAY];
@@ -121,7 +121,7 @@ public final class Types {
   }
 
   // Built-in logical types
-  public final static int
+  public static final int
     STRING = 0,
     INST = 1,
     UUID = 2,
@@ -133,9 +133,9 @@ public final class Types {
     SYMBOL = 8,
     BYTE_BUFFER = 9;
 
-  public final static int FIRST_CUSTOM_TYPE = 10;
+  public static final int FIRST_CUSTOM_TYPE = 10;
 
-  public final static IFn asString = new AFn() {
+  public static final IFn asString = new AFn() {
       public Object invoke(Object o) {
         if (o == null) {
           return "";
@@ -144,7 +144,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asInst = new AFn() {
+  public static final IFn asInst = new AFn() {
       public Object invoke(Object o) {
         if (!(o instanceof Date)) {
           throw new IllegalArgumentException(String.format("%s is not an instance of java.util.Date.", o));
@@ -153,7 +153,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asUUID = new AFn() {
+  public static final IFn asUUID = new AFn() {
       public Object invoke(Object o) {
         if (!(o instanceof UUID)) {
           throw new IllegalArgumentException(String.format("%s is not an instance of java.util.UUID.", o));
@@ -162,14 +162,14 @@ public final class Types {
       }
     };
 
-  public final static IFn asChar = new AFn() {
+  public static final IFn asChar = new AFn() {
       public Object invoke(Object o) {
         return RT.charCast(o);
       }
     };
 
   // adapted from clojure.core/bigint
-  public final static IFn asBigInt = new AFn() {
+  public static final IFn asBigInt = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof BigInt) {
           return o;
@@ -194,7 +194,7 @@ public final class Types {
     };
 
   // adapted from clojure.core/bigdec
-  public final static IFn asBigDecimal = new AFn() {
+  public static final IFn asBigDecimal = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof BigDecimal) {
           return o;
@@ -217,7 +217,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asRatio = new AFn() {
+  public static final IFn asRatio = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof Ratio) {
           return o;
@@ -232,7 +232,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asKeyword = new AFn() {
+  public static final IFn asKeyword = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof Keyword) {
           return o;
@@ -246,7 +246,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asSymbol = new AFn() {
+  public static final IFn asSymbol = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof Symbol) {
           return o;
@@ -258,7 +258,7 @@ public final class Types {
       }
     };
 
-  public final static IFn asByteBuffer = new AFn() {
+  public static final IFn asByteBuffer = new AFn() {
       public Object invoke(Object o) {
         if (o instanceof ByteBuffer) {
           return o;
@@ -270,7 +270,7 @@ public final class Types {
       }
     };
 
-  final static LogicalType
+  static final LogicalType
     stringType = new LogicalType(Symbol.intern("string"),
                                  BYTE_ARRAY,
                                  asString,
@@ -411,7 +411,7 @@ public final class Types {
                                        }
                                      });
 
-  final static LogicalType[] builtInLogicalTypes;
+  static final LogicalType[] builtInLogicalTypes;
 
   static {
     builtInLogicalTypes = new LogicalType[BYTE_BUFFER+1];
@@ -442,7 +442,7 @@ public final class Types {
   }
 
   // Encodings
-  public final static int
+  public static final int
     PLAIN = 0,
     DICTIONARY = 1,
     FREQUENCY = 2,
@@ -457,7 +457,7 @@ public final class Types {
     return encoding == DICTIONARY || encoding == FREQUENCY;
   }
 
-  final static int[][] validEncodings;
+  static final int[][] validEncodings;
 
   static {
     validEncodings = new int[-FIXED_LENGTH_BYTE_ARRAY][];
@@ -470,10 +470,10 @@ public final class Types {
     validEncodings[i(FIXED_LENGTH_BYTE_ARRAY)] = new int[] {PLAIN, DICTIONARY, FREQUENCY};
   }
 
-  final static Symbol[] encodingSymbols;
-  final static HashMap<Symbol,Integer> encodings;
+  static final Symbol[] encodingSymbols;
+  static final HashMap<Symbol,Integer> encodings;
 
-  final static Symbol PLAIN_SYM = Symbol.intern("plain");
+  static final Symbol PLAIN_SYM = Symbol.intern("plain");
 
   static {
     encodingSymbols = new Symbol[DELTA_LENGTH+1];
@@ -498,14 +498,14 @@ public final class Types {
     case BOOLEAN: return BooleanPacked.decoderFactory;
     case INT: switch (encoding) {
       case PLAIN: return IntPlain.decoderFactory;
-      case VLQ: return IntVLQ.decoderFactory;
+      case VLQ: return IntVlq.decoderFactory;
       case ZIG_ZAG: return IntZigZag.decoderFactory;
       case PACKED_RUN_LENGTH: return IntPackedRunLength.decoderFactory;
       case DELTA: return IntPackedDelta.decoderFactory;
       }
     case LONG: switch (encoding) {
       case PLAIN: return LongPlain.decoderFactory;
-      case VLQ: return LongVLQ.decoderFactory;
+      case VLQ: return LongVlq.decoderFactory;
       case ZIG_ZAG: return LongZigZag.decoderFactory;
       case DELTA: return LongPackedDelta.decoderFactory;
       }
@@ -526,14 +526,14 @@ public final class Types {
     case BOOLEAN: return new BooleanPacked.Encoder();
     case INT: switch (encoding) {
       case PLAIN: return new IntPlain.Encoder();
-      case VLQ: return new IntVLQ.Encoder();
+      case VLQ: return new IntVlq.Encoder();
       case ZIG_ZAG: return new IntZigZag.Encoder();
       case PACKED_RUN_LENGTH: return new IntPackedRunLength.Encoder();
       case DELTA: return new IntPackedDelta.Encoder();
       }
     case LONG: switch (encoding) {
       case PLAIN: return new LongPlain.Encoder();
-      case VLQ: return new LongVLQ.Encoder();
+      case VLQ: return new LongVlq.Encoder();
       case ZIG_ZAG: return new LongZigZag.Encoder();
       case DELTA: return new LongPackedDelta.Encoder();
       }
@@ -550,11 +550,11 @@ public final class Types {
   }
 
   // Compressions
-  public final static int
+  public static final int
     NONE = 0,
     DEFLATE = 1;
 
-  public final static Symbol
+  public static final Symbol
     NONE_SYM = Symbol.intern("none"),
     DEFLATE_SYM = Symbol.intern("deflate");
 

@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 
 public final class IntPackedRunLength {
 
-  public final static class Decoder implements IIntDecoder {
+  public static final class Decoder implements IIntDecoder {
 
     private final IntFixedBitWidthPackedRunLength.Decoder int32Decoder;
 
@@ -43,7 +43,7 @@ public final class IntPackedRunLength {
   }
 
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     private final MemoryOutputStream intBuffer;
     private final IntFixedBitWidthPackedRunLength.Encoder rleEncoder;
@@ -117,7 +117,7 @@ public final class IntPackedRunLength {
     }
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

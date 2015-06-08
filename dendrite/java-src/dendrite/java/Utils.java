@@ -19,8 +19,8 @@ import clojure.lang.ISeq;
 import clojure.lang.LazySeq;
 import clojure.lang.RT;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;

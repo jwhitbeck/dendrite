@@ -17,7 +17,7 @@ import java.util.Arrays;
 
 public final class Metadata {
 
-  public final static class ColumnChunk implements IWriteable {
+  public static final class ColumnChunk implements IWriteable {
 
     public final int length;
     public final int numDataPages;
@@ -45,10 +45,10 @@ public final class Metadata {
         return false;
       }
       ColumnChunk cc = (ColumnChunk) o;
-      return length == cc.length &&
-        numDataPages == cc.numDataPages &&
-        dataPageOffset == cc.dataPageOffset &&
-        dictionaryPageOffset == cc.dictionaryPageOffset;
+      return length == cc.length
+        && numDataPages == cc.numDataPages
+        && dataPageOffset == cc.dataPageOffset
+        && dictionaryPageOffset == cc.dictionaryPageOffset;
     }
 
     @Override
@@ -65,7 +65,7 @@ public final class Metadata {
 
   }
 
-  public final static class RecordGroup implements IWriteable {
+  public static final class RecordGroup implements IWriteable {
 
     public final int length;
     public final long numRecords;
@@ -106,9 +106,9 @@ public final class Metadata {
         return false;
       }
       RecordGroup rg = (RecordGroup) o;
-      return length == rg.length &&
-        numRecords == rg.numRecords &&
-        Arrays.equals(columnChunks, rg.columnChunks);
+      return length == rg.length
+        && numRecords == rg.numRecords
+        && Arrays.equals(columnChunks, rg.columnChunks);
     }
 
     @Override
@@ -124,7 +124,7 @@ public final class Metadata {
 
   }
 
-  public final static class File implements IWriteable {
+  public static final class File implements IWriteable {
 
     public final RecordGroup[] recordGroups;
     public final Schema schema;
@@ -184,10 +184,10 @@ public final class Metadata {
         return false;
       }
       File f = (File)o;
-      return Arrays.equals(recordGroups, f.recordGroups) &&
-        schema.equals(f.schema) &&
-        Arrays.equals(customTypes, f.customTypes) &&
-        metadata.equals(f.metadata);
+      return Arrays.equals(recordGroups, f.recordGroups)
+        && schema.equals(f.schema)
+        && Arrays.equals(customTypes, f.customTypes)
+        && metadata.equals(f.metadata);
     }
 
     @Override

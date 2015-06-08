@@ -88,15 +88,15 @@
       (is (= read-bigintegers rand-bigintegers)))))
 
 (deftest read-write-uint-vlq
-  (testing "writeUIntVLQ/readUIntVLQ"
+  (testing "writeUIntVlq/readUIntVlq"
     (let [rand-bigintegers (repeatedly 100 #(helpers/rand-biginteger 72))
-          read-bigintegers (write-read #(Bytes/writeUIntVLQ %1 %2) #(Bytes/readUIntVLQ %) rand-bigintegers)]
+          read-bigintegers (write-read #(Bytes/writeUIntVlq %1 %2) #(Bytes/readUIntVlq %) rand-bigintegers)]
       (is (= read-bigintegers rand-bigintegers)))))
 
 (deftest read-write-sint-vlq
-  (testing "writeSIntVLQ/readSIntVLQ"
+  (testing "writeSIntVlq/readSIntVlq"
     (let [rand-bigintegers (repeatedly 100 #(helpers/rand-biginteger-signed 72))
-          read-bigintegers (write-read #(Bytes/writeSIntVLQ %1 %2) #(Bytes/readSIntVLQ %) rand-bigintegers)]
+          read-bigintegers (write-read #(Bytes/writeSIntVlq %1 %2) #(Bytes/readSIntVlq %) rand-bigintegers)]
       (is (= read-bigintegers rand-bigintegers)))))
 
 (deftest read-write-packed-boolean

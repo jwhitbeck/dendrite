@@ -25,7 +25,7 @@ import java.util.concurrent.Future;
 
 public final class Pages {
 
-  public final static int
+  public static final int
     DATA = 0,
     DICTIONARY = 1;
 
@@ -136,6 +136,7 @@ public final class Pages {
   private static class ReadResult {
     final List<List<Object>> fullPartitions;
     final List<Object> unfinishedPartition;
+
     ReadResult(List<List<Object>> fullPartitions, List<Object> unfinishedPartition){
       this.fullPartitions = fullPartitions;
       this.unfinishedPartition = unfinishedPartition;
@@ -169,8 +170,9 @@ public final class Pages {
   private static class FirstPageReadResult extends ReadResult {
     final Iterator<DataPage.Reader> pageIterator;
     final int partitionLength;
+
     FirstPageReadResult(List<List<Object>> fullPartitions, List<Object> unfinishedPartition,
-                        Iterator<DataPage.Reader> pageIterator, int partitionLength){
+                        Iterator<DataPage.Reader> pageIterator, int partitionLength) {
       super(fullPartitions, unfinishedPartition);
       this.pageIterator = pageIterator;
       this.partitionLength = partitionLength;
@@ -224,7 +226,7 @@ public final class Pages {
       });
   }
 
-  private final static class PartitionedValuesIterator extends AReadOnlyIterator<List<Object>> {
+  private static final class PartitionedValuesIterator extends AReadOnlyIterator<List<Object>> {
     private Future<ReadResult> fut;
     private Future<FirstPageReadResult> firstFut;
     private Iterator<DataPage.Reader> pageIterator;

@@ -23,14 +23,14 @@ import clojure.lang.IReduce;
 import clojure.lang.ISeq;
 import clojure.lang.LazySeq;
 import clojure.lang.PersistentList;
+import clojure.lang.RT;
+import clojure.lang.Reduced;
 import clojure.lang.Seqable;
 import clojure.lang.Sequential;
-import clojure.lang.Reduced;
-import clojure.lang.RT;
 import clojure.lang.Util;
 
-import java.util.LinkedList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -99,7 +99,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
   private static Object reduceSeq(IFn f, Object start, ISeq records) {
     Object ret = start;
     IChunkedSeq s = (IChunkedSeq)RT.seq(records);
-    while(s != null) {
+    while (s != null) {
       ret = s.chunkedFirst().reduce(f, ret);
       if (RT.isReduced(ret)) {
         return ((Reduced)ret).deref();

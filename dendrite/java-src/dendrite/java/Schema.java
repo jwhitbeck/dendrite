@@ -27,23 +27,23 @@ import clojure.lang.ISeq;
 import clojure.lang.ITransientMap;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
-import clojure.lang.PersistentList;
 import clojure.lang.PersistentHashSet;
+import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedList;
-import java.util.HashSet;
 
 public abstract class Schema implements IWriteable {
 
-  public final static int
+  public static final int
     MISSING = -1,
     OPTIONAL = 0,
     REQUIRED = 1,
@@ -52,7 +52,7 @@ public abstract class Schema implements IWriteable {
     SET = 4,
     MAP = 5;
 
-  private final static String[] repetitionStrings;
+  private static final String[] repetitionStrings;
 
   static {
     repetitionStrings = new String[MAP+1];
@@ -64,7 +64,7 @@ public abstract class Schema implements IWriteable {
     repetitionStrings[MAP] = "map";
   }
 
-  private final static int
+  private static final int
     COLUMN = 0,
     RECORD = 1,
     COLLECTION = 2;
@@ -96,7 +96,7 @@ public abstract class Schema implements IWriteable {
     }
     IPersistentMap meta = RT.meta(o);
     Object oldType = RT.get(meta, TYPE);
-    if (oldType != null){
+    if (oldType != null) {
       return ((IObj)o).withMeta(meta.assoc(OLD_TYPE, oldType).assoc(TYPE, REQUIRED_TYPE));
     }
     return ((IObj)o).withMeta((IPersistentMap)RT.assoc(meta, TYPE, REQUIRED_TYPE));
@@ -216,10 +216,10 @@ public abstract class Schema implements IWriteable {
       return false;
     }
     Schema s = (Schema)o;
-    return repetition == s.repetition &&
-      repetitionLevel == s.repetitionLevel &&
-      definitionLevel == s.definitionLevel &&
-      fn == s.fn;
+    return repetition == s.repetition
+      && repetitionLevel == s.repetitionLevel
+      && definitionLevel == s.definitionLevel
+      && fn == s.fn;
   }
 
   @Override
@@ -305,10 +305,10 @@ public abstract class Schema implements IWriteable {
         return false;
       }
       Column col = (Column)o;
-      return type == col.type &&
-        encoding == col.encoding &&
-        compression == col.compression &&
-        columnIndex == col.columnIndex;
+      return type == col.type
+        && encoding == col.encoding
+        && compression == col.compression
+        && columnIndex == col.columnIndex;
     }
 
     @Override
@@ -446,8 +446,8 @@ public abstract class Schema implements IWriteable {
         return false;
       }
       Record r = (Record)o;
-      return leafColumnIndex == r.leafColumnIndex &&
-        Arrays.equals(fields, r.fields);
+      return leafColumnIndex == r.leafColumnIndex
+        && Arrays.equals(fields, r.fields);
     }
 
     @Override
@@ -571,7 +571,7 @@ public abstract class Schema implements IWriteable {
     return repetition != OPTIONAL && repetition != REQUIRED;
   }
 
-  private final static class SchemaParseException extends RuntimeException {
+  private static final class SchemaParseException extends RuntimeException {
     SchemaParseException(String msg, Throwable cause) {
       super(msg, cause);
     }
@@ -754,7 +754,7 @@ public abstract class Schema implements IWriteable {
       } else if (s instanceof Column) {
         throw new IllegalArgumentException(String.format("Entrypoint '%s' contains column node at '%s'.",
                                                          entrypoint, parent));
-      } else /* if (s instanceof Record) */{
+      } else /* if (s instanceof Record) */ {
         parent = kw;
         s = ((Record)s).get(kw);
         if (s == null) {
@@ -776,11 +776,12 @@ public abstract class Schema implements IWriteable {
     return EdnReader.readString(s, opts);
   }
 
-  private final static class QueryContext {
+  private static final class QueryContext {
     final Types types;
     final Map<Symbol,IFn> readers;
     final boolean isMissingFieldsAsNil;
     final LinkedList<Column> columns;
+
     QueryContext(Types types, Map<Symbol,IFn> readers, boolean isMissingFieldsAsNil) {
       this.types = types;
       this.readers = readers;
@@ -954,10 +955,10 @@ public abstract class Schema implements IWriteable {
                                           PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(VECTOR);
-    } else if (schema.repetition != LIST &&
-               schema.repetition != VECTOR &&
-               schema.repetition != SET &&
-               schema.repetition != MAP) {
+    } else if (schema.repetition != LIST
+               && schema.repetition != VECTOR
+               && schema.repetition != SET
+               && schema.repetition != MAP) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a vector.", parents,
                                                        repetitionStrings[schema.repetition]));
@@ -970,10 +971,10 @@ public abstract class Schema implements IWriteable {
                                         PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(LIST);
-    } else if (schema.repetition != LIST &&
-               schema.repetition != VECTOR &&
-               schema.repetition != SET &&
-               schema.repetition != MAP) {
+    } else if (schema.repetition != LIST
+               && schema.repetition != VECTOR
+               && schema.repetition != SET
+               && schema.repetition != MAP) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a list.", parents,
                                                        repetitionStrings[schema.repetition]));
@@ -1069,9 +1070,10 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  public final static class QueryResult {
+  public static final class QueryResult {
     public Schema schema;
     public Column[] columns;
+
     public QueryResult(Schema schema, Column[] columns) {
       this.schema = schema;
       this.columns = columns;
@@ -1105,7 +1107,7 @@ public abstract class Schema implements IWriteable {
       for (int i=0; i<fields.length; ++i) {
         getColumns(fields[i].value, columns);
       }
-    } else /* if (schema instanceof Collection) */{
+    } else /* if (schema instanceof Collection) */ {
       Collection coll = (Collection)schema;
       getColumns(coll.repeatedSchema, columns);
     }
@@ -1127,7 +1129,7 @@ public abstract class Schema implements IWriteable {
         Field field = fields[i];
         getPaths(field.value, paths, path.cons(field.name));
       }
-    } else /* if (schema instanceof Collection) */{
+    } else /* if (schema instanceof Collection) */ {
       Collection coll = (Collection)schema;
       getPaths(coll.repeatedSchema, paths, path.cons(null));
     }

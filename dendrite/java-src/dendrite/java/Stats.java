@@ -48,14 +48,14 @@ public final class Stats {
     }
   }
 
-  public final static Page
+  public static final Page
     createDataPageStats(long numValues, long numNonNilValues, long length, long headerLength,
                         long repetitionLevelsLength, long definitionLevelLength, long dataLength) {
     return new Page(numValues, numNonNilValues, length, headerLength, repetitionLevelsLength,
                     definitionLevelLength, dataLength, 0, 0, 0);
   }
 
-  public final static Page createDictionaryPageStats(long numValues, long length,
+  public static final Page createDictionaryPageStats(long numValues, long length,
                                                      long dictionaryHeaderLength, long dictionaryLength) {
     return new Page(0, 0, 0, 0, 0, 0, 0, numValues, dictionaryHeaderLength, dictionaryLength);
   }

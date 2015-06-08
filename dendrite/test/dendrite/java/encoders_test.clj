@@ -16,13 +16,13 @@
             IEncoder IDecoder
             BooleanPacked$Encoder BooleanPacked$Decoder
             IntPlain$Encoder IntPlain$Decoder
-            IntVLQ$Encoder IntVLQ$Decoder
+            IntVlq$Encoder IntVlq$Decoder
             IntZigZag$Encoder IntZigZag$Decoder
             IntFixedBitWidthPackedRunLength$Encoder IntFixedBitWidthPackedRunLength$Decoder
             IntPackedRunLength$Encoder IntPackedRunLength$Decoder
             IntPackedDelta$Encoder IntPackedDelta$Decoder
             LongPlain$Encoder LongPlain$Decoder
-            LongVLQ$Encoder LongVLQ$Decoder
+            LongVlq$Encoder LongVlq$Decoder
             LongZigZag$Encoder LongZigZag$Decoder
             LongPackedDelta$Encoder LongPackedDelta$Decoder
             FloatPlain$Encoder FloatPlain$Decoder DoublePlain$Encoder DoublePlain$Decoder
@@ -76,7 +76,7 @@
   (testing "plain encoder/decoder"
     (test-encoder #(IntPlain$Encoder.) #(IntPlain$Decoder. %) (repeatedly helpers/rand-int)))
   (testing "vlq encoder/decoder"
-    (test-encoder #(IntVLQ$Encoder.) #(IntVLQ$Decoder. %) (repeatedly helpers/rand-int)))
+    (test-encoder #(IntVlq$Encoder.) #(IntVlq$Decoder. %) (repeatedly helpers/rand-int)))
   (testing "zigzag encoder/decoder"
     (test-encoder #(IntZigZag$Encoder.) #(IntZigZag$Decoder. %) (repeatedly helpers/rand-int)))
   (testing "fixed-bit-width packed run-length encoder/decoder"
@@ -113,7 +113,7 @@
   (testing "plain encoder/decoder"
     (test-encoder #(LongPlain$Encoder.) #(LongPlain$Decoder. %) (repeatedly helpers/rand-long)))
   (testing "vlq encoder/decoder"
-    (test-encoder #(LongVLQ$Encoder.) #(LongVLQ$Decoder. %) (repeatedly helpers/rand-long)))
+    (test-encoder #(LongVlq$Encoder.) #(LongVlq$Decoder. %) (repeatedly helpers/rand-long)))
   (testing "zigzag encoder/decoder"
     (test-encoder #(LongZigZag$Encoder.) #(LongZigZag$Decoder. %) (repeatedly helpers/rand-long)))
   (testing "packed delta encoder/decoder"
@@ -171,7 +171,7 @@
         (.encode enc i))
       (.write mos enc)
       (let [dictionary (.getDictionary enc)
-            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.toByteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVlq$Decoder. (.toByteBuffer mos)) dictionary)
             read-ints (repeatedly n #(.decode dec))]
         (is (= read-ints rand-ints)))))
   (testing "byte-array encoding"
@@ -184,6 +184,6 @@
         (.encode enc ba))
       (.write mos enc)
       (let [dictionary (into-array (.getDictionary enc))
-            dec (Dictionary$Decoder. (IntVLQ$Decoder. (.toByteBuffer mos)) dictionary)
+            dec (Dictionary$Decoder. (IntVlq$Decoder. (.toByteBuffer mos)) dictionary)
             read-byte-arrays (repeatedly n #(.decode dec))]
         (is (= (map seq read-byte-arrays) (map seq rand-byte-arrays)))))))

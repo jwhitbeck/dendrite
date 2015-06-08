@@ -12,18 +12,18 @@
 
 package dendrite.java;
 
-import clojure.lang.IFn;
 import clojure.lang.AFn;
-import clojure.lang.Keyword;
+import clojure.lang.IFn;
 import clojure.lang.IPersistentVector;
 import clojure.lang.ISeq;
+import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public final class Stripe {
 
@@ -104,7 +104,7 @@ public final class Stripe {
     list.add(v);
   }
 
-  final static Object notFound = new Object();
+  static final Object notFound = new Object();
 
   static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
                                            final IPersistentVector parents) {
@@ -122,8 +122,8 @@ public final class Stripe {
             try {
               v = coercionFn.invoke(val);
             } catch (Exception e) {
-              throw new IllegalArgumentException
-                (String.format("Could not coerce value at path '%s'", parents), e);
+              throw new IllegalArgumentException(
+                 String.format("Could not coerce value at path '%s'", parents), e);
             }
             buffer[colIdx] = v;
           }
@@ -140,8 +140,8 @@ public final class Stripe {
             try {
               v = coercionFn.invoke(val);
             } catch (Exception e) {
-              throw new IllegalArgumentException
-                (String.format("Could not coerce value at path '%s'", parents), e);
+              throw new IllegalArgumentException(
+                 String.format("Could not coerce value at path '%s'", parents), e);
             }
             appendRepeated(buffer, colIdx, new LeveledValue(repetitionLevel, maxDefinitionLevel, v));
           }
@@ -162,15 +162,15 @@ public final class Stripe {
           if (isParentNil) {
             buffer[colIdx] = null;
           } else if (val == null || val == notFound) {
-            throw new IllegalArgumentException
-              (String.format("Required value at path '%s' is missing", parents));
+            throw new IllegalArgumentException(
+               String.format("Required value at path '%s' is missing", parents));
           } else {
             Object v;
             try {
               v = coercionFn.invoke(val);
             } catch (Exception e) {
-              throw new IllegalArgumentException
-                (String.format("Could not coerce value at path '%s'", parents), e);
+              throw new IllegalArgumentException(
+                 String.format("Could not coerce value at path '%s'", parents), e);
             }
             buffer[colIdx] = v;
           }
@@ -183,15 +183,15 @@ public final class Stripe {
           if (isParentNil) {
             appendRepeated(buffer, colIdx, new LeveledValue(repetitionLevel, definitionLevel, null));
           } else if (val == null || val == notFound) {
-            throw new IllegalArgumentException
-              (String.format("Required value at path '%s' is missing", parents));
+            throw new IllegalArgumentException(
+               String.format("Required value at path '%s' is missing", parents));
           } else {
             Object v;
             try {
               v = coercionFn.invoke(val);
             } catch (Exception e) {
-              throw new IllegalArgumentException
-                (String.format("Could not coerce value at path '%s'", parents), e);
+              throw new IllegalArgumentException(
+                 String.format("Could not coerce value at path '%s'", parents), e);
             }
             appendRepeated(buffer, colIdx, new LeveledValue(repetitionLevel, maxDefinitionLevel, v));
           }
@@ -238,8 +238,8 @@ public final class Stripe {
                          int definitionLevel) {
         boolean isNil = (rec == notFound);
         if (isNil && !isParentNil) {
-          throw new IllegalArgumentException
-            (String.format("Required record at path '%s' is missing", parents));
+          throw new IllegalArgumentException(
+            String.format("Required record at path '%s' is missing", parents));
         }
         for (int i=0; i<fieldNames.length; ++i) {
           fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isNil, repetitionLevel,
@@ -272,8 +272,8 @@ public final class Stripe {
         try {
           entries = seq(mapObj);
         } catch (Exception e) {
-          throw new IllegalArgumentException
-            (String.format("Could not iterate over value at path '%s'", parents), e);
+          throw new IllegalArgumentException(
+            String.format("Could not iterate over value at path '%s'", parents), e);
         }
         if (entries == null) {
           repeatedStripeFn.invoke(buffer, null, true, repetitionLevel, definitionLevel);
@@ -296,8 +296,8 @@ public final class Stripe {
         try {
           s = seq(repeatedValues);
         } catch (Exception e) {
-          throw new IllegalArgumentException
-            (String.format("Could not iterate over value at path '%s'", parents), e);
+          throw new IllegalArgumentException(
+             String.format("Could not iterate over value at path '%s'", parents), e);
         }
         if (s == null) {
           repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, definitionLevel);

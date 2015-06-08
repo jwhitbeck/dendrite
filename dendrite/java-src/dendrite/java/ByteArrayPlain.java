@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 
 public final class ByteArrayPlain {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     public Decoder(ByteBuffer byteBuffer) {
       super(byteBuffer);
@@ -32,7 +32,7 @@ public final class ByteArrayPlain {
 
   }
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     @Override
     public void encode(Object o) {
@@ -44,7 +44,7 @@ public final class ByteArrayPlain {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

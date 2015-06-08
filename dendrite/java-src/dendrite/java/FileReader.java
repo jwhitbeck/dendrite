@@ -12,12 +12,11 @@
 
 package dendrite.java;
 
-import clojure.lang.ArrayChunk;
 import clojure.lang.AFn;
 import clojure.lang.Agent;
+import clojure.lang.ArrayChunk;
 import clojure.lang.ChunkedCons;
 import clojure.lang.Cons;
-import clojure.lang.Keyword;
 import clojure.lang.IChunk;
 import clojure.lang.IChunkedSeq;
 import clojure.lang.IFn;
@@ -25,17 +24,18 @@ import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;
 import clojure.lang.ISeq;
-import clojure.lang.LazySeq;
-import clojure.lang.PersistentArrayMap;
 import clojure.lang.ITransientCollection;
 import clojure.lang.ITransientMap;
+import clojure.lang.Keyword;
+import clojure.lang.LazySeq;
+import clojure.lang.PersistentArrayMap;
+import clojure.lang.RT;
 import clojure.lang.Seqable;
 import clojure.lang.Sequential;
-import clojure.lang.RT;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -43,15 +43,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 public final class FileReader implements Closeable, IReader {
 
-  public final static Keyword
+  public static final Keyword
     RECORD_GROUPS = Keyword.intern("record-groups"),
     COLUMNS = Keyword.intern("columns"),
     GLOBAL = Keyword.intern("global"),
@@ -290,6 +290,7 @@ public final class FileReader implements Closeable, IReader {
   private static final class MetadataReadResult {
     final Metadata.File fileMetadata;
     final long metadataLength;
+
     MetadataReadResult(Metadata.File fileMetadata, long metadataLength) {
       this.fileMetadata = fileMetadata;
       this.metadataLength = metadataLength;
@@ -362,7 +363,7 @@ public final class FileReader implements Closeable, IReader {
     Future<IChunk> get(Bundle bundle);
   }
 
-  private final static class AssembleFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
 
     AssembleFutureFactory(Assemble.Fn assembleFn) {
@@ -379,7 +380,7 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private final static class AssembleSampledFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleSampledFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn sampleFn;
 
@@ -398,7 +399,7 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private final static class AssembleFilteredFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleFilteredFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn filterFn;
 
@@ -417,7 +418,7 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private final static class AssembleSampledAndFilteredFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleSampledAndFilteredFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn sampleFn;
     private final IFn filterFn;

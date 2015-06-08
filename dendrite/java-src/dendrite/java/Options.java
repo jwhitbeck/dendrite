@@ -12,23 +12,23 @@
 
 package dendrite.java;
 
-import clojure.lang.Keyword;
 import clojure.lang.IFn;
-import clojure.lang.IPersistentMap;
 import clojure.lang.IMapEntry;
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.ITransientCollection;
+import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 public final class Options {
 
@@ -153,6 +153,7 @@ public final class Options {
 
   public static final class ReaderOptions {
     public final List<CustomTypeDefinition> customTypeDefinitions;
+
     public ReaderOptions(List<CustomTypeDefinition> customTypeDefinitions) {
       this.customTypeDefinitions = customTypeDefinitions;
     }
@@ -163,7 +164,7 @@ public final class Options {
       Object key = ((IMapEntry)s.first()).key();
       boolean valid = false;
       for (int i=0; i<validKeys.length; ++i) {
-        if (key == validKeys[i] ){
+        if (key == validKeys[i]) {
           valid = true;
           break;
         }
@@ -339,11 +340,11 @@ public final class Options {
     }
   }
 
-  final static Keyword[] validWriterOptionKeys
+  static final Keyword[] validWriterOptionKeys
     = new Keyword[]{RECORD_GROUP_LENGTH, DATA_PAGE_LENGTH, OPTIMIZE_COLUMNS, COMPRESSION_THRESHOLDS,
                     INVALID_INPUT_HANDLER, CUSTOM_TYPES, MAP_FN};
 
-  final static Object notFound = new Object();
+  static final Object notFound = new Object();
 
   static int getPositiveInt(IPersistentMap options, Keyword key, int defaultValue) {
     Object o = RT.get(options, key, notFound);

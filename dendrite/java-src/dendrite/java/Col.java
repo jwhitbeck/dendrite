@@ -56,19 +56,19 @@ public final class Col extends Obj {
     if (encoding.equals(Types.PLAIN_SYM) && compression.equals(Types.NONE_SYM)) {
       return type.getName();
     }
-    return "#col [" + type.getName() + " " + encoding.getName() +
-      (compression.equals(Types.NONE_SYM)? "" : " " + compression.getName()) + "]";
+    return "#col [" + type.getName() + " " + encoding.getName()
+      + (compression.equals(Types.NONE_SYM)? "" : " " + compression.getName()) + "]";
   }
 
   @Override
-  public boolean equals(Object o){
+  public boolean equals(Object o) {
     if (o == null || (!(o instanceof Col))) {
       return false;
     }
     Col col = (Col)o;
-    return type.equals(col.type) &&
-      encoding.equals(col.encoding) &&
-      compression.equals(col.compression);
+    return type.equals(col.type)
+      && encoding.equals(col.encoding)
+      && compression.equals(col.compression);
   }
 
   @Override

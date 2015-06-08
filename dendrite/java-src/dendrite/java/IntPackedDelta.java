@@ -17,7 +17,7 @@ import java.util.Arrays;
 
 public final class IntPackedDelta {
 
-  public final static class Decoder extends AIntDecoder {
+  public static final class Decoder extends AIntDecoder {
 
     private int[] miniblockBuffer = new int[128];
     private int miniblockPosition = 0;
@@ -90,7 +90,7 @@ public final class IntPackedDelta {
   }
 
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     private static final int MAX_BLOCK_LENGTH = 128;
     private static final int MAX_MINIBLOCK_LENGTH = 32;
@@ -147,8 +147,8 @@ public final class IntPackedDelta {
 
     private void flushBlockWithNumMiniBlocks(MemoryOutputStream memoryOutputStream, int miniblockLength,
                                              int blockLength) {
-      int numMiniblocks = blockLength / miniblockLength;
-      int startValue = (int)valueBuffer[0];
+      final int numMiniblocks = blockLength / miniblockLength;
+      final int startValue = (int)valueBuffer[0];
       int[] miniblockBitWidths = new int[numMiniblocks];
       for (int j=0; j<numMiniblocks; ++j) {
         miniblockBitWidths[j] = getMiniBlockBitWidth(j * miniblockLength, miniblockLength);
@@ -232,7 +232,7 @@ public final class IntPackedDelta {
 
     @Override
     public void finish() {
-      if (position > 0){
+      if (position > 0) {
         flushBlock();
       }
     }
@@ -247,7 +247,7 @@ public final class IntPackedDelta {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

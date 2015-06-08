@@ -13,16 +13,16 @@
 package dendrite.java;
 
 import clojure.lang.AFn;
-import clojure.lang.Keyword;
 import clojure.lang.IEditableCollection;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
 import clojure.lang.ISeq;
 import clojure.lang.ITransientCollection;
 import clojure.lang.ITransientMap;
+import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
-import clojure.lang.PersistentVector;
 import clojure.lang.PersistentHashSet;
+import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 
 import java.util.ListIterator;

@@ -12,8 +12,8 @@
 
 package dendrite.java;
 
-import java.nio.ByteBuffer;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 
 public final class Bytes {
 
@@ -176,7 +176,7 @@ public final class Bytes {
     return new BigInteger(intAsBytes);
   }
 
-  public static void writeUIntVLQ(final MemoryOutputStream os, final BigInteger bi) {
+  public static void writeUIntVlq(final MemoryOutputStream os, final BigInteger bi) {
     byte[] intAsBytes = bi.toByteArray();
     int numBytes = intAsBytes.length;
     int byteBuffer = 0;
@@ -195,7 +195,7 @@ public final class Bytes {
     os.write(byteBuffer);
   }
 
-  public static BigInteger readUIntVLQ(final ByteBuffer bb) {
+  public static BigInteger readUIntVlq(final ByteBuffer bb) {
     MemoryOutputStream mos = new MemoryOutputStream(10);
     int byteBuffer = 0;
     int shift = 0;
@@ -222,7 +222,7 @@ public final class Bytes {
   }
 
   private static BigInteger encodeZigZag(final BigInteger bi) {
-    if ( bi.signum() < 0 ){
+    if ( bi.signum() < 0 ) {
       return bi.negate().shiftLeft(1).add(BigInteger.ONE);
     } else {
       return bi.shiftLeft(1);
@@ -235,18 +235,18 @@ public final class Bytes {
     return isPositive? positiveBigInteger : positiveBigInteger.negate();
   }
 
-  public static void writeSIntVLQ(final MemoryOutputStream os, final BigInteger bi) {
-    writeUIntVLQ(os, encodeZigZag(bi));
+  public static void writeSIntVlq(final MemoryOutputStream os, final BigInteger bi) {
+    writeUIntVlq(os, encodeZigZag(bi));
   }
 
-  public static BigInteger readSIntVLQ(final ByteBuffer bb) {
-    return decodeZigZag(readUIntVLQ(bb));
+  public static BigInteger readSIntVlq(final ByteBuffer bb) {
+    return decodeZigZag(readUIntVlq(bb));
   }
 
   public static void writePackedBooleans(final MemoryOutputStream os,
                                          final boolean[] booleanOctuplet) {
     int b = 0;
-    for (int i=0; i<8; ++i){
+    for (int i=0; i<8; ++i) {
       b = (b << 1) | (booleanOctuplet[i]? 1 : 0);
     }
     os.write(b);
@@ -315,10 +315,6 @@ public final class Bytes {
     writePackedInts32(os, ints, width, 0, length);
   }
 
-  public static void readPackedInts32(final ByteBuffer bb, final int[] ints, final int width, final int length) {
-    readPackedInts32(bb, ints, width, 0, length);
-  }
-
   public static void writePackedInts32(final MemoryOutputStream os, final int[] ints, final int width,
                                        final int offset, final int length) {
     if (width > 0) {
@@ -328,6 +324,11 @@ public final class Bytes {
         writePackedInts32Over24Bits(os, ints, width, offset, length);
       }
     }
+  }
+
+  public static void readPackedInts32(final ByteBuffer bb, final int[] ints, final int width,
+                                      final int length) {
+    readPackedInts32(bb, ints, width, 0, length);
   }
 
   public static void readPackedInts32(final ByteBuffer bb, final int[] ints, final int width,
@@ -420,12 +421,6 @@ public final class Bytes {
     writePackedInts64(os, longs, width, 0, length);
   }
 
-
-  public static void readPackedInts64(final ByteBuffer bb, final long[] longs, final int width,
-                                      final int length) {
-    readPackedInts64(bb, longs, width, 0, length);
-  }
-
   public static void writePackedInts64(final MemoryOutputStream os, final long[] longs, final int width,
                                        final int offset, final int length) {
     if (width > 0) {
@@ -435,6 +430,11 @@ public final class Bytes {
         writePackedInts64Over56bits(os, longs, width, offset, length);
       }
     }
+  }
+
+  public static void readPackedInts64(final ByteBuffer bb, final long[] longs, final int width,
+                                      final int length) {
+    readPackedInts64(bb, longs, width, 0, length);
   }
 
   public static void readPackedInts64(final ByteBuffer bb, final long[] longs, final int width,
@@ -539,7 +539,7 @@ public final class Bytes {
 
   public static byte[] readByteArray(final ByteBuffer bb) {
     int length = readSInt(bb);
-    if (length < 0){
+    if (length < 0) {
       return null;
     }
     byte[] bytes = new byte[length];

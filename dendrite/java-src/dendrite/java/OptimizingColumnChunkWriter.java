@@ -18,8 +18,8 @@ import clojure.lang.Symbol;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter {
@@ -588,7 +588,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       this.longStatsCollector = (LongStatsCollector)statsCollector;
     }
 
-    private int getVLQDataLength() {
+    private int getVlqDataLength() {
       int length = 0;
       for (Map.Entry<Object, Integer> e : statsCollector.getFrequencies().entrySet()) {
         long v = (Long)e.getKey();
@@ -619,7 +619,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
         if (statsCollector.isDictionarySaturated()) {
           vlqLength = estimateDataLength(Types.VLQ, primitiveReader, numNonNilValues);
         } else {
-          vlqLength = getVLQDataLength();
+          vlqLength = getVlqDataLength();
         }
         if (vlqLength < bestLength) {
           bestLength = vlqLength;

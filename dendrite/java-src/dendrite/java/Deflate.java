@@ -13,14 +13,14 @@
 package dendrite.java;
 
 import java.nio.ByteBuffer;
+import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
-import java.util.zip.DataFormatException;
 
 
 public final class Deflate {
 
-  public final static class Compressor implements ICompressor {
+  public static final class Compressor implements ICompressor {
 
     private final MemoryOutputStream inputBuffer;
     private final MemoryOutputStream outputBuffer;
@@ -80,7 +80,7 @@ public final class Deflate {
 
   }
 
-  public final static class Decompressor implements IDecompressor {
+  public static final class Decompressor implements IDecompressor {
 
     @Override
     public ByteBuffer decompress(ByteBuffer byteBuffer, int compressedLength, int decompressedLength) {
@@ -110,7 +110,7 @@ public final class Deflate {
 
   }
 
-  public final static IDecompressorFactory decompressorFactory = new IDecompressorFactory() {
+  public static final IDecompressorFactory decompressorFactory = new IDecompressorFactory() {
       public IDecompressor create() {
         return new Decompressor();
       }

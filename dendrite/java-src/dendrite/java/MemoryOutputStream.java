@@ -12,8 +12,8 @@
 
 package dendrite.java;
 
-import java.nio.ByteBuffer;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
 

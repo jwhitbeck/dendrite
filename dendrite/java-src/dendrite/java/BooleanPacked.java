@@ -16,12 +16,12 @@ import java.nio.ByteBuffer;
 
 public final class BooleanPacked {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     private final boolean[] octuplet = new boolean[8];
     private int position = 0;
 
-    public Decoder(ByteBuffer byteBuffer){
+    public Decoder(ByteBuffer byteBuffer) {
       super(byteBuffer);
     }
 
@@ -62,7 +62,7 @@ public final class BooleanPacked {
 
     @Override
     public void finish() {
-      if (position > 0){
+      if (position > 0) {
         Bytes.writePackedBooleans(mos, octuplet);
         position = 0;
       }
@@ -74,7 +74,7 @@ public final class BooleanPacked {
     }
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

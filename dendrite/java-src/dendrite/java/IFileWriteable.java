@@ -12,8 +12,8 @@
 
 package dendrite.java;
 
-import java.nio.channels.FileChannel;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 
 public interface IFileWriteable {
   void writeTo(FileChannel fileChannel) throws IOException;

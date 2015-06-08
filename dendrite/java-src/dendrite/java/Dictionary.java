@@ -151,9 +151,13 @@ public final class Dictionary {
       return dictByFrequency;
     }
 
-    Object wrap(Object o) { return o; }
+    Object wrap(Object o) {
+      return o;
+    }
 
-    Object unwrap(Object o) { return o; }
+    Object unwrap(Object o) {
+      return o;
+    }
 
     int getIndex(Object o) {
       Object key = wrap(o);
@@ -199,7 +203,7 @@ public final class Dictionary {
     }
   }
 
-  public final static class DecoderFactory implements IDecoderFactory {
+  public static final class DecoderFactory implements IDecoderFactory {
     final Object[] dictionary;
     final IDecoderFactory intDecoderFactory;
     final IDecoderFactory dictDecoderFactory;

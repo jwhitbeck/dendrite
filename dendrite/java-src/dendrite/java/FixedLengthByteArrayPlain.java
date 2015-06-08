@@ -18,7 +18,7 @@ import java.nio.ByteBuffer;
 
 public final class FixedLengthByteArrayPlain {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     private final int length;
 
@@ -36,7 +36,7 @@ public final class FixedLengthByteArrayPlain {
 
   }
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     private int length = -1;
 
@@ -63,7 +63,7 @@ public final class FixedLengthByteArrayPlain {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

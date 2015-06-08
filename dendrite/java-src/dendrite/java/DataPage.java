@@ -20,7 +20,7 @@ import java.util.List;
 
 public final class DataPage {
 
-  public final static class Header implements IPageHeader, IWriteable {
+  public static final class Header implements IPageHeader, IWriteable {
 
     private final int numValues;
     private final int numNonNilValues;
@@ -40,7 +40,9 @@ public final class DataPage {
     }
 
     @Override
-    public int getType() { return Pages.DATA; }
+    public int getType() {
+      return Pages.DATA;
+    }
 
     @Override
     public int getHeaderLength() {

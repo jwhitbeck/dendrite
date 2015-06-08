@@ -14,35 +14,36 @@ package dendrite.java;
 
 import java.nio.ByteBuffer;
 
-public final class IntVLQ {
+public final class LongVlq {
 
-  public final static class Decoder extends AIntDecoder {
+  public static final class Decoder extends ADecoder {
 
     public Decoder(ByteBuffer byteBuffer) {
       super(byteBuffer);
     }
 
     @Override
-    public int decodeInt() {
-      return Bytes.readUInt(bb);
+    public Object decode() {
+      return Bytes.readULong(bb);
     }
 
   }
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
+
     @Override
     public void encode(Object o) {
       numValues += 1;
-      Bytes.writeUInt(mos, (int) o);
+      Bytes.writeULong(mos, (long) o);
     }
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);
       }
     };
-
 }

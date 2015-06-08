@@ -16,15 +16,15 @@ import clojure.lang.Agent;
 import clojure.lang.Symbol;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
@@ -81,7 +81,7 @@ public final class FileWriter implements Closeable {
     return new FileWriter(types, schema, fileChannel, writerOptions.bundleSize, writeThread, batchQueue);
   }
 
-  private final static List<Object> poison = new ArrayList<Object>();
+  private static final List<Object> poison = new ArrayList<Object>();
 
   private static Iterator<List<Object>> getBatchIterator(final LinkedBlockingQueue<List<Object>> batchQueue) {
     return new AReadOnlyIterator<List<Object>>() {
@@ -159,6 +159,7 @@ public final class FileWriter implements Closeable {
   static final class WriteThreadResult {
     final Metadata.RecordGroup[] recordGroupsMetadata;
     final Schema.Column[] columns;
+
     WriteThreadResult(Metadata.RecordGroup[] recordGroupsMetadata, Schema.Column[] columns) {
       this.recordGroupsMetadata = recordGroupsMetadata;
       this.columns = columns;

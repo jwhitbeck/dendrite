@@ -15,12 +15,12 @@ package dendrite.java;
 import clojure.lang.APersistentMap;
 import clojure.lang.ASeq;
 import clojure.lang.Counted;
-import clojure.lang.Keyword;
-import clojure.lang.MapEntry;
-import clojure.lang.IPersistentMap;
 import clojure.lang.IMapEntry;
+import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
 import clojure.lang.ITransientMap;
+import clojure.lang.Keyword;
+import clojure.lang.MapEntry;
 import clojure.lang.PersistentArrayMap;
 
 import java.util.Iterator;
@@ -28,9 +28,9 @@ import java.io.Serializable;
 
 public class PersistentRecord extends APersistentMap {
 
-  public final static Object UNDEFINED = new Object();
+  public static final Object UNDEFINED = new Object();
 
-  final static PersistentRecord EMPTY
+  static final PersistentRecord EMPTY
     = new PersistentRecord(null, KeywordIndexHashMap.EMPTY, new Object[]{});
   final KeywordIndexHashMap hm;
   final Object[] ovs;
@@ -83,7 +83,7 @@ public class PersistentRecord extends APersistentMap {
   public IMapEntry entryAt(Object key) {
     if (key instanceof Keyword) {
       int i = hm.get((Keyword)key);
-      if (i >= 0){
+      if (i >= 0) {
         if (ovs[i] == UNDEFINED) {
           return null;
         }
@@ -95,7 +95,7 @@ public class PersistentRecord extends APersistentMap {
   }
 
   @Override
-  public boolean containsKey(Object key){
+  public boolean containsKey(Object key) {
     if (key instanceof Keyword) {
       int i = hm.get((Keyword)key);
       return i >= 0 && ovs[i] != UNDEFINED;
@@ -125,7 +125,7 @@ public class PersistentRecord extends APersistentMap {
   public Object valAt(Object key, Object notFound) {
     if (key instanceof Keyword) {
       int i = hm.get((Keyword)key);
-      if (i >= 0){
+      if (i >= 0) {
         if (ovs[i] == UNDEFINED) {
           return notFound;
         }
@@ -170,7 +170,7 @@ public class PersistentRecord extends APersistentMap {
     };
   }
 
-  public final static class Factory {
+  public static final class Factory {
 
     final KeywordIndexHashMap hm;
 
@@ -183,15 +183,15 @@ public class PersistentRecord extends APersistentMap {
     }
   }
 
-  final static class KeywordIndexHashMap implements Serializable {
+  static final class KeywordIndexHashMap implements Serializable {
 
     final long[] hashArray;
     final Keyword[] kws;
     final int mask;
-    final static long hasheqMask  = 0x00000000ffffffffL;
-    final static long idxMask     = 0x7fffffff00000000L;
-    final static long presenceBit = 0x8000000000000000L;
-    final static KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(new Keyword[]{});
+    static final long hasheqMask  = 0x00000000ffffffffL;
+    static final long idxMask     = 0x7fffffff00000000L;
+    static final long presenceBit = 0x8000000000000000L;
+    static final KeywordIndexHashMap EMPTY = new KeywordIndexHashMap(new Keyword[]{});
 
     public KeywordIndexHashMap(Keyword[] keywords) {
       kws = keywords;
@@ -221,7 +221,7 @@ public class PersistentRecord extends APersistentMap {
       long lhasheq = ((long)hasheq) & hasheqMask;
       int j = hasheq & mask;
       long hv = hashArray[j];
-      if (hv == 0){
+      if (hv == 0) {
         return -1;
       }
       while ((hv & hasheqMask) != lhasheq) {
@@ -283,7 +283,7 @@ public class PersistentRecord extends APersistentMap {
 
     @Override
     public ISeq next() {
-      if ( c + 1 < cnt ){
+      if ( c + 1 < cnt ) {
         return new Seq(kws, ovs, cnt, i+1, c+1);
       }
       return null;
@@ -295,7 +295,7 @@ public class PersistentRecord extends APersistentMap {
     }
 
     @Override
-    public Seq withMeta(IPersistentMap meta){
+    public Seq withMeta(IPersistentMap meta) {
       return new Seq(meta, kws, ovs, cnt, i, c);
     }
   }

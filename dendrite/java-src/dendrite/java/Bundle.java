@@ -19,9 +19,9 @@ import clojure.lang.RT;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public final class Bundle implements Iterable<List> {

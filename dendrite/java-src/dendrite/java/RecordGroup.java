@@ -62,7 +62,7 @@ public final class RecordGroup {
     @SuppressWarnings("unchecked")
     private void writeParallel(Bundle bundle) {
       List<Future<Object>> futures = new ArrayList<Future<Object>>(columnChunkWriters.length);
-      for(int i=0; i<columnChunkWriters.length; ++i) {
+      for (int i=0; i<columnChunkWriters.length; ++i) {
         final IColumnChunkWriter writer = columnChunkWriters[i];
         final List columnValues = bundle.columnValues[i];
         futures.add(Agent.soloExecutor.submit(new Callable<Object>() {
@@ -79,12 +79,12 @@ public final class RecordGroup {
 
     @SuppressWarnings("unchecked")
     private void writeSequential(Bundle bundle) {
-      for(int i=0; i<columnChunkWriters.length; ++i) {
+      for (int i=0; i<columnChunkWriters.length; ++i) {
         columnChunkWriters[i].write(bundle.columnValues[i]);
       }
     }
 
-    private final static int PARALLEL_THRESHOLD = 128;
+    private static final int PARALLEL_THRESHOLD = 128;
 
     public void write(Bundle bundle) {
       int numRecordsInBundle = bundle.getNumRecords();

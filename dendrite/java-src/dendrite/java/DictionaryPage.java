@@ -29,7 +29,9 @@ public final class DictionaryPage {
     }
 
     @Override
-    public int getType() { return Pages.DICTIONARY; }
+    public int getType() {
+      return Pages.DICTIONARY;
+    }
 
     @Override
     public int getHeaderLength() {

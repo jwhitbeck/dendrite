@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 
 public final class ByteArrayIncremental {
 
-  public final static class Decoder extends ADecoder {
+  public static final class Decoder extends ADecoder {
 
     private final ByteArrayDeltaLength.Decoder byteArrayDecoder;
     private final IntPackedDelta.Decoder prefixLengthsDecoder;
@@ -44,7 +44,7 @@ public final class ByteArrayIncremental {
 
   }
 
-  public final static class Encoder implements IEncoder {
+  public static final class Encoder implements IEncoder {
 
     private byte[] previousByteArray = null;
     private final ByteArrayDeltaLength.Encoder byteArrayEncoder;
@@ -121,7 +121,7 @@ public final class ByteArrayIncremental {
 
   }
 
-  public final static IDecoderFactory decoderFactory = new ADecoderFactory() {
+  public static final IDecoderFactory decoderFactory = new ADecoderFactory() {
       @Override
       public IDecoder create(ByteBuffer bb) {
         return new Decoder(bb);

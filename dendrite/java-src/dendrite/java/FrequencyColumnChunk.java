@@ -18,7 +18,7 @@ import java.util.List;
 
 public final class FrequencyColumnChunk {
 
-  public final static class Reader implements IColumnChunkReader {
+  public static final class Reader implements IColumnChunkReader {
 
     private final ByteBuffer bb;
     private final Metadata.ColumnChunk columnChunkMetadata;
@@ -71,7 +71,7 @@ public final class FrequencyColumnChunk {
 
   }
 
-  public final static class Writer implements IColumnChunkWriter {
+  public static final class Writer implements IColumnChunkWriter {
 
     private final Schema.Column column;
     private final Dictionary.Encoder dictEncoder;
@@ -149,8 +149,13 @@ public final class FrequencyColumnChunk {
         public IDecoder create(ByteBuffer bb) {
           final IIntDecoder intDecoder = (IIntDecoder)intDecoderFactory.create(bb);
           return new IDecoder() {
-            public Object decode() { return indicesByFrequency[intDecoder.decodeInt()]; }
-            public int getNumEncodedValues() { return intDecoder.getNumEncodedValues(); }
+            public Object decode() {
+              return indicesByFrequency[intDecoder.decodeInt()];
+            }
+
+            public int getNumEncodedValues() {
+              return intDecoder.getNumEncodedValues();
+            }
           };
         }
       };

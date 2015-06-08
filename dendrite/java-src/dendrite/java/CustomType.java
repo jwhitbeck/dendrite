@@ -41,9 +41,9 @@ public final class CustomType implements IWriteable {
       return false;
     }
     CustomType ct = (CustomType) o;
-    return type == ct.type &&
-      baseType == ct.baseType &&
-      sym.equals(ct.sym);
+    return type == ct.type
+      && baseType == ct.baseType
+      && sym.equals(ct.sym);
   }
 
   @Override
@@ -51,7 +51,7 @@ public final class CustomType implements IWriteable {
     throw new UnsupportedOperationException();
   }
 
-  public static CustomType read(ByteBuffer bb){
+  public static CustomType read(ByteBuffer bb) {
     return new CustomType(Bytes.readUInt(bb),
                           Bytes.readUInt(bb),
                           Types.toSymbol(Types.toString(Bytes.readByteArray(bb))));

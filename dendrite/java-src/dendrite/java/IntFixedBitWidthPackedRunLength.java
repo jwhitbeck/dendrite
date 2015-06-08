@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 
 public final class IntFixedBitWidthPackedRunLength {
 
-  public final static class Decoder extends AIntDecoder {
+  public static final class Decoder extends AIntDecoder {
 
     private final int[] octuplet = new int[8];
     private int octupletPosition = 8;
@@ -33,7 +33,7 @@ public final class IntFixedBitWidthPackedRunLength {
     @Override
     public int decodeInt() {
       if (numRleValuesToRead > 0) {
-        return decodeFromRLEValue();
+        return decodeFromRleValue();
       } else if (octupletPosition < 8) {
         return decodeFromOctuplet();
       } else {
@@ -51,7 +51,7 @@ public final class IntFixedBitWidthPackedRunLength {
       return v;
     }
 
-    private int decodeFromRLEValue() {
+    private int decodeFromRleValue() {
       numRleValuesToRead -= 1;
       return rleValue;
     }
@@ -62,7 +62,7 @@ public final class IntFixedBitWidthPackedRunLength {
       octupletPosition = 0;
     }
 
-    private void bufferNextRLERun(int numOccurencesRleValue) {
+    private void bufferNextRleRun(int numOccurencesRleValue) {
       numRleValuesToRead = numOccurencesRleValue;
       rleValue = Bytes.readPackedInt(bb, width);
     }
@@ -77,14 +77,14 @@ public final class IntFixedBitWidthPackedRunLength {
       if ((n & 1) == 1) {
         bufferNextPackedIntRun(n >>> 1);
       } else {
-        bufferNextRLERun(n >>> 1);
+        bufferNextRleRun(n >>> 1);
       }
     }
 
   }
 
 
-  public final static class Encoder extends AEncoder {
+  public static final class Encoder extends AEncoder {
 
     private int rleValue = 0;
     private int numOccurencesRleValue = 0;
@@ -101,10 +101,10 @@ public final class IntFixedBitWidthPackedRunLength {
 
     protected void setWidth(final int width) {
       this.width = width;
-      rleThreshold = computeRLEThreshold(width);
+      rleThreshold = computeRleThreshold(width);
     }
 
-    private static int computeRLEThreshold(final int width) {
+    private static int computeRleThreshold(final int width) {
       int rleRunNumBytes = 2 + (width / 8);
       double numPackedValuesPerByte = (double)8 / (double)width;
       return (int)(rleRunNumBytes * numPackedValuesPerByte) + 1;
@@ -113,14 +113,14 @@ public final class IntFixedBitWidthPackedRunLength {
     private void encodeInt(final int i) {
       if (currentOctupletPosition == 0) {
         if (numOccurencesRleValue == 0) {
-          startRLERun(i);
+          startRleRun(i);
         } else if (rleValue == i) {
           numOccurencesRleValue += 1;
         } else if (numOccurencesRleValue >= rleThreshold) {
-          flushRLE();
+          flushRle();
           encodeInt(i);
         } else {
-          packRLERun();
+          packRleRun();
           encodeInt(i);
         }
       } else {
@@ -155,7 +155,7 @@ public final class IntFixedBitWidthPackedRunLength {
         numBufferedOctuplets += 1;
         flushBitPacked();
       } else if (numOccurencesRleValue > 0) {
-        flushRLE();
+        flushRle();
       } else if (numBufferedOctuplets > 0) {
         flushBitPacked();
       }
@@ -173,14 +173,14 @@ public final class IntFixedBitWidthPackedRunLength {
       }
     }
 
-    private void packRLERun() {
+    private void packRleRun() {
       for (int j=0; j<numOccurencesRleValue; ++j) {
         bufferPackedInt(rleValue);
       }
       numOccurencesRleValue = 0;
     }
 
-    private void startRLERun(final int i) {
+    private void startRleRun(final int i) {
       numOccurencesRleValue = 1;
       rleValue = i;
     }
@@ -210,20 +210,20 @@ public final class IntFixedBitWidthPackedRunLength {
       octupletBuffer.reset();
     }
 
-    private void flushRLE() {
+    private void flushRle() {
       if (numBufferedOctuplets > 0){
         flushBitPacked();
       }
-      writeRLEHeader();
-      writeRLEValue();
+      writeRleHeader();
+      writeRleValue();
       numOccurencesRleValue = 0;
     }
 
-    private void writeRLEHeader() {
+    private void writeRleHeader() {
       Bytes.writeUInt(mos, numOccurencesRleValue << 1);
     }
 
-    private void writeRLEValue () {
+    private void writeRleValue() {
       Bytes.writePackedInt(mos, rleValue, width);
     }
 
