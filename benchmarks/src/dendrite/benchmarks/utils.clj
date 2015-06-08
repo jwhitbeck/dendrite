@@ -152,9 +152,8 @@
 
 (defn json-file->dendrite-file [schema json-filename dendrite-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-              w (d/file-writer schema dendrite-filename)]
-    (doseq [record (map #(json/parse-string % true) (line-seq r))]
-      (.write w record))))
+              w (d/file-writer {:map-fn #(json/parse-string % true)} schema dendrite-filename)]
+    (.writeAll w (line-seq r))))
 
 (defn json-file->java-objects-file [compression json-filename output-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
@@ -189,7 +188,7 @@
 (defn json-file->parallel-byte-buffer-file [compression serialize-fn json-filename output-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
               ^ObjectOutputStream w (compressed-object-output-stream compression output-filename)]
-    (doseq [byte-buffer (->> r line-seq (map (comp serialize-fn #(json/parse-string % true))))]
+    (doseq [byte-buffer (chunked-pmap (comp serialize-fn #(json/parse-string % true)) (line-seq r))]
       (write-byte-buffer! w byte-buffer))))
 
 (defn json-file->smile-file [compression json-filename output-filename]
