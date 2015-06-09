@@ -14,8 +14,7 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
   (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
-           [java.nio ByteBuffer]
-           [java.util LinkedHashMap Map])
+           [java.nio ByteBuffer])
   (:refer-clojure :exclude [read map filter remove]))
 
 (set! *warn-on-reflection* true)
@@ -160,32 +159,6 @@
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
     (FilesReader. (Options/getReaderOptions opts) (clojure.core/map io/as-file files))))
-
-(defn file->stats
-  "Returns a map of file to that file's stats. See the stats function for full details."
-  [^FilesReader reader]
-  (.getStatsByFile reader))
-
-(defn file->metadata
-  "Returns a map of file to that file's user-defined metadata."
-  [^FilesReader reader]
-  (reduce (fn [^Map hm [k v]]
-            (doto hm
-              (.put k (byte-buffer->edn v))))
-          ; We use a LinkedHashMap to preserve the order of the files in the map.
-          (LinkedHashMap.)
-          (.getMetadataByFile reader)))
-
-(defn file->schema
-  "Returns a map of file to that file's schema."
-  [^FilesReader reader]
-  (.getSchemaByFile reader))
-
-(defn file->plain-schema
-  "Returns a map of file to that file's schema with with all encodings set to plain and all compressions set
-  to none."
-  [^FilesReader reader]
-  (.getPlainSchemaByFile reader))
 
 (extend-type View
   clojure.core.protocols/CollReduce

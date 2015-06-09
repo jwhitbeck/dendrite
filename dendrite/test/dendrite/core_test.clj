@@ -368,35 +368,7 @@
                    (with-open [r (d/file-reader tmp-filename2)]
                      (doall (d/read r))))
            (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (doall (d/read r))))))
-  (testing "stats"
-    (is (= {(io/as-file tmp-filename) (with-open [r (d/file-reader tmp-filename)]
-                                          (d/stats r))
-            (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
-                                         (d/stats r))}
-           (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (d/file->stats r)))))
-  (testing "metadata"
-    (is (= {(io/as-file tmp-filename) (with-open [r (d/file-reader tmp-filename)]
-                                        (d/metadata r))
-            (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
-                                         (d/metadata r))}
-           (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (d/file->metadata r)))))
-  (testing "schema"
-    (is (= {(io/as-file tmp-filename) (with-open [r (d/file-reader tmp-filename)]
-                                        (d/schema r))
-            (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
-                                         (d/schema r))}
-           (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (d/file->schema r)))))
-  (testing "plain schema"
-    (is (= {(io/as-file tmp-filename) (with-open [r (d/file-reader tmp-filename)]
-                                        (d/plain-schema r))
-            (io/as-file tmp-filename2) (with-open [r (d/file-reader tmp-filename2)]
-                                         (d/plain-schema r))}
-           (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
-             (d/file->plain-schema r))))))
+             (doall (d/read r)))))))
 
 (deftest writer-with-map-fn
   (let [records (take 100 (helpers/rand-test-records))

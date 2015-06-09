@@ -14,19 +14,15 @@ package dendrite.java;
 
 import clojure.lang.IChunk;
 import clojure.lang.IFn;
-import clojure.lang.IPersistentMap;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -68,46 +64,6 @@ public final class FilesReader implements Closeable, IReader {
   @Override
   public View read(Options.ReadOptions readOptions) {
     return new LazyView(readOptions);
-  }
-
-  public Map<File,Object> getSchemaByFile() throws IOException {
-    Map<File,Object> schemasByFile = new LinkedHashMap<File,Object>();
-    for (File file : files) {
-      try (FileReader fileReader = FileReader.create(readerOptions, file)) {
-          schemasByFile.put(file, fileReader.getSchema());
-      }
-    }
-    return schemasByFile;
-  }
-
-  public Map<File,Object> getPlainSchemaByFile() throws IOException {
-    Map<File,Object> schemasByFile = new LinkedHashMap<File,Object>();
-    for (File file : files) {
-      try (FileReader fileReader = FileReader.create(readerOptions, file)) {
-          schemasByFile.put(file, fileReader.getPlainSchema());
-      }
-    }
-    return schemasByFile;
-  }
-
-  public Map<File,ByteBuffer> getMetadataByFile() throws IOException {
-    Map<File,ByteBuffer> metadataByFile = new LinkedHashMap<File,ByteBuffer>();
-    for (File file : files) {
-      try (FileReader fileReader = FileReader.create(readerOptions, file)) {
-          metadataByFile.put(file, fileReader.getMetadata());
-      }
-    }
-    return metadataByFile;
-  }
-
-  public Map<File,IPersistentMap> getStatsByFile() throws IOException {
-    Map<File,IPersistentMap> statsByFile = new LinkedHashMap<File,IPersistentMap>();
-    for (File file : files) {
-      try (FileReader fileReader = FileReader.create(readerOptions, file)) {
-          statsByFile.put(file, fileReader.getStats());
-      }
-    }
-    return statsByFile;
   }
 
   @Override
