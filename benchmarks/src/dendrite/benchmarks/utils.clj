@@ -322,6 +322,14 @@
                     buffered-input-stream object-input-stream)]
     (->> r (byte-buffer-batched-seq n) (pmap-batched parse-fn) last)))
 
+(defn read-java-object-files [n compression filename]
+  (with-open [^ObjectInputStream ois (-> filename file-input-stream (compressed-input-stream compression)
+                                         buffered-input-stream object-input-stream)]
+    (last (repeatedly n #(.readObject ois)))))
+
+(defn read-java-object-files-parallel [n compression filename]
+  (read-byte-buffer-file n compression deserialize-byte-buffer filename))
+
 (defn read-smile-file [n compression keywordize? filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
