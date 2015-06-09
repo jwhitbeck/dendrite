@@ -8,7 +8,8 @@
             [clj-http.client :as http]
             [ring.util.codec :as codec]
             [taoensso.nippy :as nippy])
-  (:import [net.jpountz.lz4 LZ4BlockInputStream LZ4BlockOutputStream]
+  (:import [clojure.lang ArrayChunk IChunk]
+           [net.jpountz.lz4 LZ4BlockInputStream LZ4BlockOutputStream]
            [java.io BufferedReader BufferedWriter FileInputStream FileOutputStream InputStreamReader
             OutputStreamWriter ObjectOutputStream ObjectInputStream BufferedOutputStream BufferedInputStream
             ByteArrayOutputStream ByteArrayInputStream InputStream OutputStream]
@@ -38,6 +39,36 @@
         (partition-all chunk-size)
         (pmap (partial mapv f))
         flatten-1)))
+
+(deftype Batch [^objects object-array ^long cnt])
+
+(defn line-batch-seq [^BufferedReader rdr]
+  (lazy-seq
+   (let [^objects lines-array (make-array Object 256)]
+     (loop [i (int 0)]
+       (if (< i 256)
+         (if-let [line (.readLine rdr)]
+           (do (aset lines-array i line)
+               (recur (inc i)))
+           [(Batch. lines-array i)])
+         (cons (Batch. lines-array i) (line-batch-seq rdr)))))))
+
+(defn batch->chunk-fn [f]
+  (fn ^clojure.lang.IChunk [^Batch batch]
+    (let [n (.cnt batch)
+          ^objects arr (.object-array batch)]
+      (loop [i (int 0)]
+        (if (< i n)
+          (do (aset arr i (f (aget arr i)))
+              (recur (inc i)))
+          (ArrayChunk. arr 0 n))))))
+
+(defn pmap-batched [f batches]
+  (letfn [(step [chunks]
+            (lazy-seq
+             (when (seq chunks)
+               (chunk-cons (first chunks) (step (rest chunks))))))]
+    (step (pmap (batch->chunk-fn f) batches))))
 
 (defn file-input-stream
   ^java.io.FileInputStream [filename]
@@ -201,6 +232,19 @@
 (defn byte-buffer-seq [n ^ObjectInputStream ois]
   (repeatedly n #(read-byte-buffer! ois)))
 
+(defn byte-buffer-batched-seq [n ^ObjectInputStream ois]
+  (lazy-seq
+   (let [^objects bb-array (make-array Object 256)
+         cnt (min 256 n)]
+     (loop [i (int 0)]
+       (if (< i cnt)
+         (do (aset bb-array i (read-byte-buffer! ois))
+             (recur (inc i)))
+         (let [remaining (- n 256)]
+           (if (pos? remaining)
+             (cons (Batch. bb-array i) (byte-buffer-batched-seq (- n 256) ois))
+             [(Batch. bb-array i)])))))))
+
 (defn fressian-reader
   ^org.fressian.FressianReader [^BufferedReader br]
   (fressian/create-reader br))
@@ -255,7 +299,7 @@
 
 (defn read-plain-text-file-parallel [compression parse-fn filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression) buffered-reader)]
-    (->> r line-seq (chunked-pmap parse-fn) last)))
+    (->> r line-batch-seq (pmap-batched parse-fn) last)))
 
 (defn read-json-file [compression keywordize? filename]
   (read-plain-text-file compression #(json/parse-string % keywordize?) filename))
@@ -276,7 +320,7 @@
 (defn read-byte-buffer-file [n compression parse-fn filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
                     buffered-input-stream object-input-stream)]
-    (->> r (byte-buffer-seq n) (chunked-pmap parse-fn) last)))
+    (->> r (byte-buffer-batched-seq n) (pmap-batched parse-fn) last)))
 
 (defn read-smile-file [n compression keywordize? filename]
   (with-open [r (-> filename file-input-stream (compressed-input-stream compression)
