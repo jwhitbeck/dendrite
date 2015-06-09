@@ -375,6 +375,11 @@
 (defn read-protobuf-file-parallel [n compression proto-deserialize filename]
   (read-byte-buffer-file n compression (comp proto-deserialize #(.array ^ByteBuffer %)) filename))
 
+(defn uncompress-file [compression filename]
+  (let [^InputStream is (-> filename file-input-stream (compressed-input-stream compression))
+        ^bytes buffer (make-array Byte/TYPE (* 256 1024))]
+    (while (not= -1 (.read is buffer)))))
+
 (defmacro time-with-gc [& body]
   `(do (System/gc)
        (Thread/sleep 2000)
@@ -397,7 +402,8 @@
     :description "json + gzip"
     :family "json"
     :create-fn io/copy
-    :bench-fn #(read-json-file :gzip false %)}
+    :bench-fn #(read-json-file :gzip false %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "json-kw-gz"
     :description "json + gzip with keyword keys"
     :family "json"
@@ -407,7 +413,8 @@
     :description "json + lz4"
     :family "json"
     :create-fn #(json-file->json-file :lz4 %1 %2)
-    :bench-fn #(read-json-file :lz4 false %)}
+    :bench-fn #(read-json-file :lz4 false %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "json-kw-lz4"
     :description "json + lz4"
     :family "json"
@@ -439,7 +446,8 @@
     :description "smile + gzip"
     :family "smile"
     :create-fn #(json-file->smile-file :gzip %1 %2)
-    :bench-fn #(read-smile-file num-records :gzip false %)}
+    :bench-fn #(read-smile-file num-records :gzip false %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "smile-kw-gz"
     :description "smile + gzip with keyword keys"
     :family "smile"
@@ -449,7 +457,8 @@
     :description "smile + lz4"
     :family "smile"
     :create-fn #(json-file->smile-file :lz4 %1 %2)
-    :bench-fn #(read-smile-file num-records :lz4 false %)}
+    :bench-fn #(read-smile-file num-records :lz4 false %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "smile-kw-lz4"
     :description "smile + lz4"
     :family "smile"
@@ -481,12 +490,14 @@
     :description "edn + gzip"
     :family "edn"
     :create-fn #(json-file->edn-file :gzip %1 %2)
-    :bench-fn #(read-edn-file :gzip %)}
+    :bench-fn #(read-edn-file :gzip %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "edn-lz4"
     :description "edn + lz4"
     :family "edn"
     :create-fn #(json-file->edn-file :lz4 %1 %2)
-    :bench-fn #(read-edn-file :lz4 %)}
+    :bench-fn #(read-edn-file :lz4 %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "edn-gz-par"
     :description "edn + gzip with parallel deserialization"
     :family "edn"
@@ -503,12 +514,14 @@
     :description "fressian + gzip"
     :family "fressian"
     :create-fn #(json-file->fressian-file :gzip %1 %2)
-    :bench-fn #(read-fressian-file num-records :gzip %)}
+    :bench-fn #(read-fressian-file num-records :gzip %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "fressian-lz4"
     :description "fressian + lz4"
     :family "fressian"
     :create-fn #(json-file->fressian-file :lz4 %1 %2)
-    :bench-fn #(read-fressian-file num-records :lz4 %)}
+    :bench-fn #(read-fressian-file num-records :lz4 %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "fressian-gz-par"
     :description "fressian + gzip with parallel deserialization"
     :family "fressian"
@@ -525,12 +538,14 @@
     :description "nippy + gzip"
     :family "nippy"
     :create-fn #(json-file->nippy-file :gzip %1 %2)
-    :bench-fn #(read-nippy-file num-records :gzip %)}
+    :bench-fn #(read-nippy-file num-records :gzip %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "nippy-lz4"
     :description "nippy + lz4"
     :family "nippy"
     :create-fn #(json-file->nippy-file :lz4 %1 %2)
-    :bench-fn #(read-nippy-file num-records :lz4 %)}
+    :bench-fn #(read-nippy-file num-records :lz4 %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "nippy-gz-par"
     :description "nippy + gzip with parallel deserialization"
     :family "nippy"
@@ -569,12 +584,14 @@
     :description "protobuf + gzip"
     :family "protobuf"
     :create-fn #(json-file->protobuf-file :gzip proto-serialize %1 %2)
-    :bench-fn #(read-protobuf-file num-records :gzip proto-deserialize %)}
+    :bench-fn #(read-protobuf-file num-records :gzip proto-deserialize %)
+    :uncompress-fn #(uncompress-file :gzip %)}
    {:name "protobuf-lz4"
     :description "protobuf + lz4"
     :family "protobuf"
     :create-fn #(json-file->protobuf-file :lz4 proto-serialize %1 %2)
-    :bench-fn #(read-protobuf-file num-records :lz4 proto-serialize %)}
+    :bench-fn #(read-protobuf-file num-records :lz4 proto-serialize %)
+    :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "protobuf-gz-par"
     :description "protobuf + gzip with parallel deserialization"
     :family "protobuf"
