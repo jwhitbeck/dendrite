@@ -20,13 +20,35 @@
     (println "Downloading" base-file-url "to" (.getPath (io/as-file local-file)))
     (io/copy (:body (http/get base-file-url {:as :stream})) (io/as-file local-file))))
 
+(defmacro time-with-gc [& body]
+  `(do (System/gc)
+       (Thread/sleep 2000)
+       (let [begin# (System/nanoTime)]
+         ~@body
+         (double (/ (- (System/nanoTime) begin#) 1000000)))))
+
+(defn- create-benchmark-fn [create-fn uncompress-fn read-fn]
+  (fn [base-filename benchmarked-filename]
+    (create-fn base-filename benchmarked-filename)
+    ;; ensure JIT kicks in
+    (dotimes [_ 5] (read-fn benchmarked-filename))
+    (let [result (cond-> {:file-size (-> benchmarked-filename io/as-file .length)
+                          :read-times (vec (repeatedly 10 #(time-with-gc (read-fn benchmarked-filename))))}
+                   uncompress-fn
+                   (assoc :uncompress-times (vec (repeatedly 10 #(time-with-gc
+                                                                  (uncompress-fn benchmarked-filename))))))]
+      (-> benchmarked-filename io/as-file .delete)
+      result)))
+
 (defn- run-full-schema-benchmark! [output-dir base-file-url benchmark]
   (println "Running benchmark:" (:name benchmark))
-  (sync-file! base-file-url (io/file output-dir "base-file.dat"))
-  ; TODO: Do something useful here
-  (assoc (select-keys benchmark [:name :description :family])
-         :bytes (rand-int 100)
-         :read-times (repeatedly 10 #(rand-int 1000))))
+  (let [base-file (io/file output-dir "base-file.dat")]
+    (sync-file! base-file-url base-file)
+    (let [tmp-file (io/file output-dir "tmp-file.dat")
+          {:keys [create-fn bench-fn uncompress-fn]} benchmark
+          benchmark-fn (create-benchmark-fn create-fn uncompress-fn bench-fn)]
+      (merge (select-keys benchmark [:name :description :family])
+             (benchmark-fn (.getPath base-file) (.getPath tmp-file))))))
 
 (defn- write-full-schema-results-to-csv! [results output-file]
   (with-open [w (io/writer output-file)]
@@ -73,8 +95,8 @@
 
 (def cli-options
   [["-h" "--help" "Print this help."]
-   ["--output DIR" "Output results and temporary artificats to this folder." :default "output"]
-   ["--clean" "Don't attempt to resume previous benchmark run."]])
+   [nil "--output DIR" "Output results and temporary artificats to this folder." :default "output"]
+   [nil "--clean" "Don't attempt to resume previous benchmark run."]])
 
 (defn -main [& args]
   (let [{:keys [options summary errors]} (cli/parse-opts args cli-options)]

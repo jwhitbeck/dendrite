@@ -179,5 +179,5 @@
             (utils/fressian-benchmarks n)
             (utils/nippy-benchmarks n)
             (utils/avro-benchmarks n avro-schema)
-            (utils/protobuf-benchmarks n proto-deserialize proto-deserialize)
+            (utils/protobuf-benchmarks n proto-serialize proto-deserialize)
             (utils/dendrite-benchmarks dendrite-schema))))

@@ -380,34 +380,17 @@
         ^bytes buffer (make-array Byte/TYPE (* 256 1024))]
     (while (not= -1 (.read is buffer)))))
 
-(defmacro time-with-gc [& body]
-  `(do (System/gc)
-       (Thread/sleep 2000)
-       (let [begin# (System/nanoTime)]
-         ~@body
-         (double (/ (- (System/nanoTime) begin#) 1000000)))))
-
-(defn benchmark-read-fn [create-fn read-fn]
-  (fn [benchmarked-filename]
-    (create-fn benchmarked-filename)
-    ;; ensure JIT kicks in
-    (dotimes [_ 10] (read-fn benchmarked-filename))
-    (let [result {:file-size (-> benchmarked-filename io/as-file .length)
-                  :read-times (vec (repeatedly 20 #(time-with-gc (read-fn benchmarked-filename))))}]
-      (-> benchmarked-filename io/as-file .delete)
-      result)))
-
 (defn json-benchmarks []
   [{:name "json-gz"
     :description "json + gzip"
     :family "json"
-    :create-fn io/copy
+    :create-fn #(io/copy (io/as-file %1) (io/as-file %2))
     :bench-fn #(read-json-file :gzip false %)
     :uncompress-fn #(uncompress-file :gzip %)}
    {:name "json-kw-gz"
     :description "json + gzip with keyword keys"
     :family "json"
-    :create-fn io/copy
+    :create-fn  #(io/copy (io/as-file %1) (io/as-file %2))
     :bench-fn #(read-json-file :gzip true %)}
    {:name "json-lz4"
     :description "json + lz4"
@@ -416,19 +399,19 @@
     :bench-fn #(read-json-file :lz4 false %)
     :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "json-kw-lz4"
-    :description "json + lz4"
+    :description "json + lz4 with keyword keys"
     :family "json"
     :create-fn #(json-file->json-file :lz4 %1 %2)
     :bench-fn #(read-json-file :lz4 true %)}
    {:name "json-gz-par"
     :description "json + gzip with parallel deserialization"
     :family "json"
-    :create-fn io/copy
+    :create-fn #(io/copy (io/as-file %1) (io/as-file %2))
     :bench-fn #(read-json-file-parallel :gzip false %)}
    {:name "json-kw-gz-par"
     :description "json + gzip with keyword keys and parallel deserialization"
     :family "json"
-    :create-fn io/copy
+    :create-fn #(io/copy (io/as-file %1) (io/as-file %2))
     :bench-fn #(read-json-file-parallel :gzip true %)}
    {:name "json-lz4-par"
     :description "json + lz4 with parallel deserialization"
@@ -436,7 +419,7 @@
     :create-fn #(json-file->json-file :lz4 %1 %2)
     :bench-fn #(read-json-file-parallel :lz4 false %)}
    {:name "json-kw-lz4-par"
-    :description "json + lz4 with parallel deserialization"
+    :description "json + lz4 with keyword keys and parallel deserialization"
     :family "json"
     :create-fn #(json-file->json-file :lz4 %1 %2)
     :bench-fn #(read-json-file-parallel :lz4 true %)}])
@@ -460,7 +443,7 @@
     :bench-fn #(read-smile-file num-records :lz4 false %)
     :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "smile-kw-lz4"
-    :description "smile + lz4"
+    :description "smile + lz4 with keyword keys"
     :family "smile"
     :create-fn #(json-file->smile-file :lz4 %1 %2)
     :bench-fn #(read-smile-file num-records :lz4 true %)}
@@ -480,7 +463,7 @@
     :create-fn #(json-file->smile-file :lz4 %1 %2)
     :bench-fn #(read-smile-file-parallel num-records :lz4 false %)}
    {:name "smile-kw-lz4-par"
-    :description "smile + lz4 with parallel deserialization"
+    :description "smile + lz4 with keyword keys and parallel deserialization"
     :family "smile"
     :create-fn #(json-file->smile-file :lz4 %1 %2)
     :bench-fn #(read-smile-file-parallel num-records :lz4 true %)}])
@@ -590,7 +573,7 @@
     :description "protobuf + lz4"
     :family "protobuf"
     :create-fn #(json-file->protobuf-file :lz4 proto-serialize %1 %2)
-    :bench-fn #(read-protobuf-file num-records :lz4 proto-serialize %)
+    :bench-fn #(read-protobuf-file num-records :lz4 proto-deserialize %)
     :uncompress-fn #(uncompress-file :lz4 %)}
    {:name "protobuf-gz-par"
     :description "protobuf + gzip with parallel deserialization"
