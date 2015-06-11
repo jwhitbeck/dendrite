@@ -60,9 +60,8 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   }
 
   void ensureRemainingCapacity(int capacity) {
-    if (buffer.length - position < capacity) {
+    while (buffer.length - position < capacity) {
       grow();
-      ensureRemainingCapacity(capacity);
     }
   }
 

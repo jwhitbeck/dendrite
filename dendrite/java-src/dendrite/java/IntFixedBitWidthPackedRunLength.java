@@ -32,13 +32,17 @@ public final class IntFixedBitWidthPackedRunLength {
 
     @Override
     public int decodeInt() {
+      if (numRleValuesToRead == 0 && octupletPosition == 8) {
+        bufferNextRun();
+      }
+      return decodeNextInt();
+    }
+
+    private int decodeNextInt() {
       if (numRleValuesToRead > 0) {
         return decodeFromRleValue();
-      } else if (octupletPosition < 8) {
-        return decodeFromOctuplet();
       } else {
-        bufferNextRun();
-        return decodeInt();
+        return decodeFromOctuplet();
       }
     }
 

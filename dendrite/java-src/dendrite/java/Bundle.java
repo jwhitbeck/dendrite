@@ -312,7 +312,7 @@ public final class Bundle implements Iterable<List> {
         return true;
       } else {
         step();
-        return hasNext();
+        return currentIterator != null && currentIterator.hasNext();
       }
     }
 
@@ -330,11 +330,16 @@ public final class Bundle implements Iterable<List> {
         throw new NoSuchElementException();
       } else if (!currentIterator.hasNext()) {
         step();
-        return next();
-      } else {
-        previousValue = currentIterator.next();
-        return previousValue;
       }
+      return getNext();
+    }
+
+    private Object getNext() {
+      if (currentIterator == null) {
+        throw new NoSuchElementException();
+      }
+      previousValue = currentIterator.next();
+      return previousValue;
     }
 
     @Override

@@ -36,24 +36,24 @@ public final class IntPackedDelta {
 
     @Override
     public int decodeInt() {
-      if (remainingValuesInBlock > 0) {
-        if (miniblockPosition == -1) { // read from first value
-          miniblockPosition = 0;
-        } else if (currentMiniblockIndex == -1) { // no miniblock loaded
-          initNextMiniBlock();
-          setCurrentValueFromMiniBlockBuffer();
-        } else if (miniblockPosition < miniblockLength) { // reading from buffered miniblock
-          setCurrentValueFromMiniBlockBuffer();
-        } else { // finished reading current mini block
-          initNextMiniBlock();
-          setCurrentValueFromMiniBlockBuffer();
-        }
-        remainingValuesInBlock -= 1;
-        return (int)blockCurrentValue;
-      } else { // no more values in block, load next block
+      if (remainingValuesInBlock == 0) { // no more values in block, load next block
         initNextBlock();
-        return decodeInt();
       }
+      return decodeNextInt();
+    }
+
+    private int decodeNextInt() {
+      if (miniblockPosition == -1) { // read from first value
+        miniblockPosition = 0;
+      } else {
+        if (currentMiniblockIndex == -1 // no miniblock loaded
+            || miniblockPosition == miniblockLength) { // finished reading current mini block
+          initNextMiniBlock();
+        }
+        setCurrentValueFromMiniBlockBuffer();
+      }
+      remainingValuesInBlock -= 1;
+      return (int)blockCurrentValue;
     }
 
     private void setCurrentValueFromMiniBlockBuffer() {

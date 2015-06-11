@@ -343,7 +343,7 @@ public final class FileReader implements Closeable, IReader {
           return true;
         } else {
           step();
-          return hasNext();
+          return bundleIterator != null && bundleIterator.hasNext();
         }
       }
 
