@@ -592,3 +592,37 @@
     :family "dendrite"
     :create-fn #(json-file->dendrite-file schema %1 %2)
     :bench-fn read-dendrite-file}])
+
+(defn add-path [query path]
+  (if (empty? path)
+    '_
+    (let [x (first path)]
+      (if (keyword? x)
+        (assoc query x (add-path (get query x) (next path)))
+        [(add-path (first query) (next path))]))))
+
+(defn random-query [n column-stats]
+  (let [selected-column-stats (->> column-stats shuffle (take n))
+        total-length (->> selected-column-stats (map :length) (reduce +))
+        query (reduce add-path nil (map :path selected-column-stats))]
+    {:length total-length
+     :num-columns n
+     :query query}))
+
+(defn random-queries [dendrite-filename]
+  (with-open [r (d/file-reader dendrite-filename)]
+    (let [column-stats (:columns (d/stats r))
+          n (count column-stats)
+          single-column-queries (map (fn [stats]
+                                       {:length (:length stats)
+                                        :num-columns 1
+                                        :query (add-path nil (:path stats))})
+                                     column-stats)
+          random-queries (->> (for [i (range 2 n)]
+                                (repeatedly n #(random-query i column-stats)))
+                              (apply concat))
+          all-columns-query {:length (reduce + (map :length column-stats))
+                             :num-columns n
+                             :query '_}]
+      (concat single-column-queries random-queries all-columns-query))))
+

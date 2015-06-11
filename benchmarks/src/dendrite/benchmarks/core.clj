@@ -4,6 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
+            [dendrite.core :as d]
             [dendrite.benchmarks.media-content :as media-content]
             [dendrite.benchmarks.user-events :as user-events])
   (:gen-class))
@@ -29,16 +30,19 @@
 
 (defn- create-benchmark-fn [create-fn uncompress-fn read-fn]
   (fn [base-filename benchmarked-filename]
+    ;; ensure JIT kicks in for writes
     (create-fn base-filename benchmarked-filename)
-    ;; ensure JIT kicks in
-    (dotimes [_ 5] (read-fn benchmarked-filename))
-    (let [result (cond-> {:file-size (-> benchmarked-filename io/as-file .length)
-                          :read-times (vec (repeatedly 10 #(time-with-gc (read-fn benchmarked-filename))))}
-                   uncompress-fn
-                   (assoc :uncompress-times (vec (repeatedly 10 #(time-with-gc
-                                                                  (uncompress-fn benchmarked-filename))))))]
-      (-> benchmarked-filename io/as-file .delete)
-      result)))
+    (let [write-time (time-with-gc (create-fn base-filename benchmarked-filename))]
+      ;; ensure JIT kicks in for reads
+      (dotimes [_ 5] (read-fn benchmarked-filename))
+      (let [result (cond-> {:file-size (-> benchmarked-filename io/as-file .length)
+                            :write-time (double write-time)
+                            :read-times (vec (repeatedly 10 #(time-with-gc (read-fn benchmarked-filename))))}
+                     uncompress-fn
+                     (assoc :uncompress-times (vec (repeatedly 10 #(time-with-gc
+                                                                    (uncompress-fn benchmarked-filename))))))]
+        (-> benchmarked-filename io/as-file .delete)
+        result))))
 
 (defn- run-full-schema-benchmark! [output-dir base-file-url benchmark]
   (println "Running benchmark:" (:name benchmark))
@@ -52,14 +56,15 @@
 
 (defn- write-full-schema-results-to-csv! [results output-file]
   (with-open [w (io/writer output-file)]
-    (.write w (str "name,description,family,bytes,avg_read_time\n"))
-    (doseq [{:keys [description family avg-read-time] :as res} results]
-      (.write w (format "%s,'%s',%s,%d,%.2f\n"
-                        (:name res) description family (:bytes res) avg-read-time)))))
+    (.write w (str "name,description,family,bytes,avg_read_time,write_time,avg_uncompress_time\n"))
+    (doseq [{:keys [description family avg-read-time write-time avg-uncompress-time] :as res} results]
+      (.write w (format "%s,'%s',%s,%d,%.2f,%.2f,%.2f\n"
+                        (:name res) description family (:bytes res) avg-read-time write-time
+                        avg-uncompress-time)))))
 
 (defn- run-full-schema-benchmarks! [output-dir benchmark-name base-file-url benchmarks]
   (println "Running full schema benchmarks for:" benchmark-name)
-  (let [dir (io/file output-dir benchmark-name)
+  (let [dir (io/file output-dir benchmark-name "full_schema")
         results-file (io/file dir "results.edn")]
     (.mkdirs dir)
     (let [results (atom (when (.exists results-file)
@@ -72,12 +77,42 @@
           (spit results-file @results))))
     (let [final-results (->> (slurp results-file)
                              edn/read-string
-                             (map (fn [{:keys [read-times] :as res}]
-                                    (assoc res :avg-read-time (double (/ (reduce + read-times)
-                                                                         (count read-times)))))))
+                             (map (fn [{:keys [read-times uncompress-times] :as res}]
+                                    (assoc res
+                                           :avg-read-time (double (/ (reduce + read-times)
+                                                                     (count read-times)))
+                                           :avg-uncompress-time (when (seq uncompress-times)
+                                                                  (double (/ (reduce + uncompress-times)
+                                                                             (count uncompress-times))))))))
           csv-results-file (io/file dir "results.csv")]
       (when-not (.exists csv-results-file)
         (write-full-schema-results-to-csv! final-results csv-results-file)))))
+
+(defn- run-sub-schema-benchmarks! [output-dir benchmark-name base-file-url sub-schema-benchmarks]
+  (println "Running sub-schema benchmarks for:" benchmark-name)
+  (let [dir (io/file output-dir benchmark-name "sub_schema")
+        results-file (io/file dir "results.edn")
+        csv-results-file (io/file dir "results.csv")
+        {:keys [create-fn random-queries-fn]} sub-schema-benchmarks]
+    (.mkdirs dir)
+    (when-not (.exists csv-results-file)
+      (let [base-file (io/file dir "base-file.dat")
+            tmp-file (io/file dir "tmp-file.dat")
+            results (atom [])]
+        (sync-file! base-file-url base-file)
+        (create-fn (.getPath base-file) (.getPath tmp-file))
+        ;; Do a few full schema scans to get the JIT going
+        (dotimes [_ 5] (with-open [r (d/file-reader tmp-file)]
+                         (last (d/read r))))
+        (doseq [{:keys [length query num-columns] :as benchmark} (random-queries-fn tmp-file)]
+          (let [query-time (time-with-gc (with-open [r (d/file-reader tmp-file)]
+                                           (last (d/read {:query query} r))))]
+            (swap! results conj (assoc benchmark :query-time query-time))
+            (spit results-file @results)))
+        (with-open [w (io/writer results-file)]
+          (.write w "num_columns,length,query_time")
+          (doseq [{:keys [length num-columns query-time]} @results]
+            (.write w (format "%d,%d,%.2f" num-columns length query-time))))))))
 
 (defn run-benchmarks! [output-dir clean?]
   (let [output-dir (io/as-file output-dir)]
@@ -88,10 +123,18 @@
                                  "media_content"
                                  media-content/base-file-url
                                  media-content/full-schema-benchmarks)
+    (run-sub-schema-benchmarks! output-dir
+                                "media_content"
+                                media-content/base-file-url
+                                media-content/sub-schema-benchmarks)
     (run-full-schema-benchmarks! output-dir
                                  "user_events"
                                  user-events/base-file-url
-                                 user-events/full-schema-benchmarks)))
+                                 user-events/full-schema-benchmarks)
+    (run-sub-schema-benchmarks! output-dir
+                                "user_events"
+                                user-events/base-file-url
+                                user-events/sub-schema-benchmarks)))
 
 (def cli-options
   [["-h" "--help" "Print this help."]
