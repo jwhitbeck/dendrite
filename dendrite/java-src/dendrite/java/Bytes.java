@@ -55,18 +55,26 @@ public final class Bytes {
     }
   }
 
+  // Adapted from com.google.protobuf.CodedInputStream.readRawVarint32
   public static int readUInt(final ByteBuffer bb) {
-    int shift = 0;
-    int result = 0;
-    while (shift < 32) {
-      final byte b = bb.get();
-      result |= (int)(b & 0x7f) << shift;
-      if ((b & 0x80) == 0) {
-        return result;
+    int i;
+    if ((i = bb.get()) >= 0) {
+      return i;
+    } else if ((i ^= (bb.get() << 7)) < 0) {
+      i ^= (~0 << 7);
+    } else if ((i ^= (bb.get() << 14)) >= 0) {
+      i ^= (~0 << 7) ^ (~0 << 14);
+    } else if ((i ^= (bb.get() << 21)) < 0) {
+      i ^= (~0 << 7) ^ (~0 << 14) ^ (~0 << 21);
+    } else {
+      int b = bb.get();
+      if (b < 0) {
+        throw new IllegalStateException("Failed to parse UInt");
       }
-      shift += 7;
+      i ^= b << 28;
+      i ^= (~0 << 7) ^ (~0 << 14) ^ (~0 << 21) ^ (~0 << 28);
     }
-    throw new IllegalStateException("Failed to parse UInt");
+    return i;
   }
 
   public static int encodeZigZag32(final int i) {
@@ -131,18 +139,38 @@ public final class Bytes {
     }
   }
 
+  // Adapted from com.google.protobuf.CodedInputStream.readRawVarint64
   public static long readULong(final ByteBuffer bb) {
-    int shift = 0;
-    long result = 0;
-    while (shift < 64) {
-      final byte b = bb.get();
-      result |= (long)(b & 0x7f) << shift;
-      if ((b & 0x80) == 0) {
-        return result;
+    long l;
+    if ((l = bb.get()) >= 0L) {
+      return l;
+    } else if ((l ^= (bb.get() << 7)) < 0L) {
+      l ^= (~0 << 7);
+    } else if ((l ^= (bb.get() << 14)) >= 0L) {
+      l ^= (~0 << 7) ^ (~0 << 14);
+    } else if ((l ^= (bb.get() << 21)) < 0L) {
+      l ^= (~0 << 7) ^ (~0 << 14) ^ (~0 << 21);
+    } else if ((l ^= ((long)bb.get() << 28)) >= 0L) {
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28);
+    } else if ((l ^= ((long)bb.get() << 35)) < 0L) {
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35);
+    } else if ((l ^= ((long)bb.get() << 42)) >= 0L) {
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35) ^ (~0L << 42);
+    } else if ((l ^= ((long)bb.get() << 49)) < 0L) {
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35) ^ (~0L << 42) ^ (~0L << 49);
+    } else if ((l ^= ((long)bb.get() << 56)) >= 0L) {
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35) ^ (~0L << 42) ^ (~0L << 49)
+         ^ (~0L << 56);
+    } else {
+      long b = bb.get();
+      if (b < 0 || b > 1) {
+        throw new IllegalStateException("Failed to parse ULong");
       }
-      shift += 7;
+      l ^= b << 63;
+      l ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35) ^ (~0L << 42) ^ (~0L << 49)
+        ^ (~0L << 56) ^ (~0L << 63);
     }
-    throw new IllegalStateException("Failed to parse ULong");
+    return l;
   }
 
   public static long encodeZigZag64(final long l) {
