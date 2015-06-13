@@ -621,8 +621,8 @@
           random-queries (->> (for [i (range 2 n)]
                                 (repeatedly n #(random-query i column-stats)))
                               (apply concat))
-          all-columns-query {:length (reduce + (map :length column-stats))
-                             :num-columns n
-                             :query '_}]
+          all-columns-query [{:length (reduce + (map :length column-stats))
+                               :num-columns n
+                               :query '_}]]
       (concat single-column-queries random-queries all-columns-query))))
 

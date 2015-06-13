@@ -56,11 +56,11 @@
 
 (defn- write-full-schema-results-to-csv! [results output-file]
   (with-open [w (io/writer output-file)]
-    (.write w (str "name,description,family,bytes,avg_read_time,write_time,avg_uncompress_time\n"))
+    (.write w (str "name,description,family,file_size,avg_read_time,write_time,avg_uncompress_time\n"))
     (doseq [{:keys [description family avg-read-time write-time avg-uncompress-time] :as res} results]
       (.write w (format "%s,'%s',%s,%d,%.2f,%.2f,%.2f\n"
-                        (:name res) description family (:bytes res) avg-read-time write-time
-                        avg-uncompress-time)))))
+                        (:name res) description family (:file-size res) avg-read-time write-time
+                        (or avg-uncompress-time 0.0))))))
 
 (defn- run-full-schema-benchmarks! [output-dir benchmark-name base-file-url benchmarks]
   (println "Running full schema benchmarks for:" benchmark-name)
@@ -109,10 +109,10 @@
                                            (last (d/read {:query query} r))))]
             (swap! results conj (assoc benchmark :query-time query-time))
             (spit results-file @results)))
-        (with-open [w (io/writer results-file)]
-          (.write w "num_columns,length,query_time")
+        (with-open [w (io/writer csv-results-file)]
+          (.write w "num_columns,length,query_time\n")
           (doseq [{:keys [length num-columns query-time]} @results]
-            (.write w (format "%d,%d,%.2f" num-columns length query-time))))))))
+            (.write w (format "%d,%d,%.2f\n" num-columns length query-time))))))))
 
 (defn run-benchmarks! [output-dir clean?]
   (let [output-dir (io/as-file output-dir)]
