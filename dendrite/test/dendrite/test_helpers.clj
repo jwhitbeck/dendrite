@@ -157,7 +157,8 @@
           keywords (->> (repeatedly rand-word)
                         (take (clojure.core/rand-int 4))
                         set)
-          backward (take (clojure.core/rand-int 3) (repeatedly rand-long))
+          backward (take (clojure.core/rand-int 3)
+                         (repeatedly #(when (pos? (clojure.core/rand-int 10)) (rand-long))))
           forward (take (clojure.core/rand-int 3) (repeatedly rand-long))
           names (take (clojure.core/rand-int 3) (repeatedly rand-name))
           links (cond-> {}

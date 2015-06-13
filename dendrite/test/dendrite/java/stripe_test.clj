@@ -71,11 +71,13 @@
                                (Schema/req {:docid (Schema/req 'long)
                                             :name [{:language (Schema/req {:country 'string
                                                                            :code (Schema/req 'string)})
-                                                    :url 'string}]}))]
+                                                    :url 'string}]
+                                            :keywords #{(Schema/req 'string)}}))]
       (are [x] (stripe-record x schema)
            {:docid 10}
            {:docid 10 :name []}
-           {:docid 10 :name [{:language {:code "en-us"}}]})
+           {:docid 10 :name [{:language {:code "en-us"}}]}
+           {:docid 10 :name [{:language {:code "en-us"}}] :keywords #{"foo" "bar"}})
       (are [x re] (thrown-with-msg? IllegalArgumentException re
                                     (helpers/throw-cause (stripe-record x schema)))
            nil #"Required value at path '\[:docid\]' is missing"
@@ -83,7 +85,9 @@
            #"Required record at path '\[:name nil :language\]' is missing"
            {:docid 10 :name [{}]} #"Required record at path '\[:name nil :language\]' is missing"
            {:docid 10 :name [{:language {}}]}
-           #"Required value at path '\[:name nil :language :code\]' is missing")))
+           #"Required value at path '\[:name nil :language :code\]' is missing"
+           {:docid 10 :keywords #{nil}}
+           #"Required value at path '\[:keywords nil\]' is missing")))
   (testing "incompatible value types"
     (let [schema (Schema/parse helpers/default-types
                                {:boolean 'boolean
@@ -115,7 +119,7 @@
            {:keyword :foo}
            {:symbol 'foo}
            {:repeated-int [1 2]}
-           {:repeated-int []})
+           {:repeated-int [1 nil]})
       (are [x] (thrown-with-msg? IllegalArgumentException #"Could not coerce value"
                                  (helpers/throw-cause (stripe-record x schema)))
            {:int [1 2]}
