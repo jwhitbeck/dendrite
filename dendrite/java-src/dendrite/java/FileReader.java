@@ -105,12 +105,12 @@ public final class FileReader implements Closeable, IReader {
                                                options.readers,
                                                Schema.getSubSchema(options.entrypoint, fileMetadata.schema),
                                                options.query);
-    if (options.mapFn != null) {
+    if (!options.mapFns.isEmpty()) {
       IFn fn = res.schema.fn;
       if (fn == null) {
-        fn = options.mapFn;
+        fn = Utils.comp(options.mapFns);
       } else {
-        fn = Utils.comp(options.mapFn, fn);
+        fn = Utils.comp(Utils.copyAndAddFirst(fn, options.mapFns));
       }
       return new Schema.QueryResult(res.schema.withFn(fn), res.columns);
     } else {
@@ -397,41 +397,41 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private static final class AssembleFilteredFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleMangledFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
-    private final IFn filterFn;
+    private final Mangle.Fn mangleFn;
 
-    AssembleFilteredFutureFactory(Assemble.Fn assembleFn, IFn filterFn) {
+    AssembleMangledFutureFactory(Assemble.Fn assembleFn, Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
-      this.filterFn = filterFn;
+      this.mangleFn = mangleFn;
     }
 
     @Override
     public Future<IChunk> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<IChunk>() {
           public IChunk call() {
-            return bundle.assembleFiltered(assembleFn, filterFn);
+            return bundle.assembleMangled(assembleFn, mangleFn);
           }
         });
     }
   }
 
-  private static final class AssembleSampledAndFilteredFutureFactory implements IAssembleFutureFactory {
+  private static final class AssembleSampledAndMangledFutureFactory implements IAssembleFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn sampleFn;
-    private final IFn filterFn;
+    private final Mangle.Fn mangleFn;
 
-    AssembleSampledAndFilteredFutureFactory(Assemble.Fn assembleFn, IFn sampleFn, IFn filterFn) {
+    AssembleSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn sampleFn, Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
       this.sampleFn = sampleFn;
-      this.filterFn = filterFn;
+      this.mangleFn = mangleFn;
     }
 
     @Override
     public Future<IChunk> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<IChunk>() {
           public IChunk call() {
-            return bundle.assembleSampledAndFiltered(assembleFn, sampleFn, filterFn);
+            return bundle.assembleSampledAndMangled(assembleFn, sampleFn, mangleFn);
           }
         });
     }
@@ -439,18 +439,18 @@ public final class FileReader implements Closeable, IReader {
 
   private IAssembleFutureFactory getAssembleFutureFactory(Assemble.Fn assembleFn,
                                                           IFn sampleFn,
-                                                          IFn filterFn) {
+                                                          Mangle.Fn mangleFn) {
     if (sampleFn == null) {
-      if (filterFn == null) {
+      if (mangleFn == null) {
         return new AssembleFutureFactory(assembleFn);
       } else {
-        return new AssembleFilteredFutureFactory(assembleFn, filterFn);
+        return new AssembleMangledFutureFactory(assembleFn, mangleFn);
       }
     } else {
-      if (filterFn == null) {
+      if (mangleFn == null) {
         return new AssembleSampledFutureFactory(assembleFn, sampleFn);
       } else {
-        return new AssembleSampledAndFilteredFutureFactory(assembleFn, sampleFn, filterFn);
+        return new AssembleSampledAndMangledFutureFactory(assembleFn, sampleFn, mangleFn);
       }
     }
   }
@@ -529,68 +529,68 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private static final class ReduceFilteredFutureFactory implements IReduceFutureFactory {
+  private static final class ReduceMangledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
     private final Object init;
-    private final IFn filterFn;
+    private final Mangle.Fn mangleFn;
 
-    ReduceFilteredFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn filterFn) {
+    ReduceMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
       this.init = init;
-      this.filterFn = filterFn;
+      this.mangleFn = mangleFn;
     }
 
     @Override
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceFiltered(reduceFn, assembleFn, filterFn, init);
+          return bundle.reduceMangled(reduceFn, assembleFn, mangleFn, init);
         }
       });
     }
   }
 
-  private static final class ReduceSampledAndFilteredFutureFactory implements IReduceFutureFactory {
+  private static final class ReduceSampledAndMangledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
     private final Object init;
     private final IFn sampleFn;
-    private final IFn filterFn;
+    private final Mangle.Fn mangleFn;
 
-    ReduceSampledAndFilteredFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn,
-                                          IFn filterFn) {
+    ReduceSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn,
+                                         Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
       this.init = init;
       this.sampleFn = sampleFn;
-      this.filterFn = filterFn;
+      this.mangleFn = mangleFn;
     }
 
     @Override
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceSampledAndFiltered(reduceFn, assembleFn, sampleFn, filterFn, init);
+          return bundle.reduceSampledAndMangled(reduceFn, assembleFn, sampleFn, mangleFn, init);
         }
       });
     }
   }
 
   private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, Object init, Assemble.Fn assembleFn,
-                                                      IFn sampleFn, IFn filterFn) {
+                                                      IFn sampleFn, Mangle.Fn mangleFn) {
     if (sampleFn == null) {
-      if (filterFn == null) {
+      if (mangleFn == null) {
         return new ReduceFutureFactory(assembleFn, reduceFn, init);
       } else {
-        return new ReduceFilteredFutureFactory(assembleFn, reduceFn, init, filterFn);
+        return new ReduceMangledFutureFactory(assembleFn, reduceFn, init, mangleFn);
       }
     } else {
-      if (filterFn == null) {
+      if (mangleFn == null) {
         return new ReduceSampledFutureFactory(assembleFn, reduceFn, init, sampleFn);
       } else {
-        return new ReduceSampledAndFilteredFutureFactory(assembleFn, reduceFn, init, sampleFn, filterFn);
+        return new ReduceSampledAndMangledFutureFactory(assembleFn, reduceFn, init, sampleFn, mangleFn);
       }
     }
   }
@@ -626,10 +626,13 @@ public final class FileReader implements Closeable, IReader {
     private Options.ReadOptions options;
     private Schema.QueryResult queryResult;
     private Assemble.Fn assembleFn;
+    private Mangle.Fn mangleFn;
+    private boolean isMangleFnReady;
 
     LazyView(Options.ReadOptions options) {
       super(options.bundleSize);
       this.options = options;
+      this.isMangleFnReady = false;
     }
 
     private synchronized Schema.QueryResult getQueryResult() {
@@ -650,6 +653,14 @@ public final class FileReader implements Closeable, IReader {
       return assembleFn;
     }
 
+    private synchronized Mangle.Fn getMangleFn() {
+      if (!isMangleFnReady) {
+        mangleFn = Mangle.compose(options.mangleFns);
+        isMangleFnReady = true;
+      }
+      return mangleFn;
+    }
+
     @Override
     protected View withOptions(Options.ReadOptions options) {
       return new LazyView(options);
@@ -668,7 +679,7 @@ public final class FileReader implements Closeable, IReader {
           return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize),
                                                     getAssembleFutureFactory(getAssembleFn(),
                                                                              options.sampleFn,
-                                                                             options.filterFn));
+                                                                             getMangleFn()));
         }
       };
     }
@@ -683,7 +694,7 @@ public final class FileReader implements Closeable, IReader {
                                                                             init,
                                                                             getAssembleFn(),
                                                                             options.sampleFn,
-                                                                            options.filterFn));
+                                                                            getMangleFn()));
         }
       };
     }

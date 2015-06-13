@@ -24,11 +24,27 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Future;
 
 public final class Utils {
 
-  public static IFn comp(final IFn f, final IFn g) {
+  public static <T> List<T> copyAndAddLast(List<T> list, T object) {
+    List<T> listCopy = new ArrayList<T>(list.size() + 1);
+    listCopy.addAll(list);
+    listCopy.add(object);
+    return listCopy;
+  }
+
+  public static <T> List<T> copyAndAddFirst(T object, List<T> list) {
+    List<T> listCopy = new ArrayList<T>(list.size() + 1);
+    listCopy.add(object);
+    listCopy.addAll(list);
+    return listCopy;
+  }
+
+  public static IFn comp(final IFn g, final IFn f) {
     return new AFn() {
       public Object invoke(Object o) {
         return f.invoke(g.invoke(o));
@@ -36,7 +52,7 @@ public final class Utils {
     };
   }
 
-  public static IFn comp(final IFn f, final IFn g, final IFn h) {
+  public static IFn comp(final IFn h, final IFn g, final IFn f) {
     return new AFn() {
       public Object invoke(Object o) {
         return f.invoke(g.invoke(h.invoke(o)));
@@ -44,26 +60,26 @@ public final class Utils {
     };
   }
 
-  public static IFn comp(final IFn... fs) {
-    if (fs.length == 0) {
-      return null;
-    } else if (fs.length == 1) {
-      return fs[0];
-    } else if (fs.length == 2) {
-      return comp(fs[0], fs[1]);
-    } else if (fs.length == 3) {
-      return comp(fs[0], fs[1], fs[2]);
-    } else {
-      return new AFn() {
-        public Object invoke(Object o) {
-          Object ret = o;
-          for (IFn f : fs) {
-            ret = f.invoke(ret);
-          }
-          return ret;
-        }
-      };
+  public static IFn comp(List<IFn> fs) {
+    switch (fs.size()) {
+    case 0: return null;
+    case 1: return fs.get(0);
+    case 2: return comp(fs.get(0), fs.get(1));
+    case 3: return comp(fs.get(0), fs.get(1), fs.get(2));
+    default: return compLoop(fs);
     }
+  }
+
+  private static IFn compLoop(final List<IFn> fs) {
+    return new AFn() {
+      public Object invoke(Object o) {
+        Object ret = o;
+        for (IFn f : fs) {
+          ret = f.invoke(ret);
+        }
+        return ret;
+      }
+    };
   }
 
   public static IFn and(final IFn fna, final IFn fnb) {

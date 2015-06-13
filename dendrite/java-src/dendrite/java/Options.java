@@ -40,8 +40,6 @@ public final class Options {
     MISSING_FIELDS_AS_NIL = Keyword.intern("missing-fields-as-nil?"),
     READERS = Keyword.intern("readers"),
     MAP_FN = Keyword.intern("map-fn"),
-    SAMPLE_FN = Keyword.intern("sample-fn"),
-    FILTER_FN = Keyword.intern("filter-fn"),
     ALL = Keyword.intern("all"),
     NONE = Keyword.intern("none"),
     DEFAULT = Keyword.intern("default"),
@@ -186,47 +184,52 @@ public final class Options {
     public final boolean isMissingFieldsAsNil;
     public final Map<Symbol,IFn> readers;
     public final int bundleSize;
-    public final IFn mapFn;
+    public final List<IFn> mapFns;
     public final IFn sampleFn;
-    public final IFn filterFn;
+    public final List<Mangle.Fn> mangleFns;
 
     public ReadOptions(Object query, List<Keyword> entrypoint, boolean isMissingFieldsAsNil,
-                       Map<Symbol,IFn> readers, IFn mapFn, IFn sampleFn, IFn filterFn) {
+                       Map<Symbol,IFn> readers, List<IFn> mapFns, IFn sampleFn, List<Mangle.Fn> mangleFns) {
       this.query = query;
       this.entrypoint = entrypoint;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
       this.readers = readers;
-      this.mapFn = mapFn;
+      this.mapFns = mapFns;
       this.sampleFn = sampleFn;
-      this.filterFn = filterFn;
+      this.mangleFns = mangleFns;
       this.bundleSize = DEFAULT_BUNDLE_SIZE;
     }
 
-    public ReadOptions withMapFn(IFn aMapFn) {
-      final IFn f = (mapFn == null)? aMapFn : Utils.comp(aMapFn, mapFn);
-      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
-                             this.readers, f, sampleFn, filterFn);
+    public ReadOptions addMapFn(IFn mapFn) {
+      if (mangleFns.isEmpty()) {
+        return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers,
+                               Utils.copyAndAddLast(mapFns, mapFn), sampleFn, mangleFns);
+      } else {
+        return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, sampleFn,
+                               Utils.copyAndAddLast(mangleFns, Mangle.getMapFn(mapFn)));
+      }
     }
-
 
     public ReadOptions withSampleFn(IFn aSampleFn) {
       if (sampleFn != null) {
         throw new IllegalArgumentException("Cannot define multiple sample functions.");
       }
-      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
-                             this.readers, mapFn, aSampleFn, filterFn);
+      if (!mapFns.isEmpty() || !mangleFns.isEmpty()) {
+        throw new IllegalArgumentException("Sample function must be defined before any mapping or "
+                                           + "filtering function.");
+      }
+      return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, aSampleFn, mangleFns);
     }
 
-    public ReadOptions withFilterFn(IFn aFilterFn) {
-      final IFn f = (filterFn == null)? aFilterFn : Utils.and(filterFn, aFilterFn);
-      return new ReadOptions(this.query, this.entrypoint, this.isMissingFieldsAsNil,
-                             this.readers, mapFn, sampleFn, f);
+    public ReadOptions addMangleFn(Mangle.Fn mangleFn) {
+      return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, sampleFn,
+                             Utils.copyAndAddLast(mangleFns, mangleFn));
     }
 
   }
 
   private static Keyword[] validReadOptionKeys
-    = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS, MAP_FN};
+    = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS};
 
   private static Object getQuery(IPersistentMap options) {
     return RT.get(options, QUERY, Schema.SUB_SCHEMA);
@@ -309,9 +312,9 @@ public final class Options {
                            getEntrypoint(options),
                            getMissingFieldsAsNil(options),
                            getTagReaders(options),
-                           getFn(MAP_FN, options),
-                           getFn(SAMPLE_FN, options),
-                           getFn(FILTER_FN, options));
+                           Collections.<IFn>emptyList(),
+                           null,
+                           Collections.<Mangle.Fn>emptyList());
   }
 
   public static final class WriterOptions {
@@ -407,8 +410,8 @@ public final class Options {
       try {
         threshold = RT.doubleCast(val);
       } catch (Exception e) {
-         throw new IllegalArgumentException(String.format("%s expects its values to be doubles but got '%s'",
-                                                          COMPRESSION_THRESHOLDS, val));
+        throw new IllegalArgumentException(String.format("%s expects its values to be doubles but got '%s'",
+                                                         COMPRESSION_THRESHOLDS, val));
       }
       if (threshold < 0) {
         throw new IllegalArgumentException(String.format("%s expects its values to be positive but got %f",

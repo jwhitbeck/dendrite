@@ -208,7 +208,7 @@ public final class Assemble {
       if (coll.fn == null) {
         fn = seqFn;
       } else {
-        fn = Utils.comp(coll.fn, seqFn);
+        fn = Utils.comp(seqFn, coll.fn);
       }
     } else {
       fn = coll.fn;

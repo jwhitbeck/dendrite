@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
+import static dendrite.java.Mangle.isFiltered;
+
 public final class Bundle implements Iterable<List> {
 
   public final List[] columnValues;
@@ -112,29 +114,31 @@ public final class Bundle implements Iterable<List> {
     return new ArrayChunk(assembledRecords, 0, n);
   }
 
-  public IChunk assembleFiltered(Assemble.Fn assemblyFn, IFn filterFn) {
+  public IChunk assembleMangled(Assemble.Fn assemblyFn, Mangle.Fn mangleFn) {
     ListIterator[] columnIterators = getColumnIterators();
     Object[] assembledRecords = new Object[maxBundleSize];
     int n = 0;
+    long recordIndex = firstRecordIndex;
     for (int i=0; i<maxBundleSize; ++i) {
-      Object o = assemblyFn.invoke(columnIterators);
-      if (RT.booleanCast(filterFn.invoke(o))) {
+      Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
+      if (isFiltered(o)) {
         assembledRecords[n] = o;
         n += 1;
       }
+      recordIndex += 1;
     }
     return new ArrayChunk(assembledRecords, 0, n);
   }
 
-  public IChunk assembleSampledAndFiltered(Assemble.Fn assemblyFn, IFn sampleFn, IFn filterFn) {
+  public IChunk assembleSampledAndMangled(Assemble.Fn assemblyFn, IFn sampleFn, Mangle.Fn mangleFn) {
     ListIterator[] columnIterators = getColumnIterators();
     Object[] assembledRecords = new Object[maxBundleSize];
     int n = 0;
     long recordIndex = firstRecordIndex;
     for (int i=0; i<maxBundleSize; ++i) {
       if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
-        Object o = assemblyFn.invoke(columnIterators);
-        if (RT.booleanCast(filterFn.invoke(o))) {
+        Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
+        if (isFiltered(o)) {
           assembledRecords[n] = o;
           n += 1;
         }
@@ -170,27 +174,29 @@ public final class Bundle implements Iterable<List> {
     return ret;
   }
 
-  public Object reduceFiltered(IFn reduceFn, Assemble.Fn assemblyFn, IFn filterFn, Object init) {
+  public Object reduceMangled(IFn reduceFn, Assemble.Fn assemblyFn, Mangle.Fn mangleFn, Object init) {
     Object ret = init;
     ListIterator[] columnIterators = getColumnIterators();
+    long recordIndex = firstRecordIndex;
     for (int i=0; i<maxBundleSize; ++i) {
-      Object o = assemblyFn.invoke(columnIterators);
-      if (RT.booleanCast(filterFn.invoke(o))) {
+      Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
+      if (isFiltered(o)) {
         ret = reduceFn.invoke(ret, o);
       }
+      recordIndex += 1;
     }
     return ret;
   }
 
-  public Object reduceSampledAndFiltered(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn,
-                                         IFn filterFn, Object init) {
+  public Object reduceSampledAndMangled(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn,
+                                        Mangle.Fn mangleFn, Object init) {
     Object ret = init;
     ListIterator[] columnIterators = getColumnIterators();
     long recordIndex = firstRecordIndex;
     for (int i=0; i<maxBundleSize; ++i) {
       if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
-        Object o = assemblyFn.invoke(columnIterators);
-        if (RT.booleanCast(filterFn.invoke(o))) {
+        Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
+        if (isFiltered(o)) {
           ret = reduceFn.invoke(ret, o);
         }
       } else {

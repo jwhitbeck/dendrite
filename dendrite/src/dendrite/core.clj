@@ -15,7 +15,7 @@
             [clojure.pprint :as pprint])
   (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
            [java.nio ByteBuffer])
-  (:refer-clojure :exclude [read map filter remove]))
+  (:refer-clojure :exclude [read map map-indexed keep keep-indexed filter remove]))
 
 (set! *warn-on-reflection* true)
 
@@ -181,38 +181,64 @@
   :entrypoint             - a sequence of keys to begin the query within a subset of the schema. Cannot
                             contain any keys to repeated fields. See docs for full explanation.
   :readers                - a map of query tag symbol to tag function. Default: nil. See docs for full
-                            explanation.
-  :map-fn                 - apply this function to all records. This function is applied as part of the
-                            parallel assembly process.
-  :sample-fn              - only read the records such that (sample-fn i) evaluates truthfully, where i the
-                            index of the record. Applied before record assembly. Default: nil.
-  :filter-fn              - filter the records where (filter-fn record) evaluates thruthfully. Applied during
-                            bundle assembly. Default nil."
+                            explanation."
   (^dendrite.java.View [^IReader reader] (read nil reader))
   (^dendrite.java.View [opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
-(defn map
-  "Returns a view of the records with the provided function applied to them as part of record assembly. As
-  with read, this view is seqable, reducible, and foldable. This is a convenience function such that (d/map
-  f (d/read r)) is equivalent to (d/read {:map-fn f} r)."
-  ^dendrite.java.View [f ^View view] (.withMapFn view f))
 
 (defn sample
   "Returns a view of the records containing only those such that (f record-index) evaluates truthfully, where
   record-index goes from 0 (first record) to num-records - 1 (last record). The sampling occurs before record
-  assembly thereby skipping assembly entirely for unselected records.  As with read, this view is seqable,
-  reducible, and foldable. This is a convenience function such that (d/sample f (d/read r)) is equivalent
-  to (d/read {:sample-fn f} r). A view can only have a single sample function applied to it."
+  assembly thereby skipping assembly entirely for unselected records. As with read, this view is seqable,
+  reducible, and foldable. A view can only have a single sample function applied to it and the sample
+  function must be applied before any mapping or filtering function."
   ^dendrite.java.View [f ^View view] (.withSampleFn view f))
 
+(defn map
+  "Returns a view of the records with the provided function mapped on to each record as part of record
+  assembly. As with read, this view is seqable, reducible, and foldable. Calling (d/map f (d/read r)) is
+  equivalent to (map f (d/read r)) but more efficient."
+  ^dendrite.java.View [f ^View view] (.withMapFn view f))
+
+(defn map-indexed
+  "Returns a view of the records with the provided function mapped on to each record and its index as part of
+  record assembly. As with read, this view is seqable, reducible, and foldable. Calling
+  (d/map-indexed f (d/read r)) is equivalent to (map-indexed f (d/read r)) but more efficient."
+  ^dendrite.java.View [f ^View view] (.withMapIndexedFn view f))
+
+(defn keep
+  "Returns a view of the records with the provided function mapped on to each record as part of record
+  assembly and all nil values removed. As with read, this view is seqable, reducible, and
+  foldable. Calling (d/keep f (d/read r)) is equivalent to (keep f (d/read r)) but more efficient."
+  ^dendrite.java.View [f ^View view] (.withKeepFn view f))
+
+(defn keep-indexed
+  "Returns a view of the records with the provided function mapped on to each record and its index as part of
+  record assembly and all nil values removed. As with read, this view is seqable, reducible, and
+  foldable. Calling (d/keep-indexed f (d/read r)) is equivalent to (keep-indexed f (d/read r)) but more
+  efficient."
+  ^dendrite.java.View [f ^View view] (.withKeepIndexedFn view f))
+
 (defn filter
-  "Returns a view of the records containing only those such that (f record) evaluates truthfully. As
-  with read, this view is seqable, reducible, and foldable. This is a convenience function such that
-  (d/filter f (d/read r)) is equivalent to (d/read {:filter-fn f} r)."
+  "Returns a view of the records containing only those such that (f record) evaluates truthfully. The
+  filtering is done as part of record assembly. As with read, this view is seqable, reducible, and
+  foldable. Calling (d/filter f (d/read r)) is equivalent to (filter f (d/read r)) but more efficient."
   ^dendrite.java.View [f ^View view] (.withFilterFn view f))
 
+(defn filter-indexed
+  "Returns a view of the records containing only those such that (f index record) evaluates truthfully. The
+  filtering is done as part of record assembly. As with read, this view is seqable, reducible, and
+  foldable."
+  ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view f))
+
 (defn remove
-  "Returns a view of the records not containing any of those such that (f record) evaluates thruthfully.. As
-  with read, this view is seqable, reducible, and foldable. This is a convenience function such that
-  (d/remove f (d/read r)) is equivalent to (d/read {:filter-fn (complement f)} r)."
+  "Returns a view of the records not containing any of those such that (f record) evaluates truthfully. The
+  removal is done as part of record assembly. As with read, this view is seqable, reducible, and
+  foldable. Calling (d/remove f (d/read r)) is equivalent to (remove f (d/read r)) but more efficient."
   ^dendrite.java.View [f ^View view] (.withFilterFn view (complement f)))
+
+(defn remove-indexed
+  "Returns a view of the records not containing any of those such that (f index record) evaluates truthfully.
+  The removal is done as part of record assembly. As with read, this view is seqable, reducible, and
+  foldable."
+  ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view (complement f)))

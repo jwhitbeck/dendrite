@@ -24,11 +24,11 @@ import clojure.lang.Symbol;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -793,13 +793,13 @@ public final class Types {
     Arrays.fill(visited, false);
     visited[type] = true;
     LogicalType lt = logicalType;
-    LinkedList<IFn> toBaseTypeFns = new LinkedList<IFn>();
-    LinkedList<IFn> fromBaseTypeFns = new LinkedList<IFn>();
+    List<IFn> toBaseTypeFns = new ArrayList<IFn>();
+    List<IFn> fromBaseTypeFns = new ArrayList<IFn>();
     if (lt.toBaseTypeFn != null) {
-      toBaseTypeFns.addFirst(lt.toBaseTypeFn);
+      toBaseTypeFns.add(lt.toBaseTypeFn);
     }
     if (lt.fromBaseTypeFn != null) {
-      fromBaseTypeFns.addLast(lt.fromBaseTypeFn);
+      fromBaseTypeFns.add(lt.fromBaseTypeFn);
     }
     while (!isPrimitive(baseType)) {
       if (visited[baseType]) {
@@ -809,18 +809,19 @@ public final class Types {
       visited[baseType] = true;
       lt = logicalTypes[baseType];
       if (lt.toBaseTypeFn != null) {
-        toBaseTypeFns.addFirst(lt.toBaseTypeFn);
+        toBaseTypeFns.add(lt.toBaseTypeFn);
       }
       if (lt.fromBaseTypeFn != null) {
-        fromBaseTypeFns.addLast(lt.fromBaseTypeFn);
+        fromBaseTypeFns.add(lt.fromBaseTypeFn);
       }
       baseType = lt.baseType;
     }
+    Collections.reverse(fromBaseTypeFns);
     logicalTypes[type] = new LogicalType(logicalType.sym,
                                          baseType,
                                          logicalType.coercionFn,
-                                         Utils.comp(toBaseTypeFns.toArray(new IFn[]{})),
-                                         Utils.comp(fromBaseTypeFns.toArray(new IFn[]{})));
+                                         Utils.comp(toBaseTypeFns),
+                                         Utils.comp(fromBaseTypeFns));
   }
 
   private static void flattenLogicalTypes(LogicalType[] logicalTypes) {
@@ -971,7 +972,7 @@ public final class Types {
     } else {
       LogicalType lt = logicalTypes[type];
       enc = getPrimitiveEncoder(lt.baseType, encoding);
-      f = (fn == null)? lt.toBaseTypeFn : Utils.comp(fn, lt.toBaseTypeFn);
+      f = (fn == null)? lt.toBaseTypeFn : Utils.comp(lt.toBaseTypeFn, fn);
       if (f == null) {
         // This can occur if a custom-type was defined without a toBaseTypeFn
         return enc;
@@ -1004,7 +1005,7 @@ public final class Types {
     } else {
       LogicalType lt = logicalTypes[type];
       decoderFactory = getPrimitiveDecoderFactory(lt.baseType, encoding);
-      f = (fn == null)? lt.fromBaseTypeFn : Utils.comp(fn, lt.fromBaseTypeFn);
+      f = (fn == null)? lt.fromBaseTypeFn : Utils.comp(lt.fromBaseTypeFn, fn);
       if (f == null) {
         // This can occur when trying to read a custom-type without providing a from-base-type-fn.
         return decoderFactory;

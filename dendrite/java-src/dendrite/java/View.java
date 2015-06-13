@@ -224,15 +224,31 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
   protected abstract View withOptions(Options.ReadOptions readOptions);
 
   public View withMapFn(IFn mapFn) {
-    return withOptions(getReadOptions().withMapFn(mapFn));
+    return withOptions(getReadOptions().addMapFn(mapFn));
   }
 
   public View withSampleFn(IFn sampleFn) {
     return withOptions(getReadOptions().withSampleFn(sampleFn));
   }
 
+  public View withMapIndexedFn(IFn mapIndexedFn) {
+    return withOptions(getReadOptions().addMangleFn(Mangle.getMapIndexedFn(mapIndexedFn)));
+  }
+
+  public View withKeepFn(IFn keepFn) {
+    return withOptions(getReadOptions().addMangleFn(Mangle.getKeepFn(keepFn)));
+  }
+
+  public View withKeepIndexedFn(IFn keepIndexedFn) {
+    return withOptions(getReadOptions().addMangleFn(Mangle.getKeepIndexedFn(keepIndexedFn)));
+  }
+
   public View withFilterFn(IFn filterFn) {
-    return withOptions(getReadOptions().withFilterFn(filterFn));
+    return withOptions(getReadOptions().addMangleFn(Mangle.getFilterFn(filterFn)));
+  }
+
+  public View withFilterIndexedFn(IFn filterIndexedFn) {
+    return withOptions(getReadOptions().addMangleFn(Mangle.getFilterIndexedFn(filterIndexedFn)));
   }
 
   private static ISeq getRecordChunkedSeq(final Iterator<IChunk> recordChunksIterator) {
