@@ -132,7 +132,7 @@
   (merge (dissoc stats :byte-stats) (:byte-stats stats)))
 
 (defn- format-global-stats [global-stats sort-col]
-  (->> (pull-up-byte-stats global-stats)
+  (->> global-stats
        (map (fn [[k v]] {"name" (name k) "value" v}))
        (sort-by #(get % (or sort-col "name")))))
 
@@ -141,17 +141,16 @@
 (defn- format-column-stats [column-stats sort-col]
   (->> column-stats
        (map (fn [col-stats]
-              (let [column (->> col-stats :spec :path (map name) (string/join "."))
-                    spec (-> col-stats :spec (dissoc :path))]
-                (str-keys (merge (pull-up-byte-stats (dissoc col-stats :spec :num-column-chunks))
-                                 spec
-                                 {:column column})))))
+              (let [column (->> col-stats :path (remove nil?) (map name) (string/join "."))]
+                (str-keys (-> col-stats
+                              (dissoc :path)
+                              (assoc :column column))))))
        (sort-by #(get % (or sort-col "column")))))
 
 (defn- format-record-group-stats [record-group-stats sort-col]
   (sort-by
    #(get % (or sort-col "record-group"))
-   (map (fn [i rgs] (assoc (str-keys (pull-up-byte-stats rgs)) "record-group" i))
+   (map (fn [i rgs] (assoc (str-keys rgs) "record-group" i))
         (range)
         record-group-stats)))
 
