@@ -604,8 +604,10 @@
 (defn random-query [n column-stats]
   (let [selected-column-stats (->> column-stats shuffle (take n))
         total-length (->> selected-column-stats (map :length) (reduce +))
+        max-column-length (->> selected-column-stats (map :length) (reduce max))
         query (reduce add-path nil (map :path selected-column-stats))]
-    {:length total-length
+    {:total-length total-length
+     :max-column-length max-column-length
      :num-columns n
      :query query}))
 
@@ -614,15 +616,16 @@
     (let [column-stats (:columns (d/stats r))
           n (count column-stats)
           single-column-queries (map (fn [stats]
-                                       {:length (:length stats)
+                                       {:total-length (:length stats)
+                                        :max-column-length (:length stats)
                                         :num-columns 1
                                         :query (add-path nil (:path stats))})
                                      column-stats)
           random-queries (->> (for [i (range 2 n)]
                                 (repeatedly n #(random-query i column-stats)))
                               (apply concat))
-          all-columns-query [{:length (reduce + (map :length column-stats))
-                               :num-columns n
-                               :query '_}]]
+          all-columns-query [{:total-length (reduce + (map :length column-stats))
+                              :max-column-length (reduce max (map :length column-stats))
+                              :num-columns n
+                              :query '_}]]
       (concat single-column-queries random-queries all-columns-query))))
-

@@ -104,15 +104,15 @@
         ;; Do a few full schema scans to get the JIT going
         (dotimes [_ 5] (with-open [r (d/file-reader tmp-file)]
                          (last (d/read r))))
-        (doseq [{:keys [length query num-columns] :as benchmark} (random-queries-fn tmp-file)]
+        (doseq [{:keys [query] :as benchmark} (random-queries-fn tmp-file)]
           (let [query-time (time-with-gc (with-open [r (d/file-reader tmp-file)]
                                            (last (d/read {:query query} r))))]
             (swap! results conj (assoc benchmark :query-time query-time))
             (spit results-file @results)))
         (with-open [w (io/writer csv-results-file)]
-          (.write w "num_columns,length,query_time\n")
-          (doseq [{:keys [length num-columns query-time]} @results]
-            (.write w (format "%d,%d,%.2f\n" num-columns length query-time))))))))
+          (.write w "num_columns,total_length,max_column_length,query_time\n")
+          (doseq [{:keys [total-length max-column-length num-columns query-time]} @results]
+            (.write w (format "%d,%d,%d,%.2f\n" num-columns total-length max-column-length query-time))))))))
 
 (defn run-benchmarks! [output-dir clean?]
   (let [output-dir (io/as-file output-dir)]
