@@ -8,8 +8,8 @@ outputFile <- args[2]
 
 svg(outputFile)
 
-ggplot(res, aes(x=reorder(name,-bytes))) +
-  geom_bar(aes(y=(bytes/(1024*1024)),fill=family),stat='identity') +
+ggplot(res, aes(x=reorder(name,-file_size))) +
+  geom_bar(aes(y=(file_size/(1024*1024)),fill=family),stat='identity') +
   coord_flip() +
   theme_bw() +
   theme(panel.border=element_rect(size=0), axis.ticks.y=element_line(size=0), axis.title.y=element_blank()) +
