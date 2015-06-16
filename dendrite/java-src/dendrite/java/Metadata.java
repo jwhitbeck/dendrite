@@ -170,6 +170,14 @@ public final class Metadata {
       return customTypes;
     }
 
+    public long getNumRecords() {
+      long n = 0;
+      for (RecordGroup recordGroup : recordGroups) {
+        n += recordGroup.numRecords;
+      }
+      return n;
+    }
+
     @Override
     public void writeTo(MemoryOutputStream mos) {
       writeRecordGroupsTo(mos);

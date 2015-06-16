@@ -63,18 +63,19 @@
                  (:query cli-options) (assoc :query (:query cli-options))
                  (:query-file cli-options) (assoc :query (:query-file cli-options))
                  (:entrypoint cli-options) (assoc :entrypoint (:entrypoint cli-options)))
-          str-fn (if-let [map-fn (:map-fn cli-options)]
-                   (if (:pretty cli-options)
-                     #(with-out-str (pprint/pprint (map-fn %)))
-                     (comp str map-fn))
-                   (if (:pretty cli-options)
-                     #(with-out-str (pprint/pprint %))
-                     str))
+          str-fn (if (:pretty cli-options)
+                   #(with-out-str (pprint/pprint %))
+                   str)
+          view (->> (cond->> (d/read opts r)
+                      (:head cli-options) (d/sample #(< % (:head cli-options)))
+                      (:tail cli-options) (d/sample #(>= % (- (d/num-records r) (:tail cli-options))))
+                      (:map-fn cli-options) (d/map (:map-fn cli-options)))
+                    (d/map str-fn))
           print-fn (if (:pretty cli-options) print println)
           record-strs (cond
-                        (:head cli-options) (map str-fn (take (:head cli-options) (d/read opts r)))
-                        (:tail cli-options) (map str-fn (take-last (:tail cli-options) (d/read opts r)))
-                        :else (d/read (assoc opts :map-fn str-fn) r))]
+                        (:head cli-options) (take (:head cli-options) view)
+                        (:tail cli-options) (take-last (:tail cli-options) view)
+                        :else (seq view))]
       (doseq [s record-strs]
         (when (.checkError System/out)
           (System/exit 1))

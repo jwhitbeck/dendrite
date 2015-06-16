@@ -91,6 +91,10 @@ public final class FileReader implements Closeable, IReader {
     return fileMetadata.metadata;
   }
 
+  public long getNumRecords() {
+    return fileMetadata.getNumRecords();
+  }
+
   public Map<Symbol, Symbol> getCustomTypeMappings() {
     Map<Symbol, Symbol> customTypeMappings = new HashMap<Symbol, Symbol>();
     for (CustomType ct : fileMetadata.customTypes) {

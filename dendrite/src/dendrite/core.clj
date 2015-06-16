@@ -132,6 +132,11 @@
   [^FileReader reader]
   (.getStats reader))
 
+(defn num-records
+  "Returns the number of records in the file."
+  [^FileReader reader]
+  (.getNumRecords reader))
+
 (defn metadata
   "Returns the user-defined metadata for this reader."
   [^FileReader reader]
