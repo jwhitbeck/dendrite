@@ -69,12 +69,15 @@ public final class FileReader implements Closeable, IReader {
     NUM_COLUMNS = Keyword.intern("num-columns");
 
   final Types types;
+  final File file;
   final FileChannel fileChannel;
   final Metadata.File fileMetadata;
   final long metadataLength;
 
-  private FileReader(Types types, FileChannel fileChannel, Metadata.File fileMetadata, long metadataLength) {
+  private FileReader(Types types, File file, FileChannel fileChannel, Metadata.File fileMetadata,
+                     long metadataLength) {
     this.types = types;
+    this.file = file;
     this.fileChannel = fileChannel;
     this.fileMetadata = fileMetadata;
     this.metadataLength = metadataLength;
@@ -84,7 +87,7 @@ public final class FileReader implements Closeable, IReader {
     FileChannel fileChannel = Utils.getReadingFileChannel(file);
     MetadataReadResult res = readMetadata(fileChannel);
     Types types = Types.create(options.customTypeDefinitions, res.fileMetadata.customTypes);
-    return new FileReader(types, fileChannel, res.fileMetadata, res.metadataLength);
+    return new FileReader(types, file, fileChannel, res.fileMetadata, res.metadataLength);
   }
 
   public ByteBuffer getMetadata() {
@@ -324,7 +327,8 @@ public final class FileReader implements Closeable, IReader {
     return new MetadataReadResult(Metadata.File.read(metadataBuffer), metadataLength);
   }
 
-  private static Iterator<Bundle> getBundlesIterator(final Iterator<RecordGroup.Reader> recordGroupReaders) {
+  private static Iterator<Bundle> getBundlesIterator(final File file,
+                                                     final Iterator<RecordGroup.Reader> recordGroupReaders) {
     if (!recordGroupReaders.hasNext()) {
       return Collections.<Bundle>emptyList().iterator();
     }
@@ -344,11 +348,15 @@ public final class FileReader implements Closeable, IReader {
         if (bundleIterator == null) {
           return false;
         }
-        if (bundleIterator.hasNext()) {
-          return true;
-        } else {
-          step();
-          return bundleIterator != null && bundleIterator.hasNext();
+        try {
+          if (bundleIterator.hasNext()) {
+            return true;
+          } else {
+            step();
+            return bundleIterator != null && bundleIterator.hasNext();
+          }
+        } catch (Exception e) {
+          throw new IllegalStateException("Error while reading from " + file, e);
         }
       }
 
@@ -705,7 +713,8 @@ public final class FileReader implements Closeable, IReader {
     }
 
     private Iterator<Bundle> getBundlesIterator(int bundleSize) {
-      return FileReader.getBundlesIterator(getRecordGroupReaders(getQueriedColumns(), bundleSize));
+      return FileReader.getBundlesIterator(FileReader.this.file,
+                                           getRecordGroupReaders(getQueriedColumns(), bundleSize));
     }
   }
 }
