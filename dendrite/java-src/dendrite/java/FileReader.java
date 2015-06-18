@@ -200,6 +200,7 @@ public final class FileReader implements Closeable, IReader {
       .assoc(REPETITION_LEVELS_LENGTH, columnStats.repetitionLevelsLength)
       .assoc(DEFINITION_LEVELS_LENGTH, columnStats.definitionLevelsLength)
       .assoc(DATA_LENGTH, columnStats.dataLength)
+      .assoc(NUM_DICTIONARY_VALUES, columnStats.numDictionaryValues)
       .assoc(DICTIONARY_HEADER_LENGTH, columnStats.dictionaryHeaderLength)
       .assoc(DICTIONARY_LENGTH, columnStats.dictionaryLength)
       .persistent();
