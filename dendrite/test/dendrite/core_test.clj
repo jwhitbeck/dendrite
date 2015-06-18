@@ -68,7 +68,7 @@
 (deftest flat-base-type-write-read
   (testing "required"
     (let [records (repeatedly 100 #(rand-int 100))]
-      (with-open [w (d/file-writer (Schema/req 'int) tmp-filename)]
+      (with-open [w (d/file-writer (d/req 'int) tmp-filename)]
         (.writeAll w records))
       (is (= records (with-open [r (d/file-reader tmp-filename)]
                        (doall (d/read r)))))))
@@ -89,7 +89,7 @@
                        (doall (d/read r)))))))
   (testing "repeated required base type"
     (let [records (->> (repeatedly #(rand-int 100)) (partition 5) (take 20))]
-      (with-open [w (d/file-writer [(Schema/req 'int)] tmp-filename)]
+      (with-open [w (d/file-writer [(d/req 'int)] tmp-filename)]
         (.writeAll w records))
       (is (= records (with-open [r (d/file-reader tmp-filename)]
                        (doall (d/read r)))))))
@@ -234,17 +234,19 @@
     (.close (dremel-paper-writer))
     (with-open [r (d/file-reader tmp-filename)]
       (is (= [{:name 3, :docid 10} {:name 1, :docid 20}]
-             (d/read {:query {:docid '_ :name (Schema/tag 'foo '_)} :readers {'foo count}} r)))
+             (d/read {:query {:docid '_ :name (d/tag 'foo '_)} :readers {'foo count}} r)))
+      (is (= [{:docid 11} {:docid 21}]
+             (d/read {:query {:docid (d/tag 'foo '_)} :readers {'foo inc}} r)))
       (is (thrown-with-msg?
            IllegalArgumentException #"No reader function was provided for tag 'foo'."
            (helpers/throw-cause
-            (doall (d/read {:query {:docid '_ :name (Schema/tag 'foo '_)}} r)))))))
+            (doall (d/read {:query {:docid '_ :name (d/tag 'foo '_)}} r)))))))
   (testing "reader functions behave properly on missing fields"
     (with-open [r (d/file-reader tmp-filename)]
       (is (= [true true]
-             (d/read {:query (Schema/tag 'foo {:foo '_}) :readers {'foo empty?}} r)))
+             (d/read {:query (d/tag 'foo {:foo '_}) :readers {'foo empty?}} r)))
       (is (= [{:docid 10 :foo {:bar 0}} {:docid 20 :foo {:bar 0}}]
-             (d/read {:query {:docid '_ :foo {:bar (Schema/tag 'bar [{:baz '_}])}} :readers {'bar count}}
+             (d/read {:query {:docid '_ :foo {:bar (d/tag 'bar [{:baz '_}])}} :readers {'bar count}}
                      r))))))
 
 (deftest custom-types

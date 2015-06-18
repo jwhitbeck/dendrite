@@ -996,33 +996,48 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema applyQuerySubSchema(QueryContext context, Schema schema) {
+  private static Schema applyQuerySubSchema(QueryContext context, Schema schema, IFn fn) {
     if (schema instanceof Column) {
       Column col = ((Column)schema).withQueryColumnIndex(context.getNextQueryColumnIndex());
+      if (fn != null) {
+        col = col.withFn(fn);
+      }
       context.appendColumn(col);
       return col;
     } else if (schema instanceof Collection) {
       Collection coll = (Collection)schema;
-      return coll.withRepeatedSchema(applyQuerySubSchema(context, coll.repeatedSchema))
+      coll = coll.withRepeatedSchema(applyQuerySubSchema(context, coll.repeatedSchema, null))
         .withLeafColumnIndex(context.getLeafColumnIndex());
+      if (fn != null) {
+        coll = coll.withFn(fn);
+      }
+      return coll;
     } else /* if (schema instanceof Record) */ {
       Record rec = (Record)schema;
       Field[] fields = rec.fields;
       Field[] newFields = new Field[fields.length];
       for (int i=0; i<fields.length; ++i) {
         Field field = fields[i];
-        newFields[i] = new Field(field.name, applyQuerySubSchema(context, field.value));
+        newFields[i] = new Field(field.name, applyQuerySubSchema(context, field.value, null));
       }
-      return rec.withFields(newFields).withLeafColumnIndex(context.getLeafColumnIndex());
+      rec = rec.withFields(newFields).withLeafColumnIndex(context.getLeafColumnIndex());
+      if (fn != null) {
+        rec = rec.withFn(fn);
+      }
+      return rec;
     }
   }
 
   private static Schema applyQuerySymbol(QueryContext context, Schema schema, Symbol query,
-                                         PersistentVector parents) {
+                                         PersistentVector parents, IFn fn) {
     if (schema == null) {
-      return Column.missing();
+      Column col = Column.missing();
+      if (fn != null) {
+        col = col.withFn(fn);
+      }
+      return col;
     } else if (query.equals(SUB_SCHEMA)) {
-      return applyQuerySubSchema(context, schema);
+      return applyQuerySubSchema(context, schema, fn);
     } else if (schema instanceof Record) {
       throw new IllegalArgumentException(String.format("Element at path %s is a record, not a value.",
                                                        parents));
@@ -1030,15 +1045,19 @@ public abstract class Schema implements IWriteable {
       throw new IllegalArgumentException(String.format("Element at path %s is a collection, not a value.",
                                                        parents));
     } else {
-      Column column = (Column)schema;
+      Column col = (Column)schema;
       int queriedType = context.types.getType(query);
-      if (column.type != queriedType) {
+      if (col.type != queriedType) {
         throw new IllegalArgumentException(String.format("Mismatched column types at path %s. " +
                                                          "Asked for '%s' but schema defines '%s'.",
                                                          parents, query,
-                                                         context.types.getTypeSymbol(column.type)));
+                                                         context.types.getTypeSymbol(col.type)));
       }
-      return column;
+      if (fn != null) {
+        col = col.withFn(fn);
+      }
+      context.appendColumn(col);
+      return col;
     }
   }
 
@@ -1049,26 +1068,12 @@ public abstract class Schema implements IWriteable {
     if (fn == null) {
       throw new IllegalArgumentException(String.format("No reader function was provided for tag '%s'.", tag));
     }
-    Schema s = applyQuerySymbol(context, schema, (Symbol)untag(query), parents).withFn(fn);
-    if (s instanceof Column && !query.equals(SUB_SCHEMA)) {
-      Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
-      context.appendColumn(col);
-      return col;
-    } else {
-      return s;
-    }
+    return applyQuerySymbol(context, schema, (Symbol)untag(query), parents, fn);
   }
 
   private static Schema applyQueryUntaggedSymbol(QueryContext context, Schema schema, Symbol query,
                                                  PersistentVector parents) {
-    Schema s = applyQuerySymbol(context, schema, query, parents);
-    if (s instanceof Column && schema != null && !query.equals(SUB_SCHEMA)) {
-      Column col = ((Column)s).withQueryColumnIndex(context.getNextQueryColumnIndex());
-      context.appendColumn(col);
-      return col;
-    } else {
-      return s;
-    }
+    return applyQuerySymbol(context, schema, query, parents, null);
   }
 
   public static final class QueryResult {
