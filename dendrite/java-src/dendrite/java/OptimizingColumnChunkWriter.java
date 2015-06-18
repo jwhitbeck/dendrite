@@ -215,7 +215,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
 
   int estimateDictionaryIndicesColumnLength(Stats.ColumnChunk plainStats) {
     int numEntries = statsCollector.getFrequencies().size();
-    int width = Bytes.getBitWidth(numEntries);
+    int width = Bytes.getBitWidth(numEntries-1);
     return (int)((plainStats.numNonNilValues * width) / 8);
   }
 
