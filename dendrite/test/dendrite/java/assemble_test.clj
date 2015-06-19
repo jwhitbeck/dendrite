@@ -88,7 +88,8 @@
         (= answer (assemble stripes
                             (Schema/applyQuery helpers/default-types true {'foo f} test-schema query)))
         {:links [1 2 3]} :backward
-        {:links 2} (comp count keys))))
+        {:links 2} (comp count keys)
+        {:links :foo} #(if (empty? %) (throw (IllegalStateException.)) :foo))))
   (testing "repeated record"
     (let [query {:name (Schema/tag 'foo '_)}
           stripes (mapv (partial aget test-record-striped) [3 4 5])]
