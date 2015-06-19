@@ -1019,7 +1019,20 @@ public final class Types {
           public int getNumEncodedValues() { return dec.getNumEncodedValues(); }
         };
       }
-      public Object getNullValue() { return (fn == null)? null : fn.invoke(null); }
+      public Object getNullValue() {
+        if (fn == null) {
+          return null;
+        } else {
+          try {
+            return fn.invoke(null);
+          } catch (Exception e) {
+            throw new IllegalArgumentException("Decoder function throws exception on null values! "
+                                               + "Perhaps a reader function is provided for an optional or "
+                                               + "repeated column but the function cannot handle null values.",
+                                               e);
+          }
+        }
+      }
     };
   }
 

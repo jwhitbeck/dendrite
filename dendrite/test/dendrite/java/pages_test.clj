@@ -46,7 +46,12 @@
             levels {:max-definition-level 3 :max-repetition-level 2 :f f}
             input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
             output-values (write-read-data-page levels input-values)]
-        (is (= output-values (helpers/map-leveled f input-values)))))
+        (is (= output-values (helpers/map-leveled f input-values))))
+      (let [f (partial * 2)
+            levels {:max-definition-level 3 :max-repetition-level 2 :f f}
+            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 10))]
+        (is (thrown-with-msg? IllegalArgumentException #"Decoder function throws exception on null values"
+                              (write-read-data-page levels input-values)))))
     (testing "all nils"
       (let [levels {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeat nil) (helpers/leveled levels) (take 1000))
