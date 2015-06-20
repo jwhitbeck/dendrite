@@ -132,26 +132,15 @@ public final class Assemble {
       };
     } else {
       final IFn fn = record.fn;
+      final DelayedNullValue delayedNullValue = DelayedNullValue.withFn(fn);
       return new Fn() {
-        private boolean isEmptyValueComputed = false;
-        private Object emptyValue;
-
         public Object invoke(ListIterator[] iterators) {
           IPersistentCollection rec = recordConstructorFn.invoke(iterators);
           if (rec.count() == 0) {
-            return getEmptyValue();
+            return delayedNullValue.get();
           } else {
             return fn.invoke(rec);
           }
-        }
-
-        // Compute emptyValue only when necessary
-        private Object getEmptyValue() {
-          if (!isEmptyValueComputed) {
-            emptyValue = fn.invoke(null);
-            isEmptyValueComputed = true;
-          }
-          return emptyValue;
         }
       };
     }

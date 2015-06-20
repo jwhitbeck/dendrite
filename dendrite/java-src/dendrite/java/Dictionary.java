@@ -219,8 +219,8 @@ public final class Dictionary {
     }
 
     @Override
-    public Object getNullValue() {
-      return dictDecoderFactory.getNullValue();
+    public DelayedNullValue getDelayedNullValue() {
+      return dictDecoderFactory.getDelayedNullValue();
     }
   }
 }

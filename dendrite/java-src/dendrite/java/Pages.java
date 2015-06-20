@@ -80,20 +80,24 @@ public final class Pages {
   }
 
   public static DataPage.Reader getDataPageReader(ByteBuffer bb, int maxRepetitionLevel,
-                                                  int maxDefinitionLevel, IDecoderFactory decoderFactory,
+                                                  int maxDefinitionLevel,
+                                                  int enclosingCollectionMaxDefinitionLevel,
+                                                  IDecoderFactory decoderFactory,
                                                   IDecompressorFactory decompressorFactory) {
     ByteBuffer byteBuffer = bb.slice();
     int pageType = (int)byteBuffer.get();
     if (pageType != DATA) {
       throw new IllegalStateException(String.format("Page type %d is not a data page type.", pageType));
     }
-    return DataPage.Reader.create(byteBuffer, maxRepetitionLevel, maxDefinitionLevel, decoderFactory,
+    return DataPage.Reader.create(byteBuffer, maxRepetitionLevel, maxDefinitionLevel,
+                                  enclosingCollectionMaxDefinitionLevel, decoderFactory,
                                   decompressorFactory);
   }
 
   public static Iterable<DataPage.Reader>
     getDataPageReaders(final ByteBuffer bb, final int n, final int maxRepetitionLevel,
-                       final int maxDefinitionLevel, final IDecoderFactory decoderFactory,
+                       final int maxDefinitionLevel, final int enclosingCollectionMaxDefinitionLevel,
+                       final IDecoderFactory decoderFactory,
                        final IDecompressorFactory decompressorFactory) {
     return new Iterable<DataPage.Reader>() {
       @Override
@@ -113,6 +117,7 @@ public final class Pages {
               throw new NoSuchElementException();
             }
             DataPage.Reader reader = getDataPageReader(byteBuffer, maxRepetitionLevel, maxDefinitionLevel,
+                                                       enclosingCollectionMaxDefinitionLevel,
                                                        decoderFactory, decompressorFactory);
             byteBuffer = reader.getNextBuffer();
             i += 1;
@@ -182,13 +187,15 @@ public final class Pages {
   private static Future<FirstPageReadResult>
     readAndPartitionFirstDataPageFuture(final ByteBuffer bb, final int n, final int partitionLength,
                                         final int maxRepetitionLevel, final int maxDefinitionLevel,
+                                        final int enclosingCollectionMaxDefinitionLevel,
                                         final IDecoderFactory decoderFactory,
                                         final IDecompressorFactory decompressorFactory) {
     return Agent.soloExecutor.submit(new Callable<FirstPageReadResult>() {
         public FirstPageReadResult call() {
           Iterator<DataPage.Reader> pageIterator
             = getDataPageReaders(bb, n, maxRepetitionLevel, maxDefinitionLevel,
-                                 decoderFactory, decompressorFactory).iterator();
+                                 enclosingCollectionMaxDefinitionLevel, decoderFactory,
+                                 decompressorFactory).iterator();
           ReadResult res = readAndPartitionDataPage(pageIterator.next(),
                                                     new ArrayList<Object>(partitionLength),
                                                     partitionLength);
@@ -203,6 +210,7 @@ public final class Pages {
                                                       final int partitionLength,
                                                       final int maxRepetitionLevel,
                                                       final int maxDefinitionLevel,
+                                                      final int enclosingCollectionMaxDefinitionLevel,
                                                       final IDecoderFactory dictDecoderFactory,
                                                       final IDecoderFactory indicesDecoderFactory,
                                                       final IDecompressorFactory decompressorFactory) {
@@ -216,7 +224,7 @@ public final class Pages {
                                                                              dictDecoderFactory);
           Iterator<DataPage.Reader> pageIterator
             = getDataPageReaders(dictReader.getNextBuffer(), n, maxRepetitionLevel, maxDefinitionLevel,
-                                 dataDecoderFactory, null).iterator();
+                                 enclosingCollectionMaxDefinitionLevel, dataDecoderFactory, null).iterator();
           ReadResult res = readAndPartitionDataPage(pageIterator.next(),
                                                     new ArrayList<Object>(partitionLength),
                                                     partitionLength);
@@ -306,6 +314,7 @@ public final class Pages {
   public static Iterable<List<Object>>
     readAndPartitionDataPages(final ByteBuffer bb, final int n, final int partitionLength,
                               final int maxRepetitionLevel, final int maxDefinitionLevel,
+                              final int enclosingCollectionMaxDefinitionLevel,
                               final IDecoderFactory decoderFactory,
                               final IDecompressorFactory decompressorFactory) {
     if (n == 0) {
@@ -314,11 +323,13 @@ public final class Pages {
     return new Iterable<List<Object>>() {
       @Override
       public Iterator<List<Object>> iterator() {
-        return new PartitionedValuesIterator(readAndPartitionFirstDataPageFuture(bb, n, partitionLength,
-                                                                                 maxRepetitionLevel,
-                                                                                 maxDefinitionLevel,
-                                                                                 decoderFactory,
-                                                                                 decompressorFactory));
+        return new PartitionedValuesIterator(
+            readAndPartitionFirstDataPageFuture(bb, n, partitionLength,
+                                                maxRepetitionLevel,
+                                                maxDefinitionLevel,
+                                                enclosingCollectionMaxDefinitionLevel,
+                                                decoderFactory,
+                                                decompressorFactory));
       }
     };
   }
@@ -326,6 +337,7 @@ public final class Pages {
   public static Iterable<List<Object>>
     readAndPartitionDataPagesWithDictionary(final ByteBuffer bb, final int n, final int partitionLength,
                                             final int maxRepetitionLevel, final int maxDefinitionLevel,
+                                            final int enclosingCollectionMaxDefinitionLevel,
                                             final IDecoderFactory dictDecoderFactory,
                                             final IDecoderFactory indicesDecoderFactory,
                                             final IDecompressorFactory decompressorFactory) {
@@ -340,6 +352,7 @@ public final class Pages {
                                                               partitionLength,
                                                               maxRepetitionLevel,
                                                               maxDefinitionLevel,
+                                                              enclosingCollectionMaxDefinitionLevel,
                                                               dictDecoderFactory,
                                                               indicesDecoderFactory,
                                                               decompressorFactory));

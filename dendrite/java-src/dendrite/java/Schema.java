@@ -159,36 +159,39 @@ public abstract class Schema implements IWriteable {
     public final int encoding;
     public final int compression;
     public final int columnIndex;
+    public final int enclosingCollectionMaxDefinitionLevel;
     public final int queryColumnIndex;
 
     public Column(int repetition, int repetitionLevel, int definitionLevel, int type, int encoding,
-                  int compression, int columnIndex, int queryColumnIndex, IFn fn) {
+                  int compression, int columnIndex, int enclosingCollectionMaxDefinitionLevel,
+                  int queryColumnIndex, IFn fn) {
       super(repetition, repetitionLevel, definitionLevel, fn);
       this.type = type;
       this.encoding = encoding;
       this.compression = compression;
       this.columnIndex = columnIndex;
+      this.enclosingCollectionMaxDefinitionLevel = enclosingCollectionMaxDefinitionLevel;
       this.queryColumnIndex = queryColumnIndex;
     }
 
     public static Column missing() {
-      return new Column(MISSING, -1, -1, -1, -1, -1, -1, -1, null);
+      return new Column(MISSING, -1, -1, -1, -1, -1, -1, -1, -1, null);
     }
 
     @Override
     public Column withFn(IFn aFn) {
       return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
-                        columnIndex, queryColumnIndex, aFn);
+                        columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, aFn);
     }
 
     public Column withEncoding(int anEncoding) {
       return new Column(repetition, repetitionLevel, definitionLevel, type, anEncoding, compression,
-                        columnIndex, queryColumnIndex, fn);
+                        columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, fn);
     }
 
     public Column withQueryColumnIndex(int aQueryColumnIndex) {
       return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
-                        columnIndex, aQueryColumnIndex, fn);
+                        columnIndex, enclosingCollectionMaxDefinitionLevel, aQueryColumnIndex, fn);
     }
 
     @Override
@@ -208,6 +211,7 @@ public abstract class Schema implements IWriteable {
       Bytes.writeUInt(mos, encoding);
       Bytes.writeUInt(mos, compression);
       Bytes.writeUInt(mos, columnIndex);
+      Bytes.writeUInt(mos, enclosingCollectionMaxDefinitionLevel);
     }
 
     @Override
@@ -219,7 +223,8 @@ public abstract class Schema implements IWriteable {
       return type == col.type
         && encoding == col.encoding
         && compression == col.compression
-        && columnIndex == col.columnIndex;
+        && columnIndex == col.columnIndex
+        && enclosingCollectionMaxDefinitionLevel == col.enclosingCollectionMaxDefinitionLevel;
     }
 
     @Override
@@ -232,6 +237,7 @@ public abstract class Schema implements IWriteable {
                         Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
                         Bytes.readSInt(bb),
+                        Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
                         Bytes.readUInt(bb),
@@ -571,7 +577,7 @@ public abstract class Schema implements IWriteable {
 
   public static Schema parse(Types types, Object unparsedSchema) {
     try {
-      return parse(types, PersistentVector.EMPTY, 0, 0, new LinkedList<Column>(), unparsedSchema);
+      return parse(types, PersistentVector.EMPTY, 0, 0, 0, new LinkedList<Column>(), unparsedSchema);
     } catch (SchemaParseException e) {
       String msg = String.format("Failed to parse schema '%s'. %s.", unparsedSchema, e.getMessage());
       throw new IllegalArgumentException(msg, e.getCause());
@@ -581,16 +587,17 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema parse(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                              LinkedList<Column> columns, Object o) {
+                              int enclosingCollDefLvl, LinkedList<Column> columns, Object o) {
     try {
       if (isCol(o)) {
-        return parseCol(types, repLvl, defLvl, columns, asCol(o));
+        return parseCol(types, repLvl, defLvl, enclosingCollDefLvl, columns, asCol(o));
       } else if (isRecord(o)) {
-        return parseRecord(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
+        return parseRecord(types, parents, repLvl, defLvl, enclosingCollDefLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentMap) {
-        return parseMap(types, parents, repLvl, defLvl, columns, (IPersistentMap)o);
+        return parseMap(types, parents, repLvl, defLvl, enclosingCollDefLvl, columns, (IPersistentMap)o);
       } else if (o instanceof IPersistentCollection) {
-        return parseRepeated(types, parents, repLvl, defLvl, columns, (IPersistentCollection)o);
+        return parseRepeated(types, parents, repLvl, defLvl, enclosingCollDefLvl, columns,
+                             (IPersistentCollection)o);
       }
       throw new IllegalArgumentException(String.format("Unsupported schema element '%s'", o));
     } catch (SchemaParseException e) {
@@ -600,7 +607,8 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  private static Schema parseCol(Types types, int repLvl, int defLvl, LinkedList<Column> columns, Col col) {
+  private static Schema parseCol(Types types, int repLvl, int defLvl, int enclosingCollDefLvl,
+                                 LinkedList<Column> columns, Col col) {
     int type = types.getType(col.type);
     Column column = new Column(isRequired(col)? REQUIRED : OPTIONAL,
                                repLvl,
@@ -609,6 +617,7 @@ public abstract class Schema implements IWriteable {
                                types.getEncoding(type, col.encoding),
                                types.getCompression(col.compression),
                                columns.size(),
+                               enclosingCollDefLvl,
                                -1,
                                null);
     columns.add(column);
@@ -621,7 +630,8 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema parseRecord(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                    LinkedList<Column> columns, IPersistentMap record) {
+                                    int enclosingCollDefLvl, LinkedList<Column> columns,
+                                    IPersistentMap record) {
     int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
     int repetition = isRequired(record)? REQUIRED : OPTIONAL;
     Field[] fields = new Field[RT.count(record)];
@@ -629,7 +639,8 @@ public abstract class Schema implements IWriteable {
     for (Object o : record) {
       IMapEntry e = (IMapEntry)o;
       Keyword name = (Keyword)e.key();
-      fields[i] = new Field(name, parse(types, parents.cons(name), repLvl, curDefLvl, columns, e.val()));
+      fields[i] = new Field(name, parse(types, parents.cons(name), repLvl, curDefLvl, enclosingCollDefLvl,
+                                        columns, e.val()));
       i += 1;
     }
     int leafColumnIndex = getLeafColumnIndex(columns);
@@ -648,7 +659,8 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema parseRepeated(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                      LinkedList<Column> columns, IPersistentCollection coll) {
+                                      int enclosingCollDefLvl, LinkedList<Column> columns,
+                                      IPersistentCollection coll) {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
@@ -656,7 +668,8 @@ public abstract class Schema implements IWriteable {
       throw new IllegalArgumentException("Repeated element cannot also be required.");
     }
     Object elem = RT.first(coll);
-    Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, defLvl + 1, columns, elem);
+    Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, defLvl + 1, defLvl + 1, columns,
+                                  elem);
     return new Collection(getRepeatedRepetition(coll),
                           repLvl + 1,
                           defLvl + 1,
@@ -666,7 +679,7 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Schema parseMap(Types types, IPersistentVector parents, int repLvl, int defLvl,
-                                 LinkedList<Column> columns, IPersistentMap map) {
+                                 int enclosingCollDefLvl, LinkedList<Column> columns, IPersistentMap map) {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
@@ -675,7 +688,7 @@ public abstract class Schema implements IWriteable {
     }
     IMapEntry e = (IMapEntry)RT.first(map);
     IPersistentMap elem = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
-    Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, columns,
+    Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, defLvl + 1, columns,
                                         (IPersistentMap)req(elem));
     return new Collection(MAP, repLvl + 1, defLvl + 1, getLeafColumnIndex(columns), keyValueRecord, null);
   }

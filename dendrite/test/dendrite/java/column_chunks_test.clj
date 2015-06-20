@@ -49,13 +49,13 @@
                                   100)))))
 
 (defn- column-repeated ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 2 3 type encoding compression 0 -1 nil))
+  (Schema$Column. 0 2 3 type encoding compression 0 0 -1 nil))
 
 (defn- column-non-repeated ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 0 3 type encoding compression 0 -1 nil))
+  (Schema$Column. 0 0 3 type encoding compression 0 0 -1 nil))
 
 (defn- column-required ^Schema$Column [type encoding compression]
-  (Schema$Column. 0 0 0 type encoding compression 0 -1 nil))
+  (Schema$Column. 0 0 0 type encoding compression 0 0 -1 nil))
 
 (defn- rand-repeated-values [^Schema$Column column n coll]
   (->> coll
@@ -85,7 +85,7 @@
     (testing "value mapping"
       (let [^clojure.lang.IFn f (fnil (partial * 2) 1)
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
-        (is (= (map (partial helpers/map-leveled f) input-values)
+        (is (= (map (partial  helpers/map-leveled f 0) input-values)
                (flatten-1 reader-with-f)))))
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
@@ -122,7 +122,7 @@
     (testing "value mapping"
       (let [^clojure.lang.IFn f #(if % (int (* 2 %)) %)
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
-        (is (= (map (partial helpers/map-leveled f) input-values)
+        (is (= (map (partial helpers/map-leveled f 0) input-values)
                (flatten-1 reader-with-f)))))
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
@@ -147,7 +147,7 @@
     (testing "value mapping"
       (let [^clojure.lang.IFn f #(if % (int (* 2 %)) %)
             reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
-        (is (= (map (partial helpers/map-leveled f) input-values)
+        (is (= (map (partial helpers/map-leveled f 0) input-values)
                (flatten-1 reader-with-f)))))
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]

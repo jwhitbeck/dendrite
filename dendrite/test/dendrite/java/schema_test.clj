@@ -98,23 +98,25 @@
          [:ngrams] Schema/VECTOR 1 1
          [:ngrams nil] Schema/VECTOR 2 2
          [:ngrams nil nil] Schema/REQUIRED 2 2)))
-  (testing "leaves are properly configured in test schema"
-    (are [ks t enc com col-idx] (let [^Schema$Column column (sub-schema-in test-schema ks)]
-                                  (and (= t (.type column))
-                                       (= enc (.encoding column))
-                                       (= com (.compression column))
-                                       (= col-idx (.columnIndex column))))
-         [:docid] Types/LONG Types/DELTA Types/DEFLATE 0
-         [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1
-         [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2
-         [:name nil :language nil :code] Types/STRING Types/PLAIN Types/NONE 3
-         [:name nil :language nil :country] Types/STRING Types/PLAIN Types/NONE 4
-         [:name nil :url] Types/STRING Types/PLAIN Types/NONE 5
-         [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6
-         [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7
-         [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8
-         [:is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9
-         [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10))
+  (testing "columns are properly configured in test schema"
+    (are [ks t enc com col-idx enc-def-lvl]
+      (let [^Schema$Column column (sub-schema-in test-schema ks)]
+        (and (= t (.type column))
+             (= enc (.encoding column))
+             (= com (.compression column))
+             (= col-idx (.columnIndex column))
+             (= enc-def-lvl (.enclosingCollectionMaxDefinitionLevel column))))
+         [:docid] Types/LONG Types/DELTA Types/DEFLATE 0 0
+         [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1 2
+         [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2 2
+         [:name nil :language nil :code] Types/STRING Types/PLAIN Types/NONE 3 3
+         [:name nil :language nil :country] Types/STRING Types/PLAIN Types/NONE 4 3
+         [:name nil :url] Types/STRING Types/PLAIN Types/NONE 5 1
+         [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6 1
+         [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7 1
+         [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8 1
+         [:is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9 0
+         [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10 2))
   (testing "records have the proper leaf-column-index"
     (are [ks leaf-column-idx] (let [^Schema$Record record (sub-schema-in test-schema ks)]
                                 (= leaf-column-idx (.leafColumnIndex record)))

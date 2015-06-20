@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- bundle-factory ^Bundle$Factory [num-columns]
-  (Bundle$Factory. (into-array (repeat num-columns (Schema$Column. 0 0 0 0 0 0 0 0 nil)))))
+  (Bundle$Factory. (into-array (repeat num-columns (Schema$Column. 0 0 0 0 0 0 0 0 0 nil)))))
 
 (deftest bundle-striping
   (let [stripe (reify Stripe$Fn

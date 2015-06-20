@@ -241,7 +241,25 @@
            IllegalArgumentException #"No reader function was provided for tag 'foo'."
            (helpers/throw-cause
             (doall (d/read {:query {:docid '_ :name (d/tag 'foo '_)}} r)))))))
+  (testing "readers functions behave properly on repeated columns"
+    (with-open [w (d/file-writer [{:foo 'int}] tmp-filename)]
+      (.write w [nil {:foo 1}])
+      (.write w [nil])
+      (.write w nil)
+      (.write w [{:foo 1}]))
+    (with-open [r (d/file-reader tmp-filename)]
+      (is (= [[nil {:foo 2}] [nil] nil [{:foo 2}]]
+             (d/read {:query [{:foo (d/tag 'foo '_)}] :readers {'foo inc}} r))))
+    (with-open [w (d/file-writer ['int] tmp-filename)]
+      (.write w [1 nil 2])
+      (.write w nil)
+      (.write w [1 2])
+      (.write w [nil]))
+    (with-open [r (d/file-reader tmp-filename)]
+      (is (= [[2 1 3] nil [2 3] [1]]
+             (d/read {:query [(d/tag 'foo '_)] :readers {'foo (fnil inc 0)}} r)))))
   (testing "reader functions behave properly on missing fields"
+    (.close (dremel-paper-writer))
     (with-open [r (d/file-reader tmp-filename)]
       (is (= [true true]
              (d/read {:query (d/tag 'foo {:foo '_}) :readers {'foo empty?}} r)))

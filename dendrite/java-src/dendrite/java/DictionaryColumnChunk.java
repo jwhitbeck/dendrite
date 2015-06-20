@@ -43,6 +43,7 @@ public final class DictionaryColumnChunk {
          partitionLength,
          column.repetitionLevel,
          column.definitionLevel,
+         column.enclosingCollectionMaxDefinitionLevel,
          types.getDecoderFactory(column.type, Types.PLAIN, column.fn),
          types.getDecoderFactory(Types.INT, Types.PACKED_RUN_LENGTH),
          types.getDecompressorFactory(column.compression)).iterator();
@@ -198,7 +199,8 @@ public final class DictionaryColumnChunk {
 
     private static Schema.Column getIndicesColumn(Schema.Column column) {
       return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
-                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex, -1, null);
+                               Types.INT, Types.PACKED_RUN_LENGTH, Types.NONE, column.columnIndex,
+                               column.enclosingCollectionMaxDefinitionLevel, -1, null);
     }
   }
 }

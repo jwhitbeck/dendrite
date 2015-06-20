@@ -19,8 +19,10 @@
 (def ^Types types (Types/create))
 
 (defn- write-read-data-page
-  [{:keys [max-repetition-level max-definition-level type encoding compression f]
-    :or {type Types/INT encoding Types/PLAIN compression Types/NONE}}
+  [{:keys [max-repetition-level max-definition-level type encoding compression f
+           enclosing-coll-max-definition-level]
+    :or {type Types/INT encoding Types/PLAIN compression Types/NONE
+         enclosing-coll-max-definition-level 0}}
    input-values]
   (let [writer (DataPage$Writer/create max-repetition-level max-definition-level
                                        (.getEncoder types type encoding)
@@ -29,6 +31,7 @@
       (.write writer v))
     (let [bb (helpers/output-buffer->byte-buffer writer)
           reader (DataPage$Reader/create bb max-repetition-level max-definition-level
+                                         enclosing-coll-max-definition-level
                                          (.getDecoderFactory types type encoding f)
                                          (.getDecompressorFactory types compression))]
       (cond->> (seq reader)
@@ -42,16 +45,28 @@
             output-values (write-read-data-page levels input-values)]
         (is (= output-values input-values))))
     (testing "with a function"
-      (let [f (fnil (partial * 2) 1)
-            levels {:max-definition-level 3 :max-repetition-level 2 :f f}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
-            output-values (write-read-data-page levels input-values)]
-        (is (= output-values (helpers/map-leveled f input-values))))
-      (let [f (partial * 2)
-            levels {:max-definition-level 3 :max-repetition-level 2 :f f}
-            input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 10))]
-        (is (thrown-with-msg? IllegalArgumentException #"Decoder function throws exception on null values"
-                              (write-read-data-page levels input-values)))))
+      (testing "repeated value within a repeated record"
+          (let [f (fnil (partial * 2) 1)
+                levels {:max-definition-level 3 :max-repetition-level 2 :f f}
+                input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
+                output-values (write-read-data-page levels input-values)]
+            (is (= output-values (helpers/map-leveled f 0 input-values)))))
+      (testing "repeated non-required value"
+        (let [f (fnil (partial * 2) 1)
+              levels {:max-definition-level 3 :max-repetition-level 2 :f f
+                      :enclosing-coll-max-definition-level 2}
+              input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
+              output-values (write-read-data-page levels input-values)]
+          (is (= output-values (helpers/map-leveled f (:enclosing-coll-max-definition-level levels)
+                                                    input-values)))))
+      (testing "repeated required value"
+        (let [f (partial * 2)
+              levels {:max-definition-level 1 :max-repetition-level 1 :f f
+                      :enclosing-coll-max-definition-level 1}
+              input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
+              output-values (write-read-data-page levels input-values)]
+          (is (= output-values (helpers/map-leveled f (:enclosing-coll-max-definition-level levels)
+                                                    input-values))))))
     (testing "all nils"
       (let [levels {:max-definition-level 3 :max-repetition-level 2}
             input-values (->> (repeat nil) (helpers/leveled levels) (take 1000))
@@ -103,6 +118,7 @@
                      (.write input-values))
             reader (DataPage$Reader/create (helpers/output-buffer->byte-buffer writer)
                                            (:max-repetition-level levels) (:max-definition-level levels)
+                                           0
                                            (.getDecoderFactory types Types/INT Types/PLAIN)
                                            (.getDecompressorFactory types Types/NONE))]
         (is (= (seq reader) (seq reader)))))))
@@ -180,6 +196,7 @@
                                                         num-pages
                                                         (:max-repetition-level levels)
                                                         (:max-definition-level levels)
+                                                        0
                                                         (.getDecoderFactory types Types/INT Types/PLAIN)
                                                         (.getDecompressorFactory types Types/NONE))]
         (is (= (repeat num-pages input-values)
@@ -193,6 +210,7 @@
                                 partition-length
                                 (:max-repetition-level levels)
                                 (:max-definition-level levels)
+                                0
                                 (.getDecoderFactory types Types/INT Types/PLAIN)
                                 (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
@@ -207,10 +225,11 @@
                                 partition-length
                                 (:max-repetition-level levels)
                                 (:max-definition-level levels)
+                                0
                                 (.getDecoderFactory types Types/INT Types/PLAIN f)
                                 (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
-        (is (= (flatten-1 (repeat num-pages (helpers/map-leveled f input-values)))
+        (is (= (flatten-1 (repeat num-pages (helpers/map-leveled f 0 input-values)))
                (mapcat flatten-1 partitioned-values)))))
     (testing "trying to read dictionary throws exception"
       (is (thrown-with-msg? IllegalStateException #"is not a dictionary page type"
@@ -220,6 +239,7 @@
                                     31
                                     (:max-repetition-level levels)
                                     (:max-definition-level levels)
+                                    0
                                     (.getDecoderFactory types Types/INT Types/PLAIN)
                                     (.getDecoderFactory types Types/INT Types/VLQ)
                                     (.getDecompressorFactory types Types/NONE))))))))
@@ -256,11 +276,12 @@
                                num-pages
                                (:max-repetition-level levels)
                                (:max-definition-level levels)
+                               0
                                (Dictionary$DecoderFactory. dictionary indices-decoder-factory
                                                            dictionary-decoder-factory)
                                (.getDecompressorFactory types Types/NONE))]
         (is (= (->> input-indices
-                    (helpers/map-leveled #(when % (aget dictionary (int %))))
+                    (helpers/map-leveled #(when % (aget dictionary (int %))) 0)
                     (repeat num-pages))
                (for [^DataPage$Reader rdr data-page-readers]
                  (flatten-1 rdr))))))
@@ -272,12 +293,13 @@
                                 partition-length
                                 (:max-repetition-level levels)
                                 (:max-definition-level levels)
+                                0
                                 (.getDecoderFactory types Types/STRING Types/PLAIN)
                                 (.getDecoderFactory types Types/INT Types/PLAIN)
                                 (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
-                    (helpers/map-leveled #(when % (aget dictionary (int %))))
+                    (helpers/map-leveled #(when % (aget dictionary (int %))) 0)
                     (repeat num-pages)
                     flatten-1)
                (mapcat flatten-1 partitioned-values)))))
@@ -290,12 +312,13 @@
                                 partition-length
                                 (:max-repetition-level levels)
                                 (:max-definition-level levels)
+                                0
                                 (.getDecoderFactory types Types/STRING Types/PLAIN f)
                                 (.getDecoderFactory types Types/INT Types/PLAIN)
                                 (.getDecompressorFactory types Types/NONE))]
         (is (->> partitioned-values butlast (map count) (every? (partial = partition-length))))
         (is (= (->> input-indices
-                    (helpers/map-leveled #(f (when % (aget dictionary (int %)))))
+                    (helpers/map-leveled #(f (when % (aget dictionary (int %)))) 0)
                     (repeat num-pages)
                     flatten-1)
                (mapcat flatten-1 partitioned-values)))))
@@ -307,5 +330,6 @@
                                     31
                                     (:max-repetition-level levels)
                                     (:max-definition-level levels)
+                                    0
                                     (.getDecoderFactory types Types/INT Types/PLAIN)
                                     (.getDecompressorFactory types Types/NONE))))))))
