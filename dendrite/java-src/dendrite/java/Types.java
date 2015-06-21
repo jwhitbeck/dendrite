@@ -24,6 +24,7 @@ import clojure.lang.Symbol;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -572,14 +573,14 @@ public final class Types {
     if (s == null) {
       return null;
     }
-    return s.getBytes(Constants.utf8Charset);
+    return s.getBytes(StandardCharsets.UTF_8);
   }
 
   public static String toString(byte[] bs) {
     if (bs == null) {
       return null;
     }
-    return new String(bs, Constants.utf8Charset);
+    return new String(bs, StandardCharsets.UTF_8);
   }
 
   public static Symbol toSymbol(String s) {
