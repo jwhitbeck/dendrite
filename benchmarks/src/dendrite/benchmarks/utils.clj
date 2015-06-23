@@ -588,7 +588,7 @@
 
 (defn dendrite-benchmarks [schema]
   [{:name "dendrite-defaults"
-    :description "dendrite with defauls parameters"
+    :description "dendrite with default parameters"
     :family "dendrite"
     :create-fn #(json-file->dendrite-file schema %1 %2)
     :bench-fn read-dendrite-file}])
