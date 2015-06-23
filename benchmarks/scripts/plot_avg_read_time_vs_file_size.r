@@ -25,7 +25,7 @@ ggplot(parallel_results, aes(x=reference_read_time/avg_read_time, y=reference_fi
   scale_x_continuous(expand=c(0,0)) +
   scale_y_continuous(expand=c(0,0)) +
   expand_limits(x=0, y=0) +
-  expand_limits(x=12, y=3) +
+  expand_limits(x=13, y=3) +
   labs(title="Full schema read times vs file size",
        y="File compression improvement (reference: gzipped EDN)",
        x="Read time speedup (reference: gzipped EDN)")
