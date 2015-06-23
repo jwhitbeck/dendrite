@@ -57,7 +57,7 @@ public final class Stats {
 
   public static Page createDictionaryPageStats(long numValues, long length,
                                                long dictionaryHeaderLength, long dictionaryLength) {
-    return new Page(0, 0, 0, 0, 0, 0, 0, numValues, dictionaryHeaderLength, dictionaryLength);
+    return new Page(0, 0, length, 0, 0, 0, 0, numValues, dictionaryHeaderLength, dictionaryLength);
   }
 
   public static final class ColumnChunk {
