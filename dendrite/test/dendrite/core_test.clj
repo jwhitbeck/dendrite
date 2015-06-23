@@ -145,7 +145,6 @@
     (is (thrown-with-msg? IllegalStateException #"File is not a valid dendrite file."
                           (with-open [f (d/file-reader tmp-filename)])))))
 
-
 (deftest record-group-lengths
   (let [records (take 10000 (helpers/rand-test-records))]
     (letfn [(avg-record-group-length [target-length]

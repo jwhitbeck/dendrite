@@ -33,24 +33,24 @@ public final class Assemble {
     Object invoke(ListIterator[] iterators);
   }
 
-  public static Fn getFn(Schema schema) {
+  public static Fn getFn(Types types, Schema schema) {
     if (schema instanceof Schema.Record) {
-      return getRecordFn((Schema.Record)schema);
+      return getRecordFn(types, (Schema.Record)schema);
     } else if (schema instanceof Schema.Column) {
       if (schema.repetition < 0) {
         return getMissingValueFn(schema);
       } else if (schema.repetitionLevel == 0) {
-        return getNonRepeatedValueFn((Schema.Column)schema);
+        return getNonRepeatedValueFn(types, (Schema.Column)schema);
       } else {
-        return getRepeatedValueFn((Schema.Column)schema);
+        return getRepeatedValueFn(types, (Schema.Column)schema);
       }
     } else /* if (schema instanceof Schema.Collection) */ {
       if (schema.repetition < 0) {
         return getMissingValueFn(schema);
       } else if (schema.repetition == Schema.MAP) {
-        return getMapFn((Schema.Collection)schema);
+        return getMapFn(types, (Schema.Collection)schema);
       } else {
-        return getRepeatedFn((Schema.Collection)schema);
+        return getRepeatedFn(types, (Schema.Collection)schema);
       }
     }
   }
@@ -65,27 +65,81 @@ public final class Assemble {
     };
   }
 
-  private static Fn getNonRepeatedValueFn(Schema.Column column) {
+  private static Fn getNonRepeatedValueFn(Types types, Schema.Column column) {
     final int colIdx = column.queryColumnIndex;
-    // NOTE: the column.fn is applied by the decoder for greater efficiency
-    return new Fn() {
-      public Object invoke(ListIterator[] iterators) {
-        return iterators[colIdx].next();
-      }
-    };
+    final IFn fromBaseTypeFn;
+    if (column.hasDictionary() || Types.USE_IN_COLUMN_LOGICAL_TYPES) {
+      // NOTE: For columns with dictionaries, the column.fn is applied by the column decoder for greater
+      // efficiency.
+      fromBaseTypeFn = null;
+    } else {
+      fromBaseTypeFn = types.getFromBaseTypeFn(column.type, column.fn);
+    }
+    if (fromBaseTypeFn == null) {
+      return new Fn() {
+        public Object invoke(ListIterator[] iterators) {
+          return iterators[colIdx].next();
+        }
+      };
+    } else if (column.definitionLevel == 0) {
+      return new Fn() {
+        public Object invoke(ListIterator[] iterators) {
+          return fromBaseTypeFn.invoke(iterators[colIdx].next());
+        }
+      };
+    } else {
+      final DelayedNullValue delayedNullValue = DelayedNullValue.withFn(column.fn);
+      return new Fn() {
+        public Object invoke(ListIterator[] iterators) {
+          Object v = iterators[colIdx].next();
+          if (v == null) {
+            return delayedNullValue.get();
+          } else {
+            return fromBaseTypeFn.invoke(v);
+          }
+        }
+      };
+    }
   }
 
   @SuppressWarnings("unchecked")
-  private static Fn getRepeatedValueFn(Schema.Column column) {
-    // NOTE: the column.fn is applied by the decoder for greater efficiency
+  private static Fn getRepeatedValueFn(Types types, Schema.Column column) {
     final int colIdx = column.queryColumnIndex;
-    return new Fn() {
-      public Object invoke(ListIterator[] iterators) {
-        ListIterator<LeveledValue> iterator = iterators[colIdx];
-        LeveledValue lv = iterator.next();
-        return lv.value;
-      }
-    };
+    final IFn fromBaseTypeFn;
+    if (column.hasDictionary() || Types.USE_IN_COLUMN_LOGICAL_TYPES) {
+      // NOTE: For columns with dictionaries, the column.fn is applied by the column decoder for greater
+      // efficiency.
+      fromBaseTypeFn = null;
+    } else {
+      fromBaseTypeFn = types.getFromBaseTypeFn(column.type, column.fn);
+    }
+    if (fromBaseTypeFn == null) {
+      return new Fn() {
+        public Object invoke(ListIterator[] iterators) {
+          ListIterator<LeveledValue> iterator = iterators[colIdx];
+          LeveledValue lv = iterator.next();
+          return lv.value;
+        }
+      };
+    } else {
+      final DelayedNullValue delayedNullValue = DelayedNullValue.withFn(column.fn);
+      final int enclosingCollectionMaxDefinitionLevel = column.enclosingCollectionMaxDefinitionLevel;
+      return new Fn() {
+        public Object invoke(ListIterator[] iterators) {
+          ListIterator<LeveledValue> iterator = iterators[colIdx];
+          LeveledValue lv = iterator.next();
+          if (lv.value == null) {
+            if (lv.definitionLevel == enclosingCollectionMaxDefinitionLevel) {
+              return delayedNullValue.get();
+            } else {
+              return null;
+            }
+          } else {
+            return fromBaseTypeFn.invoke(lv.value);
+          }
+        }
+      };
+    }
   }
 
   private interface RecordConstructorFn {
@@ -108,7 +162,7 @@ public final class Assemble {
     };
   }
 
-  private static Fn getRecordFn(Schema.Record record) {
+  private static Fn getRecordFn(Types types, Schema.Record record) {
     Schema.Field[] fields = record.fields;
     int n = fields.length;
     final Keyword[] fieldNames = new Keyword[n];
@@ -116,7 +170,7 @@ public final class Assemble {
     for (int i=0; i<n; ++i) {
       Schema.Field field = fields[i];
       fieldNames[i] = field.name;
-      fieldAssemblyFns[i] = getFn(field.value);
+      fieldAssemblyFns[i] = getFn(types, field.value);
     }
     final RecordConstructorFn recordConstructorFn = getRecordConstructorFn(fieldNames, fieldAssemblyFns);
     if (record.fn == null) {
@@ -174,7 +228,7 @@ public final class Assemble {
       }
     };
 
-  private static Fn getRepeatedFn(Schema.Collection coll) {
+  private static Fn getRepeatedFn(Types types, Schema.Collection coll) {
     final int leafColumnIndex = coll.leafColumnIndex;
     final int repetitionLevel = coll.repetitionLevel;
     final int definitionLevel = coll.definitionLevel;
@@ -184,7 +238,7 @@ public final class Assemble {
     } else {
       emptyColl = PersistentVector.EMPTY;
     }
-    final Fn repeatedElemFn = getFn(coll.repeatedSchema);
+    final Fn repeatedElemFn = getFn(types, coll.repeatedSchema);
     final Fn repeatedFn = new Fn() {
         public Object invoke(ListIterator[] iterators) {
           int leafDefinitionLevel = getNextDefinitionLevel(iterators, leafColumnIndex);
@@ -224,8 +278,8 @@ public final class Assemble {
     }
   }
 
-  private static Fn getMapFn(Schema.Collection coll) {
-    final Fn listFn = getFn(coll.withRepetition(Schema.LIST).withFn(null));
+  private static Fn getMapFn(Types types, Schema.Collection coll) {
+    final Fn listFn = getFn(types, coll.withRepetition(Schema.LIST).withFn(null));
     final Fn mapFn = new Fn() {
         public Object invoke(ListIterator[] iterators) {
           ISeq s = RT.seq(listFn.invoke(iterators));

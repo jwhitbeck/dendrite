@@ -60,7 +60,8 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     DataPage.Writer statsPageWriter
       = DataPage.Writer.create(column.repetitionLevel,
                                column.definitionLevel,
-                               types.getEncoder(plainColumn.type, plainColumn.encoding,
+                               types.getEncoder(ColumnChunks.getType(types, plainColumn.type),
+                                                plainColumn.encoding,
                                                 getShim(statsCollector)),
                                null);
     DataColumnChunk.Writer plainColumnChunkWriter
@@ -80,7 +81,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
       return new ByteArrayColumnChunk(types, plainColumnChunkWriter, plainColumn, statsCollector);
     case Types.FIXED_LENGTH_BYTE_ARRAY:
       return new DefaultColumnChunk(types, plainColumnChunkWriter, plainColumn, statsCollector);
-    default: return null; // Never reached
+    default: throw new IllegalStateException(); // Never reached
     }
   }
 

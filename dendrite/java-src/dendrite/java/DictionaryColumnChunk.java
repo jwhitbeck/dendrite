@@ -82,7 +82,8 @@ public final class DictionaryColumnChunk {
     private int dictionaryHeaderLength = -1;
 
     private Writer(Types types, Schema.Column column, int targetDataPageLength) {
-      this.dictEncoder = Dictionary.Encoder.create(column.type, Types.PACKED_RUN_LENGTH);
+      this.dictEncoder = Dictionary.Encoder.create(ColumnChunks.getType(types, column.type),
+                                                   Types.PACKED_RUN_LENGTH);
       Schema.Column indicesColumn = getIndicesColumn(column);
       DataPage.Writer indicesPageWriter = DataPage.Writer.create(column.repetitionLevel,
                                                                  column.definitionLevel,
@@ -92,8 +93,9 @@ public final class DictionaryColumnChunk {
         = DataColumnChunk.Writer.create(indicesPageWriter, indicesColumn, targetDataPageLength);
       this.column = column;
       this.mos = new MemoryOutputStream();
-      this.dictPageWriter = DictionaryPage.Writer.create(types.getEncoder(column.type, Types.PLAIN),
-                                                         types.getCompressor(column.compression));
+      this.dictPageWriter
+        = DictionaryPage.Writer.create(types.getEncoder(ColumnChunks.getType(types, column.type), Types.PLAIN),
+                                       types.getCompressor(column.compression));
     }
 
     public static Writer create(Types types, Schema.Column column, int targetDataPageLength) {

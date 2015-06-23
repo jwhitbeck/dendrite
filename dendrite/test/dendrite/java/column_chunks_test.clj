@@ -15,8 +15,8 @@
   (:import [dendrite.java LeveledValue ColumnChunks DataColumnChunk$Reader
             DataColumnChunk$Writer IColumnChunkReader IColumnChunkWriter IPageHeader
             OptimizingColumnChunkWriter Schema$Column Options Types]
-           [java.util Date Calendar]
-           [java.text SimpleDateFormat]))
+           [java.text SimpleDateFormat]
+           [java.util Date Calendar]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,6 +75,8 @@
         (.setTime (.parse ^SimpleDateFormat simple-date-format start-date-str)))
       iterate-calendar-by-day))
 
+(use-fixtures :each helpers/use-in-column-logical-types)
+
 (deftest data-column-chunk
   (let [column (column-repeated Types/INT Types/PLAIN Types/DEFLATE)
         input-values (->> (repeatedly #(helpers/rand-int-bits 10)) (rand-repeated-values column 1000))
@@ -82,11 +84,6 @@
         output-values (flatten-1 reader)]
     (testing "write/read a data colum-chunk"
       (is (= input-values output-values)))
-    (testing "value mapping"
-      (let [^clojure.lang.IFn f (fnil (partial * 2) 1)
-            reader-with-f (write-column-chunk-and-get-reader (.withFn column f) input-values)]
-        (is (= (map (partial  helpers/map-leveled f 0) input-values)
-               (flatten-1 reader-with-f)))))
     (testing "metadata reports correct length"
       (let [w (ColumnChunks/createWriter types column test-target-data-page-length)]
         (.write w input-values)
@@ -260,7 +257,6 @@
       (is (= output-values input-values))
       (is (= Types/DICTIONARY (-> reader .getColumn .encoding))))))
 
-
 (deftest find-best-long-encodings
   (testing "random longs"
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
@@ -421,16 +417,11 @@
       (is (= output-values input-values))
       (is (= Types/INCREMENTAL (-> reader .getColumn .encoding)))))
   (testing "incrementing dates"
-    (let [custom-types (Types/create (Options/getCustomTypeDefinitions
-                                      {:custom-types
-                                       {'date-str {:base-type 'string
-                                                   :to-base-type-fn #(locking simple-date-format
-                                                                       (.format simple-date-format %))
-                                                   :from-base-type-fn #(locking simple-date-format
-                                                                         (.parse simple-date-format %))}}}))
-          column (column-required (.getType custom-types 'date-str) Types/PLAIN Types/NONE)
-          input-values (take 1000 (days-seq "2014-01-01"))
-          reader (write-optimized-column-chunk-and-get-reader column custom-types {} input-values)
+    (let [column (column-required Types/STRING Types/PLAIN Types/NONE)
+          input-values (->> (days-seq "2014-01-01")
+                            (map #(.format simple-date-format %))
+                            (take 1000))
+          reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
       (is (= output-values input-values))
       (is (= Types/INCREMENTAL (-> reader .getColumn .encoding)))))

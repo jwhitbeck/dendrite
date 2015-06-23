@@ -16,6 +16,15 @@ import java.nio.ByteBuffer;
 
 public final class ColumnChunks {
 
+  // For testing convenience
+  static int getType(Types types, int columnType) {
+    if (Types.USE_IN_COLUMN_LOGICAL_TYPES) {
+      return columnType;
+    } else {
+      return types.getPrimitiveType(columnType);
+    }
+  }
+
   public static IColumnChunkWriter createWriter(Types types, Schema.Column column,
                                                 int targetDataPageLength) {
     switch (column.encoding) {
@@ -38,4 +47,5 @@ public final class ColumnChunks {
       return new DataColumnChunk.Reader(types, bb, columnChunkMetadata, column, partitionLength);
     }
   }
+
 }

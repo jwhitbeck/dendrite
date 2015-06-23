@@ -22,6 +22,8 @@
 
 (def ^Types types (Types/create))
 
+(use-fixtures :each helpers/use-in-column-logical-types)
+
 (deftest dremel-write-read
   (let [bundle-factory (Bundle$Factory. (Schema/getColumns dremel-paper-schema))
         dremel-bundle (->> (map list dremel-paper-record1-striped dremel-paper-record2-striped)

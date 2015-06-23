@@ -174,6 +174,10 @@ public abstract class Schema implements IWriteable {
       this.queryColumnIndex = queryColumnIndex;
     }
 
+    public boolean hasDictionary() {
+      return encoding == Types.DICTIONARY || encoding == Types.FREQUENCY;
+    }
+
     public static Column missing() {
       return new Column(MISSING, -1, -1, -1, -1, -1, -1, -1, -1, null);
     }

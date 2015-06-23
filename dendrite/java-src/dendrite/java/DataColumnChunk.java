@@ -37,14 +37,15 @@ public final class DataColumnChunk {
 
     @Override
     public Iterator<List<Object>> iterator() {
-      return Pages.readAndPartitionDataPages(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
-                                             columnChunkMetadata.numDataPages,
-                                             partitionLength,
-                                             column.repetitionLevel,
-                                             column.definitionLevel,
-                                             column.enclosingCollectionMaxDefinitionLevel,
-                                             types.getDecoderFactory(column.type, column.encoding, column.fn),
-                                             types.getDecompressorFactory(column.compression)).iterator();
+      return Pages.readAndPartitionDataPages(
+          Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+          columnChunkMetadata.numDataPages,
+          partitionLength,
+          column.repetitionLevel,
+          column.definitionLevel,
+          column.enclosingCollectionMaxDefinitionLevel,
+          types.getDecoderFactory(ColumnChunks.getType(types, column.type), column.encoding),
+          types.getDecompressorFactory(column.compression)).iterator();
     }
 
     @Override
@@ -54,13 +55,14 @@ public final class DataColumnChunk {
     }
 
     public Iterable<DataPage.Reader> getPageReaders() {
-      return Pages.getDataPageReaders(Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
-                                      columnChunkMetadata.numDataPages,
-                                      column.repetitionLevel,
-                                      column.definitionLevel,
-                                      column.enclosingCollectionMaxDefinitionLevel,
-                                      types.getDecoderFactory(column.type, column.encoding, column.fn),
-                                      types.getDecompressorFactory(column.compression));
+      return Pages.getDataPageReaders(
+          Bytes.sliceAhead(bb, columnChunkMetadata.dataPageOffset),
+          columnChunkMetadata.numDataPages,
+          column.repetitionLevel,
+          column.definitionLevel,
+          column.enclosingCollectionMaxDefinitionLevel,
+          types.getDecoderFactory(ColumnChunks.getType(types, column.type), column.encoding),
+          types.getDecompressorFactory(column.compression));
     }
 
     @Override
@@ -101,7 +103,7 @@ public final class DataColumnChunk {
       DataPage.Writer pageWriter
         = DataPage.Writer.create(column.repetitionLevel,
                                  column.definitionLevel,
-                                 types.getEncoder(column.type, column.encoding),
+                                 types.getEncoder(ColumnChunks.getType(types, column.type), column.encoding),
                                  types.getCompressor(column.compression));
       return create(pageWriter, column, targetDataPageLength);
     }

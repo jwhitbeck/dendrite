@@ -18,9 +18,12 @@ public abstract class DelayedNullValue {
 
   public abstract Object get();
 
-  public final static DelayedNullValue NULL = new AlwaysNull();
+  private final static DelayedNullValue NULL = new AlwaysNull();
 
   public static DelayedNullValue withFn(IFn fn) {
+    if (fn == null) {
+      return NULL;
+    }
     return new FunctionAppliedToNull(fn);
   }
 

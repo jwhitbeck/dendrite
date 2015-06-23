@@ -561,6 +561,9 @@ public final class Types {
     NONE_SYM = Symbol.intern("none"),
     DEFLATE_SYM = Symbol.intern("deflate");
 
+  // For testing convenience
+  public static boolean USE_IN_COLUMN_LOGICAL_TYPES = false;
+
   public static IEncoder createLevelsEncoder(int maxLevel) {
     return new IntFixedBitWidthPackedRunLength.Encoder(Bytes.getBitWidth(maxLevel));
   }
@@ -1006,7 +1009,13 @@ public final class Types {
     } else {
       LogicalType lt = logicalTypes[type];
       decoderFactory = getPrimitiveDecoderFactory(lt.baseType, encoding);
-      f = (fn == null)? lt.fromBaseTypeFn : Utils.comp(lt.fromBaseTypeFn, fn);
+      if (fn == null) {
+        f = lt.fromBaseTypeFn;
+      } else if (lt.fromBaseTypeFn != null) {
+        f = Utils.comp(lt.fromBaseTypeFn, fn);
+      } else {
+        f = fn;
+      }
       if (f == null) {
         // This can occur when trying to read a custom-type without providing a from-base-type-fn.
         return decoderFactory;
@@ -1021,7 +1030,7 @@ public final class Types {
         };
       }
       public DelayedNullValue getDelayedNullValue() {
-        return (fn == null)? DelayedNullValue.NULL : DelayedNullValue.withFn(fn);
+        return DelayedNullValue.withFn(fn);
       }
     };
   }
@@ -1066,6 +1075,20 @@ public final class Types {
       return null;
     }
     return logicalTypes[type].fromBaseTypeFn;
+  }
+
+  public IFn getFromBaseTypeFn(int type, IFn fn) {
+    if (isPrimitive(type)) {
+      return fn;
+    }
+    LogicalType lt = logicalTypes[type];
+    if (fn == null) {
+      return lt.fromBaseTypeFn;
+    } else if (lt.fromBaseTypeFn != null) {
+      return Utils.comp(lt.fromBaseTypeFn, fn);
+    } else {
+      return fn;
+    }
   }
 
   public int getPrimitiveType(int type) {

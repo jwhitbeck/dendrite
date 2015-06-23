@@ -16,6 +16,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each helpers/use-in-column-logical-types)
+
 (defn stripe-record [record schema]
   (let [n (count (Schema/getColumns schema))
         a (object-array n)]
@@ -42,7 +44,7 @@
       (is (= (stripe-record test-record test-schema*)
              [0
               [(LeveledValue. 0 3 3)]
-              [(LeveledValue. 0 3 1) (LeveledValue. 1 3 2) ]
+              [(LeveledValue. 0 3 1) (LeveledValue. 1 3 2)]
               [(LeveledValue. 0 4 "us") (LeveledValue. 2 4 "gb")]
               [(LeveledValue. 0 4 nil) (LeveledValue. 2 5 "Great Britain")]
               [(LeveledValue. 0 3 "http://P")]

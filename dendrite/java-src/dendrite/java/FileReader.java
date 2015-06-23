@@ -661,7 +661,7 @@ public final class FileReader implements Closeable, IReader {
 
     private synchronized Assemble.Fn getAssembleFn() {
       if (assembleFn == null) {
-        assembleFn = Assemble.getFn(getQueryResult().schema);
+        assembleFn = Assemble.getFn(FileReader.this.types, getQueryResult().schema);
       }
       return assembleFn;
     }

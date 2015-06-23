@@ -15,6 +15,6 @@ package dendrite.java;
 public abstract class ADecoderFactory implements IDecoderFactory {
   @Override
   public DelayedNullValue getDelayedNullValue() {
-    return DelayedNullValue.NULL;
+    return DelayedNullValue.withFn(null);
   }
 }

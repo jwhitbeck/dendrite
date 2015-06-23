@@ -177,6 +177,14 @@
        (seq keywords) (assoc :keywords keywords)
        (seq ngrams) (assoc :ngrams ngrams)))))
 
+(defmacro with-in-column-logical-types [& body]
+  `(do (set! Types/USE_IN_COLUMN_LOGICAL_TYPES true)
+       ~@body
+       (set! Types/USE_IN_COLUMN_LOGICAL_TYPES false)))
+
+(defn use-in-column-logical-types [f]
+  (with-in-column-logical-types (f)))
+
 (defn rand-test-records [] (map rand-test-record (range)))
 
 (defmacro throw-cause [& body]

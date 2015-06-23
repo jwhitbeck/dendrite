@@ -16,8 +16,10 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each helpers/use-in-column-logical-types)
+
 (defn assemble [leveled-values query-result]
-  (.invoke (Assemble/getFn (.schema ^Schema$QueryResult query-result))
+  (.invoke (Assemble/getFn helpers/default-types (.schema ^Schema$QueryResult query-result))
            (helpers/as-list-iterators leveled-values)))
 
 (deftest dremel-paper
@@ -55,7 +57,8 @@
 (def test-record-striped
   (let [n (count (Schema/getColumns test-schema))
         a (object-array n)]
-    (.invoke (Stripe/getFn helpers/default-types test-schema nil nil) test-record a)
+    (helpers/with-in-column-logical-types
+      (.invoke (Stripe/getFn helpers/default-types test-schema nil nil) test-record a))
     a))
 
 (deftest query-column-indices

@@ -109,6 +109,7 @@ public final class Stripe {
   private static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
                                                    final IPersistentVector parents) {
     final IFn coercionFn = types.getCoercionFn(column.type);
+    final IFn toBaseTypeFn = Types.USE_IN_COLUMN_LOGICAL_TYPES? null : types.getToBaseTypeFn(column.type);
     final int colIdx = column.columnIndex;
     final int maxDefinitionLevel = column.definitionLevel;
     if (column.repetitionLevel == 0) {
@@ -125,7 +126,7 @@ public final class Stripe {
               throw new IllegalArgumentException(
                  String.format("Could not coerce value at path '%s'", parents), e);
             }
-            buffer[colIdx] = v;
+            buffer[colIdx] = (toBaseTypeFn == null)? v : toBaseTypeFn.invoke(v);
           }
         }
       };
@@ -143,7 +144,10 @@ public final class Stripe {
               throw new IllegalArgumentException(
                  String.format("Could not coerce value at path '%s'", parents), e);
             }
-            appendRepeated(buffer, colIdx, new LeveledValue(repetitionLevel, maxDefinitionLevel, v));
+            LeveledValue lv = new LeveledValue(repetitionLevel,
+                                               maxDefinitionLevel,
+                                               (toBaseTypeFn == null)? v : toBaseTypeFn.invoke(v));
+            appendRepeated(buffer, colIdx, lv);
           }
         }
       };
@@ -153,6 +157,7 @@ public final class Stripe {
   private static StripeFn getRequiredValueStripeFn(Types types, Schema.Column column,
                                                    final IPersistentVector parents) {
     final IFn coercionFn = types.getCoercionFn(column.type);
+    final IFn toBaseTypeFn = Types.USE_IN_COLUMN_LOGICAL_TYPES? null : types.getToBaseTypeFn(column.type);
     final int colIdx = column.columnIndex;
     final int maxDefinitionLevel = column.definitionLevel;
     if (column.repetitionLevel == 0) {
@@ -172,7 +177,7 @@ public final class Stripe {
               throw new IllegalArgumentException(
                  String.format("Could not coerce value at path '%s'", parents), e);
             }
-            buffer[colIdx] = v;
+            buffer[colIdx] = (toBaseTypeFn == null)? v : toBaseTypeFn.invoke(v);
           }
         }
       };
@@ -193,7 +198,10 @@ public final class Stripe {
               throw new IllegalArgumentException(
                  String.format("Could not coerce value at path '%s'", parents), e);
             }
-            appendRepeated(buffer, colIdx, new LeveledValue(repetitionLevel, maxDefinitionLevel, v));
+            LeveledValue lv = new LeveledValue(repetitionLevel,
+                                               maxDefinitionLevel,
+                                               (toBaseTypeFn == null) ? v : toBaseTypeFn.invoke(v));
+            appendRepeated(buffer, colIdx, lv);
           }
         }
       };
