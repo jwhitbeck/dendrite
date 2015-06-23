@@ -15,6 +15,7 @@ package dendrite.java;
 import clojure.lang.APersistentMap;
 import clojure.lang.ASeq;
 import clojure.lang.Counted;
+import clojure.lang.IFn;
 import clojure.lang.IMapEntry;
 import clojure.lang.IPersistentMap;
 import clojure.lang.ISeq;
@@ -169,6 +170,16 @@ public class PersistentRecord extends APersistentMap {
         throw new UnsupportedOperationException();
       }
     };
+  }
+
+  public Object kvreduce(IFn f, Object init) {
+    Object ret = init;
+    for (int i=0; i<orderedValues.length; ++i) {
+      if (orderedValues[i] != UNDEFINED) {
+        ret = f.invoke(ret, hashMap.keywords[i], orderedValues[i]);
+      }
+    }
+    return ret;
   }
 
   public static final class Factory {

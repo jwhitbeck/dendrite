@@ -13,7 +13,8 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader Schema Types View FileWriter]
+  (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader PersistentRecord Schema
+            Types View FileWriter]
            [java.nio ByteBuffer])
   (:refer-clojure :exclude [read map map-indexed keep keep-indexed filter remove]))
 
@@ -58,6 +59,11 @@
 (defmethod schema-dispatch :default
   [v]
   (pprint/simple-dispatch v))
+
+(extend-protocol clojure.core.protocols/IKVReduce
+  PersistentRecord
+  (kv-reduce [amap f init]
+    (.kvreduce amap f init)))
 
 (defn pprint
   "Pretty-prints the schema."
