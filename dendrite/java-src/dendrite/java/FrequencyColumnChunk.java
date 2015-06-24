@@ -192,6 +192,7 @@ public final class FrequencyColumnChunk {
       dictPageWriter.reset();
       tempIndicesColumnChunkWriter.reset();
       frequencyIndicesColumnChunkWriter.reset();
+      isFinished = false;
     }
 
     @Override
