@@ -14,9 +14,13 @@ reference <- 'edn-gz-par';
 reference_read_time <- res[res$name==reference,c('avg_read_time')];
 reference_file_size <- res[res$name==reference,c('file_size')];
 
-svg(outputFile)
+lz4_read_time <- res[res$name=='protobuf-lz4',c('avg_uncompress_time')];
+gzip_read_time <- res[res$name=='protobuf-gz',c('avg_uncompress_time')];
+
+svg(outputFile,width=11)
 
 ggplot(parallel_results, aes(x=reference_read_time/avg_read_time, y=reference_file_size/file_size, label=name)) +
+  geom_vline(xintercept = reference_read_time/gzip_read_time, colour='red', alpha=0.3) +
   geom_point(aes(colour=family), size=4) +
   geom_text(hjust=-0.1,vjust=-0.1,size=3,angle=45) +
   theme_bw() +
