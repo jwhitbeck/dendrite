@@ -829,6 +829,8 @@ public abstract class Schema implements IWriteable {
     if (isTagged(query)) {
       if (query instanceof Symbol) {
         return applyQueryTaggedSymbol(context, schema, (Symbol)query, parents);
+      } else if (query instanceof Col) {
+        return applyQueryTaggedSymbol(context, schema, ((Col)query).type, parents);
       } else {
         return applyQueryTagged(context, schema, query, parents);
       }
@@ -844,6 +846,8 @@ public abstract class Schema implements IWriteable {
       return applyQueryList(context, schema, (IPersistentList)query, parents);
     } else if (query instanceof Symbol) {
       return applyQueryUntaggedSymbol(context, schema, (Symbol)query, parents);
+    } else if (query instanceof Col) {
+      return applyQueryUntaggedSymbol(context, schema, ((Col)query).type, parents);
     }
     throw new IllegalArgumentException(String.format("Unable to parse query element '%s'.", query));
   }
@@ -1062,7 +1066,7 @@ public abstract class Schema implements IWriteable {
       throw new IllegalArgumentException(String.format("Element at path %s is a collection, not a value.",
                                                        parents));
     } else {
-      Column col = (Column)schema;
+      Column col = ((Column)schema).withQueryColumnIndex(context.getNextQueryColumnIndex());
       int queriedType = context.types.getType(query);
       if (col.type != queriedType) {
         throw new IllegalArgumentException(String.format("Mismatched column types at path %s. " +

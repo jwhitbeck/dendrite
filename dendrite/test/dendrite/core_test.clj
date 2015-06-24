@@ -203,6 +203,24 @@
                (with-open [r (d/file-reader tmp-filename)]
                  (doall (d/read r)))))))))
 
+(deftest schemas-as-queries
+  (testing "can query using plain-schema"
+    (.close (dremel-paper-writer))
+    (is (= [dremel-paper-record1 dremel-paper-record2]
+           (with-open [r (d/file-reader tmp-filename)]
+             (doall (d/read {:query (d/plain-schema r)} r)))))
+    (is (= (map #(select-keys % [:docid :links]) [dremel-paper-record1 dremel-paper-record2])
+           (with-open [r (d/file-reader tmp-filename)]
+             (doall (d/read {:query (select-keys (d/plain-schema r) [:docid :links])} r))))))
+  (testing "can query using full-schema"
+    (.close (dremel-paper-writer))
+    (is (= [dremel-paper-record1 dremel-paper-record2]
+           (with-open [r (d/file-reader tmp-filename)]
+             (doall (d/read {:query (d/schema r)} r)))))
+    (is (= (map #(select-keys % [:docid :links]) [dremel-paper-record1 dremel-paper-record2])
+           (with-open [r (d/file-reader tmp-filename)]
+             (doall (d/read {:query (select-keys (d/schema r) [:docid :links])} r)))))))
+
 (deftest strict-queries
   (testing "queries fail when missing-fields-as-nil? is false and we query a missing field."
     (.close (dremel-paper-writer))
