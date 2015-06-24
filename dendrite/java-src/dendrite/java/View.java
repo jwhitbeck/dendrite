@@ -184,6 +184,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     while (s != null && k < n) {
       futures.addLast(getReduceChunkFuture(s.chunkedFirst(), reducef, init));
       s = (IChunkedSeq)RT.seq(s.chunkedNext());
+      k += 1;
     }
     Object ret = init;
     while (!futures.isEmpty()) {

@@ -475,6 +475,7 @@ public final class FileReader implements Closeable, IReader {
     int k = 0;
     while (bundlesIterator.hasNext() && k < n) {
       futures.addLast(assembleFutureFactory.get(bundlesIterator.next()));
+      k += 1;
     }
     return new AReadOnlyIterator<IChunk>() {
       @Override
@@ -615,6 +616,7 @@ public final class FileReader implements Closeable, IReader {
     int k = 0;
     while (bundlesIterator.hasNext() && k < n) {
       futures.addLast(reduceFutureFactory.get(bundlesIterator.next()));
+      k += 1;
     }
     return new AReadOnlyIterator<Object>() {
       @Override

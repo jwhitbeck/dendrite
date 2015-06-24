@@ -135,6 +135,7 @@ public final class FileWriter implements Closeable {
     int k = 0;
     while (batchIterator.hasNext() && k < n) {
       futures.addLast(getBundleFuture(bundleFactory, stripeFn, batchIterator.next()));
+      k += 1;
     }
     return new AReadOnlyIterator<Bundle>() {
       @Override
