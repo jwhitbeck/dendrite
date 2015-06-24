@@ -1,0 +1,38 @@
+name,description,family,file_size,avg_read_time,write_time,avg_uncompress_time
+dendrite-defaults,'dendrite with default parameters',dendrite,35037964,439.15,6919.93,0.00
+protobuf-lz4-par,'protobuf + lz4 with parallel deserialization',protobuf,75718302,507.07,4511.78,0.00
+protobuf-gz-par,'protobuf + gzip with parallel deserialization',protobuf,50727521,1239.51,9164.22,0.00
+protobuf-lz4,'protobuf + lz4',protobuf,75718302,2200.13,4496.64,137.48
+protobuf-gz,'protobuf + gzip',protobuf,50727521,3106.51,9395.25,910.16
+avro-lz4-par,'avro + lz4 with parallel deserialization',avro,70154919,1828.11,6560.32,0.00
+avro-gz-par,'avro + gzip with parallel deserialization',avro,47170630,1998.79,10892.30,0.00
+avro-snappy,'avro + snappy',avro,72774612,6210.47,26287.04,0.00
+avro-deflate,'avro + deflate',avro,49012490,6855.34,29520.93,0.00
+nippy-lz4-par,'nippy + lz4 with parallel deserialization',nippy,98977522,1840.51,3411.40,0.00
+nippy-gz-par,'nippy + gzip with parallel deserialization',nippy,78749451,2139.72,7046.87,0.00
+nippy-lz4,'nippy + lz4',nippy,91874153,6581.05,13499.39,205.05
+nippy-gz,'nippy + gzip',nippy,55495160,7726.95,20885.14,1106.98
+fressian-lz4-par,'fressian + lz4 with parallel deserialization',fressian,86921749,1812.28,4177.58,0.00
+fressian-gz-par,'fressian + gzip with parallel deserialization',fressian,54019651,1964.62,10333.39,0.00
+fressian-lz4,'fressian + lz4',fressian,82250436,6290.75,15348.07,161.00
+fressian-gz,'fressian + gzip',fressian,52237947,7316.86,22062.07,998.40
+edn-lz4-par,'edn + lz4 with parallel deserialization',edn,101026262,4158.12,35257.94,0.00
+edn-gz-par,'edn + gzip with parallel deserialization',edn,59704726,4368.94,42422.21,0.00
+edn-lz4,'edn + lz4',edn,101026262,17407.77,35234.60,232.13
+edn-gz,'edn + gzip',edn,59704726,18355.47,42426.80,1206.72
+smile-kw-lz4-par,'smile + lz4 with keyword keys and parallel deserialization',smile,81909922,1315.40,3534.76,0.00
+smile-lz4-par,'smile + lz4 with parallel deserialization',smile,81909922,617.27,3457.72,0.00
+smile-kw-gz-par,'smile + gzip with keyword keys and parallel deserialization',smile,50800318,1530.78,8534.62,0.00
+smile-gz-par,'smile + gzip with parallel deserialization',smile,50800318,1237.83,8545.48,0.00
+smile-kw-lz4,'smile + lz4 with keyword keys',smile,81909922,4058.43,3281.75,0.00
+smile-lz4,'smile + lz4',smile,81909922,2671.08,3585.72,147.81
+smile-kw-gz,'smile + gzip with keyword keys',smile,50800318,5028.55,8913.25,0.00
+smile-gz,'smile + gzip',smile,50800318,3594.84,8991.35,955.39
+json-kw-lz4-par,'json + lz4 with keyword keys and parallel deserialization',json,100854253,1855.52,2696.64,0.00
+json-lz4-par,'json + lz4 with parallel deserialization',json,100854253,1325.18,2737.48,0.00
+json-kw-gz-par,'json + gzip with keyword keys and parallel deserialization',json,59612470,2529.63,73.08,0.00
+json-gz-par,'json + gzip with parallel deserialization',json,59612470,1838.71,71.93,0.00
+json-kw-lz4,'json + lz4 with keyword keys',json,100854253,6309.47,2698.96,0.00
+json-lz4,'json + lz4',json,100854253,4606.27,2698.69,234.12
+json-kw-gz,'json + gzip with keyword keys',json,59612470,7270.82,72.40,0.00
+json-gz,'json + gzip',json,59612470,5569.93,71.10,1206.98
