@@ -19,7 +19,7 @@
       (cmd options (first arguments)))))
 
 (def schema-cli-options
-  [[nil "--pretty" "Pretty-print the schema."]
+  [[nil "--compact" "Don't pretty-print the schema."]
    [nil "--full" "Show all encoding and compression annotations on columns."]
    help-cli-option])
 
@@ -28,20 +28,20 @@
     (let [schema (if (:full options)
                    (d/full-schema r)
                    (d/schema r))]
-      (if (:pretty options)
-        (pprint/pprint schema)
-        (prn schema)))))
+      (if (:compact options)
+        (prn schema)
+        (pprint/pprint schema)))))
 
 (def metadata-cli-options
-  [[nil "--pretty" "Pretty-print the metadata"]
+  [[nil "--compact" "Don't pretty-print the metadata"]
    help-cli-option])
 
 (defn metadata [options filename]
   (with-open [r (d/file-reader filename)]
     (let [metadata (d/metadata r)]
-      (if (:pretty options)
-        (pprint/pprint metadata)
-        (prn metadata)))))
+      (if (:compact options)
+        (prn metadata)
+        (pprint/pprint metadata)))))
 
 (def read-cli-options
   [[nil "--pretty" "Pretty-print the records"]
