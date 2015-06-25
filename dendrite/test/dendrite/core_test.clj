@@ -510,6 +510,12 @@
     (is (= 30 (->> (d/read r) (r/map :docid) (r/fold +))))
     (let [s (doto (d/read r) seq)]
       (is (= 30 (->> s (r/map :docid) (r/fold +)))))
+    (is (= 31 (->> (d/read r) (r/map :docid) (r/fold * +))))
+    (letfn [(combinef
+              ([] (atom []))
+              ([l r] (into @l @r)))
+            (reducef [r v] (doto r (swap! conj v)))]
+      (is (= [10 20] (->> (d/read r) (r/map :docid) (r/fold combinef reducef)))))
     (is (= 30 (->> (d/read r) (r/map :docid) (r/reduce +))))
     (is (= 40 (->> (d/read r) (r/map :docid) (r/reduce + 10))))))
 

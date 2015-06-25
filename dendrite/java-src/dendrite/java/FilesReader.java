@@ -121,7 +121,7 @@ public final class FilesReader implements Closeable, IReader {
 
   private Iterator<Object> getReducedChunkValues(final Options.ReadOptions readOptions,
                                                  final IFn f,
-                                                 final Object init,
+                                                 final IFn initFn,
                                                  final int bundleSize) {
     final Iterator<File> fileIterator = files.iterator();
     if (!fileIterator.hasNext()) {
@@ -130,13 +130,13 @@ public final class FilesReader implements Closeable, IReader {
     return new AReadOnlyIterator<Object>() {
       private FileReader currentFileReader = openFileReader(fileIterator.next());
       private Iterator<Object> currentReducedChunkValues
-        = currentFileReader.read(readOptions).getReducedChunkValues(f, init, bundleSize).iterator();
+        = currentFileReader.read(readOptions).getReducedChunkValues(f, initFn, bundleSize).iterator();
 
       private void step() {
         closeFileReader(currentFileReader);
         currentFileReader = openFileReader(fileIterator.next());
         currentReducedChunkValues
-          = currentFileReader.read(readOptions).getReducedChunkValues(f, init, bundleSize).iterator();
+          = currentFileReader.read(readOptions).getReducedChunkValues(f, initFn, bundleSize).iterator();
       }
 
       @Override
@@ -195,11 +195,11 @@ public final class FilesReader implements Closeable, IReader {
     }
 
     @Override
-    protected Iterable<Object> getReducedChunkValues(final IFn f, final Object init, final int bundleSize) {
+    protected Iterable<Object> getReducedChunkValues(final IFn f, final IFn initFn, final int bundleSize) {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
-          return FilesReader.this.getReducedChunkValues(readOptions, f, init, bundleSize);
+          return FilesReader.this.getReducedChunkValues(readOptions, f, initFn, bundleSize);
         }
       };
     }

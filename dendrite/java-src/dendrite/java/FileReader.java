@@ -502,19 +502,19 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
-    private final Object init;
+    private final IFn initFn;
 
-    ReduceFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init) {
+    ReduceFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
-      this.init = init;
+      this.initFn = initFn;
     }
 
     @Override
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduce(reduceFn, assembleFn, init);
+          return bundle.reduce(reduceFn, assembleFn, initFn.invoke());
         }
       });
     }
@@ -523,13 +523,13 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceSampledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
-    private final Object init;
+    private final IFn initFn;
     private final IFn sampleFn;
 
-    ReduceSampledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn) {
+    ReduceSampledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, IFn sampleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
-      this.init = init;
+      this.initFn = initFn;
       this.sampleFn = sampleFn;
     }
 
@@ -537,7 +537,7 @@ public final class FileReader implements Closeable, IReader {
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceSampled(reduceFn, assembleFn, sampleFn, init);
+          return bundle.reduceSampled(reduceFn, assembleFn, sampleFn, initFn.invoke());
         }
       });
     }
@@ -546,13 +546,13 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceMangledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
-    private final Object init;
+    private final IFn initFn;
     private final Mangle.Fn mangleFn;
 
-    ReduceMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, Mangle.Fn mangleFn) {
+    ReduceMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
-      this.init = init;
+      this.initFn = initFn;
       this.mangleFn = mangleFn;
     }
 
@@ -560,7 +560,7 @@ public final class FileReader implements Closeable, IReader {
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceMangled(reduceFn, assembleFn, mangleFn, init);
+          return bundle.reduceMangled(reduceFn, assembleFn, mangleFn, initFn.invoke());
         }
       });
     }
@@ -569,15 +569,15 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceSampledAndMangledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
-    private final Object init;
+    private final IFn initFn;
     private final IFn sampleFn;
     private final Mangle.Fn mangleFn;
 
-    ReduceSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, Object init, IFn sampleFn,
+    ReduceSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, IFn sampleFn,
                                          Mangle.Fn mangleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
-      this.init = init;
+      this.initFn = initFn;
       this.sampleFn = sampleFn;
       this.mangleFn = mangleFn;
     }
@@ -586,25 +586,25 @@ public final class FileReader implements Closeable, IReader {
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceSampledAndMangled(reduceFn, assembleFn, sampleFn, mangleFn, init);
+          return bundle.reduceSampledAndMangled(reduceFn, assembleFn, sampleFn, mangleFn, initFn.invoke());
         }
       });
     }
   }
 
-  private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, Object init, Assemble.Fn assembleFn,
+  private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, IFn initFn, Assemble.Fn assembleFn,
                                                       IFn sampleFn, Mangle.Fn mangleFn) {
     if (sampleFn == null) {
       if (mangleFn == null) {
-        return new ReduceFutureFactory(assembleFn, reduceFn, init);
+        return new ReduceFutureFactory(assembleFn, reduceFn, initFn);
       } else {
-        return new ReduceMangledFutureFactory(assembleFn, reduceFn, init, mangleFn);
+        return new ReduceMangledFutureFactory(assembleFn, reduceFn, initFn, mangleFn);
       }
     } else {
       if (mangleFn == null) {
-        return new ReduceSampledFutureFactory(assembleFn, reduceFn, init, sampleFn);
+        return new ReduceSampledFutureFactory(assembleFn, reduceFn, initFn, sampleFn);
       } else {
-        return new ReduceSampledAndMangledFutureFactory(assembleFn, reduceFn, init, sampleFn, mangleFn);
+        return new ReduceSampledAndMangledFutureFactory(assembleFn, reduceFn, initFn, sampleFn, mangleFn);
       }
     }
   }
@@ -700,13 +700,13 @@ public final class FileReader implements Closeable, IReader {
     }
 
     @Override
-    protected Iterable<Object> getReducedChunkValues(final IFn f, final Object init, final int bundleSize) {
+    protected Iterable<Object> getReducedChunkValues(final IFn f, final IFn initFn, final int bundleSize) {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
           return FileReader.getReducedChunksIterator(getBundlesIterator(bundleSize),
                                                      getReduceFutureFactory(f,
-                                                                            init,
+                                                                            initFn,
                                                                             getAssembleFn(),
                                                                             options.sampleFn,
                                                                             getMangleFn()));

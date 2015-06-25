@@ -202,7 +202,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
   private Object foldIterator(int n, IFn combinef, IFn reducef) {
     Object init = combinef.invoke();
     Object ret = init;
-    for (Object reducedChunkValue : getReducedChunkValues(reducef, init, n)) {
+    for (Object reducedChunkValue : getReducedChunkValues(reducef, combinef, n)) {
       ret = combinef.invoke(ret, reducedChunkValue);
     }
     return ret;
@@ -218,7 +218,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
   protected abstract Iterable<IChunk> getRecordChunks(int bundleSize);
 
-  protected abstract Iterable<Object> getReducedChunkValues(IFn f, Object init, int bundleSize);
+  protected abstract Iterable<Object> getReducedChunkValues(IFn f, IFn initFn, int bundleSize);
 
   protected abstract Options.ReadOptions getReadOptions();
 
