@@ -156,12 +156,12 @@
 (defn schema
   "Returns this reader's schema."
   [^FileReader reader]
-  (.getSchema reader))
-
-(defn plain-schema
-  "Returns this reader's schema with all encodings set to plain and all compressions set to none."
-  [^FileReader reader]
   (.getPlainSchema reader))
+
+(defn full-schema
+  "Returns this reader's schema with all encoding and compression annotations."
+  [^FileReader reader]
+  (.getSchema reader))
 
 (defn files-reader
   "Returns a dendrite reader on the provided files (a seq of files or string paths). Reads will query each

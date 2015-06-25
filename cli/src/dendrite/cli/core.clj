@@ -20,13 +20,13 @@
 
 (def schema-cli-options
   [[nil "--pretty" "Pretty-print the schema."]
-   [nil "--plain" "Only display column types (not encoding and compression)"]
+   [nil "--full" "Show all encoding and compression annotations on columns."]
    help-cli-option])
 
 (defn schema [options filename]
   (with-open [r (d/file-reader filename)]
-    (let [schema (if (:plain options)
-                   (d/plain-schema r)
+    (let [schema (if (:full options)
+                   (d/full-schema r)
                    (d/schema r))]
       (if (:pretty options)
         (pprint/pprint schema)
