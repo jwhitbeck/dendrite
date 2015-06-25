@@ -123,7 +123,7 @@
 (def col-name->index (reduce-kv (fn [m i col-name] (assoc m col-name i)) {} stats-column-order))
 
 (def stats-cli-options
-  [[nil "--sort COL" "Sort results by this column"]
+  [[nil "--sort-by COL" "Sort results by this column"]
    [nil "--desc" "Sort by descending order (default is ascending)"]
    [nil "--columns" "Breakdown stats by column"]
    [nil "--record-groups" "Breakdown stats by record-groups"]
@@ -157,13 +157,13 @@
 
 (defn stats [options filename]
   (with-open [r (d/file-reader filename)]
-    (let [sort-col (:sort options)
+    (let [sort-col (:sort-by options)
           rows (cond->> (cond (:columns options)
                               (format-column-stats (:columns (d/stats r)) sort-col)
                               (:record-groups options)
                               (format-record-group-stats (:record-groups (d/stats r)) sort-col)
                               :else
-                              (format-global-stats (:global (d/stats r)) (:sort options)))
+                              (format-global-stats (:global (d/stats r)) (:sort-by options)))
                  (:desc options) reverse)]
       (if (or (:columns options) (:record-groups options))
         (pprint/print-table (filter (-> rows first keys set) stats-column-order) rows)
