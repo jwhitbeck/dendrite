@@ -119,7 +119,7 @@ public final class FileReader implements Closeable, IReader {
       } else {
         fn = Utils.comp(Utils.copyAndAddFirst(fn, options.mapFns));
       }
-      return new Schema.QueryResult(res.schema.withFn(fn), res.columns);
+      return res.withFn(fn);
     } else {
       return res;
     }

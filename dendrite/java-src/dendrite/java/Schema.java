@@ -1101,9 +1101,18 @@ public abstract class Schema implements IWriteable {
     public Schema schema;
     public Column[] columns;
 
-    public QueryResult(Schema schema, Column[] columns) {
+    QueryResult(Schema schema, Column[] columns) {
       this.schema = schema;
       this.columns = columns;
+    }
+
+    public QueryResult withFn(IFn fn) {
+      if (schema instanceof Column) {
+        // If the query is a single column, then make sure to set the fn on that column as well.
+        return new QueryResult(schema.withFn(fn), new Column[]{columns[0].withFn(fn)});
+      } else {
+        return new QueryResult(schema.withFn(fn), columns);
+      }
     }
   }
 
