@@ -196,7 +196,6 @@
   (^dendrite.java.View [^IReader reader] (read nil reader))
   (^dendrite.java.View [opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
-
 (defn sample
   "Returns a view of the records containing only those such that (f record-index) evaluates truthfully, where
   record-index goes from 0 (first record) to num-records - 1 (last record). The sampling occurs before record
@@ -214,7 +213,11 @@
 (defn map-indexed
   "Returns a view of the records with the provided function mapped on to each record and its index as part of
   record assembly. As with read, this view is seqable, reducible, and foldable. Calling
-  (d/map-indexed f (d/read r)) is equivalent to (map-indexed f (d/read r)) but more efficient."
+  (d/map-indexed f (d/read r)) is equivalent to (map-indexed f (d/read r)) but more efficient. However, this
+  equivalence does not extend to chaining calls to d/map-indexed or any other d/*-indexed function. Indeed the
+  index argument passed to f is always the record's index in the file, wheread in clojure.core/map-indexed, a
+  new index is generated for each nested lazy-seq. Therefore (->> (d/read r) (d/map-indexed f) (d/map-indexed
+  g)) will not in general be equivalent to (->> (d/read r) (map-indexed f) (map-indexed f))."
   ^dendrite.java.View [f ^View view] (.withMapIndexedFn view f))
 
 (defn keep
@@ -227,7 +230,8 @@
   "Returns a view of the records with the provided function mapped on to each record and its index as part of
   record assembly and all nil values removed. As with read, this view is seqable, reducible, and
   foldable. Calling (d/keep-indexed f (d/read r)) is equivalent to (keep-indexed f (d/read r)) but more
-  efficient."
+  efficient. However, this equivalence do not extend to nested calls to keep-indexed. See map-indexed for
+  details."
   ^dendrite.java.View [f ^View view] (.withKeepIndexedFn view f))
 
 (defn filter
@@ -239,7 +243,8 @@
 (defn filter-indexed
   "Returns a view of the records containing only those such that (f index record) evaluates truthfully. The
   filtering is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable."
+  foldable. However, this equivalence do not extend to nested calls to keep-indexed. See map-indexed for
+  details."
   ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view f))
 
 (defn remove
@@ -251,5 +256,6 @@
 (defn remove-indexed
   "Returns a view of the records not containing any of those such that (f index record) evaluates truthfully.
   The removal is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable."
+  foldable. However, this equivalence do not extend to nested calls to keep-indexed. See map-indexed for
+  details."
   ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view (complement f)))
