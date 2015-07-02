@@ -189,8 +189,10 @@
                             query but are not present in this reader's schema will be read as nil values. If
                             false, querying for fields not present in the schema will throw an exception.
   :query                  - the query. Default: '_. See docs for full explanation.
-  :entrypoint             - a sequence of keys to begin the query within a subset of the schema. Cannot
-                            contain any keys to repeated fields. See docs for full explanation.
+  :sub-schema-in          - path to the desired sub-schema. The value should be a sequence of keys that cannot
+                            contain any keys to repeated elements. If both :sub-schema-in and :query are
+                            defined, the query applies to the specified sub-schema. See docs for full
+                            explanation.
   :readers                - a map of query tag symbol to tag function. Default: nil. See docs for full
                             explanation."
   (^dendrite.java.View [^IReader reader] (read nil reader))

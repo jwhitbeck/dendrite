@@ -750,16 +750,16 @@ public abstract class Schema implements IWriteable {
     return wrapWithRepetition(unparse(types, asPlain, coll.repeatedSchema), coll.repetition);
   }
 
-  public static Schema getSubSchema(List<Keyword> entrypoint, Schema schema) {
+  public static Schema getSubSchema(List<Keyword> subSchemaPath, Schema schema) {
     Keyword parent = null;
     Schema s = schema;
-    for (Keyword kw : entrypoint) {
+    for (Keyword kw : subSchemaPath) {
       if (s instanceof Collection) {
-        throw new IllegalArgumentException(String.format("Entrypoint '%s' contains repeated field '%s'.",
-                                                         entrypoint, parent));
+        throw new IllegalArgumentException(String.format("Sub-schema path '%s' contains repeated field '%s'.",
+                                                         subSchemaPath, parent));
       } else if (s instanceof Column) {
-        throw new IllegalArgumentException(String.format("Entrypoint '%s' contains column node at '%s'.",
-                                                         entrypoint, parent));
+        throw new IllegalArgumentException(String.format("Sub-schema path '%s' contains column node at '%s'.",
+                                                         subSchemaPath, parent));
       } else /* if (s instanceof Record) */ {
         parent = kw;
         s = ((Record)s).get(kw);

@@ -58,10 +58,10 @@
 (deftest invalid-read-options
   (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                     (Options/getReadOptions opts))
-       {:entrypoint :foo}
-       ":entrypoint expects a seqable object but got ':foo'"
-       {:entrypoint [:foo 'foo]}
-       "entrypoint can only contain keywords, but got 'foo'"
+       {:sub-schema-in :foo}
+       ":sub-schema-in expects a seqable object but got ':foo'"
+       {:sub-schema-in [:foo 'foo]}
+       "sub-schema-in can only contain keywords, but got 'foo'"
        {:missing-fields-as-nil? nil}
        ":missing-fields-as-nil\\? expects a boolean but got 'null'"
        {:missing-fields-as-nil? "foo"}

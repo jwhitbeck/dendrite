@@ -50,7 +50,7 @@
    [nil "--query QUERY" "Apply this query to the file. Expects a valid EDN string."
     :parse-fn edn/read-string]
    [nil "--query-file FILE" "Read the query from this file." :parse-fn (comp edn/read-string slurp)]
-   [nil "--entrypoint ENTRYPOINT" "Path to begining of sub-schema. Should be a valid EDN vector."
+   [nil "--sub-schema-in PATH" "Path to begining of sub-schema. Should be a valid EDN vector."
     :parse-fn edn/read-string]
    [nil "--map-fn FN" (str "Map this function over all records before writing them to stdout. Any expression "
                            "evaluating to a function using only clojure.core functions will work.")
@@ -62,7 +62,7 @@
     (let [opts (cond-> {}
                  (:query cli-options) (assoc :query (:query cli-options))
                  (:query-file cli-options) (assoc :query (:query-file cli-options))
-                 (:entrypoint cli-options) (assoc :entrypoint (:entrypoint cli-options)))
+                 (:sub-schema-in cli-options) (assoc :sub-schema-in (:sub-schema-in cli-options)))
           str-fn (if (:pretty cli-options)
                    #(with-out-str (pprint/pprint %))
                    str)

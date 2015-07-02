@@ -231,20 +231,20 @@
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
            (helpers/throw-cause (doall (d/read {:query {:foo '_} :missing-fields-as-nil? false} r))))))))
 
-(deftest entrypoints
+(deftest sub-schemas
   (let [records (take 100 (helpers/rand-test-records))]
     (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
       (.writeAll w records))
     (testing "sub records"
       (is (= (map :links records) (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/read {:entrypoint [:links]} r))))))
+                                    (doall (d/read {:sub-schema-in [:links]} r))))))
     (testing "access a column directly"
       (is (= (map :docid records) (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/read {:entrypoint [:docid]} r))))))
+                                    (doall (d/read {:sub-schema-in [:docid]} r))))))
     (testing "access a repeated column"
       (is (= (map #(get-in % [:links :backward]) records)
              (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/read {:entrypoint [:links :backward]} r))))))))
+               (doall (d/read {:sub-schema-in [:links :backward]} r))))))))
 
 (deftest readers
   (testing "readers functions transform output"

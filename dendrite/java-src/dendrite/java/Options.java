@@ -36,7 +36,7 @@ public final class Options {
     INVALID_INPUT_HANDLER = Keyword.intern("invalid-input-handler"),
     CUSTOM_TYPES = Keyword.intern("custom-types"),
     QUERY = Keyword.intern("query"),
-    ENTRYPOINT = Keyword.intern("entrypoint"),
+    SUB_SCHEMA_IN = Keyword.intern("sub-schema-in"),
     MISSING_FIELDS_AS_NIL = Keyword.intern("missing-fields-as-nil?"),
     READERS = Keyword.intern("readers"),
     MAP_FN = Keyword.intern("map-fn"),
@@ -180,7 +180,7 @@ public final class Options {
 
   public static final class ReadOptions {
     public final Object query;
-    public final List<Keyword> entrypoint;
+    public final List<Keyword> subSchemaPath;
     public final boolean isMissingFieldsAsNil;
     public final Map<Symbol,IFn> readers;
     public final int bundleSize;
@@ -188,10 +188,10 @@ public final class Options {
     public final IFn sampleFn;
     public final List<Mangle.Fn> mangleFns;
 
-    public ReadOptions(Object query, List<Keyword> entrypoint, boolean isMissingFieldsAsNil,
+    public ReadOptions(Object query, List<Keyword> subSchemaPath, boolean isMissingFieldsAsNil,
                        Map<Symbol,IFn> readers, List<IFn> mapFns, IFn sampleFn, List<Mangle.Fn> mangleFns) {
       this.query = query;
-      this.entrypoint = entrypoint;
+      this.subSchemaPath = subSchemaPath;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
       this.readers = readers;
       this.mapFns = mapFns;
@@ -202,10 +202,10 @@ public final class Options {
 
     public ReadOptions addMapFn(IFn mapFn) {
       if (mangleFns.isEmpty()) {
-        return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers,
+        return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers,
                                Utils.copyAndAddLast(mapFns, mapFn), sampleFn, mangleFns);
       } else {
-        return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, sampleFn,
+        return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, sampleFn,
                                Utils.copyAndAddLast(mangleFns, Mangle.getMapFn(mapFn)));
       }
     }
@@ -218,43 +218,44 @@ public final class Options {
         throw new IllegalArgumentException("Sample function must be defined before any mapping or "
                                            + "filtering function.");
       }
-      return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, aSampleFn, mangleFns);
+      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, aSampleFn,
+                             mangleFns);
     }
 
     public ReadOptions addMangleFn(Mangle.Fn mangleFn) {
-      return new ReadOptions(query, entrypoint, isMissingFieldsAsNil, readers, mapFns, sampleFn,
+      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, sampleFn,
                              Utils.copyAndAddLast(mangleFns, mangleFn));
     }
 
   }
 
   private static Keyword[] validReadOptionKeys
-    = new Keyword[]{QUERY, ENTRYPOINT, MISSING_FIELDS_AS_NIL, READERS};
+    = new Keyword[]{QUERY, SUB_SCHEMA_IN, MISSING_FIELDS_AS_NIL, READERS};
 
   private static Object getQuery(IPersistentMap options) {
     return RT.get(options, QUERY, Schema.SUB_SCHEMA);
   }
 
-  private static List<Keyword> getEntrypoint(IPersistentMap options) {
-    Object o = RT.get(options, ENTRYPOINT);
+  private static List<Keyword> getSubSchemaPath(IPersistentMap options) {
+    Object o = RT.get(options, SUB_SCHEMA_IN);
     ISeq s;
     try {
       s = RT.seq(o);
     } catch (Exception e) {
       throw new IllegalArgumentException(String.format("%s expects a seqable object but got '%s'",
-                                                       ENTRYPOINT, o));
+                                                       SUB_SCHEMA_IN, o));
     }
-    List<Keyword> entrypoint = new ArrayList<Keyword>();
+    List<Keyword> subSchemaPath = new ArrayList<Keyword>();
     for (; s != null; s = s.next()) {
       Object k = s.first();
       if (!(k instanceof Keyword)) {
-        throw new IllegalArgumentException(String.format("entrypoint can only contain keywords, but got '%s'",
-                                                         k));
+        throw new IllegalArgumentException(
+            String.format("sub-schema-in can only contain keywords, but got '%s'", k));
       } else {
-        entrypoint.add((Keyword)k);
+        subSchemaPath.add((Keyword)k);
       }
     }
-    return entrypoint;
+    return subSchemaPath;
   }
 
   private static boolean getMissingFieldsAsNil(IPersistentMap options) {
@@ -309,7 +310,7 @@ public final class Options {
   public static ReadOptions getReadOptions(IPersistentMap options) {
     checkValidKeys(options, validReadOptionKeys, "%s is not a supported read option.");
     return new ReadOptions(getQuery(options),
-                           getEntrypoint(options),
+                           getSubSchemaPath(options),
                            getMissingFieldsAsNil(options),
                            getTagReaders(options),
                            Collections.<IFn>emptyList(),
