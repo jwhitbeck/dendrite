@@ -1,5 +1,6 @@
 - Date: June 24nd, 2015
 - AWS instance type: c3.2xlarge
 - JDK: openjdk-7
+- Clojure: 1.6
 - Version: 0.4.1-SNAPSHOT
 - Refspec: 00f2a6058950100b74ff728a300d0b3df594d929
