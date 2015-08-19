@@ -45,7 +45,11 @@
        {:invalid-input-handler "foo"}
        ":invalid-input-handler expects a function"
        {:invalid-option "foo"}
-       ":invalid-option is not a supported writer option"))
+       ":invalid-option is not a supported writer option"
+       {:ignore-extra-fields? nil}
+       ":ignore-extra-fields\\? expects a boolean but got 'null'"
+       {:ignore-extra-fields? "foo"}
+       ":ignore-extra-fields\\? expects a boolean but got 'foo'"))
 
 (deftest invalid-reader-options
   (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)

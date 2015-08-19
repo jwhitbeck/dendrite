@@ -18,11 +18,13 @@
 
 (use-fixtures :each helpers/use-in-column-logical-types)
 
-(defn stripe-record [record schema]
-  (let [n (count (Schema/getColumns schema))
-        a (object-array n)]
-    (.invoke (Stripe/getFn helpers/default-types schema nil nil) record a)
-    (seq a)))
+(defn stripe-record
+  ([record schema] (stripe-record record schema true))
+  ([record schema ignore-extra-fields?]
+   (let [n (count (Schema/getColumns schema))
+         a (object-array n)]
+     (.invoke (Stripe/getFn helpers/default-types schema nil nil ignore-extra-fields?) record a)
+     (seq a))))
 
 (deftest dremel-paper
   (testing "record striping matches dremel paper"
@@ -90,6 +92,12 @@
            #"Required value at path '\[:name nil :language :code\]' is missing"
            {:docid 10 :keywords #{nil}}
            #"Required value at path '\[:keywords nil\]' is missing")))
+  (testing "extra-fields"
+    (let [schema (Schema/parse helpers/default-types {:docid 'int})]
+      (is (stripe-record {:docid 2} schema false))
+      (is (stripe-record {:docid 2 :extra-field 3} schema))
+      (is (thrown-with-msg? IllegalArgumentException #"Field ':extra-field' at path '\[\]' is not in schema"
+                            (helpers/throw-cause (stripe-record {:docid 2 :extra-field 3} schema false))))))
   (testing "incompatible value types"
     (let [schema (Schema/parse helpers/default-types
                                {:boolean 'boolean

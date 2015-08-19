@@ -65,7 +65,8 @@ public final class FileWriter implements Closeable {
     Schema.Column[] columns = Schema.getColumns(schema);
     RecordGroup.Writer recordGroupWriter = new RecordGroup.Writer(types, columns, writerOptions.dataPageLength,
                                                                   writerOptions.optimizationStrategy);
-    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.mapFn, writerOptions.invalidInputHandler);
+    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.mapFn, writerOptions.invalidInputHandler,
+                                      writerOptions.isIgnoreExtraFields);
     LinkedBlockingQueue<List<Object>> batchQueue = new LinkedBlockingQueue<List<Object>>(10);
     Bundle.Factory bundleFactory = new Bundle.Factory(columns);
     FileChannel fileChannel = Utils.getWritingFileChannel(file);

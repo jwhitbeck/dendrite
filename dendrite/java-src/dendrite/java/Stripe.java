@@ -22,19 +22,21 @@ import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class Stripe {
-
-  private static final Object notFound = new Object();
 
   public interface Fn {
     boolean invoke(Object record, Object[] buffer);
   }
 
-  public static Fn getFn(Types types, Schema schema, final IFn mapFn, final IFn errorHandlerFn) {
-    final StripeFn stripeFn = getStripeFn(types, schema, PersistentVector.EMPTY);
+  public static Fn getFn(Types types, Schema schema, final IFn mapFn, final IFn errorHandlerFn,
+                         boolean isIgnoreExtraFields) {
+    final StripeFn stripeFn = getStripeFn(new Context(types, isIgnoreExtraFields),
+                                          schema, PersistentVector.EMPTY);
     if (mapFn == null) {
       return new Fn() {
         public boolean invoke(Object record, Object[] buffer) {
@@ -70,28 +72,40 @@ public final class Stripe {
     }
   }
 
+  private static final Object notFound = new Object();
+
+  private static class Context {
+    Types types;
+    boolean isIgnoreExtraFields;
+
+    Context(Types types, boolean isIgnoreExtraFields) {
+      this.types = types;
+      this.isIgnoreExtraFields = isIgnoreExtraFields;
+    }
+  }
+
   private interface StripeFn {
     void invoke(Object[] buffer, Object obj, boolean isParentNil, int repetitionLevel, int definitionLevel);
   }
 
-  private static StripeFn getStripeFn(Types types, Schema schema, IPersistentVector parents) {
+  private static StripeFn getStripeFn(Context context, Schema schema, IPersistentVector parents) {
     if (schema instanceof Schema.Column) {
       if (schema.repetition == Schema.OPTIONAL) {
-        return getOptionalValueStripeFn(types, (Schema.Column)schema, parents);
+        return getOptionalValueStripeFn(context, (Schema.Column)schema, parents);
       } else /* if (schema.repetition == Schema.REQUIRED) */ {
-        return getRequiredValueStripeFn(types, (Schema.Column)schema, parents);
+        return getRequiredValueStripeFn(context, (Schema.Column)schema, parents);
       }
     } else if (schema instanceof Schema.Record) {
       if (schema.repetition == Schema.OPTIONAL) {
-        return getOptionalRecordStripeFn(types, (Schema.Record)schema, parents);
+        return getOptionalRecordStripeFn(context, (Schema.Record)schema, parents);
       } else /* if (schema.repetition == Schema.REQUIRED) */ {
-        return getRequiredRecordStripeFn(types, (Schema.Record)schema, parents);
+        return getRequiredRecordStripeFn(context, (Schema.Record)schema, parents);
       }
     } else /* if (schema instanceof Schema.Collection) */ {
       if (schema.repetition == Schema.MAP) {
-        return getMapStripeFn(types, (Schema.Collection)schema, parents);
+        return getMapStripeFn(context, (Schema.Collection)schema, parents);
       } else {
-        return getRepeatedStripeFn(types, (Schema.Collection)schema, parents);
+        return getRepeatedStripeFn(context, (Schema.Collection)schema, parents);
       }
     }
   }
@@ -106,8 +120,9 @@ public final class Stripe {
     list.add(v);
   }
 
-  private static StripeFn getOptionalValueStripeFn(Types types, Schema.Column column,
+  private static StripeFn getOptionalValueStripeFn(Context context, Schema.Column column,
                                                    final IPersistentVector parents) {
+    Types types = context.types;
     final IFn coercionFn = types.getCoercionFn(column.type);
     final IFn toBaseTypeFn = Types.USE_IN_COLUMN_LOGICAL_TYPES? null : types.getToBaseTypeFn(column.type);
     final int colIdx = column.columnIndex;
@@ -154,8 +169,9 @@ public final class Stripe {
     }
   }
 
-  private static StripeFn getRequiredValueStripeFn(Types types, Schema.Column column,
+  private static StripeFn getRequiredValueStripeFn(Context context, Schema.Column column,
                                                    final IPersistentVector parents) {
+    Types types = context.types;
     final IFn coercionFn = types.getCoercionFn(column.type);
     final IFn toBaseTypeFn = Types.USE_IN_COLUMN_LOGICAL_TYPES? null : types.getToBaseTypeFn(column.type);
     final int colIdx = column.columnIndex;
@@ -208,30 +224,17 @@ public final class Stripe {
     }
   }
 
-  private static StripeFn getOptionalRecordStripeFn(Types types, Schema.Record record,
-                                                    final IPersistentVector parents) {
-    Schema.Field[] fields = record.fields;
-    final StripeFn[] fieldStripeFns = new StripeFn[fields.length];
-    final Keyword[] fieldNames = new Keyword[fields.length];
-    for (int i=0; i<fields.length; ++i) {
-      Schema.Field field = fields[i];
-      fieldNames[i] = field.name;
-      fieldStripeFns[i] = getStripeFn(types, field.value, parents.cons(field.name));
-    }
-    return new StripeFn() {
-      public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
-                         int definitionLevel) {
-        boolean isEmpty = (rec == notFound);
-        int defLevel = isEmpty? definitionLevel : definitionLevel + 1;
-        for (int i=0; i<fieldNames.length; ++i) {
-          fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isEmpty, repetitionLevel,
-                                   defLevel);
-        }
+  private static void checkNoExtraFields(Set<Keyword> fieldNameSet, Object rec, IPersistentVector parents) {
+    for (ISeq s = RT.keys(rec); s != null; s = s.next()) {
+      Keyword k = (Keyword)s.first();
+      if (!fieldNameSet.contains(k)) {
+        throw new IllegalArgumentException(
+            String.format("Field '%s' at path '%s' is not in schema", k, parents));
       }
-    };
+    }
   }
 
-  private static StripeFn getRequiredRecordStripeFn(Types types, Schema.Record record,
+  private static StripeFn getOptionalRecordStripeFn(Context context, Schema.Record record,
                                                     final IPersistentVector parents) {
     Schema.Field[] fields = record.fields;
     final StripeFn[] fieldStripeFns = new StripeFn[fields.length];
@@ -239,22 +242,90 @@ public final class Stripe {
     for (int i=0; i<fields.length; ++i) {
       Schema.Field field = fields[i];
       fieldNames[i] = field.name;
-      fieldStripeFns[i] = getStripeFn(types, field.value, parents.cons(field.name));
+      fieldStripeFns[i] = getStripeFn(context, field.value, parents.cons(field.name));
     }
-    return new StripeFn() {
-      public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
-                         int definitionLevel) {
-        boolean isNil = (rec == notFound);
-        if (isNil && !isParentNil) {
-          throw new IllegalArgumentException(
-            String.format("Required record at path '%s' is missing", parents));
-        }
-        for (int i=0; i<fieldNames.length; ++i) {
-          fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isNil, repetitionLevel,
-                                   definitionLevel);
-        }
+    if (!context.isIgnoreExtraFields) {
+      final Set<Keyword> fieldNameSet = new HashSet<Keyword>(fields.length * 2);
+      for (Keyword fieldName : fieldNames) {
+        fieldNameSet.add(fieldName);
       }
-    };
+      return new StripeFn() {
+        public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
+                           int definitionLevel) {
+          boolean isEmpty = (rec == notFound);
+          int defLevel = isEmpty? definitionLevel : definitionLevel + 1;
+          for (int i=0; i<fieldNames.length; ++i) {
+            fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isEmpty, repetitionLevel,
+                                     defLevel);
+          }
+          if (!isEmpty) {
+            checkNoExtraFields(fieldNameSet, rec, parents);
+          }
+        }
+      };
+    } else {
+      return new StripeFn() {
+        public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
+                           int definitionLevel) {
+          boolean isEmpty = (rec == notFound);
+          int defLevel = isEmpty? definitionLevel : definitionLevel + 1;
+          for (int i=0; i<fieldNames.length; ++i) {
+            fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isEmpty, repetitionLevel,
+                                     defLevel);
+          }
+        }
+      };
+    }
+  }
+
+  private static StripeFn getRequiredRecordStripeFn(Context context, Schema.Record record,
+                                                    final IPersistentVector parents) {
+    Schema.Field[] fields = record.fields;
+    final StripeFn[] fieldStripeFns = new StripeFn[fields.length];
+    final Keyword[] fieldNames = new Keyword[fields.length];
+    for (int i=0; i<fields.length; ++i) {
+      Schema.Field field = fields[i];
+      fieldNames[i] = field.name;
+      fieldStripeFns[i] = getStripeFn(context, field.value, parents.cons(field.name));
+    }
+    if (!context.isIgnoreExtraFields) {
+      final Set<Keyword> fieldNameSet = new HashSet<Keyword>(fields.length * 2);
+      for (Keyword fieldName : fieldNames) {
+        fieldNameSet.add(fieldName);
+      }
+      return new StripeFn() {
+        public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
+                           int definitionLevel) {
+          boolean isNil = (rec == notFound);
+          if (isNil && !isParentNil) {
+            throw new IllegalArgumentException(
+                String.format("Required record at path '%s' is missing", parents));
+          }
+          for (int i=0; i<fieldNames.length; ++i) {
+            fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isNil, repetitionLevel,
+                                     definitionLevel);
+          }
+          if (!isNil) {
+            checkNoExtraFields(fieldNameSet, rec, parents);
+          }
+        }
+      };
+    } else {
+      return new StripeFn() {
+        public void invoke(Object[] buffer, Object rec, boolean isParentNil, int repetitionLevel,
+                           int definitionLevel) {
+          boolean isNil = (rec == notFound);
+          if (isNil && !isParentNil) {
+            throw new IllegalArgumentException(
+                String.format("Required record at path '%s' is missing", parents));
+          }
+          for (int i=0; i<fieldNames.length; ++i) {
+            fieldStripeFns[i].invoke(buffer, RT.get(rec, fieldNames[i], notFound), isNil, repetitionLevel,
+                                     definitionLevel);
+          }
+        }
+      };
+    }
   }
 
   private static IFn keyValueFn = new AFn() {
@@ -271,8 +342,9 @@ public final class Stripe {
     return RT.seq(o);
   }
 
-  private static StripeFn getMapStripeFn(Types types, Schema.Collection map, final IPersistentVector parents) {
-    final StripeFn repeatedStripeFn = getStripeFn(types, map.withRepetition(Schema.LIST), parents);
+  private static StripeFn getMapStripeFn(Context context, Schema.Collection map,
+                                         final IPersistentVector parents) {
+    final StripeFn repeatedStripeFn = getStripeFn(context, map.withRepetition(Schema.LIST), parents);
     return new StripeFn() {
       public void invoke(Object[] buffer, Object mapObj, boolean isParentNil, int repetitionLevel,
                          int definitionLevel) {
@@ -293,9 +365,9 @@ public final class Stripe {
     };
   }
 
-  private static StripeFn getRepeatedStripeFn(Types types, Schema.Collection coll,
+  private static StripeFn getRepeatedStripeFn(Context context, Schema.Collection coll,
                                               final IPersistentVector parents) {
-    final StripeFn repeatedElementStripeFn = getStripeFn(types, coll.repeatedSchema, parents.cons(null));
+    final StripeFn repeatedElementStripeFn = getStripeFn(context, coll.repeatedSchema, parents.cons(null));
     final int curRepetitionLevel = coll.repetitionLevel;
     final int curDefinitionLevel = coll.definitionLevel;
     return new StripeFn() {

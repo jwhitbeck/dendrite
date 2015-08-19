@@ -107,7 +107,10 @@
   :custom-types            - a map of of custom-type symbol to custom-type specification. See docs for
                              full explanation.
   :map-fn                  - apply this function to all written records before striping them to columns. This
-                             function is applied as part of the parallelized striping process."
+                             function is applied as part of the parallelized striping process.
+  :ignore-extra-fields?    - if true (default), ignore record fields that are not part of the schema upon
+                             writing to file. If false, will throw an exception if a record contains a field
+                             not defined in the schema."
   (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
   (^dendrite.java.FileWriter [opts schema file]
                              (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))

@@ -38,6 +38,7 @@ public final class Options {
     QUERY = Keyword.intern("query"),
     SUB_SCHEMA_IN = Keyword.intern("sub-schema-in"),
     MISSING_FIELDS_AS_NIL = Keyword.intern("missing-fields-as-nil?"),
+    IGNORE_EXTRA_FIELDS = Keyword.intern("ignore-extra-fields?"),
     READERS = Keyword.intern("readers"),
     MAP_FN = Keyword.intern("map-fn"),
     ALL = Keyword.intern("all"),
@@ -53,6 +54,7 @@ public final class Options {
   public static final int DEFAULT_OPTIMIZE_COLUMNS = RecordGroup.ONLY_DEFAULT;
   public static final Map<Symbol,Double> DEFAULT_COMPRESSION_THRESHOLDS;
   public static final boolean DEFAULT_MISSING_FIELDS_AS_NIL = true;
+  public static final boolean DEFAULT_IGNORE_EXTRA_FIELDS = true;
   public static final int DEFAULT_BUNDLE_SIZE = 256;
 
   private static final Object notFound = new Object();
@@ -327,10 +329,12 @@ public final class Options {
     public final List<CustomTypeDefinition> customTypeDefinitions;
     public final int bundleSize;
     public final IFn mapFn;
+    public final boolean isIgnoreExtraFields;
 
     public WriterOptions(int recordGroupLength, int dataPageLength, int optimizationStrategy,
                          Map<Symbol,Double> compressionThresholds, IFn invalidInputHandler,
-                         List<CustomTypeDefinition> customTypeDefinitions, IFn mapFn) {
+                         List<CustomTypeDefinition> customTypeDefinitions, IFn mapFn,
+                         boolean isIgnoreExtraFields) {
       this.recordGroupLength = recordGroupLength;
       this.dataPageLength = dataPageLength;
       this.optimizationStrategy = optimizationStrategy;
@@ -339,12 +343,13 @@ public final class Options {
       this.customTypeDefinitions = customTypeDefinitions;
       this.mapFn = mapFn;
       this.bundleSize = DEFAULT_BUNDLE_SIZE;
+      this.isIgnoreExtraFields = isIgnoreExtraFields;
     }
   }
 
   private static final Keyword[] validWriterOptionKeys
     = new Keyword[]{RECORD_GROUP_LENGTH, DATA_PAGE_LENGTH, OPTIMIZE_COLUMNS, COMPRESSION_THRESHOLDS,
-                    INVALID_INPUT_HANDLER, CUSTOM_TYPES, MAP_FN};
+                    INVALID_INPUT_HANDLER, CUSTOM_TYPES, MAP_FN, IGNORE_EXTRA_FIELDS};
 
   private static int getPositiveInt(IPersistentMap options, Keyword key, int defaultValue) {
     Object o = RT.get(options, key, notFound);
@@ -435,6 +440,18 @@ public final class Options {
     }
   }
 
+  private static boolean getIgnoreExtraFields(IPersistentMap options) {
+    Object o = RT.get(options, IGNORE_EXTRA_FIELDS, notFound);
+    if (o == notFound) {
+      return DEFAULT_IGNORE_EXTRA_FIELDS;
+    } else if (o instanceof Boolean) {
+      return (Boolean)o;
+    } else {
+      throw new IllegalArgumentException(String.format("%s expects a boolean but got '%s'",
+                                                       IGNORE_EXTRA_FIELDS, o));
+    }
+  }
+
   public static WriterOptions getWriterOptions(IPersistentMap options) {
     checkValidKeys(options, validWriterOptionKeys, "%s is not a supported writer option.");
     return new WriterOptions(getRecordGroupLength(options),
@@ -443,6 +460,7 @@ public final class Options {
                              getCompressionThresholds(options),
                              getInvalidInputHandler(options),
                              getCustomTypeDefinitions(options),
-                             getFn(MAP_FN, options));
+                             getFn(MAP_FN, options),
+                             getIgnoreExtraFields(options));
   }
 }
