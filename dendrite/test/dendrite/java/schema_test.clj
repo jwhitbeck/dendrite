@@ -94,7 +94,7 @@
          [:meta nil :val] Schema/REQUIRED 1 1
          [:keywords] Schema/SET 1 1
          [:keywords nil] Schema/REQUIRED 1 1
-         [:is-active] Schema/REQUIRED 0 0
+         [:internal/is-active] Schema/REQUIRED 0 0
          [:ngrams] Schema/VECTOR 1 1
          [:ngrams nil] Schema/VECTOR 2 2
          [:ngrams nil nil] Schema/REQUIRED 2 2)))
@@ -115,7 +115,7 @@
          [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6 1
          [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7 1
          [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8 1
-         [:is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9 0
+         [:internal/is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9 0
          [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10 2))
   (testing "records have the proper leaf-column-index"
     (are [ks leaf-column-idx] (let [^Schema$Record record (sub-schema-in test-schema ks)]
@@ -144,7 +144,7 @@
        {'string 'int 'long 'long} #"Map field can only contain a single key/value schema element"))
 
 (deftest plain-schema
-  (is (= {:is-active (Schema/req 'boolean)
+  (is (= {:internal/is-active (Schema/req 'boolean)
           :keywords #{'string}
           :meta {(Schema/req 'string) (Schema/req 'string)}
           :name [{:url 'string :language [{:country 'string, :code (Schema/req 'string)}]}]
@@ -198,17 +198,17 @@
         6 [:meta nil :key]
         7 [:meta nil :val]
         8 [:keywords nil]
-        9 [:is-active]
+        9 [:internal/is-active]
         10 [:ngrams nil nil])
       (is (= (range 11) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result)))))
-    (let [query-result (Schema/applyQuery types true {} test-schema {:is-active '_ :name '_})]
+    (let [query-result (Schema/applyQuery types true {} test-schema {:internal/is-active '_ :name '_})]
       (are [query-column-index sub-schema]
         (let [^Schema$Column col (-> query-result .schema (sub-schema-in sub-schema))]
           (is (= query-column-index (.queryColumnIndex col))))
         0 [:name nil :language nil :code]
         1 [:name nil :language nil :country]
         2 [:name nil :url]
-        3 [:is-active])
+        3 [:internal/is-active])
       (is (= (range 4) (map #(.queryColumnIndex ^Schema$Column %) (.columns query-result))))))
   (testing "tagging"
     (let [bogus-fn (fn [])]

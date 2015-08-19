@@ -117,7 +117,7 @@
                     " :url #col [string incremental]}],"
                     " :meta {#req #col [string dictionary] #req #col [string dictionary]},"
                     " :keywords #{#req #col [string dictionary]},"
-                    " :is-active #req boolean,"
+                    " :internal/is-active #req boolean,"
                     " :ngrams [[#req #col [string dictionary]]]}")
                (str (d/full-schema r)))))
       (testing "stats"
@@ -125,8 +125,8 @@
       (testing "full schema"
         (is (= records (d/read r))))
       (testing "one field"
-        (is (= (map #(select-keys % [:is-active]) records)
-               (d/read {:query {:is-active '_}} r)))))))
+        (is (= (map #(select-keys % [:internal/is-active]) records)
+               (d/read {:query {:internal/is-active '_}} r)))))))
 
 (deftest user-defined-metadata
   (let [test-metadata {:foo {:bar "test"} :baz [1 2 3]}]
@@ -543,7 +543,7 @@
 
 (deftest writer-with-map-fn
   (let [records (take 100 (helpers/rand-test-records))
-        f #(select-keys % [:docid :is-active])]
+        f #(select-keys % [:docid :internal/is-active])]
     (with-open [w (d/file-writer {:map-fn f} (Schema/readString helpers/test-schema-str) tmp-filename)]
       (.writeAll w records))
     (is (= (map f records)

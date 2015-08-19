@@ -34,7 +34,7 @@
 (deftest test-schema
   (testing "record striping works on test-schema"
     (let [test-record {:docid 0
-                       :is-active false
+                       :internal/is-active false
                        :links {:forward [1 2] :backward [3]}
                        :name [{:url "http://P" :language [{:code "us"}
                                                           {:code "gb" :country "Great Britain"}]}]
@@ -54,7 +54,7 @@
               false
               [(LeveledValue. 0 2 "foo") (LeveledValue. 2 2 "bar")]]))))
   (testing "nil values in repeated records are preserved"
-    (is (= (stripe-record {:docid 0 :is-active false :name [nil]} test-schema*)
+    (is (= (stripe-record {:docid 0 :internal/is-active false :name [nil]} test-schema*)
            [0
             [(LeveledValue. 0 0 nil)]
             [(LeveledValue. 0 0 nil)]

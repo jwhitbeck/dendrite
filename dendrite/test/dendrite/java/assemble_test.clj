@@ -44,7 +44,7 @@
 (def test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types)))
 
 (def test-record {:docid 10
-                  :is-active false
+                  :internal/is-active false
                   :links {:backward (list 1 2 3)
                           :forward [4 5]}
                   :name [nil {:language [{:code "us" :country "USA"}]

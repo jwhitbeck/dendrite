@@ -134,7 +134,7 @@
            :url string}]
     :meta {#req string #req string}
     :keywords #{#req string}
-    :is-active #req boolean
+    :internal/is-active #req boolean
     :ngrams [[#req string]]}")
 
 (defn- rand-test-record [docid]
@@ -170,7 +170,7 @@
           ngrams (repeatedly (clojure.core/rand-int 3)
                              #(repeatedly (inc (clojure.core/rand-int 2)) rand-word))]
       (cond-> {:docid docid
-               :is-active (rand-bool)}
+               :internal/is-active (rand-bool)}
        (seq links) (assoc :links links)
        (seq names) (assoc :name names)
        (seq meta-map) (assoc :meta meta-map)
