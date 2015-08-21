@@ -232,7 +232,7 @@
   (testing "small random unsigned ints with an occasional large one."
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-int-bits 7))
-                            (helpers/rand-map 0.1 (constantly (helpers/rand-int-bits 24)))
+                            (helpers/rand-map 0.1 (fn [_] (helpers/rand-int-bits 24)))
                             (take 1000))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
@@ -241,7 +241,7 @@
   (testing "small random signed ints with an occasional large one."
     (let [column (column-required Types/INT Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-int-bits 7))
-                            (helpers/rand-map 0.1 (constantly (helpers/rand-int-bits 24)))
+                            (helpers/rand-map 0.1 (fn [_] (helpers/rand-int-bits 24)))
                             (map * (repeatedly helpers/rand-sign))
                             (map unchecked-int)
                             (take 1000))
@@ -275,7 +275,7 @@
   (testing "small random unsigned longs with an occasional large one."
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-long-bits 7))
-                            (helpers/rand-map 0.1 (constantly (helpers/rand-long-bits 24)))
+                            (helpers/rand-map 0.1 (fn [_] (helpers/rand-long-bits 24)))
                             (take 1000))
           reader (write-optimized-column-chunk-and-get-reader column input-values)
           output-values (flatten-1 reader)]
@@ -284,7 +284,7 @@
   (testing "small random signed longs with an occasional large one."
     (let [column (column-required Types/LONG Types/PLAIN Types/NONE)
           input-values (->> (repeatedly #(helpers/rand-long-bits 7))
-                            (helpers/rand-map 0.1 (constantly (helpers/rand-long-bits 24)))
+                            (helpers/rand-map 0.1 (fn [_] (helpers/rand-long-bits 24)))
                             (map * (repeatedly helpers/rand-sign))
                             (map unchecked-long)
                             (take 1000))
