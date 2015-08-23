@@ -22,9 +22,9 @@
 
 (defn col
   "Returns a column specification. Takes one to three arguments:
-  - type:        the column type symbol (e.g. int)
-  - encoding:    the column encoding symbol (default: plain)
-  - compression: the column compression symbol (default: none)
+  - type         the column type symbol (e.g. int)
+  - encoding     the column encoding symbol (default: plain)
+  - compression  the column compression symbol (default: none)
 
   See README for all supported encoding/compression types."
   ([type] (Col. type))
@@ -91,26 +91,34 @@
   "Returns a dendrite writer that outputs to a file according to the provided schema.
 
   If provided, the options map supports the following keys:
-  :data-page-length        - the length in bytes of the data pages (default 262144)
-  :record-group-length     - the length in bytes of each record group (default 134217728)
-  :optimize-columns?       - either :all, :none or :default. If :all, will attempt to optimize the
-                             encoding and compression for each column; if :default, will only optimize
-                             columns with the default encoding & compression (i.e., plain/none); if :none,
-                             disables all optimization.
-  :compression-thresholds  - a map of compression method (e.g., deflate) to the minimum compression ratio
-                             (e.g., 2) below which the overhead of compression is not not deemed worthwhile.
-                             Default: {'deflate 1.5}
-  :invalid-input-handler   - a function with two arguments: record and exception. If an input record does
-                             not conform to the schema, it will be passed to this function along with the
-                             exception it triggered. By default, this option is nil and exceptions
-                             triggered by invalid records are not caught.
-  :custom-types            - a map of of custom-type symbol to custom-type specification. See docs for
-                             full explanation.
-  :map-fn                  - apply this function to all written records before striping them to columns. This
-                             function is applied as part of the parallelized striping process.
-  :ignore-extra-fields?    - if true (default), ignore record fields that are not part of the schema upon
-                             writing to file. If false, will throw an exception if a record contains a field
-                             not defined in the schema."
+
+  :data-page-length         The length in bytes of the data pages (default 262144)
+
+  :record-group-length      The length in bytes of each record group (default 134217728)
+
+  :optimize-columns?        Either :all, :none or :default. If :all, will attempt to optimize the
+                            encoding and compression for each column; if :default, will only optimize
+                            columns with the default encoding & compression (i.e., plain/none); if :none,
+                            disables all optimization.
+
+  :compression-thresholds   A map of compression method (e.g., deflate) to the minimum compression ratio
+                            (e.g., 2) below which the overhead of compression is not not deemed worthwhile.
+                            Default: {'deflate 1.5}
+
+  :invalid-input-handler    A function with two arguments: record and exception. If an input record does
+                            not conform to the schema, it will be passed to this function along with the
+                            exception it triggered. By default, this option is nil and exceptions
+                            triggered by invalid records are not caught.
+
+  :custom-types             A map of of custom-type symbol to custom-type specification. See docs for
+                            full explanation.
+
+  :map-fn                   Apply this function to all written records before striping them to columns. This
+                            function is applied as part of the parallelized striping process.
+
+  :ignore-extra-fields?     If true (default), ignore record fields that are not part of the schema upon
+                            writing to file. If false, will throw an exception if a record contains a field
+                            not defined in the schema."
   (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
   (^dendrite.java.FileWriter [opts schema file]
                              (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))
@@ -188,16 +196,20 @@
   clojure.core.reducers, in which case the folding is done as part of record assembly).
 
   If provided, the options map supports the following keys:
-  :missing-fields-as-nil? - should be true (default) or false. If true, then fields that are specified in the
-                            query but are not present in this reader's schema will be read as nil values. If
-                            false, querying for fields not present in the schema will throw an exception.
-  :query                  - the query. Default: '_. See docs for full explanation.
-  :sub-schema-in          - path to the desired sub-schema. The value should be a sequence of keys that cannot
-                            contain any keys to repeated elements. If both :sub-schema-in and :query are
-                            defined, the query applies to the specified sub-schema. See docs for full
-                            explanation.
-  :readers                - a map of query tag symbol to tag function. Default: nil. See docs for full
-                            explanation."
+
+  :missing-fields-as-nil?  Set to true (default) or false. If true, then fields that are specified in the
+                           query but are not present in this reader's schema will be read as nil values. If
+                           false, querying for fields not present in the schema will throw an exception.
+
+  :query                   The query. Default: '_. See docs for full explanation.
+
+  :sub-schema-in           Path to the desired sub-schema. The value should be a sequence of keys that cannot
+                           contain any keys to repeated elements. If both :sub-schema-in and :query are
+                           defined, the query applies to the specified sub-schema. See docs for full
+                           explanation.
+
+  :readers                 A map of query tag symbol to tag function. Default: nil. See docs for full
+                           explanation."
   (^dendrite.java.View [^IReader reader] (read nil reader))
   (^dendrite.java.View [opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
