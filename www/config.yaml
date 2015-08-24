@@ -1,0 +1,14 @@
+baseurl: https://dendrite.github.io
+languageCode: en-US
+title: Dendrite
+metadataFormat: yaml
+pygmentsuseclasses: true
+params:
+  description: A columnar storage format for Clojure
+  githubUrl: https://github.com/jwhitbeck/dendrite
+  copyright: John Whitbeck 2015
+  themeColor: theme-base-0d
+menu:
+  main:
+    - Name: "API docs"
+      URL: "/api"

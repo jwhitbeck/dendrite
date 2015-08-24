@@ -1,0 +1,3 @@
+{{ range where .Data.Pages "Type" "index" }}
+{{ .Render "single" }}
+{{ end }}
