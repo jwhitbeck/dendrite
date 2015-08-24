@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Dendrite</title>
+    <link>https://dendrite.github.io/</link>
+    <description>Recent content on Dendrite</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Sun, 23 Aug 2015 19:32:18 -0700</lastBuildDate>
+    <atom:link href="https://dendrite.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Record assembly</title>
+      <link>https://dendrite.github.io/assembly/</link>
+      <pubDate>Sun, 23 Aug 2015 19:32:18 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/assembly/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tutorial</title>
+      <link>https://dendrite.github.io/tutorial/</link>
+      <pubDate>Sun, 23 Aug 2015 19:31:12 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/tutorial/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>File format</title>
+      <link>https://dendrite.github.io/format/</link>
+      <pubDate>Sun, 23 Aug 2015 19:30:50 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/format/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Get started</title>
+      <link>https://dendrite.github.io/start/</link>
+      <pubDate>Sun, 23 Aug 2015 18:08:01 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/start/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Benchmarks</title>
+      <link>https://dendrite.github.io/benchmarks/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/benchmarks/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Introducing Dendrite</title>
+      <link>https://dendrite.github.io/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>https://dendrite.github.io/</guid>
+      <description>&lt;p&gt;Website under construction&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
