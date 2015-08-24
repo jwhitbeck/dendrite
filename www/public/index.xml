@@ -46,6 +46,15 @@
     </item>
     
     <item>
+      <title>Benchmarks</title>
+      <link>https://jwhitbeck.github.io/dendrite/benchmarks/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>https://jwhitbeck.github.io/dendrite/benchmarks/</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>Introducing Dendrite</title>
       <link>https://jwhitbeck.github.io/dendrite/</link>
       <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
@@ -53,15 +62,6 @@
       <guid>https://jwhitbeck.github.io/dendrite/</guid>
       <description>&lt;p&gt;Website under construction&lt;/p&gt;
 </description>
-    </item>
-    
-    <item>
-      <title>Benchmarks</title>
-      <link>https://jwhitbeck.github.io/dendrite/benchmarks/</link>
-      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
-      
-      <guid>https://jwhitbeck.github.io/dendrite/benchmarks/</guid>
-      <description></description>
     </item>
     
   </channel>
