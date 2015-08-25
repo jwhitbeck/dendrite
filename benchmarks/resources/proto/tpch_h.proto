@@ -1,0 +1,96 @@
+package dendrite.benchmarks;
+
+option java_outer_classname = "TpcH";
+option optimize_for = SPEED;
+
+message Region {
+  required string name = 1;
+  required string comment = 2;
+}
+
+message Nation {
+  required string name = 1;
+  required Region region = 2;
+  required string comment = 3;
+}
+
+message Customer {
+  required string name = 1;
+  required string address = 2;
+  required Nation nation = 3;
+  required string phone = 4;
+  required float account_balance = 5;
+  enum MarketSegment {
+    MACHINERY = 1;
+    HOUSEHOLD = 2;
+    AUTOMOBILE = 3;
+    BUILDING = 4;
+    FURNITURE = 5;
+  }
+  required MarketSegment market_segment = 6;
+  required string comment = 7;
+}
+
+message Order {
+  required Customer customer = 1;
+  enum OrderStatus {
+    O = 1;
+    F = 2;
+    P = 3;
+  }
+  required OrderStatus order_status = 2;
+  required float total_price = 3;
+  required string order_date = 4;
+  required string order_priority = 5;
+  required string clerk = 6;
+  required int32 ship_priority = 7;
+  required string comment = 8;
+}
+
+message Part {
+  required string name = 1;
+  required string manufacturer = 2;
+  required string brand = 3;
+  required string type = 4;
+  required int32 size = 5;
+  required string container = 6;
+  required float retail_price = 7;
+  required string comment = 8;
+}
+
+message Supplier {
+  required string name = 1;
+  required string address = 2;
+  required Nation nation = 3;
+  required string phone = 4;
+  required float account_balance = 5;
+  required string comment = 6;
+}
+
+message LineItem {
+  required Order order = 1;
+  required Part part = 2;
+  required Supplier supplier = 3;
+  required int32 line_number = 4;
+  required int32 quantity = 5;
+  required float extended_price = 6;
+  required float discount = 7;
+  required float tax = 8;
+  enum ReturnFlag {
+    N = 1;
+    R = 2;
+    A = 3;
+  }
+  required ReturnFlag return_flag = 9;
+  enum LineStatus {
+    O = 1;
+    F = 2;
+  }
+  required LineStatus line_status = 10;
+  required string ship_date = 11;
+  required string commit_date = 12;
+  required string receipt_date = 13;
+  required string ship_instruct = 14;
+  required string ship_mode = 15;
+  required string comment = 16;
+}

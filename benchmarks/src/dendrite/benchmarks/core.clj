@@ -6,6 +6,7 @@
             [clojure.tools.cli :as cli]
             [dendrite.core :as d]
             [dendrite.benchmarks.media-content :as media-content]
+            [dendrite.benchmarks.tpc-h :as tpc-h]
             [dendrite.benchmarks.user-events :as user-events])
   (:gen-class))
 
@@ -119,6 +120,14 @@
     (when clean?
       (delete-recursively! output-dir))
     (.mkdirs output-dir)
+    (run-full-schema-benchmarks! output-dir
+                                 "tpc_h"
+                                 tpc-h/base-file-url
+                                 tpc-h/full-schema-benchmarks)
+    (run-sub-schema-benchmarks! output-dir
+                                "tpc_h"
+                                tpc-h/base-file-url
+                                tpc-h/sub-schema-benchmarks)
     (run-full-schema-benchmarks! output-dir
                                  "media_content"
                                  media-content/base-file-url

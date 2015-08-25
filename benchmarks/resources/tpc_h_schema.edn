@@ -1,0 +1,45 @@
+#req {:order #req {:customer #req {:name #req string
+                                   :address #req string
+                                   :nation #req {:name #req string
+                                                 :region #req {:name #req string, :comment #req string}
+                                                 :comment #req string}
+                                   :phone #req string
+                                   :account-balance #req float
+                                   :market-segment #req string
+                                   :comment #req string}
+                   :order-status #req string
+                   :total-price #req float
+                   :order-date #req string
+                   :order-priority #req string
+                   :clerk #req string
+                   :ship-priority #req int
+                   :comment #req string}
+      :part #req {:name #req string
+                  :manufacturer #req string
+                  :brand #req string
+                  :type #req string
+                  :size #req int
+                  :container #req string
+                  :retail-price #req float
+                  :comment #req string}
+      :supplier #req {:name #req string
+                      :address #req string
+                      :nation #req {:name #req string
+                                    :region #req {:name #req string :comment #req string}
+                                    :comment #req string}
+                      :phone #req string
+                      :account-balance #req float
+                      :comment #req string}
+      :line-number #req int
+      :quantity #req int
+      :extended-price #req float
+      :discount #req float
+      :tax #req float
+      :return-flag #req string
+      :line-status #req string
+      :ship-date #req string
+      :commit-date #req string
+      :receipt-date #req string
+      :ship-instruct #req string
+      :ship-mode #req string
+      :comment #req string}
