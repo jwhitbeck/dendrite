@@ -196,6 +196,7 @@ public final class FileReader implements Closeable, IReader {
       .assoc(MAX_REPETITION_LEVEL, columnStats.maxRepetitionLevel)
       .assoc(MAX_DEFINITION_LEVEL, columnStats.maxDefinitionLevel)
       .assoc(NUM_COLUMN_CHUNKS, columnStats.numColumnChunks)
+      .assoc(NUM_PAGES, columnStats.numPages)
       .assoc(NUM_VALUES, columnStats.numValues)
       .assoc(NUM_NON_NIL_VALUES, columnStats.numNonNilValues)
       .assoc(LENGTH, columnStats.length)
