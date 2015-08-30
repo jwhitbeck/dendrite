@@ -1,34 +1,34 @@
-{:id #req int
- :guid #req string
- :about string
- :devices [{:connections [{:events [{:amount string
-                                     :type #req string
-                                     :at #req string}]
-                           :geo #req {:long #req float
-                                      :lat #req float}
-                           :referrer #req string
-                           :ip #req string
-                           :at #req string}]
-            :mac #req string
-            :family #req string}]
- :registered-at #req string
- :tags [{:name string}]
- :tagline #req string
- :personal #req {:company string
-                 :gender string
-                 :address #req {:country #req string
-                                :zip #req string
-                                :state #req string
-                                :city #req string
-                                :street #req string}
-                 :email #req string
-                 :first-name #req string
-                 :last-name #req string
-                 :phone string
-                 :yob #req int
-                 :picture string
-                 :eye-color string}
- :username #req string
- :is-active #req boolean,
- :balance #req string
- :language #req string}
+#req {:id #req int
+      :guid #req string
+      :about string
+      :devices [{:connections [{:events [{:amount string
+                                          :type #req string
+                                          :at #req string}]
+                                :geo #req {:long #req float
+                                           :lat #req float}
+                                :referrer #req string
+                                :ip #req string
+                                :at #req string}]
+                 :mac #req string
+                 :family #req string}]
+      :registered-at #req string
+      :tags [{:name string}]
+      :tagline #req string
+      :personal #req {:company string
+                      :gender string
+                      :address #req {:country #req string
+                                     :zip #req string
+                                     :state #req string
+                                     :city #req string
+                                     :street #req string}
+                      :email #req string
+                      :first-name #req string
+                      :last-name #req string
+                      :phone string
+                      :yob #req int
+                      :picture string
+                      :eye-color string}
+      :username #req string
+      :is-active #req boolean,
+      :balance #req string
+      :language #req string}

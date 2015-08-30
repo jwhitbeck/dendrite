@@ -1,17 +1,17 @@
-{:id #req int
- :media #req {:copyright #req string
-              :player #req string
-              :height #req int
-              :format #req string
-              :persons [string]
-              :width #req int
-              :duration #req int
-              :size #req int
-              :title #req string
-              :bitrate #req int
-              :uri #req string}
- :images [{:size #req string
-           :height #req int
-           :width #req int
-           :title #req string
-           :uri #req string}]}
+#req {:id #req int
+      :media #req {:copyright #req string
+                   :player #req string
+                   :height #req int
+                   :format #req string
+                   :persons [string]
+                   :width #req int
+                   :duration #req int
+                   :size #req int
+                   :title #req string
+                   :bitrate #req int
+                   :uri #req string}
+      :images [{:size #req string
+                :height #req int
+                :width #req int
+                :title #req string
+                :uri #req string}]}
