@@ -131,7 +131,7 @@
     (are [custom-types regex]
       (thrown-with-msg? IllegalArgumentException regex
                         (Types/create (Options/getCustomTypeDefinitions {:custom-types custom-types})))
-      {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'bar'"
+      {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'foo'"
       {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'"
       {'foo {:base-type 'in}} #"Unknown base type 'in'"))
   (testing "custom-types work"

@@ -6,7 +6,7 @@
   :java-opts ["-server" "-Xms4g" "-Xmx8g"]
   :main dendrite.benchmarks.core
   :plugins [[lein-protobuf "0.4.1"]]
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
                  [cheshire "5.5.0"]
                  [com.damballa/abracad "0.4.12"]
                  [com.google.protobuf/protobuf-java "2.6.1"]

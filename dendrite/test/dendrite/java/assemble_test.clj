@@ -108,7 +108,7 @@
         (= answer (assemble stripes
                             (Schema/applyQuery helpers/default-types true {'foo f} test-schema query)))
         {:meta 2} count
-        {:meta ["key2" "key1"]} keys)))
+        {:meta #{"key1" "key2"}} (comp set keys))))
   (testing "missing fields"
     (let [query (Schema/tag 'foo {:foo '_})
           stripes nil]
