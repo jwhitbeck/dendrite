@@ -66,11 +66,13 @@
           str-fn (if (:pretty cli-options)
                    #(with-out-str (pprint/pprint %))
                    str)
+          map-fn (if-let [f (:map-fn cli-options)]
+                   (comp str-fn f)
+                   str-fn)
           view (->> (cond->> (d/read opts r)
                       (:head cli-options) (d/sample #(< % (:head cli-options)))
-                      (:tail cli-options) (d/sample #(>= % (- (d/num-records r) (:tail cli-options))))
-                      (:map-fn cli-options) (d/map (:map-fn cli-options)))
-                    (d/map str-fn))
+                      (:tail cli-options) (d/sample #(>= % (- (d/num-records r) (:tail cli-options)))))
+                    (d/eduction (map map-fn)))
           print-fn (if (:pretty cli-options) print println)
           record-strs (cond
                         (:head cli-options) (take (:head cli-options) view)
