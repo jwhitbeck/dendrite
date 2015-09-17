@@ -16,7 +16,7 @@
   (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader PersistentRecord Schema
             Types View FileWriter]
            [java.nio ByteBuffer])
-  (:refer-clojure :exclude [read map map-indexed keep keep-indexed filter remove]))
+  (:refer-clojure :exclude [read eduction]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,63 +216,24 @@
 (defn sample
   "Returns a view of the records containing only those such that (f record-index) evaluates truthfully, where
   record-index goes from 0 (first record) to num-records - 1 (last record). The sampling occurs before record
-  assembly thereby skipping assembly entirely for unselected records. As with read, this view is seqable,
-  reducible, and foldable. A view can only have a single sample function applied to it and the sample
-  function must be applied before any mapping or filtering function."
+  assembly thereby entirely skipping assembly for unselected records. As with read, this view is seqable,
+  reducible, and foldable. A view can only have a single sample function applied to it and that function must
+  be applied before any indexing function or transducer."
   ^dendrite.java.View [f ^View view] (.withSampleFn view f))
 
-(defn map
-  "Returns a view of the records with the provided function mapped on to each record as part of record
-  assembly. As with read, this view is seqable, reducible, and foldable. Calling (d/map f (d/read r)) is
-  equivalent to (map f (d/read r)) but more efficient."
-  ^dendrite.java.View [f ^View view] (.withMapFn view f))
+(defn index-by
+  "Returns a view of the records as the output of (f record-index record), where goes from 0 (first record) to
+  num-records - 1 (last record) and record is the assembled record. Use this if you need the record's index
+  for further processing. As with read, this view is seqable, reducible, and foldable. A view can only have a
+  single index-by function applied to it and that function must be applied before any transducer."
+  ^dendrite.java.View [f ^View view] (.withIndexedByFn view f))
 
-(defn map-indexed
-  "Returns a view of the records with the provided function mapped on to each record and its index as part of
-  record assembly. As with read, this view is seqable, reducible, and foldable. Calling
-  (d/map-indexed f (d/read r)) is equivalent to (map-indexed f (d/read r)) but more efficient. However, this
-  equivalence does not extend to chaining calls to d/map-indexed or any other d/*-indexed function. Indeed the
-  index argument passed to f is always the record's index in the file, wheread in clojure.core/map-indexed, a
-  new index is generated for each nested lazy-seq. Therefore (->> (d/read r) (d/map-indexed f) (d/map-indexed
-  g)) will not in general be equivalent to (->> (d/read r) (map-indexed f) (map-indexed f))."
-  ^dendrite.java.View [f ^View view] (.withMapIndexedFn view f))
-
-(defn keep
-  "Returns a view of the records with the provided function mapped on to each record as part of record
-  assembly and all nil values removed. As with read, this view is seqable, reducible, and
-  foldable. Calling (d/keep f (d/read r)) is equivalent to (keep f (d/read r)) but more efficient."
-  ^dendrite.java.View [f ^View view] (.withKeepFn view f))
-
-(defn keep-indexed
-  "Returns a view of the records with the provided function mapped on to each record and its index as part of
-  record assembly and all nil values removed. As with read, this view is seqable, reducible, and
-  foldable. Calling (d/keep-indexed f (d/read r)) is equivalent to (keep-indexed f (d/read r)) but more
-  efficient. However, this equivalence does not extend to nested calls to keep-indexed. See map-indexed for
-  details."
-  ^dendrite.java.View [f ^View view] (.withKeepIndexedFn view f))
-
-(defn filter
-  "Returns a view of the records containing only those such that (f record) evaluates truthfully. The
-  filtering is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable. Calling (d/filter f (d/read r)) is equivalent to (filter f (d/read r)) but more efficient."
-  ^dendrite.java.View [f ^View view] (.withFilterFn view f))
-
-(defn filter-indexed
-  "Returns a view of the records containing only those such that (f index record) evaluates truthfully. The
-  filtering is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable. However, this equivalence does not extend to nested calls to keep-indexed. See map-indexed for
-  details."
-  ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view f))
-
-(defn remove
-  "Returns a view of the records not containing any of those such that (f record) evaluates truthfully. The
-  removal is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable. Calling (d/remove f (d/read r)) is equivalent to (remove f (d/read r)) but more efficient."
-  ^dendrite.java.View [f ^View view] (.withFilterFn view (complement f)))
-
-(defn remove-indexed
-  "Returns a view of the records not containing any of those such that (f index record) evaluates truthfully.
-  The removal is done as part of record assembly. As with read, this view is seqable, reducible, and
-  foldable. However, this equivalence does not extend to nested calls to keep-indexed. See map-indexed for
-  details."
-  ^dendrite.java.View [f ^View view] (.withFilterIndexedFn view (complement f)))
+(defn eduction
+  "Returns a seqable, reducible, and foldable view of of the application of the transducers to the
+  records. Transducers are applied in order as if combined with comp. Note that the transducers are applied in
+  parallel on each bundle (see assembly docs for full explanation), so this function can produce unexpected
+  results for stateful transducers such as `parition-all` or `distinct`. However, for stateless transducers
+  such as `map` or `filter` the results will be identical to calling `clojure.core/eduction` on the view, but
+  faster because applied in parallel."
+  {:arglists '([xform* view])} ^dendrite.java.View [& xforms]
+  (.withTransduceFn ^View (last xforms) (apply comp (butlast xforms))))

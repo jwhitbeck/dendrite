@@ -36,7 +36,7 @@ import java.util.concurrent.Future;
 
 public abstract class View implements IReduce, ISeq, Seqable, Sequential {
 
-  private ISeq recordSeq = null;
+  private ISeq seq = null;
   private boolean isSeqSet = false;
   protected final int defaultBundleSize;
 
@@ -47,10 +47,10 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
   @Override
   public synchronized ISeq seq() {
     if (!isSeqSet) {
-      recordSeq = RT.seq(getRecordChunkedSeq(getRecordChunks(defaultBundleSize).iterator()));
+      seq = RT.seq(getChunkedSeq(getChunks(defaultBundleSize).iterator()));
       isSeqSet = true;
     }
-    return recordSeq;
+    return seq;
   }
 
   public synchronized boolean isSeqSet() {
@@ -109,10 +109,11 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     return ret;
   }
 
-  private static Object reduceIterator(IFn f, Object start, Iterator<IChunk> chunksIterator) {
+  private static Object reduceIterator(IFn f, Object start, Iterator<Object> chunksIterator) {
     Object ret = start;
     while (chunksIterator.hasNext()) {
-      ret = chunksIterator.next().reduce(f, ret);
+      IChunk chunk = (IChunk)chunksIterator.next();
+      ret = chunk.reduce(f, ret);
       if (RT.isReduced(ret)) {
         return ((Reduced)ret).deref();
       }
@@ -136,11 +137,11 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
         }
       }
     } else {
-      Iterator<IChunk> chunksIterator = getRecordChunks(defaultBundleSize).iterator();
+      Iterator<Object> chunksIterator = getChunks(defaultBundleSize).iterator();
       boolean firstFound = false;
       Object ret = null;
       while (!firstFound && chunksIterator.hasNext()) {
-        IChunk chunk = chunksIterator.next();
+        IChunk chunk = (IChunk)chunksIterator.next();
         if (chunk.count() > 0) {
           firstFound = true;
           ret = chunk.nth(0);
@@ -163,7 +164,7 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     if (isSeqSet()) {
       return reduceSeq(f, start, seq());
     } else {
-      return reduceIterator(f, start, getRecordChunks(defaultBundleSize).iterator());
+      return reduceIterator(f, start, getChunks(defaultBundleSize).iterator());
     }
   }
 
@@ -200,9 +201,12 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
   }
 
   private Object foldIterator(int n, IFn combinef, IFn reducef) {
-    Object init = combinef.invoke();
-    Object ret = init;
-    for (Object reducedChunkValue : getReducedChunkValues(reducef, combinef, n)) {
+    Object ret = combinef.invoke();
+    IFn xform = getReadOptions().transduceFn;
+    if (xform != null) {
+      reducef = (IFn) xform.invoke(reducef);
+    }
+    for (Object reducedChunkValue : getReducedChunks(reducef, Utils.identity, combinef, n)) {
       ret = combinef.invoke(ret, reducedChunkValue);
     }
     return ret;
@@ -216,50 +220,42 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     }
   }
 
-  protected abstract Iterable<IChunk> getRecordChunks(int bundleSize);
-
-  protected abstract Iterable<Object> getReducedChunkValues(IFn f, IFn initFn, int bundleSize);
+  protected abstract Iterable<Object> getReducedChunks(IFn reduceFn, IFn completeFn, IFn initFn,
+                                                       int bundleSize);
 
   protected abstract Options.ReadOptions getReadOptions();
 
   protected abstract View withOptions(Options.ReadOptions readOptions);
 
-  public View withMapFn(IFn mapFn) {
-    return withOptions(getReadOptions().addMapFn(mapFn));
-  }
-
   public View withSampleFn(IFn sampleFn) {
     return withOptions(getReadOptions().withSampleFn(sampleFn));
   }
 
-  public View withMapIndexedFn(IFn mapIndexedFn) {
-    return withOptions(getReadOptions().addMangleFn(Mangle.getMapIndexedFn(mapIndexedFn)));
+  public View withIndexedByFn(IFn indexedByFn) {
+    return withOptions(getReadOptions().withIndexedByFn(indexedByFn));
   }
 
-  public View withKeepFn(IFn keepFn) {
-    return withOptions(getReadOptions().addMangleFn(Mangle.getKeepFn(keepFn)));
+  public View withTransduceFn(IFn transduceFn) {
+    return withOptions(getReadOptions().withTransduceFn(transduceFn));
   }
 
-  public View withKeepIndexedFn(IFn keepIndexedFn) {
-    return withOptions(getReadOptions().addMangleFn(Mangle.getKeepIndexedFn(keepIndexedFn)));
+  private Iterable<Object> getChunks(int bundleSize) {
+    IFn rf = new ChunkReduceFn(bundleSize);
+    IFn xform = getReadOptions().transduceFn;
+    if (xform != null) {
+      rf = (IFn)xform.invoke(rf);
+    }
+    return getReducedChunks(rf, rf, rf, bundleSize);
   }
 
-  public View withFilterFn(IFn filterFn) {
-    return withOptions(getReadOptions().addMangleFn(Mangle.getFilterFn(filterFn)));
-  }
-
-  public View withFilterIndexedFn(IFn filterIndexedFn) {
-    return withOptions(getReadOptions().addMangleFn(Mangle.getFilterIndexedFn(filterIndexedFn)));
-  }
-
-  private static ISeq getRecordChunkedSeq(final Iterator<IChunk> recordChunksIterator) {
+  private static ISeq getChunkedSeq(final Iterator<Object> chunksIterator) {
     return new LazySeq(new AFn() {
         public IChunkedSeq invoke() {
           IChunk nextChunk = null;
-          while (recordChunksIterator.hasNext()) {
-            nextChunk = recordChunksIterator.next();
+          while (chunksIterator.hasNext()) {
+            nextChunk = (IChunk)chunksIterator.next();
             if (nextChunk.count() > 0) {
-              return new ChunkedCons(nextChunk, getRecordChunkedSeq(recordChunksIterator));
+              return new ChunkedCons(nextChunk, getChunkedSeq(chunksIterator));
             }
           }
           return null;

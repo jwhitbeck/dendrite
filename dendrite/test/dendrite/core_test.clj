@@ -172,7 +172,7 @@
     (is (thrown-with-msg?
          Exception #"foo"
          (with-open [r (d/file-reader tmp-filename)]
-           (doall (d/map throw-foo-fn (d/read r)))))))
+           (doall (d/eduction (map throw-foo-fn) (d/read r)))))))
   (testing "missing file exception"
     (is (thrown-with-msg?
          java.nio.file.NoSuchFileException #"/no/such/file"
@@ -343,39 +343,72 @@
                                  (d/sample odd?)
                                  (d/sample odd?)))))
     (is (thrown-with-msg? IllegalArgumentException
-                          #"Sample function must be defined before any mapping or filtering function"
+                          #"Sample function must be defined before any indexing or transducer function"
                           (with-open [r (d/file-reader tmp-filename)]
                             (->> (d/read r)
-                                 (d/map :docid)
+                                 (d/eduction (map :docid))
                                  (d/sample odd?)))))))
 
-(deftest view-mappping
+(deftest eductions
   (testing "dremel paper records"
     (.close (dremel-paper-writer))
     (is (= [3 1] (with-open [r (d/file-reader tmp-filename)]
-                   (doall (d/map (comp count :name) (d/read r))))))
+                   (->> (d/read r)
+                        (d/eduction (map :name) (map count))
+                        doall))))
     (is (= [4 2] (with-open [r (d/file-reader tmp-filename)]
-                   (->> (d/read r) (d/map (comp count :name)) (d/map inc) doall)))))
+                   (->> (d/read r)
+                        (d/eduction (map :name) (map count) (map inc))
+                        doall)))))
   (testing "random records"
     (let [records (take 100 (helpers/rand-test-records))]
       (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
         (.writeAll w records))
       (is (= (map :docid records)
              (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/map :docid (d/read r))))))
+               (->> (d/read r) (d/eduction (map :docid)) doall))))
       (is (= (reduce + (map :docid records))
              (with-open [r (d/file-reader tmp-filename)]
-               (reduce + (d/map :docid (d/read r)))))))))
+               (->> (d/read r)
+                    (d/eduction (map :docid))
+                    (reduce +)))))
+      (is (= (->> records
+                  (filter :ngrams)
+                  (keep :keywords)
+                  (filter #(> (count %) 2))
+                  (map count))
+             (with-open [r (d/file-reader tmp-filename)]
+               (->> (d/read r)
+                    (d/eduction (filter :ngrams)
+                                (keep :keywords)
+                                (filter #(> (count %) 2))
+                                (map count))
+                    doall))))
+      (is (= (->> records
+                  (filter :ngrams)
+                  (keep :keywords)
+                  (filter #(> (count %) 2))
+                  (map count)
+                  (reduce +))
+             (with-open [r (d/file-reader tmp-filename)]
+               (->> (d/read r)
+                    (d/eduction (filter :ngrams)
+                                (keep :keywords)
+                                (filter #(> (count %) 2))
+                                (map count))
+                    (reduce +))))))))
 
-(deftest view-indexed-mapping
+(deftest view-indexing
   (testing "dremel paper records"
     (.close (dremel-paper-writer))
     (is (= [3 2] (with-open [r (d/file-reader tmp-filename)]
-                   (doall (d/map-indexed (fn [i rec] (+ i (count (:name rec)))) (d/read r))))))
+                   (->> (d/read r)
+                        (d/index-by (fn [i rec] (+ i (count (:name rec)))))
+                        doall))))
     (is (= [4 3] (with-open [r (d/file-reader tmp-filename)]
                    (->> (d/read r)
-                        (d/map-indexed (fn [i rec] (+ i (count (:name rec)))))
-                        (d/map inc)
+                        (d/index-by (fn [i rec] (+ i (count (:name rec)))))
+                        (d/eduction (map inc))
                         doall)))))
   (testing "random records"
     (let [records (take 100 (helpers/rand-test-records))
@@ -384,120 +417,10 @@
         (.writeAll w records))
       (is (= (map-indexed f records)
              (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/map-indexed f (d/read r))))))
+               (->> (d/read r) (d/index-by f) doall))))
       (is (= (reduce + (map-indexed f records))
              (with-open [r (d/file-reader tmp-filename)]
-               (reduce + (d/map-indexed f (d/read r)))))))))
-
-(deftest view-keeping
-  (testing "dremel paper records"
-    (.close (dremel-paper-writer))
-    (is (= [2] (with-open [r (d/file-reader tmp-filename)]
-                 (doall (d/keep #(some-> % :links :backward count) (d/read r)))))))
-  (testing "random records"
-    (let [records (take 100 (helpers/rand-test-records))
-          f #(some-> % :keywords count)]
-      (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
-        (.writeAll w records))
-      (is (= (keep f records)
-             (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/keep f (d/read r))))))
-      (is (= (reduce + (keep f records))
-             (with-open [r (d/file-reader tmp-filename)]
-               (reduce + (d/keep f (d/read r)))))))))
-
-(deftest view-indexed-keeping
-  (testing "dremel paper records"
-    (.close (dremel-paper-writer))
-    (is (= [3] (with-open [r (d/file-reader tmp-filename)]
-                 (doall (d/keep-indexed (fn [i rec]
-                                          (when-let [backward (-> rec :links :backward)]
-                                            (+ i (count backward))))
-                                        (d/read r)))))))
-  (testing "random records"
-    (let [records (take 100 (helpers/rand-test-records))
-          f (fn [i rec]
-              (when-let [keywords (:keywords rec)]
-                (+ i (count keywords))))]
-      (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
-        (.writeAll w records))
-      (is (= (keep-indexed f records)
-             (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/keep-indexed f (d/read r))))))
-      (is (= (reduce + (keep-indexed f records))
-             (with-open [r (d/file-reader tmp-filename)]
-               (reduce + (d/keep-indexed f (d/read r)))))))))
-
-(deftest view-filtering
-  (testing "dremel paper records"
-    (.close (dremel-paper-writer))
-    (is (= [dremel-paper-record1] (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/filter #(> (count (:name %)) 2) (d/read r))))))
-    (is (= [dremel-paper-record2] (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/remove #(> (count (:name %)) 2) (d/read r)))))))
-  (testing "random records"
-    (let [records (take 100 (helpers/rand-test-records))]
-      (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
-        (.writeAll w records))
-      (is (= (filter #(> (count (:keywords %)) 2) records)
-             (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/filter #(> (count (:keywords %)) 2) (d/read r))))))
-      (is (= (->> records (filter #(> (count (:keywords %)) 2)) (reduce #(+ %1 (:docid %2)) 0))
-             (with-open [r (d/file-reader tmp-filename)]
-               (reduce #(+ %1 (:docid %2)) 0 (d/filter #(> (count (:keywords %)) 2) (d/read r)))))))))
-
-(deftest view-indexed-filtering
-  (testing "dremel paper records"
-    (.close (dremel-paper-writer))
-    (is (= [dremel-paper-record1] (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/filter-indexed (fn [i _] (zero? i)) (d/read r))))))
-    (is (= [dremel-paper-record2] (with-open [r (d/file-reader tmp-filename)]
-                                    (doall (d/remove-indexed (fn [i _] (zero? i)) (d/read r)))))))
-  (testing "random records"
-    (let [records (take 100 (helpers/rand-test-records))
-          f (fn [i rec] (zero? (mod (+ i (:docid rec)) 10)))
-          reducef (fn [ret x] (+ ret (:docid x)))
-          filter-indexed (fn [f coll]
-                           (->> (map vector (range) coll)
-                                (keep #(when (apply f %) (second %)))))]
-      (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
-        (.writeAll w records))
-      (is (= (filter-indexed f records)
-             (with-open [r (d/file-reader tmp-filename)]
-               (doall (d/filter-indexed f (d/read r))))))
-      (is (= (->> records (filter-indexed f) (reduce reducef 0))
-             (with-open [r (d/file-reader tmp-filename)]
-               (reduce reducef 0 (d/filter-indexed f (d/read r)))))))))
-
-(deftest view-composing
-  (let [records (take 100 (helpers/rand-test-records))]
-    (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
-      (.writeAll w records))
-    (is (= (->> records
-                (filter :ngrams)
-                (keep :keywords)
-                (filter #(> (count %) 2))
-                (map count))
-           (with-open [r (d/file-reader tmp-filename)]
-             (->> (d/read r)
-                  (d/filter :ngrams)
-                  (d/keep :keywords)
-                  (d/filter #(> (count %) 2))
-                  (d/map count)
-                  doall))))
-    (is (= (->> records
-                (filter :ngrams)
-                (keep :keywords)
-                (filter #(> (count %) 2))
-                (map count)
-                (reduce +))
-           (with-open [r (d/file-reader tmp-filename)]
-             (->> (d/read r)
-                  (d/filter :ngrams)
-                  (d/keep :keywords)
-                  (d/filter #(> (count %) 2))
-                  (d/map count)
-                  (reduce +)))))))
+               (->> (d/read r) (d/index-by f) (reduce +))))))))
 
 (deftest chunkiness
   (.close (dremel-paper-writer))

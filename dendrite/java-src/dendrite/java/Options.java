@@ -186,47 +186,44 @@ public final class Options {
     public final boolean isMissingFieldsAsNil;
     public final Map<Symbol,IFn> readers;
     public final int bundleSize;
-    public final List<IFn> mapFns;
     public final IFn sampleFn;
-    public final List<Mangle.Fn> mangleFns;
+    public final IFn indexedByFn;
+    public final IFn transduceFn;
 
     public ReadOptions(Object query, List<Keyword> subSchemaPath, boolean isMissingFieldsAsNil,
-                       Map<Symbol,IFn> readers, List<IFn> mapFns, IFn sampleFn, List<Mangle.Fn> mangleFns) {
+                       Map<Symbol,IFn> readers, IFn sampleFn, IFn indexedByFn, IFn transduceFn) {
       this.query = query;
       this.subSchemaPath = subSchemaPath;
       this.isMissingFieldsAsNil = isMissingFieldsAsNil;
       this.readers = readers;
-      this.mapFns = mapFns;
-      this.sampleFn = sampleFn;
-      this.mangleFns = mangleFns;
       this.bundleSize = DEFAULT_BUNDLE_SIZE;
-    }
-
-    public ReadOptions addMapFn(IFn mapFn) {
-      if (mangleFns.isEmpty()) {
-        return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers,
-                               Utils.copyAndAddLast(mapFns, mapFn), sampleFn, mangleFns);
-      } else {
-        return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, sampleFn,
-                               Utils.copyAndAddLast(mangleFns, Mangle.getMapFn(mapFn)));
-      }
+      this.sampleFn = sampleFn;
+      this.indexedByFn = indexedByFn;
+      this.transduceFn = transduceFn;
     }
 
     public ReadOptions withSampleFn(IFn aSampleFn) {
       if (sampleFn != null) {
         throw new IllegalArgumentException("Cannot define multiple sample functions.");
       }
-      if (!mapFns.isEmpty() || !mangleFns.isEmpty()) {
-        throw new IllegalArgumentException("Sample function must be defined before any mapping or "
-                                           + "filtering function.");
+      if (indexedByFn != null || transduceFn != null) {
+        throw new IllegalArgumentException("Sample function must be defined before any indexing or "
+                                           + "transducer function.");
       }
-      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, aSampleFn,
-                             mangleFns);
+      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, aSampleFn, null, null);
     }
 
-    public ReadOptions addMangleFn(Mangle.Fn mangleFn) {
-      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, mapFns, sampleFn,
-                             Utils.copyAndAddLast(mangleFns, mangleFn));
+    public ReadOptions withIndexedByFn(IFn aIndexedByFn) {
+      if (transduceFn != null) {
+        throw new IllegalArgumentException("Indexing function must be defined before any transducer");
+      }
+      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, sampleFn, aIndexedByFn,
+                             null);
+    }
+
+    public ReadOptions withTransduceFn(IFn aTransduceFn) {
+      return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, sampleFn, indexedByFn,
+                             aTransduceFn);
     }
 
   }
@@ -315,9 +312,9 @@ public final class Options {
                            getSubSchemaPath(options),
                            getMissingFieldsAsNil(options),
                            getTagReaders(options),
-                           Collections.<IFn>emptyList(),
                            null,
-                           Collections.<Mangle.Fn>emptyList());
+                           null,
+                           null);
   }
 
   public static final class WriterOptions {

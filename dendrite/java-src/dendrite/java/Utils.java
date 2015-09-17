@@ -24,25 +24,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
 public final class Utils {
 
-  public static <T> List<T> copyAndAddLast(List<T> list, T object) {
-    List<T> listCopy = new ArrayList<T>(list.size() + 1);
-    listCopy.addAll(list);
-    listCopy.add(object);
-    return listCopy;
-  }
-
-  public static <T> List<T> copyAndAddFirst(T object, List<T> list) {
-    List<T> listCopy = new ArrayList<T>(list.size() + 1);
-    listCopy.add(object);
-    listCopy.addAll(list);
-    return listCopy;
-  }
+  public static final IFn identity = new AFn() {
+      public Object invoke(Object o) {
+        return o;
+      }
+    };
 
   public static IFn comp(final IFn g, final IFn f) {
     return new AFn() {
@@ -78,14 +69,6 @@ public final class Utils {
           ret = f.invoke(ret);
         }
         return ret;
-      }
-    };
-  }
-
-  public static IFn and(final IFn fna, final IFn fnb) {
-    return new AFn() {
-      public Object invoke(Object o) {
-        return RT.booleanCast(fna.invoke(o)) && RT.booleanCast(fnb.invoke(o));
       }
     };
   }

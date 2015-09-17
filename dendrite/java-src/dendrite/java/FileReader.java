@@ -107,22 +107,11 @@ public final class FileReader implements Closeable, IReader {
   }
 
   Schema.QueryResult getQueryResult(Options.ReadOptions options) {
-    Schema.QueryResult res = Schema.applyQuery(types,
-                                               options.isMissingFieldsAsNil,
-                                               options.readers,
-                                               Schema.getSubSchema(options.subSchemaPath, fileMetadata.schema),
-                                               options.query);
-    if (!options.mapFns.isEmpty()) {
-      IFn fn = res.schema.fn;
-      if (fn == null) {
-        fn = Utils.comp(options.mapFns);
-      } else {
-        fn = Utils.comp(Utils.copyAndAddFirst(fn, options.mapFns));
-      }
-      return res.withFn(fn);
-    } else {
-      return res;
-    }
+    return Schema.applyQuery(types,
+                             options.isMissingFieldsAsNil,
+                             options.readers,
+                             Schema.getSubSchema(options.subSchemaPath, fileMetadata.schema),
+                             options.query);
   }
 
   @Override
@@ -371,131 +360,6 @@ public final class FileReader implements Closeable, IReader {
     };
   }
 
-  private interface IAssembleFutureFactory {
-    Future<IChunk> get(Bundle bundle);
-  }
-
-  private static final class AssembleFutureFactory implements IAssembleFutureFactory {
-    private final Assemble.Fn assembleFn;
-
-    AssembleFutureFactory(Assemble.Fn assembleFn) {
-      this.assembleFn = assembleFn;
-    }
-
-    @Override
-    public Future<IChunk> get(final Bundle bundle) {
-      return Agent.soloExecutor.submit(new Callable<IChunk>() {
-          public IChunk call() {
-            return bundle.assemble(assembleFn);
-          }
-        });
-    }
-  }
-
-  private static final class AssembleSampledFutureFactory implements IAssembleFutureFactory {
-    private final Assemble.Fn assembleFn;
-    private final IFn sampleFn;
-
-    AssembleSampledFutureFactory(Assemble.Fn assembleFn, IFn sampleFn) {
-      this.assembleFn = assembleFn;
-      this.sampleFn = sampleFn;
-    }
-
-    @Override
-    public Future<IChunk> get(final Bundle bundle) {
-      return Agent.soloExecutor.submit(new Callable<IChunk>() {
-          public IChunk call() {
-            return bundle.assembleSampled(assembleFn, sampleFn);
-          }
-        });
-    }
-  }
-
-  private static final class AssembleMangledFutureFactory implements IAssembleFutureFactory {
-    private final Assemble.Fn assembleFn;
-    private final Mangle.Fn mangleFn;
-
-    AssembleMangledFutureFactory(Assemble.Fn assembleFn, Mangle.Fn mangleFn) {
-      this.assembleFn = assembleFn;
-      this.mangleFn = mangleFn;
-    }
-
-    @Override
-    public Future<IChunk> get(final Bundle bundle) {
-      return Agent.soloExecutor.submit(new Callable<IChunk>() {
-          public IChunk call() {
-            return bundle.assembleMangled(assembleFn, mangleFn);
-          }
-        });
-    }
-  }
-
-  private static final class AssembleSampledAndMangledFutureFactory implements IAssembleFutureFactory {
-    private final Assemble.Fn assembleFn;
-    private final IFn sampleFn;
-    private final Mangle.Fn mangleFn;
-
-    AssembleSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn sampleFn, Mangle.Fn mangleFn) {
-      this.assembleFn = assembleFn;
-      this.sampleFn = sampleFn;
-      this.mangleFn = mangleFn;
-    }
-
-    @Override
-    public Future<IChunk> get(final Bundle bundle) {
-      return Agent.soloExecutor.submit(new Callable<IChunk>() {
-          public IChunk call() {
-            return bundle.assembleSampledAndMangled(assembleFn, sampleFn, mangleFn);
-          }
-        });
-    }
-  }
-
-  private IAssembleFutureFactory getAssembleFutureFactory(Assemble.Fn assembleFn,
-                                                          IFn sampleFn,
-                                                          Mangle.Fn mangleFn) {
-    if (sampleFn == null) {
-      if (mangleFn == null) {
-        return new AssembleFutureFactory(assembleFn);
-      } else {
-        return new AssembleMangledFutureFactory(assembleFn, mangleFn);
-      }
-    } else {
-      if (mangleFn == null) {
-        return new AssembleSampledFutureFactory(assembleFn, sampleFn);
-      } else {
-        return new AssembleSampledAndMangledFutureFactory(assembleFn, sampleFn, mangleFn);
-      }
-    }
-  }
-
-  private static Iterator<IChunk> getRecordChunksIterator(final Iterator<Bundle> bundlesIterator,
-                                                          final IAssembleFutureFactory assembleFutureFactory) {
-    int n = 2 + Runtime.getRuntime().availableProcessors();
-    final LinkedList<Future<IChunk>> futures = new LinkedList<Future<IChunk>>();
-    int k = 0;
-    while (bundlesIterator.hasNext() && k < n) {
-      futures.addLast(assembleFutureFactory.get(bundlesIterator.next()));
-      k += 1;
-    }
-    return new AReadOnlyIterator<IChunk>() {
-      @Override
-        public boolean hasNext() {
-        return !futures.isEmpty();
-      }
-
-      @Override
-        public IChunk next() {
-        Future<IChunk> fut = futures.pollFirst();
-        IChunk chunk = Utils.tryGetFuture(fut);
-        if (bundlesIterator.hasNext()) {
-          futures.addLast(assembleFutureFactory.get(bundlesIterator.next()));
-        }
-        return chunk;
-      }
-    };
-  }
-
   private interface IReduceFutureFactory {
     Future<Object> get(Bundle bundle);
   }
@@ -503,11 +367,13 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
+    private final IFn completeFn;
     private final IFn initFn;
 
-    ReduceFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn) {
+    ReduceFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn completeFn, IFn initFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
+      this.completeFn = completeFn;
       this.initFn = initFn;
     }
 
@@ -515,7 +381,7 @@ public final class FileReader implements Closeable, IReader {
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduce(reduceFn, assembleFn, initFn.invoke());
+          return bundle.reduce(reduceFn, completeFn, initFn, assembleFn);
         }
       });
     }
@@ -524,12 +390,15 @@ public final class FileReader implements Closeable, IReader {
   private static final class ReduceSampledFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
+    private final IFn completeFn;
     private final IFn initFn;
     private final IFn sampleFn;
 
-    ReduceSampledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, IFn sampleFn) {
+    ReduceSampledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn completeFn, IFn initFn,
+                               IFn sampleFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
+      this.completeFn = completeFn;
       this.initFn = initFn;
       this.sampleFn = sampleFn;
     }
@@ -538,74 +407,81 @@ public final class FileReader implements Closeable, IReader {
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceSampled(reduceFn, assembleFn, sampleFn, initFn.invoke());
+          return bundle.reduceSampled(reduceFn, completeFn, initFn, assembleFn, sampleFn);
         }
       });
     }
   }
 
-  private static final class ReduceMangledFutureFactory implements IReduceFutureFactory {
+  private static final class ReduceIndexedFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
+    private final IFn completeFn;
     private final IFn initFn;
-    private final Mangle.Fn mangleFn;
+    private final IFn indexedByFn;
 
-    ReduceMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, Mangle.Fn mangleFn) {
+    ReduceIndexedFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn completeFn, IFn initFn,
+                               IFn indexedByFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
+      this.completeFn = completeFn;
       this.initFn = initFn;
-      this.mangleFn = mangleFn;
+      this.indexedByFn = indexedByFn;
     }
 
     @Override
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceMangled(reduceFn, assembleFn, mangleFn, initFn.invoke());
+          return bundle.reduceIndexed(reduceFn, completeFn, initFn, assembleFn, indexedByFn);
         }
       });
     }
   }
 
-  private static final class ReduceSampledAndMangledFutureFactory implements IReduceFutureFactory {
+  private static final class ReduceSampledAndIndexedFutureFactory implements IReduceFutureFactory {
     private final Assemble.Fn assembleFn;
     private final IFn reduceFn;
+    private final IFn completeFn;
     private final IFn initFn;
     private final IFn sampleFn;
-    private final Mangle.Fn mangleFn;
+    private final IFn indexedByFn;
 
-    ReduceSampledAndMangledFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn initFn, IFn sampleFn,
-                                         Mangle.Fn mangleFn) {
+    ReduceSampledAndIndexedFutureFactory(Assemble.Fn assembleFn, IFn reduceFn, IFn completeFn, IFn initFn,
+                                         IFn sampleFn, IFn indexedByFn) {
       this.assembleFn = assembleFn;
       this.reduceFn = reduceFn;
+      this.completeFn = completeFn;
       this.initFn = initFn;
       this.sampleFn = sampleFn;
-      this.mangleFn = mangleFn;
+      this.indexedByFn = indexedByFn;
     }
 
     @Override
     public Future<Object> get(final Bundle bundle) {
       return Agent.soloExecutor.submit(new Callable<Object>() {
         public Object call() {
-          return bundle.reduceSampledAndMangled(reduceFn, assembleFn, sampleFn, mangleFn, initFn.invoke());
+          return bundle.reduceSampledAndIndexed(reduceFn, completeFn, initFn, assembleFn, sampleFn,
+                                                indexedByFn);
         }
       });
     }
   }
 
-  private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, IFn initFn, Assemble.Fn assembleFn,
-                                                      IFn sampleFn, Mangle.Fn mangleFn) {
+  private IReduceFutureFactory getReduceFutureFactory(IFn reduceFn, IFn completeFn, IFn initFn,
+                                                      Assemble.Fn assembleFn, IFn sampleFn, IFn indexedByFn) {
     if (sampleFn == null) {
-      if (mangleFn == null) {
-        return new ReduceFutureFactory(assembleFn, reduceFn, initFn);
+      if (indexedByFn == null) {
+        return new ReduceFutureFactory(assembleFn, reduceFn, completeFn, initFn);
       } else {
-        return new ReduceMangledFutureFactory(assembleFn, reduceFn, initFn, mangleFn);
+        return new ReduceIndexedFutureFactory(assembleFn, reduceFn, completeFn, initFn, indexedByFn);
       }
     } else {
-      if (mangleFn == null) {
-        return new ReduceSampledFutureFactory(assembleFn, reduceFn, initFn, sampleFn);
+      if (indexedByFn == null) {
+        return new ReduceSampledFutureFactory(assembleFn, reduceFn, completeFn, initFn, sampleFn);
       } else {
-        return new ReduceSampledAndMangledFutureFactory(assembleFn, reduceFn, initFn, sampleFn, mangleFn);
+        return new ReduceSampledAndIndexedFutureFactory(assembleFn, reduceFn, completeFn, initFn,
+                                                        sampleFn, indexedByFn);
       }
     }
   }
@@ -642,13 +518,10 @@ public final class FileReader implements Closeable, IReader {
     private Options.ReadOptions options;
     private Schema.QueryResult queryResult;
     private Assemble.Fn assembleFn;
-    private Mangle.Fn mangleFn;
-    private boolean isMangleFnReady;
 
     LazyView(Options.ReadOptions options) {
       super(options.bundleSize);
       this.options = options;
-      this.isMangleFnReady = false;
     }
 
     private synchronized Schema.QueryResult getQueryResult() {
@@ -669,14 +542,6 @@ public final class FileReader implements Closeable, IReader {
       return assembleFn;
     }
 
-    private synchronized Mangle.Fn getMangleFn() {
-      if (!isMangleFnReady) {
-        mangleFn = Mangle.compose(options.mangleFns);
-        isMangleFnReady = true;
-      }
-      return mangleFn;
-    }
-
     @Override
     protected View withOptions(Options.ReadOptions options) {
       return new LazyView(options);
@@ -688,29 +553,18 @@ public final class FileReader implements Closeable, IReader {
     }
 
     @Override
-    protected Iterable<IChunk> getRecordChunks(final int bundleSize) {
-      return new Iterable<IChunk>() {
-        @Override
-        public Iterator<IChunk> iterator() {
-          return FileReader.getRecordChunksIterator(getBundlesIterator(bundleSize),
-                                                    getAssembleFutureFactory(getAssembleFn(),
-                                                                             options.sampleFn,
-                                                                             getMangleFn()));
-        }
-      };
-    }
-
-    @Override
-    protected Iterable<Object> getReducedChunkValues(final IFn f, final IFn initFn, final int bundleSize) {
+    protected Iterable<Object> getReducedChunks(final IFn reduceFn, final IFn completeFn, final IFn initFn,
+                                                final int bundleSize) {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
           return FileReader.getReducedChunksIterator(getBundlesIterator(bundleSize),
-                                                     getReduceFutureFactory(f,
+                                                     getReduceFutureFactory(reduceFn,
+                                                                            completeFn,
                                                                             initFn,
                                                                             getAssembleFn(),
                                                                             options.sampleFn,
-                                                                            getMangleFn()));
+                                                                            options.indexedByFn));
         }
       };
     }

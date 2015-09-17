@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-import static dendrite.java.Mangle.isFiltered;
-
 public final class Bundle implements Iterable<List> {
 
   public final List[] columnValues;
@@ -77,15 +75,6 @@ public final class Bundle implements Iterable<List> {
     return columnIterators;
   }
 
-  public IChunk assemble(Assemble.Fn assemblyFn) {
-    ListIterator[] columnIterators = getColumnIterators();
-    Object[] assembledRecords = new Object[maxBundleSize];
-    for (int i=0; i<maxBundleSize; ++i) {
-      assembledRecords[i] = assemblyFn.invoke(columnIterators);
-    }
-    return new ArrayChunk(assembledRecords);
-  }
-
   private void skip(ListIterator[] columnIterators) {
     int n = columnIterators.length;
     for (int i=0; i<n; ++i) {
@@ -97,114 +86,52 @@ public final class Bundle implements Iterable<List> {
     }
   }
 
-  public IChunk assembleSampled(Assemble.Fn assemblyFn, IFn sampleFn) {
-    ListIterator[] columnIterators = getColumnIterators();
-    Object[] assembledRecords = new Object[maxBundleSize];
-    int n = 0;
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
-        assembledRecords[n] = assemblyFn.invoke(columnIterators);
-        n += 1;
-      } else {
-        skip(columnIterators);
-      }
-      recordIndex += 1;
-    }
-    return new ArrayChunk(assembledRecords, 0, n);
-  }
-
-  public IChunk assembleMangled(Assemble.Fn assemblyFn, Mangle.Fn mangleFn) {
-    ListIterator[] columnIterators = getColumnIterators();
-    Object[] assembledRecords = new Object[maxBundleSize];
-    int n = 0;
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
-      if (isFiltered(o)) {
-        assembledRecords[n] = o;
-        n += 1;
-      }
-      recordIndex += 1;
-    }
-    return new ArrayChunk(assembledRecords, 0, n);
-  }
-
-  public IChunk assembleSampledAndMangled(Assemble.Fn assemblyFn, IFn sampleFn, Mangle.Fn mangleFn) {
-    ListIterator[] columnIterators = getColumnIterators();
-    Object[] assembledRecords = new Object[maxBundleSize];
-    int n = 0;
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
-        Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
-        if (isFiltered(o)) {
-          assembledRecords[n] = o;
-          n += 1;
-        }
-      } else {
-        skip(columnIterators);
-      }
-      recordIndex += 1;
-    }
-    return new ArrayChunk(assembledRecords, 0, n);
-  }
-
-  public Object reduce(IFn reduceFn, Assemble.Fn assemblyFn, Object init) {
-    Object ret = init;
+  public Object reduce(IFn reduceFn, IFn completeFn, IFn initFn, Assemble.Fn assemblyFn) {
+    Object ret = initFn.invoke();
     ListIterator[] columnIterators = getColumnIterators();
     for (int i=0; i<maxBundleSize; ++i) {
       ret = reduceFn.invoke(ret, assemblyFn.invoke(columnIterators));
     }
-    return ret;
+    return completeFn.invoke(ret);
   }
 
-  public Object reduceSampled(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn, Object init) {
-    Object ret = init;
+  public Object reduceSampled(IFn reduceFn, IFn completeFn, IFn initFn, Assemble.Fn assemblyFn,
+                              IFn sampleFn) {
+    Object ret = initFn.invoke();
     ListIterator[] columnIterators = getColumnIterators();
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
+    for (long i=firstRecordIndex; i<firstRecordIndex+maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(i))) {
         ret = reduceFn.invoke(ret, assemblyFn.invoke(columnIterators));
       } else {
         skip(columnIterators);
       }
-      recordIndex += 1;
     }
-    return ret;
+    return completeFn.invoke(ret);
   }
 
-  public Object reduceMangled(IFn reduceFn, Assemble.Fn assemblyFn, Mangle.Fn mangleFn, Object init) {
-    Object ret = init;
+  public Object reduceIndexed(IFn reduceFn, IFn completeFn, IFn initFn, Assemble.Fn assemblyFn,
+                              IFn indexedByFn) {
+    Object ret = initFn.invoke();
     ListIterator[] columnIterators = getColumnIterators();
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
-      if (isFiltered(o)) {
-        ret = reduceFn.invoke(ret, o);
-      }
-      recordIndex += 1;
+    for (long i=firstRecordIndex; i<firstRecordIndex+maxBundleSize; ++i) {
+      ret = reduceFn.invoke(ret, indexedByFn.invoke(i, assemblyFn.invoke(columnIterators)));
     }
-    return ret;
+    return completeFn.invoke(ret);
   }
 
-  public Object reduceSampledAndMangled(IFn reduceFn, Assemble.Fn assemblyFn, IFn sampleFn,
-                                        Mangle.Fn mangleFn, Object init) {
-    Object ret = init;
+  public Object reduceSampledAndIndexed(IFn reduceFn, IFn completeFn, IFn initFn, Assemble.Fn assemblyFn,
+                                        IFn sampleFn, IFn indexedByFn) {
+    Object ret = initFn.invoke();
+
     ListIterator[] columnIterators = getColumnIterators();
-    long recordIndex = firstRecordIndex;
-    for (int i=0; i<maxBundleSize; ++i) {
-      if (RT.booleanCast(sampleFn.invoke(recordIndex))) {
-        Object o = mangleFn.invoke(recordIndex, assemblyFn.invoke(columnIterators));
-        if (isFiltered(o)) {
-          ret = reduceFn.invoke(ret, o);
-        }
+    for (long i=firstRecordIndex; i<firstRecordIndex+maxBundleSize; ++i) {
+      if (RT.booleanCast(sampleFn.invoke(i))) {
+        ret = reduceFn.invoke(ret, indexedByFn.invoke(i, assemblyFn.invoke(columnIterators)));
       } else {
         skip(columnIterators);
       }
-      recordIndex += 1;
     }
-    return ret;
+    return completeFn.invoke(ret);
   }
 
   public Bundle take(int n) {

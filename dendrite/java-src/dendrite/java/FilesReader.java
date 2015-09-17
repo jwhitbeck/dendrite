@@ -76,53 +76,11 @@ public final class FilesReader implements Closeable, IReader {
     }
   }
 
-  private Iterator<IChunk> getRecordChunks(final Options.ReadOptions readOptions, final int bundleSize) {
-    final Iterator<File> fileIterator = files.iterator();
-    if (!fileIterator.hasNext()) {
-      return Collections.<IChunk>emptyList().iterator();
-    }
-    return new AReadOnlyIterator<IChunk>() {
-      private FileReader currentFileReader = openFileReader(fileIterator.next());
-      private Iterator<IChunk> currentViewChunks
-        = currentFileReader.read(readOptions).getRecordChunks(bundleSize).iterator();
-
-      private void step() {
-        closeFileReader(currentFileReader);
-        currentFileReader = openFileReader(fileIterator.next());
-        currentViewChunks = currentFileReader.read(readOptions).getRecordChunks(bundleSize).iterator();
-      }
-
-      @Override
-      public boolean hasNext() {
-        if (currentViewChunks.hasNext()) {
-          return true;
-        } else if (fileIterator.hasNext()) {
-          step();
-          return hasNext();
-        } else {
-          return false;
-        }
-      }
-
-      @Override
-      public IChunk next() {
-        if (currentViewChunks.hasNext()) {
-          return currentViewChunks.next();
-        } else if (fileIterator.hasNext()) {
-          step();
-          return next();
-        } else {
-          throw new NoSuchElementException();
-        }
-      }
-
-    };
-  }
-
-  private Iterator<Object> getReducedChunkValues(final Options.ReadOptions readOptions,
-                                                 final IFn f,
-                                                 final IFn initFn,
-                                                 final int bundleSize) {
+  private Iterator<Object> getReducedChunks(final Options.ReadOptions readOptions,
+                                            final IFn reduceFn,
+                                            final IFn completeFn,
+                                            final IFn initFn,
+                                            final int bundleSize) {
     final Iterator<File> fileIterator = files.iterator();
     if (!fileIterator.hasNext()) {
       return Collections.<Object>emptyList().iterator();
@@ -130,13 +88,15 @@ public final class FilesReader implements Closeable, IReader {
     return new AReadOnlyIterator<Object>() {
       private FileReader currentFileReader = openFileReader(fileIterator.next());
       private Iterator<Object> currentReducedChunkValues
-        = currentFileReader.read(readOptions).getReducedChunkValues(f, initFn, bundleSize).iterator();
+        = currentFileReader.read(readOptions)
+              .getReducedChunks(reduceFn, completeFn, initFn, bundleSize).iterator();
 
       private void step() {
         closeFileReader(currentFileReader);
         currentFileReader = openFileReader(fileIterator.next());
         currentReducedChunkValues
-          = currentFileReader.read(readOptions).getReducedChunkValues(f, initFn, bundleSize).iterator();
+          = currentFileReader.read(readOptions)
+                .getReducedChunks(reduceFn, completeFn, initFn, bundleSize).iterator();
       }
 
       @Override
@@ -185,21 +145,12 @@ public final class FilesReader implements Closeable, IReader {
     }
 
     @Override
-    protected Iterable<IChunk> getRecordChunks(final int bundleSize) {
-      return new Iterable<IChunk>() {
-        @Override
-        public Iterator<IChunk> iterator() {
-          return FilesReader.this.getRecordChunks(readOptions, bundleSize);
-        }
-      };
-    }
-
-    @Override
-    protected Iterable<Object> getReducedChunkValues(final IFn f, final IFn initFn, final int bundleSize) {
+    protected Iterable<Object> getReducedChunks(final IFn reduceFn, final IFn completeFn, final IFn initFn,
+                                                final int bundleSize) {
       return new Iterable<Object>() {
         @Override
         public Iterator<Object> iterator() {
-          return FilesReader.this.getReducedChunkValues(readOptions, f, initFn, bundleSize);
+          return FilesReader.this.getReducedChunks(readOptions, reduceFn, completeFn, initFn, bundleSize);
         }
       };
     }

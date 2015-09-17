@@ -11,7 +11,7 @@
 (ns dendrite.java.bundles-test
   (:require [clojure.test :refer :all]
             [dendrite.test-helpers :as helpers])
-  (:import [dendrite.java Assemble$Fn Bundle Bundle$Factory Mangle Schema$Column Stripe$Fn]
+  (:import [dendrite.java Assemble$Fn Bundle Bundle$Factory Schema$Column Stripe$Fn]
            [java.util Arrays Iterator List]))
 
 (set! *warn-on-reflection* true)
@@ -28,89 +28,65 @@
     (is (= (seq striped-record-bundle)
            [(range 10) (range 10) (range 10) (range 10)]))))
 
-(deftest bundle-assembly
-  (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
-    (testing "assembly"
-      (is (= (map (partial * 2) (range 10))
-             (chunk-cons (.assemble test-bundle (reify Assemble$Fn
-                                                  (invoke [_ iterators]
-                                                    (+ (.next ^Iterator (aget iterators 0))
-                                                       (.next ^Iterator (aget iterators 1))))))
-                         nil))))
-    (testing "sampled assembly"
-      (is (= (->> (map (partial * 2) (range 10)) (partition 2) (map second))
-             (chunk-cons (.assembleSampled test-bundle
-                                           (reify Assemble$Fn
-                                             (invoke [_ iterators]
-                                               (+ (.next ^Iterator (aget iterators 0))
-                                                  (.next ^Iterator (aget iterators 1)))))
-                                           odd?)
-                         nil))))
-    (testing "filtered assembly"
-      (is (= (filter #(pos? (mod % 4)) (map (partial * 2) (range 10)))
-             (chunk-cons (.assembleMangled test-bundle
-                                           (reify Assemble$Fn
-                                             (invoke [_ iterators]
-                                               (+ (.next ^Iterator (aget iterators 0))
-                                                  (.next ^Iterator (aget iterators 1)))))
-                                           (Mangle/getFilterFn #(pos? (mod % 4))))
-                         nil))))
-    (testing "sampled and filtered assembly"
-      (is (= (->> (map (partial * 2) (range 10)) (partition 2) (map second) (filter #(zero? (mod % 3))))
-             (chunk-cons (.assembleSampledAndMangled test-bundle
-                                                     (reify Assemble$Fn
-                                                       (invoke [_ iterators]
-                                                         (+ (.next ^Iterator (aget iterators 0))
-                                                            (.next ^Iterator (aget iterators 1)))))
-                                                     odd?
-                                                     (Mangle/getFilterFn #(zero? (mod % 3))))
-                         nil))))))
-
 (deftest bundle-reduction
   (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
     (testing "reduce"
       (is (= (->> (range 10) (map (partial * 2)) (reduce +))
-             (.reduce test-bundle + (reify Assemble$Fn
-                                      (invoke [_ iterators]
-                                        (+ (.next ^Iterator (aget iterators 0))
-                                           (.next ^Iterator (aget iterators 1))))) 0)))
+             (.reduce test-bundle
+                      +
+                      identity
+                      (constantly 0)
+                      (reify Assemble$Fn
+                        (invoke [_ iterators]
+                          (+ (.next ^Iterator (aget iterators 0))
+                             (.next ^Iterator (aget iterators 1))))))))
       (is (= (->> (range 10) (map (partial * 2)) (reduce + 10))
-             (.reduce test-bundle + (reify Assemble$Fn
-                                      (invoke [_ iterators]
-                                        (+ (.next ^Iterator (aget iterators 0))
-                                           (.next ^Iterator (aget iterators 1))))) 10))))
+             (.reduce test-bundle
+                      +
+                      identity
+                      (constantly 10)
+                      (reify Assemble$Fn
+                        (invoke [_ iterators]
+                          (+ (.next ^Iterator (aget iterators 0))
+                             (.next ^Iterator (aget iterators 1)))))))))
     (testing "sampled reduce"
       (is (= (->> (range 10) (map (partial * 2)) (partition 2) (map second) (reduce +))
              (.reduceSampled test-bundle
                              +
+                             identity
+                             (constantly 0)
                              (reify Assemble$Fn
                                (invoke [_ iterators]
                                  (+ (.next ^Iterator (aget iterators 0))
                                     (.next ^Iterator (aget iterators 1)))))
-                             odd?
-                             0))))
-    (testing "filtered reduce"
+                             odd?))))
+    (testing "indexed reduce"
       (is (= (->> (range 10) (map (partial * 2)) (filter #(zero? (mod % 4))) (reduce +))
-             (.reduceMangled test-bundle
-                             +
+             (.reduceIndexed test-bundle
+                             ((comp (map :obj) (filter #(zero? (mod % 4))))
+                              +)
+                             identity
+                             (constantly 0)
                              (reify Assemble$Fn
                                (invoke [_ iterators]
                                  (+ (.next ^Iterator (aget iterators 0))
                                     (.next ^Iterator (aget iterators 1)))))
-                             (Mangle/getFilterFn #(zero? (mod % 4)))
-                             0))))
-    (testing "sampled and filtered reduce"
+                             (fn [i o] {:obj o :index i})))))
+    (testing "sampled and indexed reduce"
       (is (= (->> (range 10) (map (partial * 2)) (partition 2) (map second)
                   (filter #(zero? (mod % 3))) (reduce +))
-             (.reduceSampledAndMangled test-bundle
-                                       +
+             (.reduceSampledAndIndexed test-bundle
+                                       ((comp (map :obj)
+                                              (filter #(zero? (mod % 3))))
+                                        +)
+                                       identity
+                                       (constantly 0)
                                        (reify Assemble$Fn
                                          (invoke [_ iterators]
                                            (+ (.next ^Iterator (aget iterators 0))
                                               (.next ^Iterator (aget iterators 1)))))
                                        odd?
-                                       (Mangle/getFilterFn #(zero? (mod % 3)))
-                                       0))))))
+                                       (fn [i o] {:obj o :index i})))))))
 
 (deftest stripe-and-assemble
   (let [num-columns 10
