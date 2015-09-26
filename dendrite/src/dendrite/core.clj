@@ -180,7 +180,7 @@
   file-reader."
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
-    (FilesReader. (Options/getReaderOptions opts) (clojure.core/map io/as-file files))))
+    (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
 
 (extend-type View
   clojure.core.protocols/CollReduce
