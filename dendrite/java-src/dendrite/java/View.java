@@ -113,9 +113,11 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
     Object ret = start;
     while (chunksIterator.hasNext()) {
       IChunk chunk = (IChunk)chunksIterator.next();
-      ret = chunk.reduce(f, ret);
-      if (RT.isReduced(ret)) {
-        return ((Reduced)ret).deref();
+      if (chunk.count() > 0) {
+        ret = chunk.reduce(f, ret);
+        if (RT.isReduced(ret)) {
+          return ((Reduced)ret).deref();
+        }
       }
     }
     return ret;

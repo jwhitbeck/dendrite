@@ -359,7 +359,11 @@
     (is (= [4 2] (with-open [r (d/file-reader tmp-filename)]
                    (->> (d/read r)
                         (d/eduction (map :name) (map count) (map inc))
-                        doall)))))
+                        doall))))
+    (is (empty? (with-open [r (d/file-reader tmp-filename)]
+                  (->> (d/read r)
+                       (d/eduction (filter (constantly false)))
+                       (into []))))))
   (testing "random records"
     (let [records (take 100 (helpers/rand-test-records))]
       (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]
