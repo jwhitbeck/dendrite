@@ -100,6 +100,39 @@
       (is (= records (with-open [r (d/file-reader tmp-filename)]
                        (doall (d/read r))))))))
 
+(deftest empty-and-missing-collection
+  (testing "required collection, required value"
+    (let [records (->> (repeatedly #(rand-int 100)) (helpers/rand-partition 3) (take 100))]
+      (with-open [w (d/file-writer (d/req [(d/req 'int)]) tmp-filename)]
+        (.writeAll w records))
+      (is (= records (with-open [r (d/file-reader tmp-filename)]
+                       (doall (d/read r)))))))
+  (testing "required collection, optional value"
+    (let [records (->> (repeatedly #(when (helpers/rand-bool) (rand-int 100)))
+                       (helpers/rand-partition 3) (take 100))]
+      (with-open [w (d/file-writer (d/req ['int]) tmp-filename)]
+        (.writeAll w records))
+      (is (= records (with-open [r (d/file-reader tmp-filename)]
+                       (doall (d/read r)))))))
+  (testing "optional collection, required value"
+    (let [records (->> (repeatedly #(rand-int 100))
+                       (helpers/rand-partition 3)
+                       (helpers/rand-map 0.5 seq)
+                       (take 100))]
+      (with-open [w (d/file-writer [(d/req 'int)] tmp-filename)]
+        (.writeAll w records))
+      (is (= records (with-open [r (d/file-reader tmp-filename)]
+                       (doall (d/read r)))))))
+  (testing "optional collection, optional value"
+    (let [records (->> (repeatedly #(when (helpers/rand-bool) (rand-int 100)))
+                       (helpers/rand-partition 3)
+                       (helpers/rand-map 0.5 seq)
+                       (take 100))]
+      (with-open [w (d/file-writer ['int] tmp-filename)]
+        (.writeAll w records))
+      (is (= records (with-open [r (d/file-reader tmp-filename)]
+                       (doall (d/read r))))))))
+
 (deftest automatic-schema-optimization
   (let [records (take 100 (helpers/rand-test-records))
         test-schema (Schema/readString helpers/test-schema-str)]

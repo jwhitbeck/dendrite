@@ -78,6 +78,12 @@
        (cons (f (first s)) (rand-map p f (rest s)))
        (cons (first s) (rand-map p f (rest s)))))))
 
+(defn rand-partition [max-n coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [n (clojure.core/rand-int (inc max-n))]
+       (cons (take n s) (rand-partition max-n (drop n s)))))))
+
 (defn leveled [{:keys [max-definition-level max-repetition-level] :as spec} coll]
   (lazy-seq
    (let [next-value (first coll)
