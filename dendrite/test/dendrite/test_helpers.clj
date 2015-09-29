@@ -128,7 +128,7 @@
   "#req
    {:docid #req #col [long delta deflate]
     :links {:backward (long)
-            :forward [#col [long delta]]}
+            :forward #req [#col [long delta]]}
     :name [{:language [{:code #req string
                         :country string}]
            :url string}]
@@ -162,16 +162,15 @@
                         set)
           backward (take (clojure.core/rand-int 3)
                          (repeatedly #(when (pos? (clojure.core/rand-int 10)) (rand-long))))
-          forward (take (clojure.core/rand-int 3) (repeatedly rand-long))
+          forward (vec (take (clojure.core/rand-int 3) (repeatedly rand-long)))
           names (take (clojure.core/rand-int 3) (repeatedly rand-name))
-          links (cond-> {}
-                        (seq backward) (assoc :backward backward)
-                        (seq forward) (assoc :forward forward))
+          links (cond-> {:forward forward}
+                        (seq backward) (assoc :backward backward))
           ngrams (repeatedly (clojure.core/rand-int 3)
                              #(repeatedly (inc (clojure.core/rand-int 2)) rand-word))]
       (cond-> {:docid docid
                :internal/is-active (rand-bool)}
-       (seq links) (assoc :links links)
+       (rand-bool) (assoc :links links)
        (seq names) (assoc :name names)
        (seq meta-map) (assoc :meta meta-map)
        (seq keywords) (assoc :keywords keywords)

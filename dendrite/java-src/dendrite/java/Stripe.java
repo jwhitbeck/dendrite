@@ -348,19 +348,8 @@ public final class Stripe {
     return new StripeFn() {
       public void invoke(Object[] buffer, Object mapObj, boolean isParentNil, int repetitionLevel,
                          int definitionLevel) {
-        ISeq entries;
-        try {
-          entries = seq(mapObj);
-        } catch (Exception e) {
-          throw new IllegalArgumentException(
-            String.format("Could not iterate over value at path '%s'", parents), e);
-        }
-        if (entries == null) {
-          repeatedStripeFn.invoke(buffer, null, true, repetitionLevel, definitionLevel);
-        } else {
-          repeatedStripeFn.invoke(buffer, Utils.map(keyValueFn, entries), isParentNil, repetitionLevel,
-                                  definitionLevel);
-        }
+        repeatedStripeFn.invoke(buffer, (mapObj == notFound)? notFound : Utils.map(keyValueFn, mapObj),
+                                isParentNil, repetitionLevel, definitionLevel);
       }
     };
   }
@@ -373,20 +362,25 @@ public final class Stripe {
     return new StripeFn() {
       public void invoke(Object[] buffer, Object repeatedValues, boolean isParentNil, int repetitionLevel,
                          int definitionLevel) {
-        ISeq s;
-        try {
-          s = seq(repeatedValues);
-        } catch (Exception e) {
-          throw new IllegalArgumentException(
-             String.format("Could not iterate over value at path '%s'", parents), e);
-        }
-        if (s == null) {
+        if (repeatedValues == null || repeatedValues == notFound) {
           repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, definitionLevel);
         } else {
-          repeatedElementStripeFn.invoke(buffer, s.first(), isParentNil, repetitionLevel, curDefinitionLevel);
-          for (ISeq t = s.next(); t != null; t = t.next()) {
-            repeatedElementStripeFn.invoke(buffer, t.first(), isParentNil, curRepetitionLevel,
-                                           curDefinitionLevel);
+          ISeq s;
+          try {
+            s = seq(repeatedValues);
+          } catch (Exception e) {
+            throw new IllegalArgumentException(
+                String.format("Could not iterate over value at path '%s'", parents), e);
+          }
+          if (s == null) { // Sequence was empty but not null
+            repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, curDefinitionLevel);
+          } else { // Sequence has a least one elements
+            repeatedElementStripeFn.invoke(buffer, s.first(), isParentNil, repetitionLevel,
+                                           curDefinitionLevel + 1);
+            for (ISeq t = s.next(); t != null; t = t.next()) {
+              repeatedElementStripeFn.invoke(buffer, t.first(), isParentNil, curRepetitionLevel,
+                                             curDefinitionLevel + 1);
+            }
           }
         }
       }

@@ -146,7 +146,7 @@
                           (with-open [f (d/file-reader tmp-filename)])))))
 
 (deftest record-group-lengths
-  (let [records (take 10000 (helpers/rand-test-records))]
+  (let [records (take 15000 (helpers/rand-test-records))]
     (letfn [(avg-record-group-length [target-length]
               (with-open [w (d/file-writer {:record-group-length target-length}
                                            (Schema/readString helpers/test-schema-str)

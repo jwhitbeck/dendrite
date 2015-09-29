@@ -37,12 +37,12 @@
 
 (def dremel-paper-record1-striped
   [10
-   [(LeveledValue. 0 3 20) (LeveledValue. 1 3 40) (LeveledValue. 1 3 60)]
+   [(LeveledValue. 0 4 20) (LeveledValue. 1 4 40) (LeveledValue. 1 4 60)]
    [(LeveledValue. 0 1 nil)]
-   [(LeveledValue. 0 4 "en-us") (LeveledValue. 2 4 "en") (LeveledValue. 1 2 nil)
-    (LeveledValue. 1 4 "en-gb")]
-   [(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil) (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
-   [(LeveledValue. 0 3 "http://A") (LeveledValue. 1 3 "http://B") (LeveledValue. 1 2 nil)]])
+   [(LeveledValue. 0 6 "en-us") (LeveledValue. 2 6 "en") (LeveledValue. 1 3 nil)
+    (LeveledValue. 1 6 "en-gb")]
+   [(LeveledValue. 0 7 "us") (LeveledValue. 2 6 nil) (LeveledValue. 1 3 nil) (LeveledValue. 1 7 "gb")]
+   [(LeveledValue. 0 4 "http://A") (LeveledValue. 1 4 "http://B") (LeveledValue. 1 3 nil)]])
 
 (def dremel-paper-record2
   {:docid 20
@@ -52,8 +52,8 @@
 
 (def dremel-paper-record2-striped
   [20
-   [(LeveledValue. 0 3 80)]
-   [(LeveledValue. 0 3 10) (LeveledValue. 1 3 30)]
-   [(LeveledValue. 0 2 nil)]
-   [(LeveledValue. 0 2 nil)]
-   [(LeveledValue. 0 3 "http://C")]])
+   [(LeveledValue. 0 4 80)]
+   [(LeveledValue. 0 4 10) (LeveledValue. 1 4 30)]
+   [(LeveledValue. 0 3 nil)]
+   [(LeveledValue. 0 3 nil)]
+   [(LeveledValue. 0 4 "http://C")]])

@@ -56,9 +56,9 @@
                                    (.columns two-fields-query)
                                    100)]
         (is (= [[10 20]
-                [[(LeveledValue. 0 5 "us") (LeveledValue. 2 4 nil)
-                  (LeveledValue. 1 2 nil) (LeveledValue. 1 5 "gb")]
-                 [(LeveledValue. 0 2 nil)]]]
+                [[(LeveledValue. 0 7 "us") (LeveledValue. 2 6 nil)
+                  (LeveledValue. 1 3 nil) (LeveledValue. 1 7 "gb")]
+                 [(LeveledValue. 0 3 nil)]]]
                (seq (first r))))))
     (testing "no fields query"
       (let [no-fields-query (Schema/applyQuery types

@@ -22,6 +22,7 @@ import clojure.lang.ITransientMap;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
 import clojure.lang.PersistentHashSet;
+import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 
@@ -129,7 +130,7 @@ public final class Assemble {
           ListIterator<LeveledValue> iterator = iterators[colIdx];
           LeveledValue lv = iterator.next();
           if (lv.value == null) {
-            if (lv.definitionLevel == enclosingCollectionMaxDefinitionLevel) {
+            if (lv.definitionLevel == enclosingCollectionMaxDefinitionLevel + 1) {
               return delayedNullValue.get();
             } else {
               return null;
@@ -222,8 +223,15 @@ public final class Assemble {
     return lv.definitionLevel;
   }
 
-  private static final IFn seqFn = new AFn() {
+  private static final IFn asListFn = new AFn() {
       public Object invoke(Object o) {
+        if (o == null) {
+          return null;
+        }
+        ISeq s = RT.seq(o);
+        if (s == null) {
+          return PersistentList.EMPTY;
+        }
         return RT.seq(o);
       }
     };
@@ -243,8 +251,12 @@ public final class Assemble {
         public Object invoke(ListIterator[] iterators) {
           int leafDefinitionLevel = getNextDefinitionLevel(iterators, leafColumnIndex);
           Object firstObject = repeatedElemFn.invoke(iterators);
-          if ((firstObject == null) && (definitionLevel > leafDefinitionLevel)) {
-            return null;
+          if (firstObject == null) {
+            if (leafDefinitionLevel < definitionLevel) {
+              return null;
+            } else if (leafDefinitionLevel == definitionLevel) {
+              return emptyColl;
+            }
           }
           ITransientCollection tr = emptyColl.asTransient();
           tr = tr.conj(firstObject);
@@ -260,9 +272,9 @@ public final class Assemble {
     final IFn fn;
     if (coll.repetition == Schema.LIST) {
       if (coll.fn == null) {
-        fn = seqFn;
+        fn = asListFn;
       } else {
-        fn = Utils.comp(seqFn, coll.fn);
+        fn = Utils.comp(asListFn, coll.fn);
       }
     } else {
       fn = coll.fn;
@@ -282,17 +294,19 @@ public final class Assemble {
     final Fn listFn = getFn(types, coll.withRepetition(Schema.LIST).withFn(null));
     final Fn mapFn = new Fn() {
         public Object invoke(ListIterator[] iterators) {
-          ISeq s = RT.seq(listFn.invoke(iterators));
-          if (s == null) {
+          Object list = listFn.invoke(iterators);
+          if (list == null) {
             return null;
+          } else {
+            ISeq s = RT.seq(list);
+            ITransientMap tm = PersistentArrayMap.EMPTY.asTransient();
+            while (s != null) {
+              Object e = s.first();
+              tm = tm.assoc(RT.get(e, Schema.KEY), RT.get(e, Schema.VAL));
+              s = s.next();
+            }
+            return tm.persistent();
           }
-          ITransientMap tm = PersistentArrayMap.EMPTY.asTransient();
-          while (s != null) {
-            Object e = s.first();
-            tm = tm.assoc(RT.get(e, Schema.KEY), RT.get(e, Schema.VAL));
-            s = s.next();
-          }
-          return tm.persistent();
         }
       };
     final IFn fn = coll.fn;

@@ -35,16 +35,15 @@
       (is (= {:docid 10
               :name [{:language [{:country "us"} nil]} nil {:language [{:country "gb"}]}]}
              (assemble [10
-                        [(LeveledValue. 0 3 "us") (LeveledValue. 2 2 nil)
-                         (LeveledValue. 1 1 nil) (LeveledValue. 1 3 "gb")]]
+                        [(LeveledValue. 0 7 "us") (LeveledValue. 2 5 nil)
+                         (LeveledValue. 1 2 nil) (LeveledValue. 1 7 "gb")]]
                        sub-schema)))
-      (is (= {:docid 20 :name [nil]} (assemble [20 [(LeveledValue. 0 1 nil)]]
+      (is (= {:docid 20 :name [nil]} (assemble [20 [(LeveledValue. 0 2 nil)]]
                                                sub-schema))))))
 
 (def test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types)))
 
 (def test-record {:docid 10
-                  :internal/is-active false
                   :links {:backward (list 1 2 3)
                           :forward [4 5]}
                   :name [nil {:language [{:code "us" :country "USA"}]
@@ -52,6 +51,7 @@
                   :meta {"key1" "value1"
                          "key2" "value2"}
                   :keywords #{"lorem" "ipsum"}
+                  :internal/is-active false
                   :ngrams [["foo" "bar"]]})
 
 (def test-record-striped

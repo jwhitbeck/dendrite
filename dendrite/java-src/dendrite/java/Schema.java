@@ -668,15 +668,13 @@ public abstract class Schema implements IWriteable {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
-    if (isRequired(coll)) {
-      throw new IllegalArgumentException("Repeated element cannot also be required.");
-    }
     Object elem = RT.first(coll);
-    Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, defLvl + 1, defLvl + 1, columns,
-                                  elem);
+    int emptyDefLvl = isRequired(coll)? defLvl : defLvl + 1;
+    Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, emptyDefLvl + 1, emptyDefLvl,
+                                  columns, elem);
     return new Collection(getRepeatedRepetition(coll),
                           repLvl + 1,
-                          defLvl + 1,
+                          emptyDefLvl,
                           getLeafColumnIndex(columns),
                           repeatedSchema,
                           null);
@@ -687,14 +685,12 @@ public abstract class Schema implements IWriteable {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
-    if (isRequired(map)) {
-      throw new IllegalArgumentException("Repeated element cannot also be required.");
-    }
     IMapEntry e = (IMapEntry)RT.first(map);
+    int emptyDefLvl = isRequired(map)? defLvl : defLvl + 1;
     IPersistentMap elem = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
-    Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, defLvl + 1, defLvl + 1, columns,
-                                        (IPersistentMap)req(elem));
-    return new Collection(MAP, repLvl + 1, defLvl + 1, getLeafColumnIndex(columns), keyValueRecord, null);
+    Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, emptyDefLvl + 1,
+                                        emptyDefLvl, columns, (IPersistentMap)req(elem));
+    return new Collection(MAP, repLvl + 1, emptyDefLvl, getLeafColumnIndex(columns), keyValueRecord, null);
   }
 
   public static Object unparse(Types types, Schema schema) {
