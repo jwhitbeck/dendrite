@@ -144,7 +144,7 @@
       (testing "schema is indeed optimized"
         (is (= (str "#req "
                     "{:docid #req #col [long delta],"
-                    " :links {:backward (long), :forward [long]},"
+                    " :links {:backward (long), :forward #req [long]},"
                     " :name [{:language [{:code #req #col [string dictionary],"
                     " :country #col [string dictionary]}],"
                     " :url #col [string incremental]}],"

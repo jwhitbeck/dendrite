@@ -772,9 +772,9 @@ public abstract class Schema implements IWriteable {
   }
 
   private static Object unparseCollection(Types types, boolean asPlain, Collection coll) {
-    return wrapWithRepetition(wrapWithPresence(unparse(types, asPlain, coll.repeatedSchema),
-                                               coll.presence),
-                              coll.repetition);
+    return wrapWithPresence(wrapWithRepetition(unparse(types, asPlain, coll.repeatedSchema),
+                                               coll.repetition),
+                            coll.presence);
   }
 
   public static Schema getSubSchema(List<Keyword> subSchemaPath, Schema schema) {
