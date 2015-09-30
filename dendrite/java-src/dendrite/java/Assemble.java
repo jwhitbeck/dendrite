@@ -38,7 +38,7 @@ public final class Assemble {
     if (schema instanceof Schema.Record) {
       return getRecordFn(types, (Schema.Record)schema);
     } else if (schema instanceof Schema.Column) {
-      if (schema.repetition < 0) {
+      if (schema.presence < 0) {
         return getMissingValueFn(schema);
       } else if (schema.repetitionLevel == 0) {
         return getNonRepeatedValueFn(types, (Schema.Column)schema);
@@ -46,12 +46,15 @@ public final class Assemble {
         return getRepeatedValueFn(types, (Schema.Column)schema);
       }
     } else /* if (schema instanceof Schema.Collection) */ {
-      if (schema.repetition < 0) {
+      if (schema.presence < 0) {
         return getMissingValueFn(schema);
-      } else if (schema.repetition == Schema.MAP) {
-        return getMapFn(types, (Schema.Collection)schema);
       } else {
-        return getRepeatedFn(types, (Schema.Collection)schema);
+        Schema.Collection coll = (Schema.Collection)schema;
+        if (coll.repetition == Schema.MAP) {
+          return getMapFn(types, coll);
+        } else {
+          return getRepeatedFn(types, coll);
+        }
       }
     }
   }

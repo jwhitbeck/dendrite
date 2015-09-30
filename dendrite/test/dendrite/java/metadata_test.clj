@@ -34,7 +34,7 @@
                   nil))
 
 (defn rand-schema-coll [max-depth]
-  (Schema$Collection. (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
+  (Schema$Collection. (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10) (rand-int 10)
                       (rand-schema (dec max-depth)) nil))
 
 (defn rand-schema

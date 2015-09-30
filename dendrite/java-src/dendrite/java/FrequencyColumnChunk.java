@@ -240,7 +240,7 @@ public final class FrequencyColumnChunk {
     }
 
     private static Schema.Column getIndicesColumn(Schema.Column column) {
-      return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
+      return new Schema.Column(column.presence, column.repetitionLevel, column.definitionLevel,
                                Types.INT, Types.VLQ, Types.NONE, column.columnIndex,
                                column.enclosingCollectionMaxDefinitionLevel, -1, null);
     }

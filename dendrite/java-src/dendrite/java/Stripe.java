@@ -90,22 +90,23 @@ public final class Stripe {
 
   private static StripeFn getStripeFn(Context context, Schema schema, IPersistentVector parents) {
     if (schema instanceof Schema.Column) {
-      if (schema.repetition == Schema.OPTIONAL) {
+      if (schema.presence == Schema.OPTIONAL) {
         return getOptionalValueStripeFn(context, (Schema.Column)schema, parents);
-      } else /* if (schema.repetition == Schema.REQUIRED) */ {
+      } else /* if (schema.presence == Schema.REQUIRED) */ {
         return getRequiredValueStripeFn(context, (Schema.Column)schema, parents);
       }
     } else if (schema instanceof Schema.Record) {
-      if (schema.repetition == Schema.OPTIONAL) {
+      if (schema.presence == Schema.OPTIONAL) {
         return getOptionalRecordStripeFn(context, (Schema.Record)schema, parents);
-      } else /* if (schema.repetition == Schema.REQUIRED) */ {
+      } else /* if (schema.presence == Schema.REQUIRED) */ {
         return getRequiredRecordStripeFn(context, (Schema.Record)schema, parents);
       }
     } else /* if (schema instanceof Schema.Collection) */ {
-      if (schema.repetition == Schema.MAP) {
-        return getMapStripeFn(context, (Schema.Collection)schema, parents);
+      Schema.Collection coll = (Schema.Collection)schema;
+      if (coll.repetition == Schema.MAP) {
+        return getMapStripeFn(context, coll, parents);
       } else {
-        return getRepeatedStripeFn(context, (Schema.Collection)schema, parents);
+        return getRepeatedStripeFn(context, coll, parents);
       }
     }
   }

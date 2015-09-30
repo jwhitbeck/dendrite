@@ -305,7 +305,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
   }
 
   private static Schema.Column getColumnWith(Schema.Column column, int type, int encoding, int compression) {
-    return new Schema.Column(column.repetition, column.repetitionLevel, column.definitionLevel,
+    return new Schema.Column(column.presence, column.repetitionLevel, column.definitionLevel,
                              type, encoding, compression, column.columnIndex,
                              column.enclosingCollectionMaxDefinitionLevel, -1, null);
   }

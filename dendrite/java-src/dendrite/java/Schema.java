@@ -45,18 +45,26 @@ public abstract class Schema implements IWriteable {
   public static final int
     MISSING = -1,
     OPTIONAL = 0,
-    REQUIRED = 1,
-    VECTOR = 2,
-    LIST = 3,
-    SET = 4,
-    MAP = 5;
+    REQUIRED = 1;
+
+  private static final String[] presenceStrings;
+
+  static {
+    presenceStrings = new String[REQUIRED + 1];
+    presenceStrings[OPTIONAL] = "optional";
+    presenceStrings[REQUIRED] = "required";
+  }
+
+  public static final int
+    VECTOR = 0,
+    LIST = 1,
+    SET = 2,
+    MAP = 3;
 
   private static final String[] repetitionStrings;
 
   static {
-    repetitionStrings = new String[MAP+1];
-    repetitionStrings[OPTIONAL] = "optional";
-    repetitionStrings[REQUIRED] = "required";
+    repetitionStrings = new String[MAP + 1];
     repetitionStrings[VECTOR] = "vector";
     repetitionStrings[LIST] = "list";
     repetitionStrings[SET] = "set";
@@ -84,13 +92,13 @@ public abstract class Schema implements IWriteable {
     REQUIRED_TYPE = Keyword.intern("dendrite", "required"),
     READERS = Keyword.intern("readers");
 
-  public final int repetition;
+  public final int presence;
   public final int repetitionLevel;
   public final int definitionLevel;
   public final IFn fn;
 
-  Schema(int repetition, int repetitionLevel, int definitionLevel, IFn fn) {
-    this.repetition = repetition;
+  Schema(int presence, int repetitionLevel, int definitionLevel, IFn fn) {
+    this.presence = presence;
     this.repetitionLevel = repetitionLevel;
     this.definitionLevel = definitionLevel;
     this.fn = fn;
@@ -110,7 +118,7 @@ public abstract class Schema implements IWriteable {
   }
 
   private static void writeCommonFieldsTo(MemoryOutputStream mos, Schema s) {
-    mos.write(s.repetition);
+    mos.write(s.presence);
     Bytes.writeUInt(mos, s.repetitionLevel);
     Bytes.writeUInt(mos, s.definitionLevel);
   }
@@ -127,7 +135,7 @@ public abstract class Schema implements IWriteable {
       return false;
     }
     Schema s = (Schema)o;
-    return repetition == s.repetition
+    return presence == s.presence
       && repetitionLevel == s.repetitionLevel
       && definitionLevel == s.definitionLevel
       && fn == s.fn;
@@ -162,10 +170,10 @@ public abstract class Schema implements IWriteable {
     public final int enclosingCollectionMaxDefinitionLevel;
     public final int queryColumnIndex;
 
-    public Column(int repetition, int repetitionLevel, int definitionLevel, int type, int encoding,
+    public Column(int presence, int repetitionLevel, int definitionLevel, int type, int encoding,
                   int compression, int columnIndex, int enclosingCollectionMaxDefinitionLevel,
                   int queryColumnIndex, IFn fn) {
-      super(repetition, repetitionLevel, definitionLevel, fn);
+      super(presence, repetitionLevel, definitionLevel, fn);
       this.type = type;
       this.encoding = encoding;
       this.compression = compression;
@@ -184,17 +192,17 @@ public abstract class Schema implements IWriteable {
 
     @Override
     public Column withFn(IFn aFn) {
-      return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
+      return new Column(presence, repetitionLevel, definitionLevel, type, encoding, compression,
                         columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, aFn);
     }
 
     public Column withEncoding(int anEncoding) {
-      return new Column(repetition, repetitionLevel, definitionLevel, type, anEncoding, compression,
+      return new Column(presence, repetitionLevel, definitionLevel, type, anEncoding, compression,
                         columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, fn);
     }
 
     public Column withQueryColumnIndex(int aQueryColumnIndex) {
-      return new Column(repetition, repetitionLevel, definitionLevel, type, encoding, compression,
+      return new Column(presence, repetitionLevel, definitionLevel, type, encoding, compression,
                         columnIndex, enclosingCollectionMaxDefinitionLevel, aQueryColumnIndex, fn);
     }
 
@@ -289,9 +297,9 @@ public abstract class Schema implements IWriteable {
     public final int leafColumnIndex;
     public final Field[] fields;
 
-    public Record(int repetition, int repetitionLevel, int definitionLevel, int leafColumnIndex,
+    public Record(int presence, int repetitionLevel, int definitionLevel, int leafColumnIndex,
                   Field[] fields, IFn fn) {
-      super(repetition, repetitionLevel, definitionLevel, fn);
+      super(presence, repetitionLevel, definitionLevel, fn);
       this.leafColumnIndex = leafColumnIndex;
       this.fields = fields;
     }
@@ -302,15 +310,15 @@ public abstract class Schema implements IWriteable {
 
     @Override
     public Record withFn(IFn aFn) {
-      return new Record(repetition, repetitionLevel, definitionLevel, leafColumnIndex, fields, aFn);
+      return new Record(presence, repetitionLevel, definitionLevel, leafColumnIndex, fields, aFn);
     }
 
     public Record withFields(Field[] newFields) {
-      return new Record(repetition, repetitionLevel, definitionLevel, leafColumnIndex, newFields, fn);
+      return new Record(presence, repetitionLevel, definitionLevel, leafColumnIndex, newFields, fn);
     }
 
     public Record withLeafColumnIndex(int aLeafColumnIndex) {
-      return new Record(repetition, repetitionLevel, definitionLevel, aLeafColumnIndex, fields, fn);
+      return new Record(presence, repetitionLevel, definitionLevel, aLeafColumnIndex, fields, fn);
     }
 
     @Override
@@ -387,39 +395,41 @@ public abstract class Schema implements IWriteable {
 
   public static final class Collection extends Schema {
 
+    public final int repetition;
     public final int leafColumnIndex;
     public final Schema repeatedSchema;
 
-    public Collection(int repetition, int repetitionLevel, int definitionLevel, int leafColumnIndex,
-                      Schema repeatedSchema, IFn fn) {
-      super(repetition, repetitionLevel, definitionLevel, fn);
+    public Collection(int presence, int repetitionLevel, int definitionLevel, int leafColumnIndex,
+                      int repetition, Schema repeatedSchema, IFn fn) {
+      super(presence, repetitionLevel, definitionLevel, fn);
+      this.repetition = repetition;
       this.leafColumnIndex = leafColumnIndex;
       this.repeatedSchema = repeatedSchema;
     }
 
     public static Collection missing(int repetition) {
-      return new Collection(MISSING, -1, -1, -1, null, null);
+      return new Collection(MISSING, -1, -1, -1, repetition, null, null);
     }
 
     @Override
     public Collection withFn(IFn aFn) {
-      return new Collection(repetition, repetitionLevel, definitionLevel, leafColumnIndex,
-                            repeatedSchema, aFn);
+      return new Collection(presence, repetitionLevel, definitionLevel, leafColumnIndex,
+                            repetition, repeatedSchema, aFn);
     }
 
     public Collection withLeafColumnIndex(int aLeafColumnIndex) {
-      return new Collection(repetition, repetitionLevel, definitionLevel, aLeafColumnIndex,
-                            repeatedSchema, fn);
+      return new Collection(presence, repetitionLevel, definitionLevel, aLeafColumnIndex,
+                            repetition, repeatedSchema, fn);
     }
 
     public Collection withRepetition(int aRepetition) {
-      return new Collection(aRepetition, repetitionLevel, definitionLevel, leafColumnIndex,
-                            repeatedSchema, fn);
+      return new Collection(presence, repetitionLevel, definitionLevel, leafColumnIndex,
+                            aRepetition, repeatedSchema, fn);
     }
 
     public Collection withRepeatedSchema(Schema aRepeatedSchema) {
-      return new Collection(repetition, repetitionLevel, definitionLevel, leafColumnIndex,
-                            aRepeatedSchema, fn);
+      return new Collection(presence, repetitionLevel, definitionLevel, leafColumnIndex,
+                            repetition, aRepeatedSchema, fn);
     }
 
     @Override
@@ -436,6 +446,7 @@ public abstract class Schema implements IWriteable {
     public void writeTo(MemoryOutputStream mos) {
       writeCommonFieldsTo(mos, this);
       Bytes.writeUInt(mos, leafColumnIndex);
+      Bytes.writeUInt(mos, repetition);
       Schema.writeTo(mos, repeatedSchema);
     }
 
@@ -445,7 +456,8 @@ public abstract class Schema implements IWriteable {
         return false;
       }
       Collection c = (Collection)o;
-      return leafColumnIndex == c.leafColumnIndex &&
+      return repetition == c.repetition &&
+        leafColumnIndex == c.leafColumnIndex &&
         repeatedSchema.equals(c.repeatedSchema);
     }
 
@@ -459,11 +471,11 @@ public abstract class Schema implements IWriteable {
                             Bytes.readUInt(bb),
                             Bytes.readUInt(bb),
                             Bytes.readUInt(bb),
+                            Bytes.readUInt(bb),
                             Schema.read(bb),
                             null);
     }
   }
-
 
   public static boolean isRequired(Object o) {
     return RT.get(RT.meta(o), TYPE) == REQUIRED_TYPE;
@@ -636,8 +648,9 @@ public abstract class Schema implements IWriteable {
   private static Schema parseRecord(Types types, IPersistentVector parents, int repLvl, int defLvl,
                                     int enclosingCollDefLvl, LinkedList<Column> columns,
                                     IPersistentMap record) {
-    int curDefLvl = isRequired(record)? defLvl : defLvl + 1;
-    int repetition = isRequired(record)? REQUIRED : OPTIONAL;
+    boolean isRecordRequired = isRequired(record);
+    int curDefLvl = isRecordRequired? defLvl : defLvl + 1;
+    int presence = isRecordRequired? REQUIRED : OPTIONAL;
     Field[] fields = new Field[RT.count(record)];
     int i = 0;
     for (Object o : record) {
@@ -648,7 +661,7 @@ public abstract class Schema implements IWriteable {
       i += 1;
     }
     int leafColumnIndex = getLeafColumnIndex(columns);
-    return new Record(repetition, repLvl, curDefLvl, leafColumnIndex, fields, null);
+    return new Record(presence, repLvl, curDefLvl, leafColumnIndex, fields, null);
   }
 
   private static int getRepeatedRepetition(Object o) {
@@ -668,14 +681,16 @@ public abstract class Schema implements IWriteable {
     if (RT.count(coll) != 1) {
       throw new IllegalArgumentException("Repeated field can only contain a single schema element.");
     }
+    boolean isCollRequired = isRequired(coll);
     Object elem = RT.first(coll);
-    int emptyDefLvl = isRequired(coll)? defLvl : defLvl + 1;
+    int emptyDefLvl = isCollRequired? defLvl : defLvl + 1;
     Schema repeatedSchema = parse(types, parents.cons(null), repLvl + 1, emptyDefLvl + 1, emptyDefLvl,
                                   columns, elem);
-    return new Collection(getRepeatedRepetition(coll),
+    return new Collection(isCollRequired? REQUIRED : OPTIONAL,
                           repLvl + 1,
                           emptyDefLvl,
                           getLeafColumnIndex(columns),
+                          getRepeatedRepetition(coll),
                           repeatedSchema,
                           null);
   }
@@ -685,12 +700,19 @@ public abstract class Schema implements IWriteable {
     if (RT.count(map) != 1) {
       throw new IllegalArgumentException("Map field can only contain a single key/value schema element.");
     }
+    boolean isMapRequired = isRequired(map);
     IMapEntry e = (IMapEntry)RT.first(map);
-    int emptyDefLvl = isRequired(map)? defLvl : defLvl + 1;
+    int emptyDefLvl = isMapRequired? defLvl : defLvl + 1;
     IPersistentMap elem = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
     Schema keyValueRecord = parseRecord(types, parents.cons(null), repLvl + 1, emptyDefLvl + 1,
                                         emptyDefLvl, columns, (IPersistentMap)req(elem));
-    return new Collection(MAP, repLvl + 1, emptyDefLvl, getLeafColumnIndex(columns), keyValueRecord, null);
+    return new Collection(isMapRequired? REQUIRED : OPTIONAL,
+                          repLvl + 1,
+                          emptyDefLvl,
+                          getLeafColumnIndex(columns),
+                          MAP,
+                          keyValueRecord,
+                          null);
   }
 
   public static Object unparse(Types types, Schema schema) {
@@ -711,26 +733,33 @@ public abstract class Schema implements IWriteable {
     return unparse(types, true, schema);
   }
 
+  private static Object wrapWithPresence(Object o, int presence) {
+    if (presence == REQUIRED) {
+      return req(o);
+    } else {
+      return o;
+    }
+  }
+
   private static Object wrapWithRepetition(Object o, int repetition) {
     switch (repetition) {
     case LIST: return new PersistentList(o);
     case VECTOR: return PersistentVector.create(o);
     case SET: return PersistentHashSet.create(o);
     case MAP: return new PersistentArrayMap(new Object[]{RT.get(o, KEY), RT.get(o, VAL)});
-    case REQUIRED: return req(o);
-    default: return o;
+    default: throw new IllegalStateException(String.format("Invalid repetition %d!", repetition));
     }
   }
 
   private static Object unparseColumn(Types types, boolean asPlain, Column column) {
     if (asPlain || (column.encoding == Types.PLAIN && column.compression == Types.NONE)) {
-      return wrapWithRepetition(types.getTypeSymbol(column.type), column.repetition);
+      return wrapWithPresence(types.getTypeSymbol(column.type), column.presence);
     }
     Col col = new Col(types.getTypeSymbol(column.type),
                       types.getEncodingSymbol(column.encoding),
                       types.getCompressionSymbol(column.compression));
 
-    return wrapWithRepetition(col, column.repetition);
+    return wrapWithPresence(col, column.presence);
   }
 
   private static Object unparseRecord(Types types, boolean asPlain, Record record) {
@@ -739,11 +768,13 @@ public abstract class Schema implements IWriteable {
     for (Field field : fields) {
       rec = rec.assoc(field.name, unparse(types, asPlain, field.value));
     }
-    return wrapWithRepetition(rec.persistent(), record.repetition);
+    return wrapWithPresence(rec.persistent(), record.presence);
   }
 
   private static Object unparseCollection(Types types, boolean asPlain, Collection coll) {
-    return wrapWithRepetition(unparse(types, asPlain, coll.repeatedSchema), coll.repetition);
+    return wrapWithRepetition(wrapWithPresence(unparse(types, asPlain, coll.repeatedSchema),
+                                               coll.presence),
+                              coll.repetition);
   }
 
   public static Schema getSubSchema(List<Keyword> subSchemaPath, Schema schema) {
@@ -934,25 +965,31 @@ public abstract class Schema implements IWriteable {
                                       PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(MAP);
-    } else if (schema.repetition != MAP) {
+    } else if (!(schema instanceof Collection)) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a map.", parents,
-                                                       repetitionStrings[schema.repetition]));
-    } else if (RT.count(query) != 1) {
-      throw new IllegalArgumentException(String.format("Map query '%s' at path '%s' can only contain " +
-                                                       " a single key/value pair", query, parents));
-    }
-    IMapEntry e = (IMapEntry)RT.first(query);
-    Object keyValueQuery = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
-    Collection map = (Collection)schema;
-    map = map.withRepeatedSchema(applyQuery(context,
-                                            map.repeatedSchema,
-                                            keyValueQuery,
-                                            parents.cons(null)));
-    if (context.hasLeaf()) {
-      return map.withLeafColumnIndex(context.getLeafColumnIndex());
+                                                       (schema instanceof Column)? "column" : "record"));
     } else {
-      return map;
+      Collection map = (Collection)schema;
+      if (map.repetition != MAP) {
+        throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
+                                                         "cannot be read as a map.", parents,
+                                                         repetitionStrings[map.repetition]));
+      } else if (RT.count(query) != 1) {
+        throw new IllegalArgumentException(String.format("Map query '%s' at path '%s' can only contain " +
+                                                         " a single key/value pair", query, parents));
+      }
+      IMapEntry e = (IMapEntry)RT.first(query);
+      Object keyValueQuery = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
+      map = map.withRepeatedSchema(applyQuery(context,
+                                              map.repeatedSchema,
+                                              keyValueQuery,
+                                              parents.cons(null)));
+      if (context.hasLeaf()) {
+        return map.withLeafColumnIndex(context.getLeafColumnIndex());
+      } else {
+        return map;
+      }
     }
   }
 
@@ -960,45 +997,63 @@ public abstract class Schema implements IWriteable {
                                       PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(SET);
-    } else if (schema.repetition != SET) {
+    } else if (!(schema instanceof Collection)) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a set.", parents,
-                                                       repetitionStrings[schema.repetition]));
-
+                                                       (schema instanceof Column)? "column" : "record"));
+    } else {
+      Collection set = (Collection)schema;
+      if (set.repetition != SET) {
+        throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
+                                                         "cannot be read as a set.", parents,
+                                                         repetitionStrings[set.repetition]));
+      }
+      return applyQueryRepeated(context, SET, schema, query, parents);
     }
-    return applyQueryRepeated(context, SET, schema, query, parents);
   }
 
   private static Schema applyQueryVector(QueryContext context, Schema schema, IPersistentVector query,
                                          PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(VECTOR);
-    } else if (schema.repetition != LIST
-               && schema.repetition != VECTOR
-               && schema.repetition != SET
-               && schema.repetition != MAP) {
+    } else if (!(schema instanceof Collection)) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a vector.", parents,
-                                                       repetitionStrings[schema.repetition]));
-
+                                                       (schema instanceof Column)? "column" : "record"));
+    } else {
+      Collection vec = (Collection)schema;
+      if (vec.repetition != LIST &&
+          vec.repetition != VECTOR &&
+          vec.repetition != SET &&
+          vec.repetition != MAP) {
+        throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
+                                                         "cannot be read as a vector.", parents,
+                                                         repetitionStrings[vec.repetition]));
+      }
+      return applyQueryRepeated(context, VECTOR, vec, query, parents);
     }
-    return applyQueryRepeated(context, VECTOR, schema, query, parents);
   }
 
   private static Schema applyQueryList(QueryContext context, Schema schema, IPersistentList query,
                                        PersistentVector parents) {
     if (schema == null) {
       return Collection.missing(LIST);
-    } else if (schema.repetition != LIST
-               && schema.repetition != VECTOR
-               && schema.repetition != SET
-               && schema.repetition != MAP) {
+    } else if (!(schema instanceof Collection)) {
       throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
                                                        "cannot be read as a list.", parents,
-                                                       repetitionStrings[schema.repetition]));
-
+                                                       (schema instanceof Column)? "column" : "record"));
+    } else {
+      Collection list = (Collection)schema;
+      if (list.repetition != LIST &&
+          list.repetition != VECTOR &&
+          list.repetition != SET &&
+          list.repetition != MAP) {
+        throw new IllegalArgumentException(String.format("Element at path %s contains a %s in the schema, " +
+                                                         "cannot be read as a list.", parents,
+                                                         repetitionStrings[list.repetition]));
+      }
+      return applyQueryRepeated(context, LIST, schema, query, parents);
     }
-    return applyQueryRepeated(context, LIST, schema, query, parents);
   }
 
   private static Schema applyQueryRepeated(QueryContext context, int repetition, Schema schema,

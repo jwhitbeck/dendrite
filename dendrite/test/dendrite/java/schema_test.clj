@@ -73,60 +73,71 @@
 
 (deftest schema-configuration
   (testing "schemas are properly configured in test schema"
-    (are [ks rep rep-lvl def-lvl] (let [^Schema schema (sub-schema-in test-schema ks)]
-                                    (and (= rep (.repetition schema))
-                                         (= rep-lvl (.repetitionLevel schema))
-                                         (= def-lvl (.definitionLevel schema))))
+    (are [ks pres rep-lvl def-lvl] (let [^Schema schema (sub-schema-in test-schema ks)]
+                                     (and (= pres (.presence schema))
+                                          (= rep-lvl (.repetitionLevel schema))
+                                          (= def-lvl (.definitionLevel schema))))
          [] Schema/REQUIRED 0 0
          [:docid] Schema/REQUIRED 0 0
          [:links] Schema/OPTIONAL 0 1
-         [:links :backward] Schema/LIST 1 2
+         [:links :backward] Schema/OPTIONAL 1 2
          [:links :backward nil] Schema/OPTIONAL 1 4
-         [:links :forward] Schema/VECTOR 1 1
+         [:links :forward] Schema/REQUIRED 1 1
          [:links :forward nil] Schema/OPTIONAL 1 3
-         [:name] Schema/VECTOR 1 1
+         [:name] Schema/OPTIONAL 1 1
          [:name nil] Schema/OPTIONAL 1 3
-         [:name nil :language] Schema/VECTOR 2 4
+         [:name nil :language] Schema/OPTIONAL 2 4
          [:name nil :language nil] Schema/OPTIONAL 2 6
          [:name nil :language nil :code] Schema/REQUIRED 2 6
          [:name nil :language nil :country] Schema/OPTIONAL 2 7
          [:name nil :url] Schema/OPTIONAL 1 4
-         [:meta] Schema/MAP 1 1
+         [:meta] Schema/OPTIONAL 1 1
          [:meta nil] Schema/REQUIRED 1 2
          [:meta nil :key] Schema/REQUIRED 1 2
          [:meta nil :val] Schema/REQUIRED 1 2
-         [:keywords] Schema/SET 1 1
+         [:keywords] Schema/OPTIONAL 1 1
          [:keywords nil] Schema/REQUIRED 1 2
          [:internal/is-active] Schema/REQUIRED 0 0
-         [:ngrams] Schema/VECTOR 1 1
-         [:ngrams nil] Schema/VECTOR 2 3
-         [:ngrams nil nil] Schema/REQUIRED 2 4)))
+         [:ngrams] Schema/OPTIONAL 1 1
+         [:ngrams nil] Schema/OPTIONAL 2 3
+         [:ngrams nil nil] Schema/REQUIRED 2 4))
+  (testing "repetition are properly configured in test schema"
+    (are [ks rep] (let [^Schema$Collection coll (sub-schema-in test-schema ks)]
+                    (= rep (.repetition coll)))
+      [:links :backward] Schema/LIST
+      [:links :forward] Schema/VECTOR
+      [:name] Schema/VECTOR
+      [:name nil :language] Schema/VECTOR
+      [:meta] Schema/MAP
+      [:keywords] Schema/SET
+      [:ngrams] Schema/VECTOR
+      [:ngrams nil] Schema/VECTOR))
   (testing "columns are properly configured in test schema"
     (are [ks t enc com col-idx enc-def-lvl]
-      (let [^Schema$Column column (sub-schema-in test-schema ks)]
-        (and (= t (.type column))
-             (= enc (.encoding column))
-             (= com (.compression column))
-             (= col-idx (.columnIndex column))
-             (= enc-def-lvl (.enclosingCollectionMaxDefinitionLevel column))))
-         [:docid] Types/LONG Types/DELTA Types/DEFLATE 0 0
-         [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1 2
-         [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2 1
-         [:name nil :language nil :code] Types/STRING Types/PLAIN Types/NONE 3 4
-         [:name nil :language nil :country] Types/STRING Types/PLAIN Types/NONE 4 4
-         [:name nil :url] Types/STRING Types/PLAIN Types/NONE 5 1
-         [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6 1
-         [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7 1
-         [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8 1
-         [:internal/is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9 0
-         [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10 3))
+        (let [^Schema$Column column (sub-schema-in test-schema ks)]
+          (and (= t (.type column))
+               (= enc (.encoding column))
+               (= com (.compression column))
+               (= col-idx (.columnIndex column))
+               (= enc-def-lvl (.enclosingCollectionMaxDefinitionLevel column))))
+      [:docid] Types/LONG Types/DELTA Types/DEFLATE 0 0
+      [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1 2
+      [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2 1
+      [:name nil :language nil :code] Types/STRING Types/PLAIN Types/NONE 3 4
+      [:name nil :language nil :country] Types/STRING Types/PLAIN Types/NONE 4 4
+      [:name nil :url] Types/STRING Types/PLAIN Types/NONE 5 1
+      [:meta nil :key] Types/STRING Types/PLAIN Types/NONE 6 1
+      [:meta nil :val] Types/STRING Types/PLAIN Types/NONE 7 1
+      [:keywords nil] Types/STRING Types/PLAIN Types/NONE 8 1
+      [:internal/is-active] Types/BOOLEAN Types/PLAIN Types/NONE 9 0
+      [:ngrams nil nil] Types/STRING Types/PLAIN Types/NONE 10 3))
   (testing "records have the proper leaf-column-index"
     (are [ks leaf-column-idx] (let [^Schema$Record record (sub-schema-in test-schema ks)]
                                 (= leaf-column-idx (.leafColumnIndex record)))
-         [] 10
-         [:links] 2
-         [:name nil] 5
-         [:name nil :language nil] 4))
+      [] 10
+      [:links] 2
+      [:name nil] 5
+      [:name nil :language nil] 4)))
 
 (deftest invalid-schemas
   (are [schema regex] (thrown-with-msg? IllegalArgumentException regex
@@ -235,9 +246,9 @@
          IllegalArgumentException #"The following fields don't exist: \[:missing\]"
          (throw-cause (Schema/applyQuery types false {} test-schema {:docid '_ :missing '_})))))
   (testing "missing fields are marked as such and don't cross repetition levels"
-    (are [repetition query path]
+    (are [presence query path]
       (let [applied-query (.schema (Schema/applyQuery types true {} test-schema query))]
-                                   (= repetition (.repetition (sub-schema-in applied-query path))))
+                                   (= presence (.presence (sub-schema-in applied-query path))))
          Schema/MISSING {:foo '_} [:foo]
          Schema/MISSING {:links {:foo '_}} [:links :foo]
          Schema/MISSING {:links {:foo ['_]}} [:links :foo]
@@ -271,9 +282,9 @@
          {:docid {:foo '_}}
          #"Element at path \[:docid\] is not a record in schema"
          {:docid (list 'long)}
-         #"Element at path \[:docid\] contains a required in the schema, cannot be read as a list"
+         #"Element at path \[:docid\] contains a column in the schema, cannot be read as a list"
          {:docid ['long]}
-         #"Element at path \[:docid\] contains a required in the schema, cannot be read as a vector"
+         #"Element at path \[:docid\] contains a column in the schema, cannot be read as a vector"
          {:name #{{:url '_}}}
          #"Element at path \[:name\] contains a vector in the schema, cannot be read as a set."
          {:name {'string '_}}
