@@ -73,25 +73,29 @@
   (testing "missing required field"
     (let [schema (Schema/parse helpers/default-types
                                (Schema/req {:docid (Schema/req 'long)
+                                            :links {:forward (Schema/req ['long])}
                                             :name [{:language (Schema/req {:country 'string
                                                                            :code (Schema/req 'string)})
                                                     :url 'string}]
+                                            :meta (Schema/req {'string 'string})
                                             :keywords #{(Schema/req 'string)}}))]
       (are [x] (stripe-record x schema)
-           {:docid 10}
-           {:docid 10 :name []}
-           {:docid 10 :name [{:language {:code "en-us"}}]}
-           {:docid 10 :name [{:language {:code "en-us"}}] :keywords #{"foo" "bar"}})
+        {:docid 10 :meta {}}
+        {:docid 10 :name [] :meta {}}
+        {:docid 10 :name [{:language {:code "en-us"}}] :meta {"foo" "bar"}}
+        {:docid 10 :name [{:language {:code "en-us"}}] :meta {} :keywords #{"foo" "bar"}})
       (are [x re] (thrown-with-msg? IllegalArgumentException re
                                     (helpers/throw-cause (stripe-record x schema)))
-           nil #"Required value at path '\[:docid\]' is missing"
-           {:docid 10 :name [{:url "http://A"}]}
-           #"Required record at path '\[:name nil :language\]' is missing"
-           {:docid 10 :name [{}]} #"Required record at path '\[:name nil :language\]' is missing"
-           {:docid 10 :name [{:language {}}]}
-           #"Required value at path '\[:name nil :language :code\]' is missing"
-           {:docid 10 :keywords #{nil}}
-           #"Required value at path '\[:keywords nil\]' is missing")))
+        nil #"Required value at path '\[:docid\]' is missing"
+        {:docid 10} #"Required collection at path '\[:meta\]' is missing"
+        {:docid 10 :links {} :meta {}} #"Required collection at path '\[:links :forward\]' is missing"
+        {:docid 10 :name [{:url "http://A"}] :meta {}}
+        #"Required record at path '\[:name nil :language\]' is missing"
+        {:docid 10 :name [{}] :meta {}} #"Required record at path '\[:name nil :language\]' is missing"
+        {:docid 10 :name [{:language {}}] :meta {}}
+        #"Required value at path '\[:name nil :language :code\]' is missing"
+        {:docid 10 :keywords #{nil} :meta {}}
+        #"Required value at path '\[:keywords nil\]' is missing")))
   (testing "extra-fields"
     (let [schema (Schema/parse helpers/default-types {:docid 'int})]
       (is (stripe-record {:docid 2} schema false))

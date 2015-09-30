@@ -360,11 +360,18 @@ public final class Stripe {
     final StripeFn repeatedElementStripeFn = getStripeFn(context, coll.repeatedSchema, parents.cons(null));
     final int curRepetitionLevel = coll.repetitionLevel;
     final int curDefinitionLevel = coll.definitionLevel;
+    final boolean isRequired = (coll.presence == Schema.REQUIRED);
     return new StripeFn() {
       public void invoke(Object[] buffer, Object repeatedValues, boolean isParentNil, int repetitionLevel,
                          int definitionLevel) {
-        if (repeatedValues == null || repeatedValues == notFound) {
-          repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, definitionLevel);
+        boolean isNil = (repeatedValues == null || repeatedValues == notFound);
+        if (isNil) {
+          if (isRequired && !isParentNil) {
+            throw new IllegalArgumentException(
+                String.format("Required collection at path '%s' is missing", parents));
+          } else {
+            repeatedElementStripeFn.invoke(buffer, notFound, true, repetitionLevel, definitionLevel);
+          }
         } else {
           ISeq s;
           try {
