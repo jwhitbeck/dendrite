@@ -161,12 +161,27 @@
         (is (= (map #(select-keys % [:internal/is-active]) records)
                (d/read {:query {:internal/is-active '_}} r)))))))
 
+(defrecord Foo [foo])
+
 (deftest user-defined-metadata
-  (let [test-metadata {:foo {:bar "test"} :baz [1 2 3]}]
-    (with-open [w (dremel-paper-writer)]
-      (d/set-metadata! w test-metadata))
-    (is (= test-metadata (with-open [r (d/file-reader tmp-filename)]
-                           (d/metadata r))))))
+  (testing "untagged"
+    (let [test-metadata {:foo {:bar "test"} :baz [1 2 3]}]
+      (with-open [w (dremel-paper-writer)]
+        (d/set-metadata! w test-metadata))
+      (is (= test-metadata (with-open [r (d/file-reader tmp-filename)]
+                             (d/metadata r))))))
+  (testing "tagged, read without tags"
+    (let [test-metadata (map->Foo {:foo {:bar "test"}})]
+      (with-open [w (dremel-paper-writer)]
+        (d/set-metadata! w test-metadata))
+      (is (= {:foo {:bar "test"}} (with-open [r (d/file-reader tmp-filename)]
+                                    (d/metadata r))))))
+  (testing "tagged, read with tags"
+    (let [test-metadata (map->Foo {:foo {:bar "test"}})]
+      (with-open [w (dremel-paper-writer)]
+        (d/set-metadata! w test-metadata))
+      (is (= test-metadata (with-open [r (d/file-reader tmp-filename)]
+                             (d/metadata r {:readers {'dendrite.core_test.Foo map->Foo}})))))))
 
 (deftest corrupt-data
   (testing "corrupt file"

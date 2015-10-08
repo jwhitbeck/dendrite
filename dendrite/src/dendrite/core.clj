@@ -138,8 +138,13 @@
   (^dendrite.java.FileReader [opts file]
                              (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
 
-(defn- byte-buffer->edn [^ByteBuffer byte-buffer]
-  (-> byte-buffer Types/toByteArray Types/toString edn/read-string))
+(defn- byte-buffer->edn [^ByteBuffer byte-buffer edn-opts]
+  (->> byte-buffer
+       Types/toByteArray
+       Types/toString
+       ; Provide a default reader that ignores all edn tags. Helpful if a record is serialized to edn as part
+       ; of the metadata.
+       (edn/read-string (merge {:default (fn [_ v] v)} edn-opts))))
 
 (defn stats
   "Returns a map containing all the stats associated with this reader. The tree top-level keys
@@ -155,9 +160,10 @@
   (.getNumRecords reader))
 
 (defn metadata
-  "Returns the user-defined metadata for this reader."
-  [^FileReader reader]
-  (byte-buffer->edn (.getMetadata reader)))
+  "Returns the user-defined metadata for this reader. opts is a map as per clojure.edn/read."
+  ([^FileReader reader] (metadata reader nil))
+  ([^FileReader reader opts]
+   (byte-buffer->edn (.getMetadata reader) opts)))
 
 (defn custom-types
   "Returns a map of custom-type to base-type."
