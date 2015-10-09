@@ -31,6 +31,15 @@ public final class Bundle implements Iterable<List> {
   private final int maxBundleSize;
   private final long firstRecordIndex;
 
+  // Constructor used for striping
+  Bundle(int bundleSize, List[] columnValues) {
+    this.isColumnRepeated = null;
+    this.columnValues = columnValues;
+    this.maxBundleSize = bundleSize;
+    this.firstRecordIndex = -1;
+  }
+
+  // Constructor used for assembly
   Bundle(int maxBundleSize, long firstRecordIndex, boolean[] isColumnRepeated, List[] columnValues) {
     this.isColumnRepeated = isColumnRepeated;
     this.columnValues = columnValues;
@@ -170,27 +179,6 @@ public final class Bundle implements Iterable<List> {
       Bundle b = new Bundle(bundleSize, nextFirstRecordIndex, isColumnRepeated, columnValues);
       nextFirstRecordIndex += bundleSize;
       return b;
-    }
-
-    @SuppressWarnings("unchecked")
-    public Bundle stripe(Stripe.Fn stripeFn, List<Object> records) {
-      List[] columnValues = new List[numColumns];
-      int bundleSize = records.size();
-      for (int i=0; i<numColumns; ++i) {
-        columnValues[i] = new ArrayList(bundleSize);
-      }
-      Object[] buffer = new Object[numColumns];
-      boolean success = false;
-      for (Object record : records) {
-        Arrays.fill(buffer, null);
-        success = stripeFn.invoke(record, buffer);
-        if (success) {
-          for (int i=0; i<numColumns; ++i) {
-            columnValues[i].add(buffer[i]);
-          }
-        }
-      }
-      return create(bundleSize, columnValues);
     }
   }
 

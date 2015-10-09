@@ -14,7 +14,7 @@
             [dendrite.dremel-paper-examples :refer :all]
             [dendrite.test-helpers :as helpers])
   (:import [dendrite.java Bundle Bundle$Factory LeveledValue RecordGroup RecordGroup$Reader RecordGroup$Writer
-            Schema Stripe Utils Types]))
+            Schema Stripe StripeReducer Utils Types]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,10 +75,11 @@
 
 (deftest byte-buffer-random-records-write-read
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
-        bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
-        stripe (Stripe/getFn helpers/default-types test-schema nil nil false)
-        bundle (.stripe bundle-factory stripe records)
+        stripe (Stripe/getFn helpers/default-types test-schema false)
+        num-columns (count (Schema/getColumns test-schema))
+        stripe-reducer (StripeReducer. stripe num-columns 256 nil nil)
+        bundle (.reduce stripe-reducer records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length
@@ -99,8 +100,10 @@
   (let [test-schema (->> helpers/test-schema-str Schema/readString (Schema/parse helpers/default-types))
         bundle-factory (Bundle$Factory. (Schema/getColumns test-schema))
         records (take 1000 (helpers/rand-test-records))
-        stripe (Stripe/getFn helpers/default-types test-schema nil nil false)
-        bundle (.stripe bundle-factory stripe records)
+        stripe (Stripe/getFn helpers/default-types test-schema false)
+        num-columns (count (Schema/getColumns test-schema))
+        stripe-reducer (StripeReducer. stripe num-columns 256 nil nil)
+        bundle (.reduce stripe-reducer records)
         w (doto (RecordGroup$Writer. helpers/default-types
                                      (Schema/getColumns test-schema)
                                      test-target-data-page-length

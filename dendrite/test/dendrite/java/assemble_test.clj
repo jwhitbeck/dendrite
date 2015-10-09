@@ -58,7 +58,7 @@
   (let [n (count (Schema/getColumns test-schema))
         a (object-array n)]
     (helpers/with-in-column-logical-types
-      (.invoke (Stripe/getFn helpers/default-types test-schema nil nil true) test-record a))
+      (.invoke (Stripe/getFn helpers/default-types test-schema true) test-record a))
     a))
 
 (deftest query-column-indices

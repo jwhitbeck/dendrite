@@ -516,11 +516,12 @@
            (with-open [r (d/files-reader [tmp-filename tmp-filename2])]
              (doall (d/read r)))))))
 
-(deftest writer-with-map-fn
+(deftest writer-with-xform
   (let [records (take 100 (helpers/rand-test-records))
-        f #(select-keys % [:docid :internal/is-active])]
-    (with-open [w (d/file-writer {:map-fn f} (Schema/readString helpers/test-schema-str) tmp-filename)]
+        xform (comp (map #(select-keys % [:docid :internal/is-active]))
+                    (filter #(-> % :docid even?)))]
+    (with-open [w (d/file-writer {} xform (Schema/readString helpers/test-schema-str) tmp-filename)]
       (.writeAll w records))
-    (is (= (map f records)
+    (is (= (eduction xform records)
            (with-open [r (d/file-reader tmp-filename)]
              (doall (d/read r)))))))

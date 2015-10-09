@@ -23,7 +23,7 @@
   ([record schema ignore-extra-fields?]
    (let [n (count (Schema/getColumns schema))
          a (object-array n)]
-     (.invoke (Stripe/getFn helpers/default-types schema nil nil ignore-extra-fields?) record a)
+     (.invoke (Stripe/getFn helpers/default-types schema ignore-extra-fields?) record a)
      (seq a))))
 
 (deftest dremel-paper
@@ -84,8 +84,7 @@
         {:docid 10 :name [] :meta {}}
         {:docid 10 :name [{:language {:code "en-us"}}] :meta {"foo" "bar"}}
         {:docid 10 :name [{:language {:code "en-us"}}] :meta {} :keywords #{"foo" "bar"}})
-      (are [x re] (thrown-with-msg? IllegalArgumentException re
-                                    (helpers/throw-cause (stripe-record x schema)))
+      (are [x re] (thrown-with-msg? IllegalArgumentException re (stripe-record x schema))
         nil #"Required value at path '\[:docid\]' is missing"
         {:docid 10} #"Required collection at path '\[:meta\]' is missing"
         {:docid 10 :links {} :meta {}} #"Required collection at path '\[:links :forward\]' is missing"
@@ -101,7 +100,7 @@
       (is (stripe-record {:docid 2} schema false))
       (is (stripe-record {:docid 2 :extra-field 3} schema))
       (is (thrown-with-msg? IllegalArgumentException #"Field ':extra-field' at path '\[\]' is not in schema"
-                            (helpers/throw-cause (stripe-record {:docid 2 :extra-field 3} schema false))))))
+                            (stripe-record {:docid 2 :extra-field 3} schema false)))))
   (testing "incompatible value types"
     (let [schema (Schema/parse helpers/default-types
                                {:boolean 'boolean
@@ -134,8 +133,7 @@
            {:symbol 'foo}
            {:repeated-int [1 2]}
            {:repeated-int [1 nil]})
-      (are [x] (thrown-with-msg? IllegalArgumentException #"Could not coerce value"
-                                 (helpers/throw-cause (stripe-record x schema)))
+      (are [x] (thrown-with-msg? IllegalArgumentException #"Could not coerce value" (stripe-record x schema))
            {:int [1 2]}
            {:int "2"}
            {:long "2"}

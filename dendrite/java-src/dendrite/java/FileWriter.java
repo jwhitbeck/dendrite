@@ -13,6 +13,7 @@
 package dendrite.java;
 
 import clojure.lang.Agent;
+import clojure.lang.IFn;
 import clojure.lang.Symbol;
 
 import java.io.Closeable;
@@ -58,22 +59,24 @@ public final class FileWriter implements Closeable {
     this.isClosed = false;
   }
 
-  public static FileWriter create(Options.WriterOptions writerOptions, Object unparsedSchema, File file)
+  public static FileWriter create(Options.WriterOptions writerOptions,
+                                  IFn xform,
+                                  Object unparsedSchema,
+                                  File file)
     throws IOException {
     Types types = Types.create(writerOptions.customTypeDefinitions);
     Schema schema = Schema.parse(types, unparsedSchema);
     Schema.Column[] columns = Schema.getColumns(schema);
     RecordGroup.Writer recordGroupWriter = new RecordGroup.Writer(types, columns, writerOptions.dataPageLength,
                                                                   writerOptions.optimizationStrategy);
-    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.mapFn, writerOptions.invalidInputHandler,
-                                      writerOptions.isIgnoreExtraFields);
+    Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.isIgnoreExtraFields);
+    StripeReducer stripeReducer = new StripeReducer(stripeFn, columns.length, writerOptions.bundleSize, xform,
+                                                    writerOptions.invalidInputHandler);
     LinkedBlockingQueue<List<Object>> batchQueue = new LinkedBlockingQueue<List<Object>>(10);
-    Bundle.Factory bundleFactory = new Bundle.Factory(columns);
     FileChannel fileChannel = Utils.getWritingFileChannel(file);
     fileChannel.write(ByteBuffer.wrap(Constants.magicBytes));
     Future<WriteThreadResult> writeThread = startWriteThread(recordGroupWriter,
-                                                             bundleFactory,
-                                                             stripeFn,
+                                                             stripeReducer,
                                                              fileChannel,
                                                              writerOptions.recordGroupLength,
                                                              writerOptions.bundleSize,
@@ -118,24 +121,22 @@ public final class FileWriter implements Closeable {
     };
   }
 
-  private static Future<Bundle> getBundleFuture(final Bundle.Factory bundleFactory,
-                                                final Stripe.Fn stripeFn,
+  private static Future<Bundle> getBundleFuture(final StripeReducer stripeReducer,
                                                 final List<Object> records) {
     return Agent.soloExecutor.submit(new Callable<Bundle>() {
         public Bundle call() {
-          return bundleFactory.stripe(stripeFn, records);
+          return stripeReducer.reduce(records);
         }
       });
   }
 
-  private static Iterator<Bundle> getBundleIterator(final Bundle.Factory bundleFactory,
-                                                    final Stripe.Fn stripeFn,
+  private static Iterator<Bundle> getBundleIterator(final StripeReducer stripeReducer,
                                                     final Iterator<List<Object>> batchIterator) {
     int n = 2 + Runtime.getRuntime().availableProcessors();
     final LinkedList<Future<Bundle>> futures = new LinkedList<Future<Bundle>>();
     int k = 0;
     while (batchIterator.hasNext() && k < n) {
-      futures.addLast(getBundleFuture(bundleFactory, stripeFn, batchIterator.next()));
+      futures.addLast(getBundleFuture(stripeReducer, batchIterator.next()));
       k += 1;
     }
     return new AReadOnlyIterator<Bundle>() {
@@ -149,7 +150,7 @@ public final class FileWriter implements Closeable {
         Future<Bundle> fut = futures.pollFirst();
         Bundle bundle = Utils.tryGetFuture(fut);
         if (batchIterator.hasNext()) {
-          futures.addLast(getBundleFuture(bundleFactory, stripeFn, batchIterator.next()));
+          futures.addLast(getBundleFuture(stripeReducer, batchIterator.next()));
         }
         return bundle;
       }
@@ -168,8 +169,7 @@ public final class FileWriter implements Closeable {
 
   private static Future<WriteThreadResult>
     startWriteThread(final RecordGroup.Writer recordGroupWriter,
-                     final Bundle.Factory bundleFactory,
-                     final Stripe.Fn stripeFn,
+                     final StripeReducer stripeReducer,
                      final FileChannel fileChannel,
                      final int targetRecordGroupLength,
                      final int bundleSize,
@@ -178,7 +178,7 @@ public final class FileWriter implements Closeable {
     return Agent.soloExecutor.submit(new Callable<WriteThreadResult>() {
         public WriteThreadResult call() throws IOException {
           ArrayList<Metadata.RecordGroup> recordGroupsMetadata = new ArrayList<Metadata.RecordGroup>();
-          Iterator<Bundle> bundleIterator = getBundleIterator(bundleFactory, stripeFn, batchIterator);
+          Iterator<Bundle> bundleIterator = getBundleIterator(stripeReducer, batchIterator);
           long nextNumRecordsForLengthCheck = 10L * bundleSize;
           while (bundleIterator.hasNext()) {
             Bundle bundle = bundleIterator.next();

@@ -19,15 +19,6 @@
 (defn- bundle-factory ^Bundle$Factory [num-columns]
   (Bundle$Factory. (into-array (repeat num-columns (Schema$Column. 0 0 0 0 0 0 0 0 0 nil)))))
 
-(deftest bundle-striping
-  (let [stripe (reify Stripe$Fn
-                 (^boolean invoke [_ record ^objects array]
-                   (Arrays/fill array record)
-                   true))
-        striped-record-bundle (.stripe (bundle-factory 4) stripe (range 10))]
-    (is (= (seq striped-record-bundle)
-           [(range 10) (range 10) (range 10) (range 10)]))))
-
 (deftest bundle-reduction
   (let [test-bundle (.create (bundle-factory 2) 10 (into-array List [(range 10) (range 10)]))]
     (testing "reduce"
@@ -94,10 +85,9 @@
                    (invoke [_ iterators] (vec (for [^Iterator i iterators]
                                                 (.next i)))))
         stripe (reify Stripe$Fn
-                 (^boolean invoke [_ record ^objects buffer]
+                 (^void invoke [_ record ^objects buffer]
                    (dotimes [i (count record)]
-                     (aset buffer i (get record i)))
-                   true))]
+                     (aset buffer i (get record i)))))]
     (testing "single record"
       (let [array (object-array num-columns)
             record (vec (repeatedly num-columns helpers/rand-int))]

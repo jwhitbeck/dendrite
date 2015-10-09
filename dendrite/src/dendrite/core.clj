@@ -90,6 +90,11 @@
 (defn file-writer
   "Returns a dendrite writer that outputs to a file according to the provided schema.
 
+  If the xform argument is passed, the records are striped subject to the provided transducer. Note that this
+  transducer is applied in the parallel record striping so this can produce unexpected results for stateful
+  transducers such as `partition-all` or `distinct`. However, stateless transducers such as `map` or
+  `filter` will produce the expected result.
+
   If provided, the options map supports the following keys:
 
   :data-page-length         The length in bytes of the data pages (default 262144)
@@ -113,15 +118,13 @@
   :custom-types             A map of of custom-type symbol to custom-type specification. See docs for
                             full explanation.
 
-  :map-fn                   Apply this function to all written records before striping them to columns. This
-                            function is applied as part of the parallelized striping process.
-
   :ignore-extra-fields?     If true (default), ignore record fields that are not part of the schema upon
                             writing to file. If false, will throw an exception if a record contains a field
                             not defined in the schema."
   (^dendrite.java.FileWriter [schema file] (file-writer nil schema file))
-  (^dendrite.java.FileWriter [opts schema file]
-                             (FileWriter/create (Options/getWriterOptions opts) schema (io/as-file file))))
+  (^dendrite.java.FileWriter [opts schema file] (file-writer opts nil schema file))
+  (^dendrite.java.FileWriter [opts xform schema file]
+   (FileWriter/create (Options/getWriterOptions opts) xform schema (io/as-file file))))
 
 (defn set-metadata!
   "Sets the user-defined metadata for this writer."
