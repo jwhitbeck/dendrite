@@ -238,7 +238,7 @@
   ^dendrite.java.View [f ^View view] (.withIndexedByFn view f))
 
 (defn eduction
-  "Returns a seqable, reducible, and foldable view of of the application of the transducers to the
+  "Returns a seqable, reducible, and foldable view of the application of the transducers to the
   records. Transducers are applied in order as if combined with comp. Note that the transducers are applied in
   parallel on each bundle (see assembly docs for full explanation), so this function can produce unexpected
   results for stateful transducers such as `parition-all` or `distinct`. However, for stateless transducers
