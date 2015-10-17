@@ -43,7 +43,7 @@ public final class FrequencyColumnChunk {
           partitionLength,
           column.repetitionLevel,
           column.definitionLevel,
-          column.enclosingCollectionMaxDefinitionLevel,
+          column.enclosingEmptyDefinitionLevel,
           types.getDecoderFactory(column.type, Types.PLAIN, column.fn),
           types.getDecoderFactory(Types.INT, Types.VLQ),
           types.getDecompressorFactory(column.compression)).iterator();
@@ -172,7 +172,7 @@ public final class FrequencyColumnChunk {
                                      tempIndicesColumnChunkWriter.getMetadata().numDataPages,
                                      column.repetitionLevel,
                                      column.definitionLevel,
-                                     column.enclosingCollectionMaxDefinitionLevel,
+                                     column.enclosingEmptyDefinitionLevel,
                                      getFrequencyMappedIndicesDecoderFactory(),
                                      null);
         for (DataPage.Reader reader : dataPageReaders) {
@@ -242,7 +242,7 @@ public final class FrequencyColumnChunk {
     private static Schema.Column getIndicesColumn(Schema.Column column) {
       return new Schema.Column(column.presence, column.repetitionLevel, column.definitionLevel,
                                Types.INT, Types.VLQ, Types.NONE, column.columnIndex,
-                               column.enclosingCollectionMaxDefinitionLevel, -1, null);
+                               column.enclosingEmptyDefinitionLevel, -1, null);
     }
   }
 }

@@ -119,7 +119,7 @@
                (= enc (.encoding column))
                (= com (.compression column))
                (= col-idx (.columnIndex column))
-               (= enc-def-lvl (.enclosingCollectionMaxDefinitionLevel column))))
+               (= enc-def-lvl (.enclosingEmptyDefinitionLevel column))))
       [:docid] Types/LONG Types/DELTA Types/DEFLATE 0 0
       [:links :backward nil] Types/LONG Types/PLAIN Types/NONE 1 2
       [:links :forward nil] Types/LONG Types/DELTA Types/NONE 2 1

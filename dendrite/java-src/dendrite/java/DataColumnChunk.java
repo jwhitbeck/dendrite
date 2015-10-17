@@ -43,7 +43,7 @@ public final class DataColumnChunk {
           partitionLength,
           column.repetitionLevel,
           column.definitionLevel,
-          column.enclosingCollectionMaxDefinitionLevel,
+          column.enclosingEmptyDefinitionLevel,
           types.getDecoderFactory(ColumnChunks.getType(types, column.type), column.encoding),
           types.getDecompressorFactory(column.compression)).iterator();
     }
@@ -60,7 +60,7 @@ public final class DataColumnChunk {
           columnChunkMetadata.numDataPages,
           column.repetitionLevel,
           column.definitionLevel,
-          column.enclosingCollectionMaxDefinitionLevel,
+          column.enclosingEmptyDefinitionLevel,
           types.getDecoderFactory(ColumnChunks.getType(types, column.type), column.encoding),
           types.getDecompressorFactory(column.compression));
     }

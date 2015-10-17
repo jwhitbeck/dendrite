@@ -127,13 +127,13 @@ public final class Assemble {
       };
     } else {
       final DelayedNullValue delayedNullValue = DelayedNullValue.withFn(column.fn);
-      final int enclosingCollectionMaxDefinitionLevel = column.enclosingCollectionMaxDefinitionLevel;
+      final int enclosingEmptyDefinitionLevel = column.enclosingEmptyDefinitionLevel;
       return new Fn() {
         public Object invoke(ListIterator[] iterators) {
           ListIterator<LeveledValue> iterator = iterators[colIdx];
           LeveledValue lv = iterator.next();
           if (lv.value == null) {
-            if (lv.definitionLevel == enclosingCollectionMaxDefinitionLevel + 1) {
+            if (lv.definitionLevel == enclosingEmptyDefinitionLevel + 1) {
               return delayedNullValue.get();
             } else {
               return null;

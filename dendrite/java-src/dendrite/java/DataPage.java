@@ -302,27 +302,27 @@ public final class DataPage {
     private final Header header;
     private final int maxRepetitionLevel;
     private final int maxDefinitionLevel;
-    private final int enclosingCollectionMaxDefinitionLevel;
+    private final int enclosingEmptyDefinitionLevel;
 
     private Reader(ByteBuffer bb, IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory,
                    Header header, int maxRepetitionLevel, int maxDefinitionLevel,
-                   int enclosingCollectionMaxDefinitionLevel) {
+                   int enclosingEmptyDefinitionLevel) {
       this.bb = bb;
       this.decoderFactory = decoderFactory;
       this.decompressorFactory = decompressorFactory;
       this.header = header;
       this.maxRepetitionLevel = maxRepetitionLevel;
       this.maxDefinitionLevel = maxDefinitionLevel;
-      this.enclosingCollectionMaxDefinitionLevel = enclosingCollectionMaxDefinitionLevel;
+      this.enclosingEmptyDefinitionLevel = enclosingEmptyDefinitionLevel;
     }
 
     public static Reader create(ByteBuffer bb, int maxRepetitionLevel, int maxDefinitionLevel,
-                                int enclosingCollectionMaxDefinitionLevel,
+                                int enclosingEmptyDefinitionLevel,
                                 IDecoderFactory decoderFactory, IDecompressorFactory decompressorFactory) {
       ByteBuffer byteBuffer = bb.slice();
       Header header = Header.read(byteBuffer);
       return new Reader(byteBuffer, decoderFactory, decompressorFactory, header, maxRepetitionLevel,
-                        maxDefinitionLevel, enclosingCollectionMaxDefinitionLevel);
+                        maxDefinitionLevel, enclosingEmptyDefinitionLevel);
     }
 
     @Override
@@ -345,7 +345,7 @@ public final class DataPage {
       } else {
         return new RepeatedValueIterator(getRepetitionLevelsDecoder(), getDefinitionLevelsDecoder(),
                                          getDataDecoder(), decoderFactory.getDelayedNullValue(),
-                                         maxDefinitionLevel, enclosingCollectionMaxDefinitionLevel);
+                                         maxDefinitionLevel, enclosingEmptyDefinitionLevel);
       }
     }
 
@@ -433,7 +433,7 @@ public final class DataPage {
     private final IIntDecoder repetitionLevelsDecoder;
     private final IIntDecoder definitionLevelsDecoder;
     private final int maxDefinitionLevel;
-    private final int enclosingCollectionMaxDefinitionLevel;
+    private final int enclosingEmptyDefinitionLevel;
     private final IDecoder decoder;
     private final DelayedNullValue delayedNullValue;
     private final int n;
@@ -442,7 +442,7 @@ public final class DataPage {
 
     RepeatedValueIterator(IIntDecoder repetitionLevelsDecoder, IIntDecoder definitionLevelsDecoder,
                           IDecoder decoder, DelayedNullValue delayedNullValue, int maxDefinitionLevel,
-                          int enclosingCollectionMaxDefinitionLevel) {
+                          int enclosingEmptyDefinitionLevel) {
       this.n = repetitionLevelsDecoder.getNumEncodedValues();
       this.i = 0;
       this.decoder = decoder;
@@ -450,7 +450,7 @@ public final class DataPage {
       this.definitionLevelsDecoder = definitionLevelsDecoder;
       this.delayedNullValue = delayedNullValue;
       this.maxDefinitionLevel = maxDefinitionLevel;
-      this.enclosingCollectionMaxDefinitionLevel = enclosingCollectionMaxDefinitionLevel;
+      this.enclosingEmptyDefinitionLevel = enclosingEmptyDefinitionLevel;
       if (n > 0) {
         this.nextRepetitionLevel = repetitionLevelsDecoder.decodeInt();
       }
@@ -468,7 +468,7 @@ public final class DataPage {
         int definitionLevel = definitionLevelsDecoder.decodeInt();
         if (definitionLevel < maxDefinitionLevel) {
           Object v;
-          if (definitionLevel == enclosingCollectionMaxDefinitionLevel) {
+          if (definitionLevel == enclosingEmptyDefinitionLevel) {
             v = delayedNullValue.get();
           } else {
             v = null;

@@ -167,18 +167,18 @@ public abstract class Schema implements IWriteable {
     public final int encoding;
     public final int compression;
     public final int columnIndex;
-    public final int enclosingCollectionMaxDefinitionLevel;
+    public final int enclosingEmptyDefinitionLevel;
     public final int queryColumnIndex;
 
     public Column(int presence, int repetitionLevel, int definitionLevel, int type, int encoding,
-                  int compression, int columnIndex, int enclosingCollectionMaxDefinitionLevel,
+                  int compression, int columnIndex, int enclosingEmptyDefinitionLevel,
                   int queryColumnIndex, IFn fn) {
       super(presence, repetitionLevel, definitionLevel, fn);
       this.type = type;
       this.encoding = encoding;
       this.compression = compression;
       this.columnIndex = columnIndex;
-      this.enclosingCollectionMaxDefinitionLevel = enclosingCollectionMaxDefinitionLevel;
+      this.enclosingEmptyDefinitionLevel = enclosingEmptyDefinitionLevel;
       this.queryColumnIndex = queryColumnIndex;
     }
 
@@ -193,17 +193,17 @@ public abstract class Schema implements IWriteable {
     @Override
     public Column withFn(IFn aFn) {
       return new Column(presence, repetitionLevel, definitionLevel, type, encoding, compression,
-                        columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, aFn);
+                        columnIndex, enclosingEmptyDefinitionLevel, queryColumnIndex, aFn);
     }
 
     public Column withEncoding(int anEncoding) {
       return new Column(presence, repetitionLevel, definitionLevel, type, anEncoding, compression,
-                        columnIndex, enclosingCollectionMaxDefinitionLevel, queryColumnIndex, fn);
+                        columnIndex, enclosingEmptyDefinitionLevel, queryColumnIndex, fn);
     }
 
     public Column withQueryColumnIndex(int aQueryColumnIndex) {
       return new Column(presence, repetitionLevel, definitionLevel, type, encoding, compression,
-                        columnIndex, enclosingCollectionMaxDefinitionLevel, aQueryColumnIndex, fn);
+                        columnIndex, enclosingEmptyDefinitionLevel, aQueryColumnIndex, fn);
     }
 
     @Override
@@ -223,7 +223,7 @@ public abstract class Schema implements IWriteable {
       Bytes.writeUInt(mos, encoding);
       Bytes.writeUInt(mos, compression);
       Bytes.writeUInt(mos, columnIndex);
-      Bytes.writeUInt(mos, enclosingCollectionMaxDefinitionLevel);
+      Bytes.writeUInt(mos, enclosingEmptyDefinitionLevel);
     }
 
     @Override
@@ -236,7 +236,7 @@ public abstract class Schema implements IWriteable {
         && encoding == col.encoding
         && compression == col.compression
         && columnIndex == col.columnIndex
-        && enclosingCollectionMaxDefinitionLevel == col.enclosingCollectionMaxDefinitionLevel;
+        && enclosingEmptyDefinitionLevel == col.enclosingEmptyDefinitionLevel;
     }
 
     @Override
