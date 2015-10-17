@@ -330,7 +330,14 @@
              (d/read {:query (d/tag 'foo {:foo '_}) :readers {'foo empty?}} r)))
       (is (= [{:docid 10 :foo {:bar 0}} {:docid 20 :foo {:bar 0}}]
              (d/read {:query {:docid '_ :foo {:bar (d/tag 'bar [{:baz '_}])}} :readers {'bar count}}
-                     r))))))
+                     r)))))
+  (testing "reader functions handle repeated dictionary columns properly"
+    (with-open [w (d/file-writer [(d/col 'int 'dictionary)] tmp-filename)]
+      (.write w [1 2 3])
+      (.write w []))
+    (with-open [r (d/file-reader tmp-filename)]
+      (is (= [[2 3 4] []]
+             (d/read {:query [(d/tag 'foo '_)] :readers {'foo inc}} r))))))
 
 (deftest custom-types
   (let [t1 (.getTime (Calendar/getInstance))

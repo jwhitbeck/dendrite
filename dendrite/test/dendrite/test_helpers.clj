@@ -103,9 +103,9 @@
            [in-record remaining] (split-with (fn [^LeveledValue lv] (pos? (.repetitionLevel lv))) (next coll))]
        (cons (cons fst in-record) (partition-by-record remaining))))))
 
-(defn map-leveled [f enclosing-coll-max-definition-level leveled-values]
+(defn map-leveled [f enclosing-empty-definition-level leveled-values]
   (map (fn [^LeveledValue lv]
-         (if (or (.value lv) (= (.definitionLevel lv) enclosing-coll-max-definition-level))
+         (if (or (.value lv) (= (.definitionLevel lv) (inc enclosing-empty-definition-level)))
            (LeveledValue. (.repetitionLevel lv) (.definitionLevel lv) (f (.value lv)))
            lv))
        leveled-values))

@@ -20,9 +20,9 @@
 
 (defn- write-read-data-page
   [{:keys [max-repetition-level max-definition-level type encoding compression f
-           enclosing-coll-max-definition-level]
+           enclosing-empty-definition-level]
     :or {type Types/INT encoding Types/PLAIN compression Types/NONE
-         enclosing-coll-max-definition-level 0}}
+         enclosing-empty-definition-level 0}}
    input-values]
   (let [writer (DataPage$Writer/create max-repetition-level max-definition-level
                                        (.getEncoder types type encoding)
@@ -31,7 +31,7 @@
       (.write writer v))
     (let [bb (helpers/output-buffer->byte-buffer writer)
           reader (DataPage$Reader/create bb max-repetition-level max-definition-level
-                                         enclosing-coll-max-definition-level
+                                         enclosing-empty-definition-level
                                          (.getDecoderFactory types type encoding f)
                                          (.getDecompressorFactory types compression))]
       (cond->> (seq reader)
@@ -53,19 +53,19 @@
             (is (= output-values (helpers/map-leveled f 0 input-values)))))
       (testing "repeated non-required value"
         (let [f (fnil (partial * 2) 1)
-              levels {:max-definition-level 3 :max-repetition-level 2 :f f
-                      :enclosing-coll-max-definition-level 2}
+              levels {:max-definition-level 3 :max-repetition-level 1 :f f
+                      :enclosing-empty-definition-level 2}
               input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
               output-values (write-read-data-page levels input-values)]
-          (is (= output-values (helpers/map-leveled f (:enclosing-coll-max-definition-level levels)
+          (is (= output-values (helpers/map-leveled f (:enclosing-empty-definition-level levels)
                                                     input-values)))))
       (testing "repeated required value"
         (let [f (partial * 2)
               levels {:max-definition-level 1 :max-repetition-level 1 :f f
-                      :enclosing-coll-max-definition-level 1}
+                      :enclosing-empty-definition-level 1}
               input-values (->> (repeatedly helpers/rand-int) (helpers/leveled levels) (take 1000))
               output-values (write-read-data-page levels input-values)]
-          (is (= output-values (helpers/map-leveled f (:enclosing-coll-max-definition-level levels)
+          (is (= output-values (helpers/map-leveled f (:enclosing-empty-definition-level levels)
                                                     input-values))))))
     (testing "all nils"
       (let [levels {:max-definition-level 3 :max-repetition-level 2}

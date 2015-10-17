@@ -468,7 +468,7 @@ public final class DataPage {
         int definitionLevel = definitionLevelsDecoder.decodeInt();
         if (definitionLevel < maxDefinitionLevel) {
           Object v;
-          if (definitionLevel == enclosingEmptyDefinitionLevel) {
+          if (definitionLevel == enclosingEmptyDefinitionLevel + 1) {
             v = delayedNullValue.get();
           } else {
             v = null;
