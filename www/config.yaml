@@ -10,5 +10,9 @@ params:
   themeColor: theme-base-0d
 menu:
   main:
+    - Name: "Github project page"
+      URL: "https://github.com/jwhitbeck/dendrite"
+      weight: 0
     - Name: "API docs"
       URL: "/api"
+      weight: 2

@@ -1,10 +1,12 @@
 ---
 date: 2015-08-23T19:31:12-07:00
-menu:
-    main:
-        weight: -1
+showtoc: true
+weight: 1
+menu: main
 title: Tutorial
 ---
+
+# Tutorial
 
 Let's get started with dendrite. This tutorial will take you through the basics of file I/O and show you how
 take advantage of the columnar format for your queries.
@@ -22,23 +24,27 @@ Writing to dendrite files should feel very similar to writing other types of fil
 {{< highlight clojure >}}
 (def filename "contacts.den")
 
-(def schema {:name {:first 'string :last 'string}
+(def schema {:name {:first 'string
+                    :last 'string}
              :emails ['string]})
 
 (def contacts
-  [{:name {:first "Alice" :last "Jones"}
+  [{:name {:first "Alice"
+           :last "Jones"}
     :emails ["alice@jones.com" "alice@acme.org"]}
-   {:name {:first "Bob" :last "Smith"}
+
+   {:name {:first "Bob"
+           :last "Smith"}
     :emails ["bob@smith.com"]}])
 
 (with-open [w (d/file-writer schema filename)]
-  (doseq [contact contacts]
-    (.write w contact)))
+  (doseq [c contacts]
+    (.write w c)))
 {{</ highlight >}}
 
 A few things to note:
 
-- The writer needs to be aware of the _schema_ describing the structure and types of the records to be
+- The writer needs to be aware of the _schema_ describing the structure and the types of the records to be
   serialized. We'll see more advanced schemas later on, but you can think of them as basically just the same
   clojure object with type symbols instead of leaf values.
 - The records are passed _as-is_ to the writer. No extra serialization step is needed.
@@ -61,17 +67,17 @@ Reading is even simpler. Since the schema is stored within the file, it is not r
 {{</ highlight >}}
 
 
-## Querying subsets of the data
+## Reading subsets of the data
 
-Columnar storage formats shine when only reading subsets of the data. Dendrite has two mechanisms for
-restricting the amount of data that needs to be deserialized: sub-schemas and queries. As we will see, they
-can be used separately or together.
+Columnar storage formats shine when only reading subsets of the data. Indeed, the on-disk bytes for unselected
+columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
+be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.
 
 ### Reading sub-schemas
 
-Sub-schemas are the simplest way of drilling down into the records in a dendrite file. They are the equivalent
-of calling `get-in` on each record. The following examples use the second arity of `dendrite.core/read` that
-expects an options map as its first arg.
+Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
+equivalent of calling `get-in` on each record. The following examples use the second arity of
+`dendrite.core/read` that expects an options map as its first arg.
 
 {{< highlight clojure >}}
 (with-open [r (d/file-reader filename)]
@@ -132,7 +138,7 @@ are provided, the query is applied to the sub-schema.
 ;= ({:first "Alice"} {:first "Bob"})
 {{</ highlight >}}
 
-## File-level metadata
+## Metadata
 
 Dendrite files may contain arbitrary file-level metadata. This is useful in many contexts, whether you want to
 keep track of the commit sha1 of the code that created the file or just add a description.
@@ -141,8 +147,8 @@ Set the metadata with `set-metadata!`.
 
 {{< highlight clojure >}}
 (with-open [w (d/file-writer schema filename)]
-  (doseq [contact contacts]
-    (.write w contact))
+  (doseq [c contacts]
+    (.write w c))
   (d/set-metadata! w {:description "Contacts" :owner "carl"})
 {{</ highlight >}}
 
@@ -155,6 +161,141 @@ Read the metadata with `metadata`.
 {{</ highlight >}}
 
 ## Opting into strictness
+
+### Tolerant writes by default
+
+By default, dendrite is quite tolerant about writing objects that don't strictly adhere to the write
+schema. Specifically, it considers that all fields are optional and silently drops fields that are not in the
+schema.
+
+{{< highlight clojure >}}
+(def contact-with-no-name
+  {:emails ["noname@none.com"]})
+
+(def contact-with-extra-fields
+  {:name {:first "Alice" :last "Jones"}
+   :emails [nil]
+   :age 24})
+
+(with-open [w (d/file-writer schema filename)]
+  (.write w contact-with-no-name)
+  (.write w nil) ; Completely empty record
+  (.write w contact-with-extra-fields))
+
+(with-open [r (d/file-reader filename)]
+  (doall (d/read r)))
+;= ({:emails ["noname@none.com"]}
+;   nil
+;   {:name {:first "Alice" :last "Jones"}
+;   :emails [nil]})
+{{</ highlight >}}
+
+Notice how Alice's age was not written to the file.
+
+### Required fields
+
+In many cases, it is useful to enforce the presence of certain record elements and throw an exception if any
+are missing. Dendrite schemas can be annotated to mark certain elements as required (i.e., cannot be nil)
+using the 'd/req` function.
+
+{{< highlight clojure >}}
+(def strict-schema
+  (d/req ; nil records not allowed
+    ; :name must be present but :first and :last are still optional
+    {:name (d/req {:first 'string
+                   :last 'string})
+     ; :emails is optional but, if defined, the
+     ;  email strings cannot be nil
+     :emails [(d/req 'string)]}))
+{{</ highlight >}}
+
+Let's try writing the same records as in the previous example using this stricter schema.
+
+{{< highlight clojure >}}
+(with-open [w (d/file-writer strict-schema filename)]
+  (.write w contact-with-no-name))
+; Throws exception. Required field :name is missing
+
+(with-open [w (d/file-writer strict-schema filename)]
+  (.write w nil))
+; Throws exception. Required record is missing
+
+(with-open [w (d/file-writer strict-schema filename)]
+  (.write w contact-with-extra-fields))
+; Throws exception. Required email is nil.
+{{</ highlight >}}
+
+### Alert on extra fields
+
+Keeping schemas in sync with application code can be tricky. In particular, you may want to throw an error if
+the record to write contains fields that are not present in the schema. The `d/file-writer` function has a
+second arity that accepts an options map to customize the writer's behavior. In this case, we want to set
+`:ignore-extra-fields?` to `false`.
+
+{{< highlight clojure >}}
+(with-open [w (d/file-writer {:ignore-extra-fields? false}
+                              schema filename)]
+  (.write w contact-with-extra-fields))
+; Throws exception. :age is not is schema.
+{{</ highlight >}}
+
+### Handling invalid records
+
+In some contexts, it may be preferable to handle the occasional invalid record rather than crashing the
+writing process. Dendrite supports that use case through the `:invalid-input-handler` option. This is a
+function of two arguments: the record and the exception. Let's use this to populate an atom of invalid
+records.
+
+{{< highlight clojure >}}
+(def invalid-records (atom []))
+
+(defn handler [rec e]
+  (swap! invalid-records conj rec))
+
+(with-open [w (d/file-writer {:invalid-input-handler handler}
+                             strict-schema filename)]
+  ; Write some valid contacts
+  (doseq [c contacts]
+    (.write w c))
+  ; Write an invalid contact
+  (.write w contact-with-no-name))
+;= nil
+
+@invalid-records
+;= [{:emails ["noname@none.com"]}]
+
+; Verify that the valid records were successfully written
+(with-open [r (d/file-reader filename)]
+  (count (d/read r)))
+;= 2
+
+{{</ highlight >}}
+
+### Reading missing columns
+
+The previous sections covered enforcing various write-time checks. By default, dendrite is also quite tolerant
+on reads. In particular, if a query requests fields that are not present in the file's schema, those fields
+will simply be ignored.
+
+{{< highlight clojure >}}
+(with-open [r (d/file-reader filename)]
+  ; The :age field does not exist in the schema
+  (doall (d/read {:query {:name {:first '_} :age '_}} r)))
+;= ({:name {:first "Alice"}}
+;   {:name {:first "Bob"}})
+{{</ highlight >}}
+
+This makes it very easy to apply the same query to many files, of which some may not have the requested
+field. However, this tolerant behavior may not always be desirable and can be disabled by setting the
+`:missing-fields-as-nil?` read option to `false`.
+
+{{< highlight clojure >}}
+(with-open [r (d/file-reader filename)]
+  (doall (d/read {:query {:name {:first '_} :age '_}
+                  :missing-fields-as-nil? false}
+                  r)))
+;= Throws exception. :age field does not exist.
+{{</ highlight >}}
 
 ## Schema manipulation
 
@@ -192,16 +333,32 @@ Let's see if that worked.
 
 ### Serialization
 
-TODO: Use required tags
-
-As we have done so far, schemas can be stored directly inside clojure code. However, it is often convenient to
-store them in separate files.
+So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
+convenient to store them in separate files.
 
 {{< highlight clojure >}}
+; The simple schema from the beginning of the tutorial
 (spit "schema.edn" (pr-str schema))
+; The somewhat stricter schema from the "Opting into strictness"
+; section
+(spit "strict-schema.edn" (pr-str strict-schema))
 {{</ highlight >}}
 
-To read a schema, use the `read-schema-string` function.
+Let's see what those files look like.
+
+{{< highlight clojure >}}
+(slurp "schema.edn")
+;= "{:name {:first string, :last string}, :emails [string]}"
+(slurp "strict-schema.edn")
+;= "#req {:name #req {:first string, :last string}, :emails [#req string]}"
+{{</ highlight >}}
+
+Note how the required parts of the schema are tagged with `#req` in the EDN string. Pretty-printing also works
+as expected and makes large schemas easier to inspect.
+
+To read a schema, use the `d/read-schema-string` function. This is basically the same as
+`clojure.edn/read-string` with special reader functions for the `#req` and `#col` schema annotations (see
+[advanced]({{< relref "advanced.md" >}}) for a description of `#col`).
 
 {{< highlight clojure >}}
 (-> "schema.edn" slurp d/read-schema-string))
@@ -209,11 +366,12 @@ To read a schema, use the `read-schema-string` function.
 ;          :emails ['string]}
 {{</ highlight >}}
 
-In this case, we could also have used `clojure.edn/read-string` instead of dendrite's
-`read-schema-string`. However, the latter is preferred since it properly reads the dendrite schema annotations
-(see below).
 
-Large complex schemas can be quite hard to read
+## Next steps
 
-
-## Customizing record assembly
+We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
+injecting functions into the record assembly process, custom types, and first class support for clojure's
+transducers and `core.reducers`. These are are covered in the [advanced]({{< relref "advanced.md" >}}) section
+and benefit from a good understanding of dendrite's [variation]({{< relref "shredding.md" >}}) on the
+[Dremel]({{< link dremel >}}) record shredding algorithm, its [file format]({{< relref "format.md" >}}), and
+its multi-threaded [implementation]({{< relref "implementation.md" >}}).

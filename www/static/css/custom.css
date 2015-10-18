@@ -1,0 +1,41 @@
+/* Custom css */
+
+/*
+ * Table of contents
+ *
+ * Display a fixed table of contents on the right side of the content if the viewport is wide enough.
+ */
+
+.toc {
+  display: none;
+}
+
+@media (min-width: 100em) {
+  .toc {
+    display: block;
+    position: fixed;
+    width: 18rem;
+    top: 6rem;
+    /* sidebar is 20rem, main content is 38rem; */
+    left: 62rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border: #f9f9f9 3px solid;
+  }
+}
+
+.toc ul {
+  padding-left: 1rem;
+}
+
+.toc nav > ul > li {
+  list-style: none;
+}
+
+.toc li {
+  list-style: outside circle;
+}
+
+.toc nav > ul > li > ul > li {
+  margin-top: 0.5rem;
+}
