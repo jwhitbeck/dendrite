@@ -2,29 +2,29 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Dendrite</title>
-    <link>https://jwhitbeck.github.io/dendrite/</link>
+    <link>http://dendrite.tech/</link>
     <description>Recent content on Dendrite</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-US</language>
     <lastBuildDate>Sun, 23 Aug 2015 17:56:28 -0700</lastBuildDate>
-    <atom:link href="https://jwhitbeck.github.io/dendrite/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://dendrite.tech/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>Introducing Dendrite</title>
-      <link>https://jwhitbeck.github.io/dendrite/</link>
+      <link>http://dendrite.tech/</link>
       <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/</guid>
+      <guid>http://dendrite.tech/</guid>
       <description>&lt;p&gt;Website under construction&lt;/p&gt;
 </description>
     </item>
     
     <item>
       <title>Tutorial</title>
-      <link>https://jwhitbeck.github.io/dendrite/tutorial/</link>
+      <link>http://dendrite.tech/tutorial/</link>
       <pubDate>Sun, 23 Aug 2015 19:31:12 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/tutorial/</guid>
+      <guid>http://dendrite.tech/tutorial/</guid>
       <description>
 
 &lt;h1 id=&#34;tutorial:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Tutorial&lt;/h1&gt;
@@ -379,7 +379,7 @@ as expected and makes large schemas easier to inspect.&lt;/p&gt;
 
 &lt;p&gt;To read a schema, use the &lt;code&gt;d/read-schema-string&lt;/code&gt; function. This is basically the same as
 &lt;code&gt;clojure.edn/read-string&lt;/code&gt; with special reader functions for the &lt;code&gt;#req&lt;/code&gt; and &lt;code&gt;#col&lt;/code&gt; schema annotations (see
-&lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/advanced/&#34;&gt;advanced&lt;/a&gt; for a description of &lt;code&gt;#col&lt;/code&gt;).&lt;/p&gt;
+&lt;a href=&#34;http://dendrite.tech/advanced/&#34;&gt;advanced&lt;/a&gt; for a description of &lt;code&gt;#col&lt;/code&gt;).&lt;/p&gt;
 
 &lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;d/read-schema-string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
 &lt;span class=&#34;c1&#34;&gt;;= {:name {:first &amp;#39;string :last &amp;#39;string}&lt;/span&gt;
@@ -391,56 +391,56 @@ as expected and makes large schemas easier to inspect.&lt;/p&gt;
 
 &lt;p&gt;We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
 injecting functions into the record assembly process, custom types, and first class support for clojure&amp;rsquo;s
-transducers and &lt;code&gt;core.reducers&lt;/code&gt;. These are are covered in the &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/advanced/&#34;&gt;advanced&lt;/a&gt; section
-and benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/shredding/&#34;&gt;variation&lt;/a&gt; on the
+transducers and &lt;code&gt;core.reducers&lt;/code&gt;. These are are covered in the &lt;a href=&#34;http://dendrite.tech/advanced/&#34;&gt;advanced&lt;/a&gt; section
+and benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;http://dendrite.tech/shredding/&#34;&gt;variation&lt;/a&gt; on the
 &lt;a href=&#34;http://research.google.com/pubs/pub36632.html
-&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/format/&#34;&gt;file format&lt;/a&gt;, and
-its multi-threaded &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
+&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file format&lt;/a&gt;, and
+its multi-threaded &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
 </description>
     </item>
     
     <item>
       <title>Benchmarks</title>
-      <link>https://jwhitbeck.github.io/dendrite/benchmarks/</link>
+      <link>http://dendrite.tech/benchmarks/</link>
       <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/benchmarks/</guid>
+      <guid>http://dendrite.tech/benchmarks/</guid>
       <description></description>
     </item>
     
     <item>
       <title>File format</title>
-      <link>https://jwhitbeck.github.io/dendrite/format/</link>
+      <link>http://dendrite.tech/format/</link>
       <pubDate>Sun, 23 Aug 2015 19:30:50 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/format/</guid>
+      <guid>http://dendrite.tech/format/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Record shredding</title>
-      <link>https://jwhitbeck.github.io/dendrite/shredding/</link>
+      <link>http://dendrite.tech/shredding/</link>
       <pubDate>Sun, 18 Oct 2015 19:10:45 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/shredding/</guid>
+      <guid>http://dendrite.tech/shredding/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Implementation notes</title>
-      <link>https://jwhitbeck.github.io/dendrite/implementation/</link>
+      <link>http://dendrite.tech/implementation/</link>
       <pubDate>Sun, 23 Aug 2015 19:32:18 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/implementation/</guid>
+      <guid>http://dendrite.tech/implementation/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Advanced Usage</title>
-      <link>https://jwhitbeck.github.io/dendrite/advanced/</link>
+      <link>http://dendrite.tech/advanced/</link>
       <pubDate>Sun, 18 Oct 2015 18:08:01 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/advanced/</guid>
+      <guid>http://dendrite.tech/advanced/</guid>
       <description></description>
     </item>
     
