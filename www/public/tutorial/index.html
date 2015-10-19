@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="https://jwhitbeck.github.io/dendrite/css/poole.css">
   <link rel="stylesheet" href="https://jwhitbeck.github.io/dendrite/css/syntax.css">
   <link rel="stylesheet" href="https://jwhitbeck.github.io/dendrite/css/hyde.css">
+  <link rel="stylesheet" href="https://jwhitbeck.github.io/dendrite/css/custom.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
 
 </head>
@@ -30,7 +31,7 @@
     <ul class="sidebar-nav">
       <li><a href="https://jwhitbeck.github.io/dendrite/">Home</a> </li>
       
-      <li><a href="/dendrite/start/"> Get started </a></li>
+      <li><a href="https://github.com/jwhitbeck/dendrite"> Github project page </a></li>
       
       <li><a href="/dendrite/tutorial/"> Tutorial </a></li>
       
@@ -40,7 +41,11 @@
       
       <li><a href="/dendrite/format/"> File format </a></li>
       
-      <li><a href="/dendrite/assembly/"> Record assembly </a></li>
+      <li><a href="/dendrite/shredding/"> Record shredding </a></li>
+      
+      <li><a href="/dendrite/implementation/"> Implementation notes </a></li>
+      
+      <li><a href="/dendrite/advanced/"> Advanced Usage </a></li>
       
     </ul>
 
@@ -51,10 +56,415 @@
 
   <div class="content container">
     <div class="post">
-      <h1>Tutorial</h1>
+  
       
+
+<h1 id="tutorial:94d9a081cd1256334373c8ca6fb6276c">Tutorial</h1>
+
+<p>Let&rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O and show you how
+take advantage of the columnar format for your queries.</p>
+
+<p>The examples below assume that you have required the <code>dendrite.core</code> namespace as follows:</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">dendrite.core</span> <span class="ss">:as</span> <span class="nv">d</span><span class="p">])</span>
+</pre></div>
+</p>
+
+<h2 id="reading-and-writing-files:94d9a081cd1256334373c8ca6fb6276c">Reading and writing files</h2>
+
+<p>Writing to dendrite files should feel very similar to writing other types of files in clojure.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="k">def </span><span class="nv">filename</span> <span class="s">&quot;contacts.den&quot;</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">schema</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;string</span>
+                    <span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">}</span>
+             <span class="ss">:emails</span> <span class="p">[</span><span class="ss">&#39;string</span><span class="p">]})</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">contacts</span>
+  <span class="p">[{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Alice&quot;</span>
+           <span class="ss">:last</span> <span class="s">&quot;Jones&quot;</span><span class="p">}</span>
+    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;alice@jones.com&quot;</span> <span class="s">&quot;alice@acme.org&quot;</span><span class="p">]}</span>
+
+   <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Bob&quot;</span>
+           <span class="ss">:last</span> <span class="s">&quot;Smith&quot;</span><span class="p">}</span>
+    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;bob@smith.com&quot;</span><span class="p">]}])</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
+    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))</span>
+</pre></div>
+</p>
+
+<p>A few things to note:</p>
+
+<ul>
+<li>The writer needs to be aware of the <em>schema</em> describing the structure and the types of the records to be
+serialized. We&rsquo;ll see more advanced schemas later on, but you can think of them as basically just the same
+clojure object with type symbols instead of leaf values.</li>
+<li>The records are passed <em>as-is</em> to the writer. No extra serialization step is needed.</li>
+</ul>
+
+<p>In this example, the schema has three <em>columns</em>. The nested structure of the objects is encoded in the schema,
+but the leaf values (e.g., &ldquo;Alice&rdquo;, &ldquo;bob@smith.com&rdquo;) are written out to three separate columns. For a good
+primer on how this is done in practice, check out this
+<a href="https://blog.twitter.com/2013/dremel-made-simple-with-parquet">blog post</a> from the
+<a href="https://parquet.apache.org/">Parquet</a> project.</p>
+
+<p>Reading is even simpler. Since the schema is stored within the file, it is not required for reading.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
+<span class="c1">;    :emails [&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]}</span>
+<span class="c1">;   {:name {:first &quot;Bob&quot; :last &quot;Smith&quot;}</span>
+<span class="c1">;    :emails [&quot;bob@smith.com&quot;]})</span>
+</pre></div>
+</p>
+
+<h2 id="reading-subsets-of-the-data:94d9a081cd1256334373c8ca6fb6276c">Reading subsets of the data</h2>
+
+<p>Columnar storage formats shine when only reading subsets of the data. Indeed, the on-disk bytes for unselected
+columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
+be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.</p>
+
+<h3 id="reading-sub-schemas:94d9a081cd1256334373c8ca6fb6276c">Reading sub-schemas</h3>
+
+<p>Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
+equivalent of calling <code>get-in</code> on each record. The following examples use the second arity of
+<code>dendrite.core/read</code> that expects an options map as its first arg.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
+<span class="c1">;   {:first &quot;Bob&quot; :last &quot;Smith&quot;})</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span> <span class="ss">:first</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= (&quot;Alice&quot; &quot;Bob&quot;)</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:emails</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ([&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]</span>
+<span class="c1">;   [&quot;bob@smith.com&quot;])</span>
+</pre></div>
+</p>
+
+<p>Attempting to use the <code>:sub-schema-in</code> option to cross into a repeated field will throw an exception.</p>
+
+<h3 id="queries:94d9a081cd1256334373c8ca6fb6276c">Queries</h3>
+
+<p>Queries specify a &lsquo;skeleton&rsquo; structure of the records that should be read from the file.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:last &quot;Jones&quot;}}</span>
+<span class="c1">;   {:name {:last &quot;Smith&quot;}})</span>
+</pre></div>
+</p>
+
+<p>For ease of use, underscore symbols in queries are a shorthand for <em>everything in the schema under this
+point</em>. For example, the following code snippet defines the same query as above.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;_</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:last &quot;Jones&quot;}}</span>
+<span class="c1">;   {:name {:last &quot;Smith&quot;}})</span>
+</pre></div>
+</p>
+
+<p>Underscore symbols can stand in for entire sub-schemas.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}}</span>
+<span class="c1">;   {:name {:first &quot;Bob&quot; :last &quot;Smith&quot;}})</span>
+</pre></div>
+</p>
+
+<h3 id="sub-schema-queries:94d9a081cd1256334373c8ca6fb6276c">Sub-schema queries</h3>
+
+<p>It is of course possible to combine sub-schemas and queries. If both the <code>:sub-schema-in</code> and <code>:query</code> options
+are provided, the query is applied to the sub-schema.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]</span> <span class="ss">:query</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:first &quot;Alice&quot;} {:first &quot;Bob&quot;})</span>
+</pre></div>
+</p>
+
+<h2 id="metadata:94d9a081cd1256334373c8ca6fb6276c">Metadata</h2>
+
+<p>Dendrite files may contain arbitrary file-level metadata. This is useful in many contexts, whether you want to
+keep track of the commit sha1 of the code that created the file or just add a description.</p>
+
+<p>Set the metadata with <code>set-metadata!</code>.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
+    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
+  <span class="p">(</span><span class="nf">d/set-metadata!</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:description</span> <span class="s">&quot;Contacts&quot;</span> <span class="ss">:owner</span> <span class="s">&quot;carl&quot;</span><span class="p">})</span>
+</pre></div>
+</p>
+
+<p>Read the metadata with <code>metadata</code>.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">d/metadata</span> <span class="nv">r</span><span class="p">))</span>
+<span class="c1">;= {:description &quot;Contacts&quot; :owner &quot;carl&quot;}</span>
+</pre></div>
+</p>
+
+<h2 id="opting-into-strictness:94d9a081cd1256334373c8ca6fb6276c">Opting into strictness</h2>
+
+<h3 id="tolerant-writes-by-default:94d9a081cd1256334373c8ca6fb6276c">Tolerant writes by default</h3>
+
+<p>By default, dendrite is quite tolerant about writing objects that don&rsquo;t strictly adhere to the write
+schema. Specifically, it considers that all fields are optional and silently drops fields that are not in the
+schema.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="k">def </span><span class="nv">contact-with-no-name</span>
+  <span class="p">{</span><span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;noname@none.com&quot;</span><span class="p">]})</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">contact-with-extra-fields</span>
+  <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Alice&quot;</span> <span class="ss">:last</span> <span class="s">&quot;Jones&quot;</span><span class="p">}</span>
+   <span class="ss">:emails</span> <span class="p">[</span><span class="nv">nil</span><span class="p">]</span>
+   <span class="ss">:age</span> <span class="mi">24</span><span class="p">})</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">)</span> <span class="c1">; Completely empty record</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:emails [&quot;noname@none.com&quot;]}</span>
+<span class="c1">;   nil</span>
+<span class="c1">;   {:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
+<span class="c1">;   :emails [nil]})</span>
+</pre></div>
+</p>
+
+<p>Notice how Alice&rsquo;s age was not written to the file.</p>
+
+<h3 id="required-fields:94d9a081cd1256334373c8ca6fb6276c">Required fields</h3>
+
+<p>In many cases, it is useful to enforce the presence of certain record elements and throw an exception if any
+are missing. Dendrite schemas can be annotated to mark certain elements as required (i.e., cannot be nil)
+using the &rsquo;d/req` function.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="k">def </span><span class="nv">strict-schema</span>
+  <span class="p">(</span><span class="nf">d/req</span> <span class="c1">; nil records not allowed</span>
+    <span class="c1">; :name must be present but :first and :last are still optional</span>
+    <span class="p">{</span><span class="ss">:name</span> <span class="p">(</span><span class="nf">d/req</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;string</span>
+                   <span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">})</span>
+     <span class="c1">; :emails is optional but, if defined, the</span>
+     <span class="c1">;  email strings cannot be nil</span>
+     <span class="ss">:emails</span> <span class="p">[(</span><span class="nf">d/req</span> <span class="ss">&#39;string</span><span class="p">)]}))</span>
+</pre></div>
+</p>
+
+<p>Let&rsquo;s try writing the same records as in the previous example using this stricter schema.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
+<span class="c1">; Throws exception. Required field :name is missing</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">))</span>
+<span class="c1">; Throws exception. Required record is missing</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+<span class="c1">; Throws exception. Required email is nil.</span>
+</pre></div>
+</p>
+
+<h3 id="alert-on-extra-fields:94d9a081cd1256334373c8ca6fb6276c">Alert on extra fields</h3>
+
+<p>Keeping schemas in sync with application code can be tricky. In particular, you may want to throw an error if
+the record to write contains fields that are not present in the schema. The <code>d/file-writer</code> function has a
+second arity that accepts an options map to customize the writer&rsquo;s behavior. In this case, we want to set
+<code>:ignore-extra-fields?</code> to <code>false</code>.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:ignore-extra-fields?</span> <span class="nv">false</span><span class="p">}</span>
+                              <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+<span class="c1">; Throws exception. :age is not is schema.</span>
+</pre></div>
+</p>
+
+<h3 id="handling-invalid-records:94d9a081cd1256334373c8ca6fb6276c">Handling invalid records</h3>
+
+<p>In some contexts, it may be preferable to handle the occasional invalid record rather than crashing the
+writing process. Dendrite supports that use case through the <code>:invalid-input-handler</code> option. This is a
+function of two arguments: the record and the exception. Let&rsquo;s use this to populate an atom of invalid
+records.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="k">def </span><span class="nv">invalid-records</span> <span class="p">(</span><span class="nf">atom</span> <span class="p">[]))</span>
+
+<span class="p">(</span><span class="kd">defn </span><span class="nv">handler</span> <span class="p">[</span><span class="nv">rec</span> <span class="nv">e</span><span class="p">]</span>
+  <span class="p">(</span><span class="nf">swap!</span> <span class="nv">invalid-records</span> <span class="nb">conj </span><span class="nv">rec</span><span class="p">))</span>
+
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:invalid-input-handler</span> <span class="nv">handler</span><span class="p">}</span>
+                             <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="c1">; Write some valid contacts</span>
+  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
+    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
+  <span class="c1">; Write an invalid contact</span>
+  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
+<span class="c1">;= nil</span>
+
+<span class="o">@</span><span class="nv">invalid-records</span>
+<span class="c1">;= [{:emails [&quot;noname@none.com&quot;]}]</span>
+
+<span class="c1">; Verify that the valid records were successfully written</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">count </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= 2</span>
+</pre></div>
+</p>
+
+<h3 id="reading-missing-columns:94d9a081cd1256334373c8ca6fb6276c">Reading missing columns</h3>
+
+<p>The previous sections covered enforcing various write-time checks. By default, dendrite is also quite tolerant
+on reads. In particular, if a query requests fields that are not present in the file&rsquo;s schema, those fields
+will simply be ignored.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="c1">; The :age field does not exist in the schema</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &quot;Alice&quot;}}</span>
+<span class="c1">;   {:name {:first &quot;Bob&quot;}})</span>
+</pre></div>
+</p>
+
+<p>This makes it very easy to apply the same query to many files, of which some may not have the requested
+field. However, this tolerant behavior may not always be desirable and can be disabled by setting the
+<code>:missing-fields-as-nil?</code> read option to <code>false</code>.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}</span>
+                  <span class="ss">:missing-fields-as-nil?</span> <span class="nv">false</span><span class="p">}</span>
+                  <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= Throws exception. :age field does not exist.</span>
+</pre></div>
+</p>
+
+<h2 id="schema-manipulation:94d9a081cd1256334373c8ca6fb6276c">Schema manipulation</h2>
+
+<p>Dendrite schemas are regular immutable clojure objects and not a separate DSL. This may seem like a detail but
+it makes them very easy to build and modify programatically. All the usual clojure data manipulation functions
+such as <code>assoc</code>, <code>dissoc</code>, or <code>merge</code> will work as expected on schemas. Furthermore, they can be serialized to
+<a href="https://github.com/edn-format/edn">EDN</a> using the usual <code>pr-*</code> functions.</p>
+
+<h3 id="modifying-an-existing-schema:94d9a081cd1256334373c8ca6fb6276c">Modifying an existing schema</h3>
+
+<p>Let&rsquo;s say we want to add an id to all our contacts. We could read-in all the existing contacts and use <code>range</code>
+to add a simple incrementing id to the existing contacts.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="c1">;; Add the :id field with type long to the schema.</span>
+  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">schema-with-id</span> <span class="p">(</span><span class="nb">-&gt; </span><span class="p">(</span><span class="nf">d/schema</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nb">assoc </span><span class="ss">:id</span> <span class="ss">&#39;long</span><span class="p">))]</span>
+    <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema-with-id</span> <span class="s">&quot;contacts2.den&quot;</span><span class="p">)]</span>
+      <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="p">(</span><span class="nb">map </span><span class="o">#</span><span class="p">(</span><span class="nb">assoc </span><span class="nv">%1</span> <span class="ss">:id</span> <span class="nv">%2</span><span class="p">)</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nf">range</span><span class="p">))]</span>
+        <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))))</span>
+</pre></div>
+</p>
+
+<p>Let&rsquo;s see if that worked.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="s">&quot;contacts2.den&quot;</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:id 0</span>
+<span class="c1">;    :name {:first &quot;Alice&quot;, :last &quot;Jones&quot;}</span>
+<span class="c1">;    :emails [&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]}</span>
+<span class="c1">;   {:id 1</span>
+<span class="c1">;    :name {:first &quot;Bob&quot;, :last &quot;Smith&quot;}</span>
+<span class="c1">;    :emails [&quot;bob@smith.com&quot;]})</span>
+</pre></div>
+</p>
+
+<h3 id="serialization:94d9a081cd1256334373c8ca6fb6276c">Serialization</h3>
+
+<p>So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
+convenient to store them in separate files.</p>
+
+<p><div class="highlight"><pre><span class="c1">; The simple schema from the beginning of the tutorial</span>
+<span class="p">(</span><span class="nf">spit</span> <span class="s">&quot;schema.edn&quot;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">schema</span><span class="p">))</span>
+<span class="c1">; The somewhat stricter schema from the &quot;Opting into strictness&quot;</span>
+<span class="c1">; section</span>
+<span class="p">(</span><span class="nf">spit</span> <span class="s">&quot;strict-schema.edn&quot;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">strict-schema</span><span class="p">))</span>
+</pre></div>
+</p>
+
+<p>Let&rsquo;s see what those files look like.</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">slurp </span><span class="s">&quot;schema.edn&quot;</span><span class="p">)</span>
+<span class="c1">;= &quot;{:name {:first string, :last string}, :emails [string]}&quot;</span>
+<span class="p">(</span><span class="nb">slurp </span><span class="s">&quot;strict-schema.edn&quot;</span><span class="p">)</span>
+<span class="c1">;= &quot;#req {:name #req {:first string, :last string}, :emails [#req string]}&quot;</span>
+</pre></div>
+</p>
+
+<p>Note how the required parts of the schema are tagged with <code>#req</code> in the EDN string. Pretty-printing also works
+as expected and makes large schemas easier to inspect.</p>
+
+<p>To read a schema, use the <code>d/read-schema-string</code> function. This is basically the same as
+<code>clojure.edn/read-string</code> with special reader functions for the <code>#req</code> and <code>#col</code> schema annotations (see
+<a href="/dendrite/advanced/">advanced</a> for a description of <code>#col</code>).</p>
+
+<p><div class="highlight"><pre><span class="p">(</span><span class="nb">-&gt; </span><span class="s">&quot;schema.edn&quot;</span> <span class="nb">slurp </span><span class="nv">d/read-schema-string</span><span class="p">))</span>
+<span class="c1">;= {:name {:first &#39;string :last &#39;string}</span>
+<span class="c1">;          :emails [&#39;string]}</span>
+</pre></div>
+</p>
+
+<h2 id="next-steps:94d9a081cd1256334373c8ca6fb6276c">Next steps</h2>
+
+<p>We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
+injecting functions into the record assembly process, custom types, and first class support for clojure&rsquo;s
+transducers and <code>core.reducers</code>. These are are covered in the <a href="/dendrite/advanced/">advanced</a> section
+and benefit from a good understanding of dendrite&rsquo;s <a href="/dendrite/shredding/">variation</a> on the
+<a href="http://research.google.com/pubs/pub36632.html
+">Dremel</a> record shredding algorithm, its <a href="/dendrite/format/">file format</a>, and
+its multi-threaded <a href="/dendrite/implementation/">implementation</a>.</p>
+
     </div>
   </div>
+
+  
+  <div class="toc">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#tutorial:94d9a081cd1256334373c8ca6fb6276c">Tutorial</a>
+<ul>
+<li><a href="#reading-and-writing-files:94d9a081cd1256334373c8ca6fb6276c">Reading and writing files</a></li>
+<li><a href="#reading-subsets-of-the-data:94d9a081cd1256334373c8ca6fb6276c">Reading subsets of the data</a>
+<ul>
+<li><a href="#reading-sub-schemas:94d9a081cd1256334373c8ca6fb6276c">Reading sub-schemas</a></li>
+<li><a href="#queries:94d9a081cd1256334373c8ca6fb6276c">Queries</a></li>
+<li><a href="#sub-schema-queries:94d9a081cd1256334373c8ca6fb6276c">Sub-schema queries</a></li>
+</ul></li>
+<li><a href="#metadata:94d9a081cd1256334373c8ca6fb6276c">Metadata</a></li>
+<li><a href="#opting-into-strictness:94d9a081cd1256334373c8ca6fb6276c">Opting into strictness</a>
+<ul>
+<li><a href="#tolerant-writes-by-default:94d9a081cd1256334373c8ca6fb6276c">Tolerant writes by default</a></li>
+<li><a href="#required-fields:94d9a081cd1256334373c8ca6fb6276c">Required fields</a></li>
+<li><a href="#alert-on-extra-fields:94d9a081cd1256334373c8ca6fb6276c">Alert on extra fields</a></li>
+<li><a href="#handling-invalid-records:94d9a081cd1256334373c8ca6fb6276c">Handling invalid records</a></li>
+<li><a href="#reading-missing-columns:94d9a081cd1256334373c8ca6fb6276c">Reading missing columns</a></li>
+</ul></li>
+<li><a href="#schema-manipulation:94d9a081cd1256334373c8ca6fb6276c">Schema manipulation</a>
+<ul>
+<li><a href="#modifying-an-existing-schema:94d9a081cd1256334373c8ca6fb6276c">Modifying an existing schema</a></li>
+<li><a href="#serialization:94d9a081cd1256334373c8ca6fb6276c">Serialization</a></li>
+</ul></li>
+<li><a href="#next-steps:94d9a081cd1256334373c8ca6fb6276c">Next steps</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+  
 
 </body>
 </html>

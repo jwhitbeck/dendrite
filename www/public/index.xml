@@ -6,16 +6,17 @@
     <description>Recent content on Dendrite</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-US</language>
-    <lastBuildDate>Sun, 23 Aug 2015 19:32:18 -0700</lastBuildDate>
+    <lastBuildDate>Sun, 23 Aug 2015 17:56:28 -0700</lastBuildDate>
     <atom:link href="https://jwhitbeck.github.io/dendrite/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
-      <title>Record assembly</title>
-      <link>https://jwhitbeck.github.io/dendrite/assembly/</link>
-      <pubDate>Sun, 23 Aug 2015 19:32:18 -0700</pubDate>
+      <title>Introducing Dendrite</title>
+      <link>https://jwhitbeck.github.io/dendrite/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/assembly/</guid>
-      <description></description>
+      <guid>https://jwhitbeck.github.io/dendrite/</guid>
+      <description>&lt;p&gt;Website under construction&lt;/p&gt;
+</description>
     </item>
     
     <item>
@@ -24,6 +25,386 @@
       <pubDate>Sun, 23 Aug 2015 19:31:12 -0700</pubDate>
       
       <guid>https://jwhitbeck.github.io/dendrite/tutorial/</guid>
+      <description>
+
+&lt;h1 id=&#34;tutorial:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Tutorial&lt;/h1&gt;
+
+&lt;p&gt;Let&amp;rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O and show you how
+take advantage of the columnar format for your queries.&lt;/p&gt;
+
+&lt;p&gt;The examples below assume that you have required the &lt;code&gt;dendrite.core&lt;/code&gt; namespace as follows:&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite.core&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;reading-and-writing-files:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reading and writing files&lt;/h2&gt;
+
+&lt;p&gt;Writing to dendrite files should feel very similar to writing other types of files in clojure.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;
+                    &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;[{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Alice&amp;quot;&lt;/span&gt;
+           &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Jones&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;alice@jones.com&amp;quot;&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;alice@acme.org&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt;
+
+   &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Bob&amp;quot;&lt;/span&gt;
+           &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Smith&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;bob@smith.com&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;A few things to note:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;The writer needs to be aware of the &lt;em&gt;schema&lt;/em&gt; describing the structure and the types of the records to be
+serialized. We&amp;rsquo;ll see more advanced schemas later on, but you can think of them as basically just the same
+clojure object with type symbols instead of leaf values.&lt;/li&gt;
+&lt;li&gt;The records are passed &lt;em&gt;as-is&lt;/em&gt; to the writer. No extra serialization step is needed.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In this example, the schema has three &lt;em&gt;columns&lt;/em&gt;. The nested structure of the objects is encoded in the schema,
+but the leaf values (e.g., &amp;ldquo;Alice&amp;rdquo;, &amp;ldquo;bob@smith.com&amp;rdquo;) are written out to three separate columns. For a good
+primer on how this is done in practice, check out this
+&lt;a href=&#34;https://blog.twitter.com/2013/dremel-made-simple-with-parquet&#34;&gt;blog post&lt;/a&gt; from the
+&lt;a href=&#34;https://parquet.apache.org/&#34;&gt;Parquet&lt;/a&gt; project.&lt;/p&gt;
+
+&lt;p&gt;Reading is even simpler. Since the schema is stored within the file, it is not required for reading.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;bob@smith.com&amp;quot;]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;reading-subsets-of-the-data:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reading subsets of the data&lt;/h2&gt;
+
+&lt;p&gt;Columnar storage formats shine when only reading subsets of the data. Indeed, the on-disk bytes for unselected
+columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
+be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.&lt;/p&gt;
+
+&lt;h3 id=&#34;reading-sub-schemas:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reading sub-schemas&lt;/h3&gt;
+
+&lt;p&gt;Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
+equivalent of calling &lt;code&gt;get-in&lt;/code&gt; on each record. The following examples use the second arity of
+&lt;code&gt;dendrite.core/read&lt;/code&gt; that expects an options map as its first arg.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= (&amp;quot;Alice&amp;quot; &amp;quot;Bob&amp;quot;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ([&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   [&amp;quot;bob@smith.com&amp;quot;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Attempting to use the &lt;code&gt;:sub-schema-in&lt;/code&gt; option to cross into a repeated field will throw an exception.&lt;/p&gt;
+
+&lt;h3 id=&#34;queries:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Queries&lt;/h3&gt;
+
+&lt;p&gt;Queries specify a &amp;lsquo;skeleton&amp;rsquo; structure of the records that should be read from the file.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;For ease of use, underscore symbols in queries are a shorthand for &lt;em&gt;everything in the schema under this
+point&lt;/em&gt;. For example, the following code snippet defines the same query as above.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Underscore symbols can stand in for entire sub-schemas.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schema-queries:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Sub-schema queries&lt;/h3&gt;
+
+&lt;p&gt;It is of course possible to combine sub-schemas and queries. If both the &lt;code&gt;:sub-schema-in&lt;/code&gt; and &lt;code&gt;:query&lt;/code&gt; options
+are provided, the query is applied to the sub-schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:first &amp;quot;Alice&amp;quot;} {:first &amp;quot;Bob&amp;quot;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;metadata:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Metadata&lt;/h2&gt;
+
+&lt;p&gt;Dendrite files may contain arbitrary file-level metadata. This is useful in many contexts, whether you want to
+keep track of the commit sha1 of the code that created the file or just add a description.&lt;/p&gt;
+
+&lt;p&gt;Set the metadata with &lt;code&gt;set-metadata!&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/set-metadata!&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:description&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Contacts&amp;quot;&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:owner&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;carl&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Read the metadata with &lt;code&gt;metadata&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/metadata&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:description &amp;quot;Contacts&amp;quot; :owner &amp;quot;carl&amp;quot;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;opting-into-strictness:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Opting into strictness&lt;/h2&gt;
+
+&lt;h3 id=&#34;tolerant-writes-by-default:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Tolerant writes by default&lt;/h3&gt;
+
+&lt;p&gt;By default, dendrite is quite tolerant about writing objects that don&amp;rsquo;t strictly adhere to the write
+schema. Specifically, it considers that all fields are optional and silently drops fields that are not in the
+schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;noname@none.com&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Alice&amp;quot;&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Jones&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+   &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+   &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;24&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;; Completely empty record&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:emails [&amp;quot;noname@none.com&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   nil&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :emails [nil]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Notice how Alice&amp;rsquo;s age was not written to the file.&lt;/p&gt;
+
+&lt;h3 id=&#34;required-fields:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Required fields&lt;/h3&gt;
+
+&lt;p&gt;In many cases, it is useful to enforce the presence of certain record elements and throw an exception if any
+are missing. Dendrite schemas can be annotated to mark certain elements as required (i.e., cannot be nil)
+using the &amp;rsquo;d/req` function.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;; nil records not allowed&lt;/span&gt;
+    &lt;span class=&#34;c1&#34;&gt;; :name must be present but :first and :last are still optional&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;
+                   &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+     &lt;span class=&#34;c1&#34;&gt;; :emails is optional but, if defined, the&lt;/span&gt;
+     &lt;span class=&#34;c1&#34;&gt;;  email strings cannot be nil&lt;/span&gt;
+     &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]}))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s try writing the same records as in the previous example using this stricter schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required field :name is missing&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required record is missing&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required email is nil.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;alert-on-extra-fields:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Alert on extra fields&lt;/h3&gt;
+
+&lt;p&gt;Keeping schemas in sync with application code can be tricky. In particular, you may want to throw an error if
+the record to write contains fields that are not present in the schema. The &lt;code&gt;d/file-writer&lt;/code&gt; function has a
+second arity that accepts an options map to customize the writer&amp;rsquo;s behavior. In this case, we want to set
+&lt;code&gt;:ignore-extra-fields?&lt;/code&gt; to &lt;code&gt;false&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:ignore-extra-fields?&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;false&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                              &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. :age is not is schema.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;handling-invalid-records:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Handling invalid records&lt;/h3&gt;
+
+&lt;p&gt;In some contexts, it may be preferable to handle the occasional invalid record rather than crashing the
+writing process. Dendrite supports that use case through the &lt;code&gt;:invalid-input-handler&lt;/code&gt; option. This is a
+function of two arguments: the record and the exception. Let&amp;rsquo;s use this to populate an atom of invalid
+records.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;atom&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[]))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;handler&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;rec&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;e&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;swap!&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;conj &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;rec&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:invalid-input-handler&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;handler&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                             &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; Write some valid contacts&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; Write an invalid contact&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= nil&lt;/span&gt;
+
+&lt;span class=&#34;o&#34;&gt;@&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= [{:emails [&amp;quot;noname@none.com&amp;quot;]}]&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Verify that the valid records were successfully written&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;count &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 2&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;reading-missing-columns:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reading missing columns&lt;/h3&gt;
+
+&lt;p&gt;The previous sections covered enforcing various write-time checks. By default, dendrite is also quite tolerant
+on reads. In particular, if a query requests fields that are not present in the file&amp;rsquo;s schema, those fields
+will simply be ignored.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; The :age field does not exist in the schema&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;This makes it very easy to apply the same query to many files, of which some may not have the requested
+field. However, this tolerant behavior may not always be desirable and can be disabled by setting the
+&lt;code&gt;:missing-fields-as-nil?&lt;/code&gt; read option to &lt;code&gt;false&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                  &lt;span class=&#34;ss&#34;&gt;:missing-fields-as-nil?&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;false&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                  &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= Throws exception. :age field does not exist.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;schema-manipulation:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Schema manipulation&lt;/h2&gt;
+
+&lt;p&gt;Dendrite schemas are regular immutable clojure objects and not a separate DSL. This may seem like a detail but
+it makes them very easy to build and modify programatically. All the usual clojure data manipulation functions
+such as &lt;code&gt;assoc&lt;/code&gt;, &lt;code&gt;dissoc&lt;/code&gt;, or &lt;code&gt;merge&lt;/code&gt; will work as expected on schemas. Furthermore, they can be serialized to
+&lt;a href=&#34;https://github.com/edn-format/edn&#34;&gt;EDN&lt;/a&gt; using the usual &lt;code&gt;pr-*&lt;/code&gt; functions.&lt;/p&gt;
+
+&lt;h3 id=&#34;modifying-an-existing-schema:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Modifying an existing schema&lt;/h3&gt;
+
+&lt;p&gt;Let&amp;rsquo;s say we want to add an id to all our contacts. We could read-in all the existing contacts and use &lt;code&gt;range&lt;/code&gt;
+to add a simple incrementing id to the existing contacts.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;;; Add the :id field with type long to the schema.&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;let &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema-with-id&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;long&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema-with-id&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts2.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%1&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;range&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))]&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see if that worked.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts2.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:id 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :name {:first &amp;quot;Alice&amp;quot;, :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:id 1&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :name {:first &amp;quot;Bob&amp;quot;, :last &amp;quot;Smith&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;bob@smith.com&amp;quot;]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;serialization:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Serialization&lt;/h3&gt;
+
+&lt;p&gt;So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
+convenient to store them in separate files.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; The simple schema from the beginning of the tutorial&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;spit&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;pr-str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; The somewhat stricter schema from the &amp;quot;Opting into strictness&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; section&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;spit&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;strict-schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;pr-str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see what those files look like.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;{:name {:first string, :last string}, :emails [string]}&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;strict-schema.edn&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;#req {:name #req {:first string, :last string}, :emails [#req string]}&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note how the required parts of the schema are tagged with &lt;code&gt;#req&lt;/code&gt; in the EDN string. Pretty-printing also works
+as expected and makes large schemas easier to inspect.&lt;/p&gt;
+
+&lt;p&gt;To read a schema, use the &lt;code&gt;d/read-schema-string&lt;/code&gt; function. This is basically the same as
+&lt;code&gt;clojure.edn/read-string&lt;/code&gt; with special reader functions for the &lt;code&gt;#req&lt;/code&gt; and &lt;code&gt;#col&lt;/code&gt; schema annotations (see
+&lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/advanced/&#34;&gt;advanced&lt;/a&gt; for a description of &lt;code&gt;#col&lt;/code&gt;).&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;d/read-schema-string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:name {:first &amp;#39;string :last &amp;#39;string}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;          :emails [&amp;#39;string]}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;next-steps:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Next steps&lt;/h2&gt;
+
+&lt;p&gt;We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
+injecting functions into the record assembly process, custom types, and first class support for clojure&amp;rsquo;s
+transducers and &lt;code&gt;core.reducers&lt;/code&gt;. These are are covered in the &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/advanced/&#34;&gt;advanced&lt;/a&gt; section
+and benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/shredding/&#34;&gt;variation&lt;/a&gt; on the
+&lt;a href=&#34;http://research.google.com/pubs/pub36632.html
+&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/format/&#34;&gt;file format&lt;/a&gt;, and
+its multi-threaded &lt;a href=&#34;https://jwhitbeck.github.io/dendrite/dendrite/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Benchmarks</title>
+      <link>https://jwhitbeck.github.io/dendrite/benchmarks/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>https://jwhitbeck.github.io/dendrite/benchmarks/</guid>
       <description></description>
     </item>
     
@@ -37,31 +418,30 @@
     </item>
     
     <item>
-      <title>Get started</title>
-      <link>https://jwhitbeck.github.io/dendrite/start/</link>
-      <pubDate>Sun, 23 Aug 2015 18:08:01 -0700</pubDate>
+      <title>Record shredding</title>
+      <link>https://jwhitbeck.github.io/dendrite/shredding/</link>
+      <pubDate>Sun, 18 Oct 2015 19:10:45 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/start/</guid>
+      <guid>https://jwhitbeck.github.io/dendrite/shredding/</guid>
       <description></description>
     </item>
     
     <item>
-      <title>Benchmarks</title>
-      <link>https://jwhitbeck.github.io/dendrite/benchmarks/</link>
-      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      <title>Implementation notes</title>
+      <link>https://jwhitbeck.github.io/dendrite/implementation/</link>
+      <pubDate>Sun, 23 Aug 2015 19:32:18 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/benchmarks/</guid>
+      <guid>https://jwhitbeck.github.io/dendrite/implementation/</guid>
       <description></description>
     </item>
     
     <item>
-      <title>Introducing Dendrite</title>
-      <link>https://jwhitbeck.github.io/dendrite/</link>
-      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      <title>Advanced Usage</title>
+      <link>https://jwhitbeck.github.io/dendrite/advanced/</link>
+      <pubDate>Sun, 18 Oct 2015 18:08:01 -0700</pubDate>
       
-      <guid>https://jwhitbeck.github.io/dendrite/</guid>
-      <description>&lt;p&gt;Website under construction&lt;/p&gt;
-</description>
+      <guid>https://jwhitbeck.github.io/dendrite/advanced/</guid>
+      <description></description>
     </item>
     
   </channel>
