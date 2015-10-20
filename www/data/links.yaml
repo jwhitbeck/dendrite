@@ -1,1 +1,3 @@
 dremel: http://research.google.com/pubs/pub36632.html
+reducers: http://clojure.org/reducers
+transducers: http://clojure.org/transducers

@@ -95,7 +95,7 @@ primer on how this is done in practice, check out this
 columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
 be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.&lt;/p&gt;
 
-&lt;h3 id=&#34;reading-sub-schemas:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reading sub-schemas&lt;/h3&gt;
+&lt;h3 id=&#34;sub-schemas:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Sub-schemas&lt;/h3&gt;
 
 &lt;p&gt;Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
 equivalent of calling &lt;code&gt;get-in&lt;/code&gt; on each record. The following examples use the second arity of
@@ -389,13 +389,12 @@ as expected and makes large schemas easier to inspect.&lt;/p&gt;
 
 &lt;h2 id=&#34;next-steps:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Next steps&lt;/h2&gt;
 
-&lt;p&gt;We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
-injecting functions into the record assembly process, custom types, and first class support for clojure&amp;rsquo;s
-transducers and &lt;code&gt;core.reducers&lt;/code&gt;. These are are covered in the &lt;a href=&#34;http://dendrite.tech/advanced/&#34;&gt;advanced&lt;/a&gt; section
-and benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;http://dendrite.tech/shredding/&#34;&gt;variation&lt;/a&gt; on the
-&lt;a href=&#34;http://research.google.com/pubs/pub36632.html
-&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file format&lt;/a&gt;, and
-its multi-threaded &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;We hope this tutorial was helpful in getting you started. However, it only scratches the surface of dendrite&amp;rsquo;s
+capabilities. &lt;a href=&#34;http://dendrite.tech/advanced/&#34;&gt;Advanced&lt;/a&gt; functionality include injecting functions into the
+record assembly process, custom logical types, and first class support for clojure&amp;rsquo;s &lt;a href=&#34;http://clojure.org/transducers
+&#34;&gt;transducers&lt;/a&gt; and &lt;a href=&#34;http://clojure.org/reducers
+&#34;&gt;reducers&lt;/a&gt;. These topics are covered in the &lt;a href=&#34;http://dendrite.tech/advanced/&#34;&gt;advanced&lt;/a&gt; section and benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;http://dendrite.tech/shredding/&#34;&gt;variation&lt;/a&gt; on the &lt;a href=&#34;http://research.google.com/pubs/pub36632.html
+&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file format&lt;/a&gt;, and its multi-threaded &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
 </description>
     </item>
     
@@ -436,7 +435,7 @@ its multi-threaded &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;
     </item>
     
     <item>
-      <title>Advanced Usage</title>
+      <title>Advanced usage</title>
       <link>http://dendrite.tech/advanced/</link>
       <pubDate>Sun, 18 Oct 2015 18:08:01 -0700</pubDate>
       

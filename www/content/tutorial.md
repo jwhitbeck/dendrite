@@ -73,7 +73,7 @@ Columnar storage formats shine when only reading subsets of the data. Indeed, th
 columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
 be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.
 
-### Reading sub-schemas
+### Sub-schemas
 
 Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
 equivalent of calling `get-in` on each record. The following examples use the second arity of
@@ -369,9 +369,10 @@ To read a schema, use the `d/read-schema-string` function. This is basically the
 
 ## Next steps
 
-We hope this tutorial was helpful in getting you started. However, dendrite has many more capabilities such as
-injecting functions into the record assembly process, custom types, and first class support for clojure's
-transducers and `core.reducers`. These are are covered in the [advanced]({{< relref "advanced.md" >}}) section
-and benefit from a good understanding of dendrite's [variation]({{< relref "shredding.md" >}}) on the
-[Dremel]({{< link dremel >}}) record shredding algorithm, its [file format]({{< relref "format.md" >}}), and
-its multi-threaded [implementation]({{< relref "implementation.md" >}}).
+We hope this tutorial was helpful in getting you started. However, it only scratches the surface of dendrite's
+capabilities. [Advanced]({{< relref "advanced.md" >}}) functionality include injecting functions into the
+record assembly process, custom logical types, and first class support for clojure's [transducers]({{< link
+transducers >}}) and [reducers]({{< link reducers >}}). These topics are covered in the [advanced]({{<
+relref "advanced.md" >}}) section and benefit from a good understanding of dendrite's [variation]({{< relref
+"shredding.md" >}}) on the [Dremel]({{< link dremel >}}) record shredding algorithm, its [file format]({{<
+relref "format.md" >}}), and its multi-threaded [implementation]({{< relref "implementation.md" >}}).
