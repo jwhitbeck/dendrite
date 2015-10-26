@@ -36,6 +36,18 @@
   list-style: outside circle;
 }
 
+.toc nav ul {
+  margin-bottom: inherit
+}
+
 .toc nav > ul > li > ul > li {
   margin-top: 0.5rem;
+}
+
+/*
+ * Table headers
+ */
+
+thead {
+  font-weight: bold;
 }
