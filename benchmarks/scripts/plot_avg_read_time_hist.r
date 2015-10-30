@@ -9,7 +9,7 @@ outputFile <- args[2]
 svg(outputFile)
 
 ggplot(res, aes(x=reorder(name,-avg_read_time))) +
-  geom_bar(aes(y=avg_read_time,fill=family),stat='identity') +
+  geom_bar(aes(y=avg_read_time/1000,fill=family),stat='identity') +
   coord_flip() +
   theme_bw() +
   theme(panel.border=element_rect(size=0), axis.ticks.y=element_line(size=0), axis.title.y=element_blank()) +
