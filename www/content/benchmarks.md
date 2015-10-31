@@ -164,13 +164,17 @@ TPC-H tables into JSON records is checked into the repo.
 The TPC-H data plays to dendrite's strong points. In particular, the absence of repeated elements in the
 schema means that record assembly can [ignore repetition levels]({{< relref "implementation.md" >}})
 altogether. Furthermore, the low cardinality of many fields (e.g. region names) enables dendrite's
-[dictionary encodings]({{< relref "format.md" >}}) on many string columns. Given how expensive UTF-8 string
+[dictionary encodings]({{< relref "format.md" >}}) on most string columns. Given how expensive UTF-8 string
 decoding is in Java, this results in significant speed gains. For example, let's assume a _region_ column
 consists of a million `"EUROPE"`, `"ASIA"`, or `"AMERICA"` strings. Row-major formats have to deserialize each
 one of those million strings, whereas in a columnar format using a dictionary encoding, those three strings
 are just encoded once into a dictionary array, and all values are encoded as indices into that array. This is
 not only much faster, but also yields a more compact on-disk representation and reduces the pressure on
 the garbage collector.
+
+Note that some real-world datasets, in particular machine-learning training sets, contain mostly
+low-cardinality columns and dendrite's performance on those will be comparable to its performance on the
+_TPC-H_ benchmark presented here.
 
 ### Sample record
 
@@ -275,11 +279,21 @@ that is not the bottleneck, whereas faster formats (SMILE, Protobuf) can trade-o
 faster read-times. In this example, dendrite doesn't trade-off anything as it achieves both the smallest file
 size and the fastest read times.
 
+The two plots detail the read-time and file-size results for all serialization formats and variants.
+
 {{< plot "tpc_h_full_schema_avg_read_time.svg" >}}
 
 {{< plot "tpc_h_full_schema_file_size.svg" >}}
 
 ## Benchmark 2: Media content
+
+The _media-content_ benchmark re-uses the schema from the [jvm-serializers]({{< link jvm-serializers >}})
+benchmarks that measures the round-trip time of encoding/decoding data structures. The records have a shallow
+2-level nesting, one level of repetition, and a mix of integer and string fields (17 in total). Approximately
+400,000 records were generated using the excellent [mockaroo]({{< link mockaroo >}}) random data
+generator. Compared to the _TPC-H_ benchmark above, only the "enum" fields such as `:format` or `:player` are
+selected for dictionary encodings. [Code]({{< link media-content-code >}}) for generating the _media-content_
+records from [mockaroo]({{< link mockaroo >}}) is checked into the repo.
 
 ### Sample record
 
@@ -315,15 +329,34 @@ size and the fastest read times.
 
 {{< plot "media_content_query_time_vs_max_column_length.svg" >}}
 
+Just like the equivalent plot in the TPC-H benchmark, the scatterplot above plots
+_read time_ vs _max column size_ for random queries for subsets of the _media-content_ schema.
+
+As in the _TPC-H_ sub-schema benchmark, reading fewer columns enables order-of-magnitude speedups.
+
+Unlike the _TPC-H_ data, the read-time is dominated by the presence of a mega-column: the `:url` inside the
+repeated `:images` data structure. If present in the query, the total read-time effectively doubles.
+
 ### Full-schema
 
 {{< plot "media_content_full_schema_read_time_vs_file_size.svg" >}}
+
+The _full-schema_ results are similar to those of the _TPC-H_ benchmarks. While dendrite's lead is less
+pronounced, it still offers the smallest file-size and fastest read speed.
+
+The following two plots detail the read-time and file-size results for all serialization formats and variants.
 
 {{< plot "media_content_full_schema_avg_read_time.svg" >}}
 
 {{< plot "media_content_full_schema_file_size.svg" >}}
 
 ## Benchmark 3: User events
+
+The _user-events_ benchmark was devised to stress dendrite's least efficient encodings and code paths. It
+consists of about 30,000 large (>10KB) deeply nested records with multiply-nested repeated elements. Most of
+the leaf nodes are strings that are not suitable for dictionary encoding. As in the _media-content_ benchmark,
+these records were generated using the [mockaroo]({{< link mockaroo >}}) random data generator. The [code]({{<
+link user-events-code >}}) for generating the _user-events_ records is checked into the repo.
 
 ### Sample record
 
@@ -334,9 +367,24 @@ is not printed on this page.
 
 {{< plot "user_events_query_time_vs_max_column_length.svg" >}}
 
+Just like the equivalent plots in the previous benchmarks, the scatterplot above plots
+_read time_ vs _max column size_ for random queries for subsets of the _media-content_ schema.
+
+Similarly to the previous benchmarks, reading fewer columns enables order-of-magnitude speedups.
+
+Like the _media-content_ benchmark, the read-time is dominated by the presence of a mega-column: the `:at`
+timestamp field for the repeated `:events` structure (itself nested within two repeated structures). If
+present in the query, the total read-time effectively triples.
+
 ### Full-schema
 
 {{< plot "user_events_full_schema_read_time_vs_file_size.svg" >}}
+
+The _full-schema_ results are similar to those of the _media-content_ benchmarks. While dendrite's lead is
+less pronounced, it still offers the smallest file-size and fastest read speed. Interestingly, the schema-less
+SMILE binary encoding does very well on this data and approaches the read performance of protocol buffers.
+
+The following two plots detail the read-time and file-size results for all serialization formats and variants.
 
 {{< plot "user_events_full_schema_avg_read_time.svg" >}}
 
