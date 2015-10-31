@@ -13,7 +13,7 @@
 @media (min-width: 100em) {
   .toc {
     display: block;
-    position: fixed;
+    position: absolute;
     width: 18rem;
     top: 6rem;
     /* sidebar is 20rem, main content is 38rem; */
