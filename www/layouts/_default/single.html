@@ -1,6 +1,7 @@
 {{ partial "head.html" . }}
 <body class="{{ .Site.Params.themeColor }}">
   {{ partial "sidebar.html" . }}
+  {{ partial "menu.html" }}
 
   <div class="content container">
     <div class="post">
@@ -15,4 +16,4 @@
   {{ end }}
 
 </body>
-</html>
+{{ partial "foot.html" }}
