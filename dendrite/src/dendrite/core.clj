@@ -241,7 +241,7 @@
   "Returns a seqable, reducible, and foldable view of the application of the transducers to the
   records. Transducers are applied in order as if combined with comp. Note that the transducers are applied in
   parallel on each bundle (see assembly docs for full explanation), so this function can produce unexpected
-  results for stateful transducers such as `parition-all` or `distinct`. However, for stateless transducers
+  results for stateful transducers such as `partition-all` or `distinct`. However, for stateless transducers
   such as `map` or `filter` the results will be identical to calling `clojure.core/eduction` on the view, but
   faster because applied in parallel."
   {:arglists '([xform* view])} ^dendrite.java.View [& xforms]
