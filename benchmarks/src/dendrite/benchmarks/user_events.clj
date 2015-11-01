@@ -168,7 +168,7 @@
 (defn proto-deserialize [^bytes bs]
   (protobuf-load User bs))
 
-(def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.net/user_events.json.gz")
+(def base-file-url "https://s3.amazonaws.com/files.dendrite.tech/user_events.json.gz")
 
 (def dendrite-schema (-> "user_events_schema.edn" io/resource slurp d/read-schema-string))
 

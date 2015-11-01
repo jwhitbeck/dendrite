@@ -123,7 +123,7 @@
 (defn proto-deserialize [^bytes bs]
   (protobuf-load TpcHLineItem bs))
 
-(def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.net/tpc_h.json.gz")
+(def base-file-url "https://s3.amazonaws.com/files.dendrite.tech/tpc_h.json.gz")
 
 (def avro-region
   {:name "region"

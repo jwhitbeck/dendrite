@@ -95,7 +95,7 @@
 (defn proto-deserialize [^bytes bs]
   (protobuf-load MediaContent bs))
 
-(def base-file-url "https://s3.amazonaws.com/dendrite.whitbeck.net/media_content.json.gz")
+(def base-file-url "https://s3.amazonaws.com/files.dendrite.tech/media_content.json.gz")
 
 (def dendrite-schema (-> "media_content_schema.edn" io/resource slurp d/read-schema-string))
 
