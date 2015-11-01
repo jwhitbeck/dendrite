@@ -183,7 +183,7 @@
 
 (defn json-file->dendrite-file [schema json-filename dendrite-filename]
   (with-open [r (-> json-filename file-input-stream gzip-input-stream buffered-reader)
-              w (d/file-writer {:map-fn #(json/parse-string % true)} schema dendrite-filename)]
+              w (d/file-writer {} (map #(json/parse-string % true)) schema dendrite-filename)]
     (.writeAll w (line-seq r))))
 
 (defn json-file->java-objects-file [compression json-filename output-filename]
