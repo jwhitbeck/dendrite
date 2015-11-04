@@ -223,18 +223,19 @@
   (^dendrite.java.View [opts ^IReader reader] (.read reader (Options/getReadOptions opts))))
 
 (defn sample
-  "Returns a view of the records containing only those such that (f record-index) evaluates truthfully, where
-  record-index goes from 0 (first record) to num-records - 1 (last record). The sampling occurs before record
-  assembly thereby entirely skipping assembly for unselected records. As with read, this view is seqable,
-  reducible, and foldable. A view can only have a single sample function applied to it and that function must
-  be applied before any indexing function or transducer."
+  "Returns a view of the records containing only those such that (f index) evaluates truthfully, where index
+  goes from 0 (first record) to num-records - 1 (last record). The sampling occurs before record assembly
+  thereby entirely skipping assembly for unselected records. As with read, this view is seqable, reducible,
+  and foldable. A view can only have a single sample function applied to it and that function must be applied
+  before any indexing function or transducer."
   ^dendrite.java.View [f ^View view] (.withSampleFn view f))
 
 (defn index-by
-  "Returns a view of the records as the output of (f record-index record), where goes from 0 (first record) to
-  num-records - 1 (last record) and record is the assembled record. Use this if you need the record's index
-  for further processing. As with read, this view is seqable, reducible, and foldable. A view can only have a
-  single index-by function applied to it and that function must be applied before any transducer."
+  "Returns a view of the records as the output of (f index record), where index goes from 0 (first record) to
+  num-records - 1 (last record) and record is the assembled record. The works just like a parallelized version
+  of `clojure.core/map-indexed`. Use this if you need the record's index for further processing. As with read,
+  this view is seqable, reducible, and foldable. A view can only have a single index-by function applied to it
+  and that function must be applied before any transducer."
   ^dendrite.java.View [f ^View view] (.withIndexedByFn view f))
 
 (defn eduction
