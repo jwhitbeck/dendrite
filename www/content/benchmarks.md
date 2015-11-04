@@ -60,84 +60,16 @@ supporting service to read the file. Unfortunately, this last condition excludes
 >}}), the columnar file format most similar to dendrite, because Parquet files [cannot be read]({{< link
 parquet-issue >}}) without a supporting Hadoop or Spark cluster.
 
-<table>
-    <thead>
-        <tr>
-            <td>Format</td>
-            <td>Project</td>
-            <td>Full EDN</td>
-            <td>Columnar</td>
-            <td>Binary</td>
-            <td>Schema</td>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Dendrite</td>
-            <td><a href="{{< link dendrite >}}">dendrite</a></td>
-            <td>Yes</td>
-            <td>Yes</td>
-            <td>Yes</td>
-            <td>Write only</td>
-        </tr>
-        <tr>
-            <td>EDN</td>
-            <td><a href="{{< link clojure-edn >}}">clojure.edn</a></td>
-            <td>Yes</td>
-            <td>No</td>
-            <td>No</td>
-            <td>No</td>
-        </tr>
-        <tr>
-            <td>JSON</td>
-            <td><a href="{{< link cheshire >}}">cheshire</a></td>
-            <td>No</td>
-            <td>No</td>
-            <td>No</td>
-            <td>No</td>
-        </tr>
-        <tr>
-            <td>SMILE</td>
-            <td><a href="{{< link cheshire >}}">cheshire</a></td>
-            <td>No</td>
-            <td>No</td>
-            <td>Yes</td>
-            <td>No</td>
-        </tr>
-        <tr>
-            <td>Protocol buffers</td>
-            <td><a href="{{< link clojure-protobuf >}}">clojure-protobuf</a></td>
-            <td>No</td>
-            <td>No</td>
-            <td>Yes</td>
-            <td>Read/write</td>
-        </tr>
-        <tr>
-            <td>Avro</td>
-            <td><a href="{{< link abracad >}}">abracad</a></td>
-            <td>No</td>
-            <td>No</td>
-            <td>Yes</td>
-            <td>Write only</td>
-         </tr>
-         <tr>
-            <td>Fressian</td>
-            <td><a href="{{< link fressian >}}">clojure/data.fressian</a></td>
-            <td>Yes</td>
-            <td>No</td>
-            <td>Yes</td>
-            <td>No</td>
-        </tr>
-         <tr>
-            <td>Nippy</td>
-            <td><a href="{{< link nippy >}}">nippy</a></td>
-            <td>Yes</td>
-            <td>No</td>
-            <td>Yes</td>
-            <td>No</td>
-        </tr>
-    </tbody>
-</table>
+| Format           | Project                                           | Full EDN | Columnar | Binary | Schema     |
+|------------------|---------------------------------------------------|----------|----------|--------|------------|
+| Dendrite         | [dendrite]({{< link dendrite >}})                 | Yes      | Yes      | Yes    | Write only |
+| EDN              | [clojure.edn]({{< link clojure-edn>}})            | Yes      | No       | No     | No         |
+| JSON             | [cheshire]({{< link cheshire>}})                  | No       | No       | No     | No         |
+| SMILE            | [cheshire]({{< link cheshire>}})                  | No       | No       | Yes    | No         |
+| Protocol buffers | [clojure-protobuf]({{< link clojure-protobuf >}}) | No       | No       | Yes    | Read/write |
+| Avro             | [abracad]({{< link abracad >}})                   | No       | No       | Yes    | Write only |
+| Fressian         | [clojure/data.fressian]({{< link fressian >}})    | Yes      | No       | Yes    | No         |
+| Nippy            | [nippy]({{< link nippy >}})                       | Yes      | No       | Yes    | No         |
 
 While cheshire's JSON and SMILE library defaults to decoding record keys as strings, it can also read them as
 keywords for more idiomatic clojure usage. Of course, that incurs the added cost of interning those strings so
