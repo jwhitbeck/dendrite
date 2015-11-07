@@ -217,7 +217,7 @@ The two plots detail the read-time and file-size results for all serialization f
 
 {{< plot "tpc_h_full_schema_file_size.svg" >}}
 
-## Benchmark 2: Media content
+## Benchmark 2: Media content {#media-content}
 
 The _media-content_ benchmark re-uses the schema from the [jvm-serializers]({{< link jvm-serializers >}})
 benchmarks that measures the round-trip time of encoding/decoding data structures. The records have a shallow
@@ -227,7 +227,7 @@ generator. Compared to the _TPC-H_ benchmark above, only the "enum" fields such 
 selected for dictionary encodings. [Code]({{< link media-content-code >}}) for generating the _media-content_
 records from [mockaroo]({{< link mockaroo >}}) is checked into the repo.
 
-### Sample record
+### Sample record {#media-content-record}
 
 {{< highlight clojure >}}
 {:id 0,

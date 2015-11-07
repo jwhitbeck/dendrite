@@ -4,16 +4,20 @@ benchmarks: https://github.com/jwhitbeck/dendrite/tree/master/benchmarks
 cheshire: https://github.com/dakrone/cheshire
 chunked-pmap: https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/utils.clj#L34-L41
 clojure-edn: https://clojure.github.io/clojure/clojure.edn-api.html
+clojure-ichunk: https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IChunk.java
 clojure-protobuf: https://github.com/ninjudd/clojure-protobuf
+core-reducers: http://clojure.org/reducers
 dendrite: https://github.com/jwhitbeck/dendrite
 dremel: http://research.google.com/pubs/pub36632.html
 edn: https://github.com/edn-format/edn
 fressian: https://github.com/clojure/data.fressian
+hashing-trick: https://en.wikipedia.org/wiki/Feature_hashing
 java-gzip-inputstream: https://docs.oracle.com/javase/7/docs/api/java/util/zip/GZIPInputStream.html
 jvm-serializers: https://github.com/eishay/jvm-serializers/wiki
 lz4-java: https://github.com/jpountz/lz4-java
 media-content-code: https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/media_content.clj
 mockaroo: http://www.mockaroo.com/
+murmur-hash: https://en.wikipedia.org/wiki/MurmurHash
 nippy: https://github.com/ptaoussanis/nippy
 parquet-issue: https://github.com/Parquet/parquet-mr/issues/305
 parquet: http://parquet.io/
@@ -21,4 +25,5 @@ reducers: http://clojure.org/reducers
 tpc-h-code: https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/tpc_h.clj
 tpc-h: http://www.tpc.org/tpch/
 transducers: http://clojure.org/transducers
+tutorial-file: https://s3.amazonaws.com/files.dendrite.tech/tutorial.den
 user-events-code: https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/user_events.clj
