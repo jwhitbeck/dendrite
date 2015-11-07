@@ -115,8 +115,7 @@
                             exception it triggered. By default, this option is nil and exceptions
                             triggered by invalid records are not caught.
 
-  :custom-types             A map of of custom-type symbol to custom-type specification. See docs for
-                            full explanation.
+  :custom-types             A list of custom-type specifications. See docs for full explanation.
 
   :ignore-extra-fields?     If true (default), ignore record fields that are not part of the schema upon
                             writing to file. If false, will throw an exception if a record contains a field
@@ -135,8 +134,7 @@
   "Returns a dendrite reader for the provided file.
 
   If provided, the options map supports the following keys:
-  :custom-types  - a map of of custom-type symbol to custom-type specification. Default: nil. See docs for
-                  full explanation."
+  :custom-types  - a list of custom-type specifications. Default: nil. See docs for full explanation."
   (^dendrite.java.FileReader [file] (file-reader nil file))
   (^dendrite.java.FileReader [opts file]
                              (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))

@@ -41,7 +41,7 @@
        {:compression-thresholds {'deflate -0.2}}
        ":compression-thresholds expects its values to be positive"
        {:custom-types "foo"}
-       ":custom-types expects a map but got 'foo'"
+       ":custom-types expects a list but got 'foo'"
        {:invalid-input-handler "foo"}
        ":invalid-input-handler expects a function"
        {:invalid-option "foo"}
@@ -55,7 +55,7 @@
   (are [opts msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                     (Options/getReaderOptions opts))
        {:custom-types "foo"}
-       ":custom-types expects a map but got 'foo'"
+       ":custom-types expects a list but got 'foo'"
        {:invalid-option "foo"}
        ":invalid-option is not a supported reader option."))
 
@@ -83,23 +83,25 @@
   (are [custom-types msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                             (Options/getCustomTypeDefinitions {:custom-types custom-types}))
        :foo
-       ":custom-types expects a map but got ':foo'"
-       {:foo {}}
-       "custom type key shoud be a symbol but got ':foo'"
-       {'foo :bar}
-       "custom type value should be a map but got ':bar'")
+       ":custom-types expects a list but got ':foo'"
+       [:bar]
+       "custom type definition should be a map but got ':bar'")
   (are [custom-types msg] (thrown-with-msg? IllegalArgumentException (re-pattern msg)
                                             (helpers/throw-cause
                                              (Options/getCustomTypeDefinitions {:custom-types custom-types})))
-       {'foo {}}
+       [{}]
+       "Required field :type is missing"
+       [{:type :foo}]
+       "Custom type ':foo' is not a symbol"
+       [{:type 'foo}]
        "Required field :base-type is missing"
-       {'foo {:base-type :int}}
+       [{:type 'foo :base-type :int}]
        "Base type ':int' is not a symbol"
-       {'foo {:base-type 'int :invalid nil}}
+       [{:type 'foo :base-type 'int :invalid nil}]
        ":invalid is not a valid custom type definition key"
-       {'foo {:base-type 'int :coercion-fn 2}}
+       [{:type 'foo :base-type 'int :coercion-fn 2}]
        ":coercion-fn expects a function"
-       {'foo {:base-type 'int :to-base-type-fn 2}}
+       [{:type 'foo :base-type 'int :to-base-type-fn 2}]
        ":to-base-type-fn expects a function"
-       {'foo {:base-type 'int :from-base-type-fn 2}}
+       [{:type 'foo :base-type 'int :from-base-type-fn 2}]
        ":from-base-type-fn expects a function"))

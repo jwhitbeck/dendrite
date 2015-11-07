@@ -43,6 +43,7 @@ public final class Options {
     ALL = Keyword.intern("all"),
     NONE = Keyword.intern("none"),
     DEFAULT = Keyword.intern("default"),
+    TYPE = Keyword.intern("type"),
     BASE_TYPE = Keyword.intern("base-type"),
     COERCION_FN = Keyword.intern("coercion-fn"),
     TO_BASE_TYPE_FN = Keyword.intern("to-base-type-fn"),
@@ -74,29 +75,39 @@ public final class Options {
                          IFn fromBaseTypeFn) {
       this.typeSymbol = typeSymbol;
       this.baseTypeSymbol = baseTypeSymbol;
-      this.coercionFn = coercionFn;
+      this.coercionFn = (coercionFn != null)? coercionFn : Utils.identity;
       this.toBaseTypeFn = toBaseTypeFn;
       this.fromBaseTypeFn = fromBaseTypeFn;
     }
   }
 
   private static Keyword[] validCustomTypeDefinitionKeys
-    = new Keyword[]{BASE_TYPE, COERCION_FN, TO_BASE_TYPE_FN, FROM_BASE_TYPE_FN};
+    = new Keyword[]{TYPE, BASE_TYPE, COERCION_FN, TO_BASE_TYPE_FN, FROM_BASE_TYPE_FN};
 
-  public static CustomTypeDefinition getCustomTypeDefinition(Symbol customTypeSymbol,
-                                                             IPersistentMap customTypeDefinitionMap) {
+  public static CustomTypeDefinition getCustomTypeDefinition(IPersistentMap customTypeDefinitionMap) {
     try {
       checkValidKeys(customTypeDefinitionMap, validCustomTypeDefinitionKeys,
                      "%s is not a valid custom type definition key");
-      return new CustomTypeDefinition(customTypeSymbol,
+      return new CustomTypeDefinition(getTypeSymbol(customTypeDefinitionMap),
                                       getBaseTypeSymbol(customTypeDefinitionMap),
                                       getLogicalTypeFn(customTypeDefinitionMap, COERCION_FN),
                                       getLogicalTypeFn(customTypeDefinitionMap, TO_BASE_TYPE_FN),
                                       getLogicalTypeFn(customTypeDefinitionMap, FROM_BASE_TYPE_FN));
     } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Error parsing custom-type '%s'.", customTypeSymbol),
-                                         e);
+      throw new IllegalArgumentException(
+           String.format("Error parsing custom-type '%s'.", customTypeDefinitionMap), e);
     }
+  }
+
+  private static Symbol getTypeSymbol(IPersistentMap customTypeDefinitionMap) {
+    Object o = RT.get(customTypeDefinitionMap, TYPE, notFound);
+    if (o == notFound) {
+      throw new IllegalArgumentException("Required field :type is missing.");
+    }
+    if (!(o instanceof Symbol)) {
+      throw new IllegalArgumentException(String.format("Custom type '%s' is not a symbol.", o));
+    }
+    return (Symbol)o;
   }
 
   private static Symbol getBaseTypeSymbol(IPersistentMap customTypeDefinitionMap) {
@@ -125,26 +136,20 @@ public final class Options {
     Object o = RT.get(options, CUSTOM_TYPES, notFound);
     if (o == notFound) {
       return Collections.emptyList();
-    } else if (o instanceof IPersistentMap) {
+    } else if (o instanceof List) {
       List<CustomTypeDefinition> customTypeDefinitions = new ArrayList<CustomTypeDefinition>();
       for (ISeq s = RT.seq(o); s != null; s = s.next()) {
-        IMapEntry e = (IMapEntry)s.first();
-        Object key = e.key();
-        Object val = e.val();
-        if (!(key instanceof Symbol)) {
-          throw new IllegalArgumentException(String.format("custom type key shoud be a symbol but got '%s'",
-                                                           key));
-        } else if (!(val instanceof IPersistentMap)) {
-          throw new IllegalArgumentException(String.format("custom type value should be a map but got '%s'",
-                                                           val));
+        Object m = s.first();
+        if (!(m instanceof IPersistentMap)) {
+          throw new IllegalArgumentException(
+              String.format("custom type definition should be a map but got '%s'", m));
         } else {
-          customTypeDefinitions.add(getCustomTypeDefinition((Symbol)key, (IPersistentMap)val));
+          customTypeDefinitions.add(getCustomTypeDefinition((IPersistentMap)m));
         }
       }
       return customTypeDefinitions;
     } else {
-      throw new IllegalArgumentException(String.format("%s expects a map but got '%s'",
-                                                       CUSTOM_TYPES, o));
+      throw new IllegalArgumentException(String.format("%s expects a list but got '%s'", CUSTOM_TYPES, o));
     }
   }
 

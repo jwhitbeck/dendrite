@@ -131,19 +131,21 @@
     (are [custom-types regex]
       (thrown-with-msg? IllegalArgumentException regex
                         (Types/create (Options/getCustomTypeDefinitions {:custom-types custom-types})))
-      {'foo {:base-type 'bar} 'bar {:base-type 'foo}} #"Loop detected for custom-type 'foo'"
-      {'foo {:base-type 'foo}} #"Loop detected for custom-type 'foo'"
-      {'foo {:base-type 'in}} #"Unknown base type 'in'"))
+      [{:type 'foo :base-type 'bar} {:type 'bar :base-type 'foo}] #"Loop detected for custom-type 'foo'"
+      [{:type 'foo :base-type 'foo}] #"Loop detected for custom-type 'foo'"
+      [{:type 'foo :base-type 'in}] #"Unknown base type 'in'"))
   (testing "custom-types work"
     (let [my-types (Types/create (Options/getCustomTypeDefinitions
-                                  {:custom-types {'foo {:base-type 'int
-                                                        :coercion-fn int
-                                                        :to-base-type-fn inc
-                                                        :from-base-type-fn dec}
-                                                  'bar {:base-type 'foo
-                                                        :coercion-fn double
-                                                        :to-base-type-fn (partial * 2)
-                                                        :from-base-type-fn #(quot % 2)}}}))
+                                  {:custom-types [{:type 'foo
+                                                    :base-type 'int
+                                                    :coercion-fn int
+                                                    :to-base-type-fn inc
+                                                   :from-base-type-fn dec}
+                                                  {:type 'bar
+                                                   :base-type 'foo
+                                                   :coercion-fn double
+                                                   :to-base-type-fn (partial * 2)
+                                                   :from-base-type-fn #(quot % 2)}]}))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
       (testing "new types are incrementally assigned"
@@ -169,14 +171,16 @@
     (let [my-types (Types/create
                        (Options/getCustomTypeDefinitions
                         {:custom-types
-                         {'foo {:base-type 'int
-                                :coercion-fn int
-                                :to-base-type-fn inc
-                                :from-base-type-fn dec}
-                          'bar {:base-type 'foo
-                                :coercion-fn double
-                                :to-base-type-fn (partial * 2)
-                                :from-base-type-fn #(quot % 2)}}})
+                         [{:type 'foo
+                            :base-type 'int
+                            :coercion-fn int
+                            :to-base-type-fn inc
+                           :from-base-type-fn dec}
+                          {:type 'bar
+                           :base-type 'foo
+                           :coercion-fn double
+                           :to-base-type-fn (partial * 2)
+                           :from-base-type-fn #(quot % 2)}]})
                      (into-array [(CustomType. 20 Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]
@@ -187,14 +191,16 @@
     (let [my-types (Types/create
                        (Options/getCustomTypeDefinitions
                         {:custom-types
-                         {'foo {:base-type 'int
-                                :coercion-fn int
-                                :to-base-type-fn inc
-                                :from-base-type-fn dec}
-                          'bar {:base-type 'foo
-                                :coercion-fn double
-                                :to-base-type-fn (partial * 2)
-                                :from-base-type-fn #(quot % 2)}}})
+                         [{:type 'foo
+                            :base-type 'int
+                            :coercion-fn int
+                            :to-base-type-fn inc
+                           :from-base-type-fn dec}
+                          {:type 'bar
+                           :base-type 'foo
+                           :coercion-fn double
+                           :to-base-type-fn (partial * 2)
+                           :from-base-type-fn #(quot % 2)}]})
                      (into-array [(CustomType. Types/BYTE_BUFFER Types/INT 'foo)]))
           foo (.getType my-types 'foo)
           bar (.getType my-types 'bar)]

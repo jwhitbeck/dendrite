@@ -344,10 +344,10 @@
         t2 (-> (doto (Calendar/getInstance) (.add Calendar/DATE 1)) .getTime)
         records [{:docid 1 :at t1} {:docid 2 :at t2}]
         records-with-timestamps [{:docid 1 :at (.getTime t1)} {:docid 2 :at (.getTime t2)}]
-        custom-types {'test-type {:base-type 'long
-                                  :coercion-fn identity
-                                  :to-base-type-fn #(.getTime ^Date %)
-                                  :from-base-type-fn #(Date. (long %))}}]
+        custom-types [{:type 'test-type
+                       :base-type 'long
+                       :to-base-type-fn #(.getTime ^Date %)
+                       :from-base-type-fn #(Date. (long %))}]]
     (testing "throw error when the writer is not passed the :custom types option"
       (is (thrown-with-msg?
            IllegalArgumentException #"Unknown type: 'test-type'"
@@ -357,7 +357,7 @@
       (is (thrown-with-msg?
            IllegalArgumentException #":invalid is not a valid custom type definition key"
            (helpers/throw-cause
-            (.close (d/file-writer {:custom-types {'test-type {:invalid 'bar}}}
+            (.close (d/file-writer {:custom-types [{:type 'test-type :invalid 'bar}]}
                                    {:docid 'long :at 'test-type}
                                    tmp-filename))))))
     (with-open [w (d/file-writer {:custom-types custom-types} {:docid 'long :at 'test-type} tmp-filename)]
