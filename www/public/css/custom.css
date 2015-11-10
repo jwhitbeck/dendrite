@@ -13,7 +13,7 @@
 @media (min-width: 100em) {
   .toc {
     display: block;
-    position: fixed;
+    position: absolute;
     width: 18rem;
     top: 6rem;
     /* sidebar is 20rem, main content is 38rem; */
@@ -36,6 +36,40 @@
   list-style: outside circle;
 }
 
+.toc nav ul {
+  margin-bottom: inherit
+}
+
 .toc nav > ul > li > ul > li {
   margin-top: 0.5rem;
+}
+
+/*
+ * Hamburger menu on small screens. Show in top right corner on mobile. Hide otherwise.
+ */
+
+#menu {
+  display: block;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+}
+
+#menu a {
+  height: 32px;
+  width: 32px;
+  display: inline-block;
+  background-image: url("/img/menu_black.svg");
+  background-position: center;
+  background-size: cover;
+}
+
+#menu.clicked a {
+  background-image: url("/img/menu_white_reversed.svg");
+}
+
+@media (min-width: 48em) {
+  #menu {
+    display: none;
+  }
 }

@@ -45,23 +45,513 @@
       
       <li><a href="/implementation/"> Implementation notes </a></li>
       
-      <li><a href="/advanced/"> Advanced usage </a></li>
-      
     </ul>
 
     <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015. All rights reserved.</span>
   </div>
 </div>
 
+  <div id="menu">
+  <a href="#"></a>
+</div>
+
 
   <div class="content container">
     <div class="post">
-  
       
+
+<h1 id="benchmarks:e40908f34f34adb446212d2eca21c8dd">Benchmarks</h1>
+
+<h2 id="overview:e40908f34f34adb446212d2eca21c8dd">Overview</h2>
+
+<p>Performance is one of the main design goals of dendrite. From the very beginning, benchmarks have been a core
+part of its development workflow. The results below highlight how dendrite&rsquo;s key performance metrics such as
+file read time or file size change with the characteristics of the underlying data (e.g. number of distinct
+values per column) and which subset of columns is queried.</p>
+
+<p>Furthermore, solid performance shouldn&rsquo;t be limited to scenarios that play to a columnar format&rsquo;s strengths.
+Full file reads, in which each record is fully deserialized, should be at least as fast as with a good
+row-major format. The benchmarks below show that dendrite&rsquo;s <em>full-schema</em> read speed compares favorably to
+other common formats on three datasets with very different characteristics.</p>
+
+<p>The usual benchmark disclaimers apply. The datasets below may not be representative of your own and your
+mileage may vary.</p>
+
+<h3 id="methodology:e40908f34f34adb446212d2eca21c8dd">Methodology</h3>
+
+<p>Fair benchmarks are notoriously difficult to set up. Nothing too sophisticated went it the results below, but
+in general, a few dummy runs were performed to warm the Hotspot JIT compiler and to ensure that the files were
+in the OS disk cache. Note that the latter removes disk I/O as a factor. This puts dendrite at a slight
+disadvantage since dendrite files are typically 30% smaller than gzipped row-based formats.</p>
+
+<p>All results below were obtained on a <a href="https://aws.amazon.com/ec2/instance-types/
+">c3.2xlarge EC2</a> instance running Ubuntu
+14.04LTS.</p>
+
+<h4 id="sub-schema-benchmark:e40908f34f34adb446212d2eca21c8dd">Sub-schema benchmark</h4>
+
+<p>The <em>sub-schema</em> benchmarks measure the file scan time of dendrite queries with varying number of columns. If
+a dendrite file has 100 columns, then for each <em>i</em> between 1 an 100, generate 100 random queries hitting <em>i</em>
+columns and read the entire file with each query. This benchmark measure how file scan time is impacted by the
+number of columns read and their size on disk.</p>
+
+<h4 id="full-schema:e40908f34f34adb446212d2eca21c8dd">Full-schema benchmark</h4>
+
+<p>The <em>full-schema</em> benchmarks compare the full scan time of files using different serialization formats. Given
+that dendrite performs parallel record assembly, all file formats have a parallel variant (denoted by <code>-par</code>
+suffix) that uses a <a href="https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/utils.clj#L34-L41
+">chunked pmap</a> approach to deserialize batches of records in
+separate threads. Plaintext records (e.g. EDN, JSON) use newlines to separate records. Binary formats use a
+simple length-prefix encoding to write the serialized bytes of the records.</p>
+
+<p>File size is always important for disk and/or network I/O considerations. Therefore all the row-based
+serialization formats in the benchmarks are compressed using either GZIP (denoted <code>-gz</code>) or LZ4 (denoted
+<code>-lz4</code>).</p>
+
+<h3 id="serialization-formats:e40908f34f34adb446212d2eca21c8dd">Serialization formats</h3>
+
+<p>The table below lists the serialization formats that were considered for the <em>full-schema</em> benchmarks. To make
+the list, the format has to have a clojure or java API, support nested data structures and not require a
+supporting service to read the file. Unfortunately, this last condition excludes <a href="http://parquet.io/
+">Parquet</a>, the columnar file format most similar to dendrite, because Parquet files <a href="https://github.com/Parquet/parquet-mr/issues/305
+">cannot be read</a> without a supporting Hadoop or Spark cluster.</p>
+
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Project</th>
+<th>Full EDN</th>
+<th>Columnar</th>
+<th>Binary</th>
+<th>Schema</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Dendrite</td>
+<td><a href="https://github.com/jwhitbeck/dendrite
+">dendrite</a></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Write only</td>
+</tr>
+
+<tr>
+<td>EDN</td>
+<td><a href="https://clojure.github.io/clojure/clojure.edn-api.html
+">clojure.edn</a></td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+
+<tr>
+<td>JSON</td>
+<td><a href="https://github.com/dakrone/cheshire
+">cheshire</a></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+
+<tr>
+<td>SMILE</td>
+<td><a href="https://github.com/dakrone/cheshire
+">cheshire</a></td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+
+<tr>
+<td>Protocol buffers</td>
+<td><a href="https://github.com/ninjudd/clojure-protobuf
+">clojure-protobuf</a></td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>Read/write</td>
+</tr>
+
+<tr>
+<td>Avro</td>
+<td><a href="https://github.com/damballa/abracad
+">abracad</a></td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>Write only</td>
+</tr>
+
+<tr>
+<td>Fressian</td>
+<td><a href="https://github.com/clojure/data.fressian
+">clojure/data.fressian</a></td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+
+<tr>
+<td>Nippy</td>
+<td><a href="https://github.com/ptaoussanis/nippy
+">nippy</a></td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+
+<p>While cheshire&rsquo;s JSON and SMILE library defaults to decoding record keys as strings, it can also read them as
+keywords for more idiomatic clojure usage. Of course, that incurs the added cost of interning those strings so
+both variants are included in the benchmarks. The keywordized variants are identified by <code>-kw</code>.</p>
+
+<p>A format is said to have a <em>write-only</em> schema if that schema is stored within the serialized file
+itself. Therefore a reader does not require any knowledge of the schema prior to reading the file.</p>
+
+<h3 id="running-the-benchmarks:e40908f34f34adb446212d2eca21c8dd">Running the benchmarks</h3>
+
+<p>The benchmark code, along with instructions on how to run it, is available in the project repository under the
+<a href="https://github.com/jwhitbeck/dendrite/tree/master/benchmarks
+">benchmarks</a> directory.</p>
+
+<p>If you would like to propose a code change to improve the benchmarks or to add a new format to the mix, please
+do so through a pull-request.</p>
+
+<h2 id="benchmark-1-tpc-h:e40908f34f34adb446212d2eca21c8dd">Benchmark 1: TPC-H</h2>
+
+<p>The <a href="
+">TPC-H</a> benchmark is widely used by database vendors. For our purposes, we re-use their
+random SQL table generator to build a benchmark dataset of about 600,000 fully-denormalized records. These
+records have moderate nesting and just under 50 leaf values. <a href="https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/tpc_h.clj
+">Code</a> for converting
+TPC-H tables into JSON records is checked into the repo.</p>
+
+<p>The TPC-H data plays to dendrite&rsquo;s strong points. In particular, the absence of repeated elements in the
+schema means that record assembly can <a href="/implementation/">ignore repetition levels</a>
+altogether. Furthermore, the low cardinality of many fields (e.g. region names) enables dendrite&rsquo;s
+<a href="/format/">dictionary encodings</a> on most string columns. Given how expensive UTF-8 string
+decoding is in Java, this results in significant speed gains. For example, let&rsquo;s assume a <em>region</em> column
+consists of a million <code>&quot;EUROPE&quot;</code>, <code>&quot;ASIA&quot;</code>, or <code>&quot;AMERICA&quot;</code> strings. Row-major formats have to deserialize each
+one of those million strings, whereas in a columnar format using a dictionary encoding, those three strings
+are just encoded once into a dictionary array, and all values are encoded as indices into that array. This is
+not only much faster, but also yields a more compact on-disk representation and reduces the pressure on
+the garbage collector.</p>
+
+<p>Note that some real-world datasets, in particular machine-learning training sets, contain mostly
+low-cardinality columns and dendrite&rsquo;s performance on those will be comparable to its performance on the
+<em>TPC-H</em> benchmark presented here.</p>
+
+<h3 id="sample-record:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+
+<p><div class="highlight"><pre><span class="p">{</span><span class="ss">:receipt-date</span> <span class="s">&quot;1996-03-22&quot;</span>,
+ <span class="ss">:return-flag</span> <span class="s">&quot;N&quot;</span>,
+ <span class="ss">:supplier</span>
+ <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;Supplier#000000785&quot;</span>,
+  <span class="ss">:address</span> <span class="s">&quot;W VkHBpQyD3qjQjWGpWicOpmILFehmEdWy67kUGY&quot;</span>,
+  <span class="ss">:nation</span>
+  <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;RUSSIA&quot;</span>,
+   <span class="ss">:region</span> <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;EUROPE&quot;</span>,
+            <span class="ss">:comment</span> <span class="s">&quot;ly final courts cajole furiously final</span>
+<span class="s">                      excuse&quot;</span><span class="p">}</span>,
+   <span class="ss">:comment</span> <span class="s">&quot; requests against the platelets use never according</span>
+<span class="s">             to the quickly regular pint&quot;</span><span class="p">}</span>,
+  <span class="ss">:phone</span> <span class="s">&quot;32-297-653-2203&quot;</span>,
+  <span class="ss">:account-balance</span> <span class="mf">5364.99</span>,
+  <span class="ss">:comment</span> <span class="s">&quot; packages boost carefully. express ideas along&quot;</span><span class="p">}</span>,
+ <span class="ss">:ship-date</span> <span class="s">&quot;1996-03-13&quot;</span>,
+ <span class="ss">:ship-mode</span> <span class="s">&quot;TRUCK&quot;</span>,
+ <span class="ss">:part</span>
+ <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;powder wheat midnight mint salmon&quot;</span>,
+  <span class="ss">:manufacturer</span> <span class="s">&quot;Manufacturer#4&quot;</span>,
+  <span class="ss">:brand</span> <span class="s">&quot;Brand#44&quot;</span>,
+  <span class="ss">:type</span> <span class="s">&quot;SMALL ANODIZED STEEL&quot;</span>,
+  <span class="ss">:size</span> <span class="mi">42</span>,
+  <span class="ss">:container</span> <span class="s">&quot;JUMBO CASE&quot;</span>,
+  <span class="ss">:retail-price</span> <span class="mf">1434.51</span>,
+  <span class="ss">:comment</span> <span class="s">&quot;e carefully expre&quot;</span><span class="p">}</span>,
+ <span class="ss">:ship-instruct</span> <span class="s">&quot;DELIVER IN PERSON&quot;</span>,
+ <span class="ss">:commit-date</span> <span class="s">&quot;1996-02-12&quot;</span>,
+ <span class="ss">:tax</span> <span class="mf">0.02</span>,
+ <span class="ss">:comment</span> <span class="s">&quot;egular courts above the&quot;</span>,
+ <span class="ss">:extended-price</span> <span class="mf">24386.67</span>,
+ <span class="ss">:order</span>
+ <span class="p">{</span><span class="ss">:customer</span>
+  <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;Customer#000003691&quot;</span>,
+   <span class="ss">:address</span> <span class="s">&quot;la3aZ2dd41O3lCSTPnbU&quot;</span>,
+   <span class="ss">:nation</span>
+   <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;FRANCE&quot;</span>,
+    <span class="ss">:region</span>
+    <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;EUROPE&quot;</span>,
+     <span class="ss">:comment</span> <span class="s">&quot;uickly special accounts cajole carefully blithely</span>
+<span class="s">               close requests. carefully final asymptotes haggle</span>
+<span class="s">               furiousl&quot;</span><span class="p">}</span>,
+    <span class="ss">:comment</span> <span class="s">&quot;efully alongside of the slyly final dependencies. &quot;</span><span class="p">}</span>,
+   <span class="ss">:phone</span> <span class="s">&quot;20-758-985-1035&quot;</span>,
+   <span class="ss">:account-balance</span> <span class="mf">7967.22</span>,
+   <span class="ss">:market-segment</span> <span class="s">&quot;MACHINERY&quot;</span>,
+   <span class="ss">:comment</span> <span class="s">&quot;ublate furiously alongside of the pinto bean&quot;</span><span class="p">}</span>,
+  <span class="ss">:order-status</span> <span class="s">&quot;O&quot;</span>,
+  <span class="ss">:total-price</span> <span class="mf">194029.55</span>,
+  <span class="ss">:order-date</span> <span class="s">&quot;1996-01-02&quot;</span>,
+  <span class="ss">:order-priority</span> <span class="s">&quot;5-LOW&quot;</span>,
+  <span class="ss">:clerk</span> <span class="s">&quot;Clerk#000000951&quot;</span>,
+  <span class="ss">:ship-priority</span> <span class="mi">0</span>,
+  <span class="ss">:comment</span> <span class="s">&quot;nstructions sleep furiously among &quot;</span><span class="p">}</span>,
+ <span class="ss">:quantity</span> <span class="mi">17</span>,
+ <span class="ss">:discount</span> <span class="mf">0.04</span>,
+ <span class="ss">:line-number</span> <span class="mi">1</span>,
+ <span class="ss">:line-status</span> <span class="s">&quot;O&quot;</span><span class="p">}</span>
+</pre></div>
+</p>
+
+<h3 id="sub-schema:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
+
+<p><figure>
+  <a href="/img/tpc_h_query_time_vs_max_column_length.svg"><img src="/img/tpc_h_query_time_vs_max_column_length.svg"></a>
+</figure>
+</p>
+
+<p>The plot above is a scatterplot built from many different random queries against the dendrite serialization of
+the TPC-H records. Each point plots the total read time for a given query against the size (on-disk bytes)
+of the largest column in that query.</p>
+
+<p>These results show that dendrite fulfills the promise of a columnar format by delivering order of magnitude
+speedups when requesting small subsets of the whole data.</p>
+
+<p>Interestingly, the query read time can be accurately predicted using a simple linear model of two variables
+<em>number of columns</em> and <em>max column size</em>. The former is easy to understand, as the cost of record assembly
+scales with the number of columns. The latter is interesting since <em>max column size</em> is a better predictor of
+read time than the total size of columns in the query. This is explained by dendrite&rsquo;s
+<a href="/implementation/">parallel column decoding</a> implementation, in which the largest column can
+become the bottleneck. This effect is much more pronounced in the other two benchmarks as each have a
+mega-column.</p>
+
+<h3 id="full-schema-1:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+
+<p><figure>
+  <a href="/img/tpc_h_full_schema_read_time_vs_file_size.svg"><img src="/img/tpc_h_full_schema_read_time_vs_file_size.svg"></a>
+</figure>
+</p>
+
+<p>This plot summarizes how each the <a href="#full-schema:e40908f34f34adb446212d2eca21c8dd">parallel variants</a> of the serialization
+formats perform on disk-usage vs full-schema read time on the 600k TPC-H records. The closer to the top, the
+smaller the file size, and the further to the right, the fastest. As this benchmark plays to dendrite&rsquo;s
+strengths, it is in a class of its own here. The other benchmarks have closer results.</p>
+
+<p>Both axis units are relative the performance of the gzipped EDN file (the slowest format in the benchmark).</p>
+
+<p>The red vertical line indicates the time required for GZIP decompression alone (no record deserialization) of
+the JSON file. This line represents the upper bound on read time for <em>any</em> deserialization code based on
+<a href="https://docs.oracle.com/javase/7/docs/api/java/util/zip/GZIPInputStream.html
+">java.util.zip.GZIPInputStream</a>.</p>
+
+<p>Each serialization family has at least two points, corresponding to GZIP and <a href="https://github.com/jpountz/lz4-java
+">LZ4</a>
+compression. Slower formats (EDN, Avro, Fressian) can&rsquo;t make use of a faster decompression algorithm since
+that is not the bottleneck, whereas faster formats (SMILE, Protobuf) can trade-off larger file sizes for
+faster read-times. In this example, dendrite doesn&rsquo;t trade-off anything as it achieves both the smallest file
+size and the fastest read times.</p>
+
+<p>The two plots detail the read-time and file-size results for all serialization formats and variants.</p>
+
+<p><figure>
+  <a href="/img/tpc_h_full_schema_avg_read_time.svg"><img src="/img/tpc_h_full_schema_avg_read_time.svg"></a>
+</figure>
+</p>
+
+<p><figure>
+  <a href="/img/tpc_h_full_schema_file_size.svg"><img src="/img/tpc_h_full_schema_file_size.svg"></a>
+</figure>
+</p>
+
+<h2 id="media-content:e40908f34f34adb446212d2eca21c8dd">Benchmark 2: Media content</h2>
+
+<p>The <em>media-content</em> benchmark re-uses the schema from the <a href="https://github.com/eishay/jvm-serializers/wiki
+">jvm-serializers</a>
+benchmarks that measures the round-trip time of encoding/decoding data structures. The records have a shallow
+2-level nesting, one level of repetition, and a mix of integer and string fields (17 in total). Approximately
+400,000 records were generated using the excellent <a href="http://www.mockaroo.com/
+">mockaroo</a> random data
+generator. Compared to the <em>TPC-H</em> benchmark above, only the &ldquo;enum&rdquo; fields such as <code>:format</code> or <code>:player</code> are
+selected for dictionary encodings. <a href="https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/media_content.clj
+">Code</a> for generating the <em>media-content</em>
+records from <a href="http://www.mockaroo.com/
+">mockaroo</a> is checked into the repo.</p>
+
+<h3 id="media-content-record:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+
+<p><div class="highlight"><pre><span class="p">{</span><span class="ss">:id</span> <span class="mi">0</span>,
+ <span class="ss">:media</span>
+ <span class="p">{</span><span class="ss">:format</span> <span class="s">&quot;MKV&quot;</span>,
+  <span class="ss">:width</span> <span class="mi">3840</span>,
+  <span class="ss">:copyright</span> <span class="s">&quot;Feedspan&quot;</span>,
+  <span class="ss">:duration</span> <span class="mi">158</span>,
+  <span class="ss">:size</span> <span class="mi">19636</span>,
+  <span class="ss">:title</span> <span class="s">&quot;Phasellus sit amet erat.&quot;</span>,
+  <span class="ss">:persons</span> <span class="p">[</span><span class="s">&quot;Joshua Barnes&quot;</span> <span class="s">&quot;Terry Sanders&quot;</span><span class="p">]</span>,
+  <span class="ss">:bitrate</span> <span class="mi">400</span>,
+  <span class="ss">:player</span> <span class="s">&quot;FLASH&quot;</span>,
+  <span class="ss">:uri</span> <span class="s">&quot;https://fotki.com/vitae/ipsum/aliquam.js&quot;</span>,
+  <span class="ss">:height</span> <span class="mi">1080</span><span class="p">}</span>,
+ <span class="ss">:images</span>
+ <span class="p">[{</span><span class="ss">:size</span> <span class="s">&quot;SMALL&quot;</span>,
+   <span class="ss">:height</span> <span class="mi">400</span>,
+   <span class="ss">:width</span> <span class="mi">240</span>,
+   <span class="ss">:title</span> <span class="s">&quot;Etiam pretium iaculis justo.&quot;</span>,
+   <span class="ss">:uri</span> <span class="s">&quot;https://businessweek.com/amet/nulla/quisque/arcu/libero/</span>
+<span class="s">         rutrum/ac.aspx&quot;</span><span class="p">}</span>
+  <span class="p">{</span><span class="ss">:size</span> <span class="s">&quot;LARGE&quot;</span>,
+   <span class="ss">:height</span> <span class="mi">60</span>,
+   <span class="ss">:width</span> <span class="mi">250</span>,
+   <span class="ss">:title</span> <span class="s">&quot;Aliquam erat volutpat.&quot;</span>,
+   <span class="ss">:uri</span> <span class="s">&quot;http://salon.com/iaculis/justo.jsp&quot;</span><span class="p">}]}</span>
+</pre></div>
+</p>
+
+<h3 id="sub-schema-1:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
+
+<p><figure>
+  <a href="/img/media_content_query_time_vs_max_column_length.svg"><img src="/img/media_content_query_time_vs_max_column_length.svg"></a>
+</figure>
+</p>
+
+<p>Just like the equivalent plot in the TPC-H benchmark, the scatterplot above plots
+<em>read time</em> vs <em>max column size</em> for random queries for subsets of the <em>media-content</em> schema.</p>
+
+<p>As in the <em>TPC-H</em> sub-schema benchmark, reading fewer columns enables order-of-magnitude speedups.</p>
+
+<p>Unlike the <em>TPC-H</em> data, the read-time is dominated by the presence of a mega-column: the <code>:url</code> inside the
+repeated <code>:images</code> data structure. If present in the query, the total read-time effectively doubles.</p>
+
+<h3 id="full-schema-2:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+
+<p><figure>
+  <a href="/img/media_content_full_schema_read_time_vs_file_size.svg"><img src="/img/media_content_full_schema_read_time_vs_file_size.svg"></a>
+</figure>
+</p>
+
+<p>The <em>full-schema</em> results are similar to those of the <em>TPC-H</em> benchmarks. While dendrite&rsquo;s lead is less
+pronounced, it still offers the smallest file-size and fastest read speed.</p>
+
+<p>The following two plots detail the read-time and file-size results for all serialization formats and variants.</p>
+
+<p><figure>
+  <a href="/img/media_content_full_schema_avg_read_time.svg"><img src="/img/media_content_full_schema_avg_read_time.svg"></a>
+</figure>
+</p>
+
+<p><figure>
+  <a href="/img/media_content_full_schema_file_size.svg"><img src="/img/media_content_full_schema_file_size.svg"></a>
+</figure>
+</p>
+
+<h2 id="benchmark-3-user-events:e40908f34f34adb446212d2eca21c8dd">Benchmark 3: User events</h2>
+
+<p>The <em>user-events</em> benchmark was devised to stress dendrite&rsquo;s least efficient encodings and code paths. It
+consists of about 30,000 large (&gt;10KB) deeply nested records with multiply-nested repeated elements. Most of
+the leaf nodes are strings that are not suitable for dictionary encoding. As in the <em>media-content</em> benchmark,
+these records were generated using the <a href="http://www.mockaroo.com/
+">mockaroo</a> random data generator. The <a href="https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/user_events.clj
+">code</a> for generating the <em>user-events</em> records is checked into the repo.</p>
+
+<h3 id="sample-record-1:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+
+<p>The user event records are quite large (&gt;10KB in plaintext) so the <a href="/txt/sample_user_event.txt">sample record</a>
+is not printed on this page.</p>
+
+<h3 id="sub-schema-2:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
+
+<p><figure>
+  <a href="/img/user_events_query_time_vs_max_column_length.svg"><img src="/img/user_events_query_time_vs_max_column_length.svg"></a>
+</figure>
+</p>
+
+<p>Just like the equivalent plots in the previous benchmarks, the scatterplot above plots
+<em>read time</em> vs <em>max column size</em> for random queries for subsets of the <em>media-content</em> schema.</p>
+
+<p>Similarly to the previous benchmarks, reading fewer columns enables order-of-magnitude speedups.</p>
+
+<p>Like the <em>media-content</em> benchmark, the read-time is dominated by the presence of a mega-column: the <code>:at</code>
+timestamp field for the repeated <code>:events</code> structure (itself nested within two repeated structures). If
+present in the query, the total read-time effectively triples.</p>
+
+<h3 id="full-schema-3:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+
+<p><figure>
+  <a href="/img/user_events_full_schema_read_time_vs_file_size.svg"><img src="/img/user_events_full_schema_read_time_vs_file_size.svg"></a>
+</figure>
+</p>
+
+<p>The <em>full-schema</em> results are similar to those of the <em>media-content</em> benchmarks. While dendrite&rsquo;s lead is
+less pronounced, it still offers the smallest file-size and fastest read speed. Interestingly, the schema-less
+SMILE binary encoding does very well on this data and approaches the read performance of protocol buffers.</p>
+
+<p>The following two plots detail the read-time and file-size results for all serialization formats and variants.</p>
+
+<p><figure>
+  <a href="/img/user_events_full_schema_avg_read_time.svg"><img src="/img/user_events_full_schema_avg_read_time.svg"></a>
+</figure>
+</p>
+
+<p><figure>
+  <a href="/img/user_events_full_schema_file_size.svg"><img src="/img/user_events_full_schema_file_size.svg"></a>
+</figure>
+</p>
+
     </div>
   </div>
 
   
+  <div class="toc">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#benchmarks:e40908f34f34adb446212d2eca21c8dd">Benchmarks</a>
+<ul>
+<li><a href="#overview:e40908f34f34adb446212d2eca21c8dd">Overview</a>
+<ul>
+<li><a href="#methodology:e40908f34f34adb446212d2eca21c8dd">Methodology</a>
+<ul>
+<li><a href="#sub-schema-benchmark:e40908f34f34adb446212d2eca21c8dd">Sub-schema benchmark</a></li>
+<li><a href="#full-schema:e40908f34f34adb446212d2eca21c8dd">Full-schema benchmark</a></li>
+</ul></li>
+<li><a href="#serialization-formats:e40908f34f34adb446212d2eca21c8dd">Serialization formats</a></li>
+<li><a href="#running-the-benchmarks:e40908f34f34adb446212d2eca21c8dd">Running the benchmarks</a></li>
+</ul></li>
+<li><a href="#benchmark-1-tpc-h:e40908f34f34adb446212d2eca21c8dd">Benchmark 1: TPC-H</a>
+<ul>
+<li><a href="#sample-record:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
+<li><a href="#sub-schema:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
+<li><a href="#full-schema-1:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+</ul></li>
+<li><a href="#media-content:e40908f34f34adb446212d2eca21c8dd">Benchmark 2: Media content</a>
+<ul>
+<li><a href="#media-content-record:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
+<li><a href="#sub-schema-1:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
+<li><a href="#full-schema-2:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+</ul></li>
+<li><a href="#benchmark-3-user-events:e40908f34f34adb446212d2eca21c8dd">Benchmark 3: User events</a>
+<ul>
+<li><a href="#sample-record-1:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
+<li><a href="#sub-schema-2:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
+<li><a href="#full-schema-3:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+  
 
 </body>
+<script src="/js/site.min.js"></script>
 </html>
+
