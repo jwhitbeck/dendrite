@@ -91,8 +91,10 @@ denoted using clojure symbols.
 | `symbol`                  | an EDN symbol                              |
 | `byte-buffer`             | a java.nio.ByteBuffer                      |
 
-This list of types can be easily extended to suit your needs by defining [custom types]({{< relref
-"#custom-types" >}}).
+The `boolean`, `int`, `long`, `float`, `double`, `byte-array`, and `fixed-length-byte-array` types are
+dendrite's _primitive types_. All the others are _logical types_ that converted to and form a _primitive type_
+during serialization and deserialization. This list of types can be easily extended to suit your needs by
+defining [custom logical types]({{< relref "#custom-types" >}}).
 
 In the spirit of "generous on input, strict on output", each type is associated with a _coercion function_
 that does its best to convert the input data into the desired type.
@@ -387,7 +389,7 @@ Let's see if that worked.
 ;    :emails ["bob@smith.com"]})
 {{</ highlight >}}
 
-### Serialization
+### Serialization {#schema-serialization}
 
 So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
 convenient to store them in separate files.
@@ -413,8 +415,8 @@ Note how the required parts of the schema are tagged with `#req` in the EDN stri
 as expected and makes large schemas easier to inspect.
 
 To read a schema, use the `d/read-schema-string` function. This is basically the same as
-`clojure.edn/read-string` with special reader functions for the `#req` and `#col` schema annotations (see
-the [manual encoding]({{< relref "#manual-encoding" >}}) section below for a description of `#col`).
+`clojure.edn/read-string` with special reader functions for the `#req` and `#col` schema annotations (see the
+[manual column settings]({{< relref "#manual-column-settings" >}}) section below for a description of `#col`).
 
 {{< highlight clojure >}}
 (-> "schema.edn" slurp d/read-schema-string))
@@ -836,6 +838,137 @@ values in its base-type (`string` in this example).
 
 Note how the `:blob` values are read as strings if the `:custom-types` option is not defined.
 
+## Encoding and compression
+
+### Available encodings
+
+Under the hood, dendrite implements, for each primitive value type, several types of encodings that try to
+accommodate very different types of data. The precise details of each encoding is explained in the
+[file format]({{< relref "format.md" >}}). In the clojure API, encoding are denoted by a symbol. The table
+below lists the available encodings for each primitive type.
+
+| Type                      | Encodings                                                                         |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `boolean`                 | `plain`, `dictionary`                                                             |
+| `int`                     | `plain`, `dictionary`, `frequency`, `vlq`, `zigzag`, `packed-run-length`, `delta` |
+| `long`                    | `plain`, `dictionary`, `frequency`, `vlq`, `zigzag`, `delta`                      |
+| `float`                   | `plain`, `dictionary`, `frequency`                                                |
+| `double`                  | `plain`, `dictionary`, `frequency`                                                |
+| `byte-array`              | `plain`, `dictionary`, `frequency`, `delta-length`, `incremental`                 |
+| `fixed-length-byte-array` | `plain`, `dictionary`, `frequency`                                                |
+
+### Available compression
+
+In many cases the encodings do a very good job of compressing the data. However, particularly for string
+columns, is it often worth applying compression on top of the encoded data. At the moment, dendrite only
+supports [deflate]({{< link deflate >}}) compression (denoted by the `deflate` symbol in the clojure
+API). Earlier versions also supported [LZ4]({{< link lz4 >}}) but it never seemed to improve much over just
+using the encodings without compression so it was dropped. However, it would be easy to re-introduce support
+in future versions.
+
+### Manual column settings {#manual-column-settings}
+
+By default, dendrite uses a mix of straightforward heuristics (number of distinct values, max, min, etc.) and
+greedy optimizations to pick a good [encoding]({{< relref "format.md" >}}) and [compression]({{< relref
+"format.md">}}) for each column. This was a deliberate design decision to avoid forcing these decisions onto
+the end-user. Indeed, manually specifying such settings for each column quickly becomes tedious as the number
+of columns grows.
+
+However, in some situations in can be advantageous to specify desired encodings up-front. For example, if
+write speed is a concern, you may want to optimize the choice of encodings and compressions just once and
+re-use those choices for all subsequent writes. Similarly, should the built-in heuristics produce a
+sub-optimal design, you may want to override them for a specific column. As we will see, dendrite supports all
+these use-cases.
+
+Dendrite's column encoding & compression optimizer has three modes:
+
+- __default__: all the columns that have `plain` encoding and `none` compression are optimized;
+- __all__: all columns are optimized;
+- __none__: no columns are optimized.
+
+Furthermore, the `d/col` function can annotate the write schema to request specific encodings and
+compressions. The `d/full-schema` function can retrieve the _fully-annotated_ schema from an existing
+file. Let's see how this works on a simple example.
+
+{{< highlight clojure >}}
+(def tmp-file "/path/to/tmp-file.den")
+
+(defn get-full-schema [file]
+  (with-open [r (d/file-reader file)]
+    (d/full-schema r)))
+
+; Default behavior
+(with-open [w (d/file-writer 'int tmp-file)]
+  (.writeAll w (range 100)))
+(get-full-schema tmp-file)
+;= #col [int delta]
+; Delta encoding with no compression
+
+; Disable optimization
+(with-open [w (d/file-writer {:optimize-columns? :none}
+                             'int tmp-file)]
+  (.writeAll w (range 100)))
+(get-full-schema tmp-file)
+;= int
+; Plain int encoding with no compression
+
+; Manually pick VLQ encoding
+(with-open [w (d/file-writer (d/col 'int 'vlq 'deflate) tmp-file)]
+  (.writeAll w (range 100)))
+(get-full-schema tmp-file)
+;= #col [int vlq deflate]
+; VLQ encoding with deflate compression
+
+; Manually pick VLQ encoding, but force optimization of all columns
+(with-open [w (d/file-writer {:optimize-columns? :all}
+                             (d/col 'int 'vlq) tmp-file)]
+  (.writeAll w (range 100)))
+;= #col [int delta]
+; Delta encoding with no compression
+{{</ highlight >}}
+
+Note that object returned by `d/col` is printed using an EDN `#col` tag. Indeed, there is nothing special
+about these _fully-annotated_ schemas as they can be manipulated and serialized just like the schemas
+described [earlier]({{< relref "#schema-serialization">}}) in this tutorial.
+
+### Compression thresholds
+
+When determining whether or not to use compression for a given column, dendrite estimates a compression ratio
+for each of the available compression algorithms (only [deflate]({{< link deflate >}}) at the moment) by
+compressing one data page with each. If this compression ratio is greater than a certain threshold that
+compression algorithm is kept for further consideration. Finally dendrite selects from all passing algorithms
+the one that yielded the smallest page.
+
+These thresholds are configurable through the `:compression-thresholds` writer option and allow the user finer
+control over the file-size vs. read speed trade-off. Let's see how this works on a simple example.
+
+{{< highlight clojure >}}
+(def tmp-file "/path/to/tmp-file.den")
+
+(defn first-col-stats [file]
+  (with-open [r (d/file-reader file)]
+    (select-keys (-> r d/stats :columns first)
+                 [:compression :data-length])))
+
+; Default: use deflate only if it achieves a 1.5 compression
+; ratio or higher
+(with-open [w (d/file-writer 'int tmp-file)]
+  (.writeAll w (range 10000)))
+(first-col-stats tmp-file)
+;= {:compression deflate, :data-length 283}
+
+; Only pick deflate compression if it achieves a compression ratio
+; of 3 or higher
+(with-open [w (d/file-writer {:compression-thresholds {'deflate 3}}
+                             'int tmp-file)]
+  (.writeAll w (range 10000)))
+(first-col-stats tmp-file)
+;= {:compression none, :data-length 716}
+{{</ highlight >}}
+
+The compressed length (283 bytes) is just 2.5 times smaller than the uncompressed length (716 bytes) so
+deflate compression is selected in the former example but not in the latter.
+
 ## File layout customization
 
 Dendrite tries to provide sensible defaults for all low-level settings. When defaults don't make sense, it
@@ -850,7 +983,7 @@ Pages are the basic unit of parallelism and compression. As explained in the [im
 default page size is 256 KB. Since the first page of each column must be decoded before record assembly can
 begin, excessively large pages increase the likelihood that a very large column will become a
 bottleneck. However larger pages also allow for more efficient encoding and compression. Page size also
-influences the maximum size of dictionary pages.
+influences the heuristic for the maximum size of dictionary pages.
 
 Let's see how this plays out on an example. We re-use the same tutorial file that was downloaded at the
 beginning of the [file introspection]({{< relref "#file-introspection" >}}) section.
@@ -950,10 +1083,50 @@ and made the compression less efficient.
 
 ### Record-group length
 
-### Manual encoding selection {#manual-encoding}
+Similarly to the page length, it is possible to tweak the record-group length. The record-group represents the
+maximum amount of data that will be held in memory at write-time, and the size of the memory-mapping at
+read-time. Due to JVM limitations, the maximum record-group length is 2 GB.
 
-d/full-schema
+Let's quickly modify the record-group length of the tutorial file (reusing the `file`, `file2`, and `schema`
+vars from the previous section.
 
-### Encoding optimizations
+{{< highlight clojure >}}
+; Copy file to file2 using a smaller record-group-length
+(with-open [r (d/file-reader file)
+            w (d/file-writer {:record-group-length (* 1024 1024)}
+                             schema file2)]
+  (doseq [o (d/read r)]
+    (.write w o)))
+{{</ highlight >}}
 
-### Compression thresholds
+Then let's inspect the file stats to see how this changed the file layout.
+
+{{< highlight clojure >}}
+(require '[clojure.pprint :as pp])
+
+(defn print-rg-stats [file]
+  (with-open [r (d/file-reader file)]
+    (->> (d/stats r)
+         :record-groups
+         (map #(select-keys % [:num-records :length]))
+         pp/print-table)))
+
+(print-rg-stats file)
+; | :num-records | :length |
+; |--------------+---------|
+; |       100000 | 6421208 |
+
+(print-rg-stats file2)
+; | :num-records | :length |
+; |--------------+---------|
+; |        14757 |  994736 |
+; |        15436 | 1029789 |
+; |        15726 | 1048090 |
+; |        15684 | 1050273 |
+; |        15767 | 1049096 |
+; |        15745 | 1049766 |
+; |         6885 |  471042 |
+{{</ highlight >}}
+
+In this example, lowering `:record-group-length` to 1 MB (down from 128 MB by default), created a copy of the
+tutorial file with six record-groups instead of just one.

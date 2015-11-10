@@ -7,6 +7,7 @@ clojure-edn: https://clojure.github.io/clojure/clojure.edn-api.html
 clojure-ichunk: https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IChunk.java
 clojure-protobuf: https://github.com/ninjudd/clojure-protobuf
 core-reducers: http://clojure.org/reducers
+deflate: https://en.wikipedia.org/wiki/DEFLATE
 dendrite: https://github.com/jwhitbeck/dendrite
 dremel: http://research.google.com/pubs/pub36632.html
 edn: https://github.com/edn-format/edn
@@ -15,6 +16,7 @@ hashing-trick: https://en.wikipedia.org/wiki/Feature_hashing
 java-gzip-inputstream: https://docs.oracle.com/javase/7/docs/api/java/util/zip/GZIPInputStream.html
 jvm-serializers: https://github.com/eishay/jvm-serializers/wiki
 lz4-java: https://github.com/jpountz/lz4-java
+lz4: https://en.wikipedia.org/wiki/LZ4_%28compression_algorithm%29
 media-content-code: https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/media_content.clj
 mockaroo: http://www.mockaroo.com/
 murmur-hash: https://en.wikipedia.org/wiki/MurmurHash
