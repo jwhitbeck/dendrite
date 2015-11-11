@@ -32,7 +32,8 @@
 &lt;p&gt;Let&amp;rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
 advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.&lt;/p&gt;
 
-&lt;p&gt;The examples below assume that you have required the &lt;code&gt;dendrite.core&lt;/code&gt; namespace as follows:&lt;/p&gt;
+&lt;p&gt;The examples below assume that you have started a REPL in the dendrite project and required the
+&lt;code&gt;dendrite.core&lt;/code&gt; namespace as follows:&lt;/p&gt;
 
 &lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite.core&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;

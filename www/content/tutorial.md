@@ -11,7 +11,8 @@ title: Tutorial
 Let's get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
 advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.
 
-The examples below assume that you have required the `dendrite.core` namespace as follows:
+The examples below assume that you have started a REPL in the dendrite project and required the
+`dendrite.core` namespace as follows:
 
 {{< highlight clojure >}}
 (require '[dendrite.core :as d])
