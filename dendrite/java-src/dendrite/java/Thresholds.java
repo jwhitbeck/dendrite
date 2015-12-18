@@ -19,7 +19,7 @@ public final class Thresholds {
       return idx + 1;
     }
     int nextIdx = (int)(0.5 * idx * (1 + (double)target/(double)value));
-    if (nextIdx == idx) {
+    if (nextIdx <= idx) {
       return idx + 1;
     }
     return nextIdx;
@@ -30,7 +30,7 @@ public final class Thresholds {
       return idx + 1;
     }
     long nextIdx = (long)(0.5 * idx * (1 + (double)target/(double)value));
-    if (nextIdx == idx) {
+    if (nextIdx <= idx) {
       return idx + 1;
     }
     return nextIdx;
