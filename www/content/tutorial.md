@@ -11,8 +11,13 @@ title: Tutorial
 Let's get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
 advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.
 
-The examples below assume that you have started a REPL in the dendrite project and required the
-`dendrite.core` namespace as follows:
+The examples below assume that you have started a REPL in a project that imports dendrite as
+
+{{< highlight clojure >}}
+[dendrite "0.5.4"]
+{{</ highlight >}}
+
+and required the `dendrite.core` namespace as
 
 {{< highlight clojure >}}
 (require '[dendrite.core :as d])
@@ -575,7 +580,7 @@ thread_ (see [implementation notes]({{< relref "implementation.md" >}}) for deta
 ### Transducers
 
 As explained in the [implementation notes]({{< relref "implementation.md" >}}), dendrite performs record
-assembly in parallel by transforming lists of striped records (by default 256 records per bundle) into a
+assembly in parallel by transforming lists of shredded records (by default 256 records per bundle) into a
 [Chunk]({{< link clojure-ichunk >}}) of assembled records. This is a classic reduce operation. The
 `d/eduction` function can modify this reduction with a transducer (or a composition of several
 transducers). As long as the transducer is stateless, this is completely equivalent to calling
