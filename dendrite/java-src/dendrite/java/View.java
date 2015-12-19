@@ -26,6 +26,7 @@ import clojure.lang.PersistentList;
 import clojure.lang.RT;
 import clojure.lang.Reduced;
 import clojure.lang.Seqable;
+import clojure.lang.SeqIterator;
 import clojure.lang.Sequential;
 import clojure.lang.Util;
 
@@ -34,7 +35,7 @@ import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-public abstract class View implements IReduce, ISeq, Seqable, Sequential {
+public abstract class View implements IReduce, ISeq, Iterable, Seqable, Sequential {
 
   private ISeq seq = null;
   private boolean isSeqSet = false;
@@ -51,6 +52,11 @@ public abstract class View implements IReduce, ISeq, Seqable, Sequential {
       isSeqSet = true;
     }
     return seq;
+  }
+
+  @Override
+  public Iterator iterator() {
+    return new SeqIterator(this);
   }
 
   public synchronized boolean isSeqSet() {

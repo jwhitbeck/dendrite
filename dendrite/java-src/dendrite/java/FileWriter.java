@@ -268,9 +268,11 @@ public final class FileWriter implements Closeable {
     batchBuffer.add(record);
   }
 
-  public void writeAll(List<Object> records) {
-    for (Object o : records) {
-      write(o);
+  public void writeAll(Iterable<Object> records) {
+    if (records != null) {
+      for (Object o : records) {
+        write(o);
+      }
     }
   }
 
