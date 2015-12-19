@@ -1,14 +1,7 @@
-# cli
+# Dendrite cli tool
 
-A Clojure library designed to ... well, that part is up to you.
+A command-line tool for interacting with dendrite files.
 
-## Usage
-
-FIXME
-
-## License
-
-Copyright © 2015 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Clojure is a particularly bad fit for CLI tools given its slow startup times. This code was only used for demo
+purposes in combination with [drip](https://github.com/ninjudd/drip), and will be replaced with a proper CLI
+tool in the future.
