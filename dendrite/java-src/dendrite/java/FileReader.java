@@ -13,7 +13,6 @@
 package dendrite.java;
 
 import clojure.lang.Agent;
-import clojure.lang.IChunk;
 import clojure.lang.IFn;
 import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;

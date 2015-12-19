@@ -12,12 +12,9 @@
 
 package dendrite.java;
 
-import clojure.lang.ArrayChunk;
-import clojure.lang.IChunk;
 import clojure.lang.IFn;
 import clojure.lang.RT;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;

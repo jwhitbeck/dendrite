@@ -12,7 +12,6 @@
 
 package dendrite.java;
 
-import clojure.lang.IChunk;
 import clojure.lang.IFn;
 
 import java.io.Closeable;

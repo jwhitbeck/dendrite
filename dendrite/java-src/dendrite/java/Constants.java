@@ -12,7 +12,6 @@
 
 package dendrite.java;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 final class Constants {
