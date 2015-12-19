@@ -393,7 +393,7 @@ public abstract class OptimizingColumnChunkWriter implements IColumnChunkWriter 
     IPageWriter pageWriter
       = DataPage.Writer.create(primitiveColumn.repetitionLevel,
                                primitiveColumn.definitionLevel,
-                               types.getPrimitiveEncoder(primitiveColumn.type, encoding),
+                               Types.getPrimitiveEncoder(primitiveColumn.type, encoding),
                                types.getCompressor(Types.NONE));
     DataPage.Reader pageReader = primitiveReader.getPageReaders().iterator().next();
     for (Object o : pageReader) {

@@ -31,6 +31,9 @@ public class MemoryOutputStream extends OutputStream implements IOutputBuffer {
   }
 
   @Override
+  public void close() {}
+
+  @Override
   public void reset() {
     position = 0;
   }

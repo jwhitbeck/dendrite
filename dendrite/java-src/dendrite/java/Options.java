@@ -299,17 +299,6 @@ public final class Options {
     return readers;
   }
 
-  private static IFn getFn(Keyword key, IPersistentMap options) {
-    Object o = RT.get(options, key, notFound);
-    if (o == notFound) {
-      return null;
-    } else if (!(o instanceof IFn)) {
-      throw new IllegalArgumentException(String.format("%s expects a function but got '%s'", key, o));
-    } else {
-      return (IFn)o;
-    }
-  }
-
   public static ReadOptions getReadOptions(IPersistentMap options) {
     checkValidKeys(options, validReadOptionKeys, "%s is not a supported read option.");
     return new ReadOptions(getQuery(options),
