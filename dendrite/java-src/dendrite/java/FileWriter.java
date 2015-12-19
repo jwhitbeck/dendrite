@@ -72,7 +72,7 @@ public final class FileWriter implements Closeable {
     Stripe.Fn stripeFn = Stripe.getFn(types, schema, writerOptions.isIgnoreExtraFields);
     StripeReducer stripeReducer = new StripeReducer(stripeFn, columns.length, writerOptions.bundleSize, xform,
                                                     writerOptions.invalidInputHandler);
-    LinkedBlockingQueue<List<Object>> batchQueue = new LinkedBlockingQueue<List<Object>>(10);
+    LinkedBlockingQueue<List<Object>> batchQueue = new LinkedBlockingQueue<List<Object>>(1);
     FileChannel fileChannel = Utils.getWritingFileChannel(file);
     fileChannel.write(ByteBuffer.wrap(Constants.magicBytes));
     Future<WriteThreadResult> writeThread = startWriteThread(recordGroupWriter,
