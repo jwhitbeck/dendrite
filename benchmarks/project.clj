@@ -11,7 +11,7 @@
                  [com.damballa/abracad "0.4.12"]
                  [com.google.protobuf/protobuf-java "2.6.1"]
                  [com.taoensso/nippy "2.9.0"]
-                 [dendrite "0.5.3"]
+                 [dendrite "0.5.4"]
                  [org.clojure/tools.cli "0.3.3"]
                  [org.flatland/protobuf "0.8.1"]
                  [prismatic/plumbing "0.4.4"]
