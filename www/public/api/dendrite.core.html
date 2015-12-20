@@ -45,8 +45,8 @@ If provided, the options map supports the following keys:
 :ignore-extra-fields?     If true (default), ignore record fields that are not part of the schema upon
                           writing to file. If false, will throw an exception if a record contains a field
                           not defined in the schema.</pre></div></div><div class="public anchor" id="var-files-reader"><h3>files-reader</h3><div class="usage"><code>(files-reader files)</code><code>(files-reader opts files)</code></div><div class="doc"><pre class="plaintext">Returns a dendrite reader on the provided files (a seq of files or string paths). Reads will query each
-file in the provided order, opening and closing them as needed. Accepts all the same options as
-file-reader.</pre></div></div><div class="public anchor" id="var-full-schema"><h3>full-schema</h3><div class="usage"><code>(full-schema reader)</code></div><div class="doc"><pre class="plaintext">Returns this reader&apos;s schema with all encoding and compression annotations.
+file in the provided order, opening and closing them as needed. Note that the files-reader should still be
+closed to guarantee that all resources are properly released. Accepts all the same options as file-reader.</pre></div></div><div class="public anchor" id="var-full-schema"><h3>full-schema</h3><div class="usage"><code>(full-schema reader)</code></div><div class="doc"><pre class="plaintext">Returns this reader&apos;s schema with all encoding and compression annotations.
 </pre></div></div><div class="public anchor" id="var-index-by"><h3>index-by</h3><div class="usage"><code>(index-by f view)</code></div><div class="doc"><pre class="plaintext">Returns a view of the records as the output of (f index record), where index goes from 0 (first record) to
 num-records - 1 (last record) and record is the assembled record. The works just like a parallelized version
 of `clojure.core/map-indexed`. Use this if you need the record&apos;s index for further processing. As with read,
