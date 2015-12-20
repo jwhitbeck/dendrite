@@ -16,71 +16,21 @@ designed to be a small library with no external dependencies.
 
 [Parquet]: http://parquet.io/
 
-Word of warning: this code has not yet been battle-tested. Prior to the 1.0 release, no effort will be made at
-preserving backwards compatibility of APIs or binary compatibility of files.
+This code has been used in a production setting for over a year. However, prior to the 1.0 release, no effort
+will be made at preserving backwards compatibility of APIs or binary compatibility of files.
 
 [![Build Status](https://travis-ci.org/jwhitbeck/dendrite.png)](https://travis-ci.org/jwhitbeck/dendrite.png)
 
-## Basic usage
+## Documentation
 
-```clojure
-[dendrite "0.5.4"]
+Work-in-progress documentation and benchmarks are available at [dendrite.tech](http://dendrite.tech).
 
-(require '[dendrite.core :as d])
+## Roadmap to 1.0
 
-;;; Define a schema for writing to a dendrite file. This schema is the one from the
-;;; dremel paper. A dendrite schema is basically the clojure structure of the
-;;; records to be serialized with type symbols instead of the actual values.
-(def schema {:docid 'long
-             :links {:forward ['long]
-                     :backward ['long]}
-             :name [{:language [{:code 'string
-                                 :country 'string}]
-                     :url 'string}]})
-
-;;; Some example records
-(def record1
-  {:docid 10
-   :links {:forward [20 40 60]}
-   :name [{:language [{:code "en-us" :country "us"}
-                      {:code "en"}]
-           :url "http://A"}
-          {:url "http://B"}
-          {:language [{:code "en-gb" :country "gb"}]}]})
-
-(def record2
-  {:docid 20
-   :links {:backward [10 30]
-           :forward [80]}
-   :name [{:url "http://C"}]})
-
-;;; write the records to a file
-(with-open [w (d/file-writer schema "/path/to/file.den")]
-  (.write w record1)
-  (.write w record2))
-
-;;; read the full records from the file
-(with-open [r (d/file-reader "/path/to/file.den")]
-  (doall (d/read r)))
-;;; => [record1 record2]
-
-;;; read only the docid and the country
-(with-open [r (d/file-reader "/path/to/file.den")]
-  (let [query {:docid 'long
-               :name [{:language [{:country 'string}]}]}]
-    (doall (d/read {:query query} r))))
-;;; => [{:docid 10
-;;;      :name [{:language [{:country "us"} nil]}
-;;;             nil
-;;;             {:language [{:country "gb"}]}]}
-;;;     {:docid 20 :name [nil]}]
-```
-
-For more information, check out the [full documentation](FIXME).
-
-## Benchmarks
-
-FIXME
+- Cleanly separate clojure and java code.
+- Expose a good Java API
+- Preserve presence/absence of record keys
+- Add indexing
 
 ## References
 
