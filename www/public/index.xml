@@ -32,8 +32,13 @@
 &lt;p&gt;Let&amp;rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
 advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.&lt;/p&gt;
 
-&lt;p&gt;The examples below assume that you have started a REPL in the dendrite project and required the
-&lt;code&gt;dendrite.core&lt;/code&gt; namespace as follows:&lt;/p&gt;
+&lt;p&gt;The examples below assume that you have started a REPL in a project that imports dendrite as&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;0.5.4&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;and required the &lt;code&gt;dendrite.core&lt;/code&gt; namespace as&lt;/p&gt;
 
 &lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite.core&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
@@ -673,7 +678,7 @@ thread&lt;/em&gt; (see &lt;a href=&#34;http://dendrite.tech/implementation/&#34;
 &lt;h3 id=&#34;transducers:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Transducers&lt;/h3&gt;
 
 &lt;p&gt;As explained in the &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation notes&lt;/a&gt;, dendrite performs record
-assembly in parallel by transforming lists of striped records (by default 256 records per bundle) into a
+assembly in parallel by transforming lists of shredded records (by default 256 records per bundle) into a
 &lt;a href=&#34;https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IChunk.java
 &#34;&gt;Chunk&lt;/a&gt; of assembled records. This is a classic reduce operation. The
 &lt;code&gt;d/eduction&lt;/code&gt; function can modify this reduction with a transducer (or a composition of several
@@ -1741,7 +1746,68 @@ SMILE binary encoding does very well on this data and approaches the read perfor
       <pubDate>Sun, 23 Aug 2015 19:30:50 -0700</pubDate>
       
       <guid>http://dendrite.tech/format/</guid>
-      <description></description>
+      <description>
+
+&lt;h1 id=&#34;file-format:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;File format&lt;/h1&gt;
+
+&lt;h2 id=&#34;overview:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Overview&lt;/h2&gt;
+
+&lt;p&gt;Dendrite&amp;rsquo;s file format is very similar to &lt;a href=&#34;http://parquet.io/
+&#34;&gt;Parquet&amp;rsquo;s&lt;/a&gt; file format.&lt;/p&gt;
+
+&lt;figure&gt;
+  &lt;img src=&#34;http://dendrite.tech/img/file-format.svg&#34;&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;TODO: add glossary and description. Discuss units of parallelization.&lt;/p&gt;
+
+&lt;h2 id=&#34;primitives:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Primitives&lt;/h2&gt;
+
+&lt;h3 id=&#34;varints:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Varints&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;length variants&lt;/li&gt;
+&lt;li&gt;zigzag (signed)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&#34;strings:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Strings&lt;/h3&gt;
+
+&lt;p&gt;UTF-8 byte arrays. VarSint + bytes&lt;/p&gt;
+
+&lt;h2 id=&#34;encodings:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Encodings&lt;/h2&gt;
+
+&lt;h2 id=&#34;metadata:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Metadata&lt;/h2&gt;
+
+&lt;h3 id=&#34;record-group:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record-group&lt;/h3&gt;
+
+&lt;h3 id=&#34;column-chunk:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column-chunk&lt;/h3&gt;
+
+&lt;h3 id=&#34;schema:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Schema&lt;/h3&gt;
+
+&lt;h4 id=&#34;column:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column&lt;/h4&gt;
+
+&lt;h4 id=&#34;collection:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Collection&lt;/h4&gt;
+
+&lt;h4 id=&#34;record:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record&lt;/h4&gt;
+
+&lt;p&gt;Field&lt;/p&gt;
+
+&lt;h3 id=&#34;custom-types:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Custom Types&lt;/h3&gt;
+
+&lt;h3 id=&#34;custom-metadata:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Custom metadata&lt;/h3&gt;
+
+&lt;h2 id=&#34;record-group-1:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record Group&lt;/h2&gt;
+
+&lt;h2 id=&#34;column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column Chunk&lt;/h2&gt;
+
+&lt;p&gt;Dictionary vs regular columns&lt;/p&gt;
+
+&lt;h2 id=&#34;page:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Page&lt;/h2&gt;
+
+&lt;h3 id=&#34;data:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Data&lt;/h3&gt;
+
+&lt;h3 id=&#34;dictionary:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Dictionary&lt;/h3&gt;
+</description>
     </item>
     
     <item>

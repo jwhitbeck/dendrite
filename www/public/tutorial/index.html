@@ -65,8 +65,13 @@
 <p>Let&rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
 advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.</p>
 
-<p>The examples below assume that you have started a REPL in the dendrite project and required the
-<code>dendrite.core</code> namespace as follows:</p>
+<p>The examples below assume that you have started a REPL in a project that imports dendrite as</p>
+
+<p><div class="highlight"><pre><span class="p">[</span><span class="nv">dendrite</span> <span class="s">&quot;0.5.4&quot;</span><span class="p">]</span>
+</pre></div>
+</p>
+
+<p>and required the <code>dendrite.core</code> namespace as</p>
 
 <p><div class="highlight"><pre><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">dendrite.core</span> <span class="ss">:as</span> <span class="nv">d</span><span class="p">])</span>
 </pre></div>
@@ -706,7 +711,7 @@ thread</em> (see <a href="/implementation/">implementation notes</a> for details
 <h3 id="transducers:94d9a081cd1256334373c8ca6fb6276c">Transducers</h3>
 
 <p>As explained in the <a href="/implementation/">implementation notes</a>, dendrite performs record
-assembly in parallel by transforming lists of striped records (by default 256 records per bundle) into a
+assembly in parallel by transforming lists of shredded records (by default 256 records per bundle) into a
 <a href="https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IChunk.java
 ">Chunk</a> of assembled records. This is a classic reduce operation. The
 <code>d/eduction</code> function can modify this reduction with a transducer (or a composition of several
