@@ -183,8 +183,8 @@
 
 (defn files-reader
   "Returns a dendrite reader on the provided files (a seq of files or string paths). Reads will query each
-  file in the provided order, opening and closing them as needed. Accepts all the same options as
-  file-reader."
+  file in the provided order, opening and closing them as needed. Note that the files-reader should still be
+  closed to guarantee that all resources are properly released. Accepts all the same options as file-reader."
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
     (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
