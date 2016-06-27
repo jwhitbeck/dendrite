@@ -16,8 +16,12 @@ designed to be a small library with no external dependencies.
 
 [Parquet]: http://parquet.io/
 
-This code has been used in a production setting for over a year. However, prior to the 1.0 release, no effort
-will be made at preserving backwards compatibility of APIs or binary compatibility of files.
+This code has been in use in a production setting for over a year. However, prior to the 1.0 release, no
+effort will be made at preserving backwards compatibility of APIs or binary compatibility of files.
+
+__Status update__ (June 26, 2016): For personal reasons, I haven't been able to work on this project in the
+past six months. However, I have been accumulating ideas for the next iteration and hope to resume progress
+later this year.
 
 [![Build Status](https://travis-ci.org/jwhitbeck/dendrite.png)](https://travis-ci.org/jwhitbeck/dendrite.png)
 
