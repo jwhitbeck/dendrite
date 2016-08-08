@@ -226,6 +226,9 @@ public final class Options {
     }
 
     public ReadOptions withTransduceFn(IFn aTransduceFn) {
+      if (transduceFn != null) {
+        aTransduceFn = Utils.comp(aTransduceFn, transduceFn);
+      }
       return new ReadOptions(query, subSchemaPath, isMissingFieldsAsNil, readers, sampleFn, indexedByFn,
                              aTransduceFn);
     }

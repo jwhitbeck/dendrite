@@ -415,6 +415,12 @@
                    (->> (d/read r)
                         (d/eduction (map :name) (map count) (map inc))
                         doall))))
+    (is (= [4 2] (with-open [r (d/file-reader tmp-filename)]
+                   (->> (d/read r)
+                        (d/eduction (map :name))
+                        (d/eduction (map count))
+                        (d/eduction (map inc))
+                        doall))))
     (is (empty? (with-open [r (d/file-reader tmp-filename)]
                   (->> (d/read r)
                        (d/eduction (filter (constantly false)))
