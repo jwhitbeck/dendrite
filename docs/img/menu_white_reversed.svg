@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="19.522247mm"
+   height="19.497778mm"
+   viewBox="0 0 69.173317 69.086614"
+   id="svg5662"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="menu_white_reversed.svg">
+  <defs
+     id="defs5664" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="13.302143"
+     inkscape:cx="34.586656"
+     inkscape:cy="34.54331"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="1"
+     fit-margin-left="1"
+     fit-margin-right="1"
+     fit-margin-bottom="1"
+     inkscape:window-width="1855"
+     inkscape:window-height="1056"
+     inkscape:window-x="65"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5667">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-265.41334,-360.67604)">
+    <path
+       style="fill:#ffffff;fill-rule:evenodd;stroke:none;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1"
+       d="M 34.585938 4.5429688 C 17.993448 4.5429688 4.5429688 17.974419 4.5429688 34.542969 C 4.5429688 51.111509 17.993448 64.542969 34.585938 64.542969 C 51.178417 64.542969 64.630859 51.111509 64.630859 34.542969 C 64.630859 17.974419 51.178418 4.5429688 34.585938 4.5429688 z M 17.431641 19.804688 L 51.740234 19.804688 A 3.20032 3.20032 0 1 1 51.740234 26.203125 L 17.431641 26.203125 A 3.20032 3.20032 0 1 1 17.431641 19.804688 z M 17.431641 31.34375 L 51.740234 31.34375 A 3.20032 3.20032 0 1 1 51.740234 37.744141 L 17.431641 37.744141 A 3.20032 3.20032 0 1 1 17.431641 31.34375 z M 17.431641 42.882812 L 51.740234 42.882812 A 3.20032 3.20032 0 1 1 51.740234 49.283203 L 17.431641 49.283203 A 3.20032 3.20032 0 1 1 17.431641 42.882812 z "
+       transform="translate(265.41334,360.67604)"
+       id="path258" />
+  </g>
+</svg>

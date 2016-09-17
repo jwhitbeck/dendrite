@@ -1,0 +1,1832 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Dendrite</title>
+    <link>http://dendrite.tech/</link>
+    <description>Recent content on Dendrite</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Sun, 23 Aug 2015 17:56:28 -0700</lastBuildDate>
+    <atom:link href="http://dendrite.tech/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Introducing Dendrite</title>
+      <link>http://dendrite.tech/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/</guid>
+      <description>&lt;p&gt;Website under construction&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Tutorial</title>
+      <link>http://dendrite.tech/tutorial/</link>
+      <pubDate>Sun, 23 Aug 2015 19:31:12 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/tutorial/</guid>
+      <description>
+
+&lt;h1 id=&#34;tutorial:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Tutorial&lt;/h1&gt;
+
+&lt;p&gt;Let&amp;rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take
+advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.&lt;/p&gt;
+
+&lt;p&gt;The examples below assume that you have started a REPL in a project that imports dendrite as&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;0.5.5&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;and required the &lt;code&gt;dendrite.core&lt;/code&gt; namespace as&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite.core&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;read-and-write-files:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Read and write files&lt;/h2&gt;
+
+&lt;p&gt;Writing to dendrite files should feel very similar to writing other types of files in clojure.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;
+                    &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;[{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Alice&amp;quot;&lt;/span&gt;
+           &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Jones&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;alice@jones.com&amp;quot;&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;alice@acme.org&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt;
+
+   &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Bob&amp;quot;&lt;/span&gt;
+           &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Smith&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;bob@smith.com&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;A few things to note:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;The writer needs to be aware of the &lt;em&gt;schema&lt;/em&gt; describing the structure and the types of the records to be
+serialized. We&amp;rsquo;ll see more advanced schemas later on, but you can think of them as basically just the same
+clojure object with type symbols instead of leaf values.&lt;/li&gt;
+&lt;li&gt;The records are passed &lt;em&gt;as-is&lt;/em&gt; to the writer. No extra serialization step is needed.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In this example, the schema has three &lt;em&gt;columns&lt;/em&gt;. The nested structure of the objects is encoded in the schema,
+but the leaf values (e.g., &amp;ldquo;Alice&amp;rdquo;, &amp;ldquo;bob@smith.com&amp;rdquo;) are written out to three separate columns. For a good
+primer on how this is done in practice, check out this
+&lt;a href=&#34;https://blog.twitter.com/2013/dremel-made-simple-with-parquet&#34;&gt;blog post&lt;/a&gt; from the
+&lt;a href=&#34;https://parquet.apache.org/&#34;&gt;Parquet&lt;/a&gt; project.&lt;/p&gt;
+
+&lt;p&gt;Reading is even simpler. Since the schema is stored within the file, it is not required for reading.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;bob@smith.com&amp;quot;]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;supported-types:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Supported types&lt;/h2&gt;
+
+&lt;p&gt;Dendrite&amp;rsquo;s built-in types are a superset of those of &lt;a href=&#34;https://github.com/edn-format/edn
+&#34;&gt;EDN&lt;/a&gt;. In dendrite schemas, types are
+denoted using clojure symbols.&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Type&lt;/th&gt;
+&lt;th&gt;Description&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;boolean&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;true or false&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;int&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a 32-bit integer&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;long&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a 64-bit integer&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;float&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an IEEE 32-bit floating point value&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;double&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an IEEE 64-bit floating point value&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;byte-array&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an arbitrary byte-array&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;fixed-length-byte-array&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a byte array with a set size&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;string&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a string&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;inst&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a date&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;uuid&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a Universally Unique identifier&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;char&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a character or 16-bit integer&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;bigint&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an arbitrary-size integer&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;bigdec&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an arbitrary-precision decimal number&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;ratio&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a ratio of two arbitrary-precision numbers&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;keyword&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an EDN keyword&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;symbol&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;an EDN symbol&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;byte-buffer&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;a java.nio.ByteBuffer&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;The &lt;code&gt;boolean&lt;/code&gt;, &lt;code&gt;int&lt;/code&gt;, &lt;code&gt;long&lt;/code&gt;, &lt;code&gt;float&lt;/code&gt;, &lt;code&gt;double&lt;/code&gt;, &lt;code&gt;byte-array&lt;/code&gt;, and &lt;code&gt;fixed-length-byte-array&lt;/code&gt; types are
+dendrite&amp;rsquo;s &lt;em&gt;primitive types&lt;/em&gt;. All the others are &lt;em&gt;logical types&lt;/em&gt; that converted to and form a &lt;em&gt;primitive type&lt;/em&gt;
+during serialization and deserialization. This list of types can be easily extended to suit your needs by
+defining &lt;a href=&#34;#custom-types:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;custom logical types&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;In the spirit of &amp;ldquo;generous on input, strict on output&amp;rdquo;, each type is associated with a &lt;em&gt;coercion function&lt;/em&gt;
+that does its best to convert the input data into the desired type.&lt;/p&gt;
+
+&lt;p&gt;For example, let&amp;rsquo;s write to a simple file containing where records are just simple strings.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;tmp.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;v&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;0.1&lt;/span&gt;   &lt;span class=&#34;c1&#34;&gt;; double&lt;/span&gt;
+             &lt;span class=&#34;mi&#34;&gt;100&lt;/span&gt;   &lt;span class=&#34;c1&#34;&gt;; long&lt;/span&gt;
+             &lt;span class=&#34;s&#34;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;; string&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;:bar&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;; keyword&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;&amp;#39;baz&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;; symbol&lt;/span&gt;
+            &lt;span class=&#34;p&#34;&gt;]]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;v&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;tmp.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= (&amp;quot;0.1&amp;quot; &amp;quot;100&amp;quot; &amp;quot;foo&amp;quot; &amp;quot;:bar&amp;quot; &amp;quot;baz&amp;quot;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note that all the values were converted to strings before being written. Obviously, it isn&amp;rsquo;t always possible
+to convert input values to the desired type.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;tmp.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+   &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; IllegalArgumentException Could not coerce &amp;#39;foo&amp;#39; into a int.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;read-subsets-of-the-data:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Read subsets of the data&lt;/h2&gt;
+
+&lt;p&gt;Columnar storage formats shine when only reading subsets of the data. Indeed, the on-disk bytes for unselected
+columns can be skipped entirely. Dendrite has two mechanisms for restricting the amount of data that needs to
+be deserialized: sub-schemas and queries. As we will see, they can be used separately or together.&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schemas:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Sub-schemas&lt;/h3&gt;
+
+&lt;p&gt;Sub-schemas are the simplest way of drilling down into the records contained in a dendrite file. They are the
+equivalent of calling &lt;code&gt;get-in&lt;/code&gt; on each record. The following examples use the second arity of
+&lt;code&gt;dendrite.core/read&lt;/code&gt; that expects an options map as its first arg.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= (&amp;quot;Alice&amp;quot; &amp;quot;Bob&amp;quot;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ([&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   [&amp;quot;bob@smith.com&amp;quot;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Attempting to use the &lt;code&gt;:sub-schema-in&lt;/code&gt; option to cross into a repeated field will throw an exception.&lt;/p&gt;
+
+&lt;h3 id=&#34;queries:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Queries&lt;/h3&gt;
+
+&lt;p&gt;Queries specify a &amp;lsquo;skeleton&amp;rsquo; structure of the records that should be read from the file.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;For ease of use, underscore symbols in queries are a shorthand for &lt;em&gt;everything in the schema under this
+point&lt;/em&gt;. For example, the following code snippet defines the same query as above.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Underscore symbols can stand in for entire sub-schemas.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot; :last &amp;quot;Smith&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schema-queries:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Sub-schema queries&lt;/h3&gt;
+
+&lt;p&gt;It is of course possible to combine sub-schemas and queries. If both the &lt;code&gt;:sub-schema-in&lt;/code&gt; and &lt;code&gt;:query&lt;/code&gt; options
+are provided, the query is applied to the sub-schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:first &amp;quot;Alice&amp;quot;} {:first &amp;quot;Bob&amp;quot;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;metadata:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Metadata&lt;/h2&gt;
+
+&lt;p&gt;Dendrite files may contain arbitrary file-level metadata. This is useful in many contexts, whether you want to
+keep track of the commit sha1 of the code that created the file or just add a description.&lt;/p&gt;
+
+&lt;p&gt;Set the metadata with &lt;code&gt;set-metadata!&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/set-metadata!&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:description&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Contacts&amp;quot;&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:owner&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;carl&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Read the metadata with &lt;code&gt;metadata&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/metadata&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:description &amp;quot;Contacts&amp;quot; :owner &amp;quot;carl&amp;quot;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;opt-into-strictness:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Opt into strictness&lt;/h2&gt;
+
+&lt;h3 id=&#34;tolerant-writes-by-default:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Tolerant writes by default&lt;/h3&gt;
+
+&lt;p&gt;By default, dendrite is quite tolerant about writing objects that don&amp;rsquo;t strictly adhere to the write
+schema. Specifically, it considers that all fields are optional and silently drops fields that are not in the
+schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;noname@none.com&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Alice&amp;quot;&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Jones&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+   &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+   &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;24&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;; Completely empty record&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:emails [&amp;quot;noname@none.com&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   nil&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Alice&amp;quot; :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :emails [nil]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Notice how Alice&amp;rsquo;s age was not written to the file.&lt;/p&gt;
+
+&lt;h3 id=&#34;required-fields:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Required fields&lt;/h3&gt;
+
+&lt;p&gt;In many cases, it is useful to enforce the presence of certain record elements and throw an exception if any
+are missing. Dendrite schemas can be annotated to mark certain elements as required (i.e., cannot be nil)
+using the &amp;rsquo;d/req` function.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;; nil records not allowed&lt;/span&gt;
+    &lt;span class=&#34;c1&#34;&gt;; :name must be present but :first and :last are still optional&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;
+                   &lt;span class=&#34;ss&#34;&gt;:last&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+     &lt;span class=&#34;c1&#34;&gt;; :emails is optional but, if defined, the&lt;/span&gt;
+     &lt;span class=&#34;c1&#34;&gt;;  email strings cannot be nil&lt;/span&gt;
+     &lt;span class=&#34;ss&#34;&gt;:emails&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/req&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]}))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s try writing the same records as in the previous example using this stricter schema.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required field :name is missing&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required record is missing&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. Required email is nil.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;alert-on-extra-fields:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Alert on extra fields&lt;/h3&gt;
+
+&lt;p&gt;Keeping schemas in sync with application code can be tricky. In particular, you may want to throw an error if
+the record to write contains fields that are not present in the schema. The &lt;code&gt;d/file-writer&lt;/code&gt; function has a
+second arity that accepts an options map to customize the writer&amp;rsquo;s behavior. In this case, we want to set
+&lt;code&gt;:ignore-extra-fields?&lt;/code&gt; to &lt;code&gt;false&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:ignore-extra-fields?&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;false&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                              &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-extra-fields&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Throws exception. :age is not is schema.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;handle-invalid-records:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Handle invalid records&lt;/h3&gt;
+
+&lt;p&gt;In some contexts, it may be preferable to handle the occasional invalid record rather than crashing the
+writing process. Dendrite supports that use case through the &lt;code&gt;:invalid-input-handler&lt;/code&gt; option. This is a
+function of two arguments: the record and the exception. Let&amp;rsquo;s use this to populate an atom of invalid
+records.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;atom&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[]))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;handler&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;rec&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;e&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;swap!&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;conj &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;rec&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:invalid-input-handler&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;handler&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                             &lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; Write some valid contacts&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contacts&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; Write an invalid contact&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;contact-with-no-name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= nil&lt;/span&gt;
+
+&lt;span class=&#34;o&#34;&gt;@&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;invalid-records&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= [{:emails [&amp;quot;noname@none.com&amp;quot;]}]&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Verify that the valid records were successfully written&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;count &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 2&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;read-missing-columns:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Read missing columns&lt;/h3&gt;
+
+&lt;p&gt;The previous sections covered enforcing various write-time checks. By default, dendrite is also quite tolerant
+on reads. In particular, if a query requests fields that are not present in the file&amp;rsquo;s schema, those fields
+will simply be ignored.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;; The :age field does not exist in the schema&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:name {:first &amp;quot;Alice&amp;quot;}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:name {:first &amp;quot;Bob&amp;quot;}})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;This makes it very easy to apply the same query to many files, of which some may not have the requested
+field. However, this tolerant behavior may not always be desirable and can be disabled by setting the
+&lt;code&gt;:missing-fields-as-nil?&lt;/code&gt; read option to &lt;code&gt;false&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:first&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:age&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                  &lt;span class=&#34;ss&#34;&gt;:missing-fields-as-nil?&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;false&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                  &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= Throws exception. :age field does not exist.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;schema-manipulation:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Schema manipulation&lt;/h2&gt;
+
+&lt;p&gt;Dendrite schemas are regular immutable clojure objects and not a separate DSL. This may seem like a detail but
+it makes them very easy to build and modify programatically. All the usual clojure data manipulation functions
+such as &lt;code&gt;assoc&lt;/code&gt;, &lt;code&gt;dissoc&lt;/code&gt;, or &lt;code&gt;merge&lt;/code&gt; will work as expected on schemas. Furthermore, they can be serialized to
+&lt;a href=&#34;https://github.com/edn-format/edn&#34;&gt;EDN&lt;/a&gt; using the usual &lt;code&gt;pr-*&lt;/code&gt; functions.&lt;/p&gt;
+
+&lt;h3 id=&#34;modify-an-existing-schema:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Modify an existing schema&lt;/h3&gt;
+
+&lt;p&gt;Let&amp;rsquo;s say we want to add an id to all our contacts. We could read-in all the existing contacts and use &lt;code&gt;range&lt;/code&gt;
+to add a simple incrementing id to the existing contacts.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;c1&#34;&gt;;; Add the :id field with type long to the schema.&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;let &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema-with-id&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;long&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema-with-id&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts2.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%1&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;range&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))]&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;c&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see if that worked.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;contacts2.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:id 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :name {:first &amp;quot;Alice&amp;quot;, :last &amp;quot;Jones&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;alice@jones.com&amp;quot; &amp;quot;alice@acme.org&amp;quot;]}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:id 1&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :name {:first &amp;quot;Bob&amp;quot;, :last &amp;quot;Smith&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :emails [&amp;quot;bob@smith.com&amp;quot;]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;schema-serialization:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Serialization&lt;/h3&gt;
+
+&lt;p&gt;So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
+convenient to store them in separate files.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; The simple schema from the beginning of the tutorial&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;spit&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;pr-str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; The somewhat stricter schema from the &amp;quot;Opting into strictness&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; section&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;spit&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;strict-schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;pr-str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;strict-schema&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see what those files look like.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;{:name {:first string, :last string}, :emails [string]}&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;strict-schema.edn&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;#req {:name #req {:first string, :last string}, :emails [#req string]}&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note how the required parts of the schema are tagged with &lt;code&gt;#req&lt;/code&gt; in the EDN string. Pretty-printing also works
+as expected and makes large schemas easier to inspect.&lt;/p&gt;
+
+&lt;p&gt;To read a schema, use the &lt;code&gt;d/read-schema-string&lt;/code&gt; function. This is basically the same as
+&lt;code&gt;clojure.edn/read-string&lt;/code&gt; with special reader functions for the &lt;code&gt;#req&lt;/code&gt; and &lt;code&gt;#col&lt;/code&gt; schema annotations (see the
+&lt;a href=&#34;#manual-column-settings:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;manual column settings&lt;/a&gt; section below for a description of &lt;code&gt;#col&lt;/code&gt;).&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;schema.edn&amp;quot;&lt;/span&gt; &lt;span class=&#34;nb&#34;&gt;slurp &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;d/read-schema-string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:name {:first &amp;#39;string :last &amp;#39;string}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;          :emails [&amp;#39;string]}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;file-introspection:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;File introspection&lt;/h2&gt;
+
+&lt;p&gt;The following sections benefit from a good understanding of dendrite&amp;rsquo;s &lt;a href=&#34;http://dendrite.tech/shredding/&#34;&gt;variation&lt;/a&gt; on the &lt;a href=&#34;http://research.google.com/pubs/pub36632.html
+&#34;&gt;Dremel&lt;/a&gt; record shredding algorithm, its &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file format&lt;/a&gt;, and its multi-threaded &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, this section and all the following drop the toy &lt;em&gt;contacts&lt;/em&gt; schema used up until now and instead
+rely on a test dataset consisting of 100,000 records from the &lt;a href=&#34;http://dendrite.tech/benchmarks/#media-content:e40908f34f34adb446212d2eca21c8dd&#34;&gt;media-content benchmark&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Download the &lt;a href=&#34;https://s3.amazonaws.com/files.dendrite.tech/tutorial.den
+&#34;&gt;tutorial file&lt;/a&gt; (6MB) and reference it from your REPL.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;/path/to/tutorial.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;As a columnar format, the file layout is very structured and must store data about its own organization. The
+&lt;code&gt;d/stats&lt;/code&gt; function retrieves low-level statistics from this internal file metadata.  These stats are useful
+for debugging performance (e.g. what column takes up the most bytes?). The &lt;code&gt;d/stats&lt;/code&gt; function returns an
+object with three keys &lt;code&gt;:global&lt;/code&gt;, &lt;code&gt;:columns&lt;/code&gt;, and &lt;code&gt;:record-groups&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h3 id=&#34;global-stats:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Global stats&lt;/h3&gt;
+
+&lt;p&gt;Let&amp;rsquo;s look at the global stats for the tutorial file.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:global&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;;= {:num-records 100000&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-record-groups 1&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-columns 17&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :length 6421801&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :definition-levels-length 156&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :repetition-levels-length 212898&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :data-header-length 429&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :data-length 5941004&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :dictionary-header-length 57&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :dictionary-length 266664&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :metadata-length 422}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;All the &lt;code&gt;-length&lt;/code&gt; values are in bytes. In the global stats, these values are aggregated across all
+record-groups and column chunks in the file.&lt;/p&gt;
+
+&lt;h3 id=&#34;column-stats:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Column stats&lt;/h3&gt;
+
+&lt;p&gt;The object returned by &lt;code&gt;d/stats&lt;/code&gt; has a &lt;code&gt;:columns&lt;/code&gt; key that points to column stats aggregated across
+record-groups.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s look a the stats for the first column.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:columns&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;first&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;;= {:path [:id]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :type int&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :encoding delta&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :compression deflate&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :max-definition-level 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :max-repetition-level 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :length 2137&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :definition-levels-length 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :repetition-levels-length 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :data-header-length 9&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :data-length 2128&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :dictionary-header-length 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :dictionary-length 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-values 100000&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-dictionary-values 0&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-non-nil-values 100000&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-column-chunks 1&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   :num-pages 1}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Here we can see this is the column for the top-level &lt;code&gt;:id&lt;/code&gt; field in the &lt;a href=&#34;http://dendrite.tech/benchmarks/#media-content-record:e40908f34f34adb446212d2eca21c8dd&#34;&gt;media-content record&lt;/a&gt;. It consists of 32 bit integers encoded using the
+&lt;a href=&#34;http://dendrite.tech/format/#int-delta:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;delta encoding&lt;/a&gt; and compressed with &lt;a href=&#34;http://dendrite.tech/format/#deflate:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;deflate&lt;/a&gt;. Since its &lt;em&gt;max-definition-level&lt;/em&gt; and &lt;em&gt;max-repetition-level&lt;/em&gt; are both zero, this
+column is required (i.e., cannot be nil) and non-repeated. Since the &lt;code&gt;:id&lt;/code&gt; values are ordered, delta encoding
+is very efficient and packs all 100,000 values into a single 2KB page (approx 0.02 bytes/values).&lt;/p&gt;
+
+&lt;p&gt;Now let&amp;rsquo;s identify the largest columns in the file.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.pprint&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;pp&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;ss&#34;&gt;:columns&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;sort-by &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:length&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;nv&#34;&gt;reverse&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;select-keys &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:path&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:type&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:length&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]))&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;take &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;nv&#34;&gt;pp/print-table&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;;  |                 :path |  :type | :length |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |-----------------------+--------+---------|&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |    [:images nil :uri] | string | 3064652 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |         [:media :uri] | string | 1009330 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  | [:media :persons nil] | string |  753994 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |  [:images nil :title] | string |  344648 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |        [:media :size] |    int |  212518 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |    [:media :duration] |    int |  209329 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  | [:images nil :height] |    int |  187988 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |  [:images nil :width] |    int |  187987 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |   [:media :copyright] | string |  116722 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  |       [:media :title] | string |  106425 |&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Notice how some paths contain a &lt;code&gt;nil&lt;/code&gt;. This just indicates that the path is traversing a repeated element in
+that position.&lt;/p&gt;
+
+&lt;h2 id=&#34;read-transformations:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Read transformations&lt;/h2&gt;
+
+&lt;h3 id=&#34;reducers:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reducers&lt;/h3&gt;
+
+&lt;p&gt;The object returned by &lt;code&gt;d/read&lt;/code&gt; is not only seqable but also reducible and foldable in the
+&lt;a href=&#34;http://clojure.org/reducers
+&#34;&gt;core.reducers&lt;/a&gt; sense.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.core.reducers&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Compute the sum of all durations in the datasets that are greater than 1000&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:duration&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;r/filter&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;&amp;gt; &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1000&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;r/reduce&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 165920499&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Following the &lt;a href=&#34;http://clojure.org/reducers
+&#34;&gt;core.reducers&lt;/a&gt; contract, the code above doesn&amp;rsquo;t build up any
+intermediate lazy sequence. However, the real gains come from folding.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; Same as above but faster&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:duration&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;r/filter&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;&amp;gt; &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1000&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;r/fold&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 165920499&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;In the example above, &lt;code&gt;r/fold&lt;/code&gt; will apply the filter and compute a partial sum &lt;em&gt;within each parallel assembly
+thread&lt;/em&gt; (see &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation notes&lt;/a&gt; for details).&lt;/p&gt;
+
+&lt;h3 id=&#34;transducers:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Transducers&lt;/h3&gt;
+
+&lt;p&gt;As explained in the &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation notes&lt;/a&gt;, dendrite performs record
+assembly in parallel by transforming lists of shredded records (by default 256 records per bundle) into a
+&lt;a href=&#34;https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/IChunk.java
+&#34;&gt;Chunk&lt;/a&gt; of assembled records. This is a classic reduce operation. The
+&lt;code&gt;d/eduction&lt;/code&gt; function can modify this reduction with a transducer (or a composition of several
+transducers). As long as the transducer is stateless, this is completely equivalent to calling
+&lt;code&gt;clojure.core/eduction&lt;/code&gt; on the sequence returned by &lt;code&gt;d/read&lt;/code&gt;. However it is noticeably faster since the
+transducer is applied in the parallel record chunk assembly threads.&lt;/p&gt;
+
+&lt;p&gt;The example below leverages transducers to compute the frequencies of image sizes in the whole dataset. Since
+each record can define several images, we need to concatenate all the image information together before
+passing it to &lt;code&gt;frequencies&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:images&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}]})&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/eduction&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;cat&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+      &lt;span class=&#34;nv&#34;&gt;frequencies&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {&amp;quot;SMALL&amp;quot; 150603, &amp;quot;LARGE&amp;quot; 149987}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;It is of course possible to combine these transducers with a fold operation. In this case, the transducers are
+applied to the fold&amp;rsquo;s reduce function (instead of the default chunk assembly reduce function in the example
+above). This efficiently produces the expected result.&lt;/p&gt;
+
+&lt;p&gt;For example, the somewhat contrived example below quickly computes the sum of all the heights of all images.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:images&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}]})&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/eduction&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;cat&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;r/fold&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 59661367&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;fast-sampling:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Fast sampling&lt;/h3&gt;
+
+&lt;p&gt;Dendrite can quickly skip records based on their position within the file using the &lt;code&gt;d/sample&lt;/code&gt; function. This
+is useful for sampling records from a file. Note that this only short-circuits record assembly, as the column
+values must still be decoded before being skipped.&lt;/p&gt;
+
+&lt;p&gt;The example below uses &lt;code&gt;d/sample&lt;/code&gt; to read one of ten records.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/sample&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;zero? &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;mod&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+       &lt;span class=&#34;nv&#34;&gt;count&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 10000&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;indexing:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Indexing&lt;/h3&gt;
+
+&lt;p&gt;The sampling functionality in the previous may not suffice if, for instance, you need to apply different
+sample rates by class of records. For this use-case and others, dendrite has a generic way of inserting
+indices into records using the &lt;code&gt;d/index-by&lt;/code&gt; function that works like a parallel version of &lt;code&gt;map-indexed&lt;/code&gt;. Note
+that this indexing only occurs &lt;em&gt;after&lt;/em&gt; record assembly so this won&amp;rsquo;t deliver read time improvements as
+sampling.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see how this works.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+       &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/index-by&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%2&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:index&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+       &lt;span class=&#34;nv&#34;&gt;first&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:index 0, :media {..}, :images [..]}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;reader-tags:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Reader tags&lt;/h3&gt;
+
+&lt;p&gt;The previous transformations either modify the &lt;em&gt;sequence&lt;/em&gt; of records after assembly (reducers, transducers,
+indexing) or short-circuit record assembly altogether (sampling). The reader tags described in this section
+are very similar to &lt;a href=&#34;https://github.com/edn-format/edn
+&#34;&gt;EDN tags&lt;/a&gt; and enable customizing the record assembly
+itself. Furthermore, when used in combination with dictionary-encoded columns they deliver one of dendrite&amp;rsquo;s
+key performance optimizations.&lt;/p&gt;
+
+&lt;p&gt;This first example uses tags to output clojure records.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s begin by defining clojure records for our main types.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defrecord &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;MediaContent&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;id&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;media&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;images&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defrecord &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;Media&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;format&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;height&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;width&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;copyright&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;duration&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;size&lt;/span&gt;
+                  &lt;span class=&#34;nv&#34;&gt;title&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;persons&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;bitrate&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;player&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;uri&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defrecord &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;Image&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;title&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;uri&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;height&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;width&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;size&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Then, let&amp;rsquo;s add tags to our dendrite query.
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/tag&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;media-content&lt;/span&gt;
+            &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/tag&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;media&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+             &lt;span class=&#34;ss&#34;&gt;:images&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/tag&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;image&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]}))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note that this query can be serialized to EDN.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;query-str&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;pr-str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;#media-content {:id _, :media #media _, :images [#image _]}&amp;quot;&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.edn&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;edn&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;= &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;edn/read-string&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:default&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d/tag&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;query-str&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; true&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Finally, lets use our tagged query to build these nested clojure records.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;
+      &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:readers&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;&amp;#39;media-content&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;map-&amp;gt;MediaContent&lt;/span&gt;
+                         &lt;span class=&#34;ss&#34;&gt;&amp;#39;media&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;map-&amp;gt;Media&lt;/span&gt;
+                         &lt;span class=&#34;ss&#34;&gt;&amp;#39;image&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;map-&amp;gt;Image&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}})&lt;/span&gt;
+      &lt;span class=&#34;nv&#34;&gt;last&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= #user.MediaContent{&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :id 99999,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;    :media #user.Media{&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :format &amp;quot;MOV&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :height 480,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :width 480,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :copyright &amp;quot;Mybuzz&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :duration 1747,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :size 31973,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :title &amp;quot;Pellentesque viverra peed ac diam.&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :persons [&amp;quot;Antonio Harris&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                       &amp;quot;Harold Price&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                       &amp;quot;Janice Shaw&amp;quot;],&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :bitrate 4000,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :player &amp;quot;FLASH&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :uri &amp;quot;http://merriam-webster.com/.../turpis.js&amp;quot;},&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;             :images [#user.Image{&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                        :title &amp;quot;Fusce posuere felis sed lacus.&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                        :uri &amp;quot;https://army.mil/.../auctor.html&amp;quot;,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                        :height 240,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                        :width 160,&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;                        :size &amp;quot;LARGE&amp;quot;}]}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Reader tags on leaf values trigger an important optimization when those leaf values are dictionary-encoded. In
+that case, the reader function gets applied to the dictionary itself in the column decoding thread, rather
+than to each value in the record assembly thread. In effect, this computes the function once for each
+&lt;em&gt;distinct&lt;/em&gt; value in the column, rather than on each value.&lt;/p&gt;
+
+&lt;p&gt;In some situations this can lead to an order of magnitude speedup. A good example is a machine learning
+training set for an algorithm that uses the &lt;a href=&#34;https://en.wikipedia.org/wiki/Feature_hashing
+&#34;&gt;hashing trick&lt;/a&gt;. Computing tens of
+millions of hashes is very expensive, but computing just a few thousand distinct hashes is quite cheap.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see how this plays out on the tutorial dataset. First let&amp;rsquo;s define a generic hash function based on
+clojure&amp;rsquo;s built-in implementation of &lt;a href=&#34;https://en.wikipedia.org/wiki/MurmurHash
+&#34;&gt;murmur hash&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;murmur-hash&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;clojure.lang.Murmur3/hashUnencodedChars&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;str &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Then we define two queries for the dictionary columns of the media object, one tagged, the other not.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dict-ks&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:format&lt;/span&gt;, &lt;span class=&#34;ss&#34;&gt;:width&lt;/span&gt;, &lt;span class=&#34;ss&#34;&gt;:copyright&lt;/span&gt;, &lt;span class=&#34;ss&#34;&gt;:bitrate&lt;/span&gt;, &lt;span class=&#34;ss&#34;&gt;:player&lt;/span&gt;, &lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;map-vals&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;f&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;m&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;reduce-kv&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;fn &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;m&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;k&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;v&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;m&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;k&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;f&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;v&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;m&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Regular query for the fields in `dict-ks`&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;reduce &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;assoc &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%1&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%2&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;_&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;dict-ks&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Query in with each field in `dict-ks` is tagged with &amp;#39;hash&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;tagged-query&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;map-vals&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/tag&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;hash&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Now let&amp;rsquo;s compare the performance of hashing all the values for the fields in &lt;code&gt;dict-ks&lt;/code&gt;, using a transducer on
+the one hand, and reader tags on the other.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; Hash all values with a transducer&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;time &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;
+             &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+                      &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;query&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+             &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/eduction&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;partial &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;map-vals&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;murmur-hash&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+             &lt;span class=&#34;nv&#34;&gt;last&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;Elapsed time: 97.027783 msecs&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  {:format -992991939, :width 2996761, ... }&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Hash all distinct values in dictionaries&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;time &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;
+             &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:sub-schema-in&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+                      &lt;span class=&#34;ss&#34;&gt;:query&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tagged-query&lt;/span&gt;
+                      &lt;span class=&#34;ss&#34;&gt;:readers&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;&amp;#39;hash&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;murmur-hash&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}})&lt;/span&gt;
+             &lt;span class=&#34;nv&#34;&gt;last&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= &amp;quot;Elapsed time: 34.897017 msecs&amp;quot;&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;  {:format -992991939, :width 2996761, ... }&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;In this example, reader tags on dictionary columns yield a 3x speed improvement.&lt;/p&gt;
+
+&lt;h2 id=&#34;custom-types:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Custom types&lt;/h2&gt;
+
+&lt;p&gt;Dendrite&amp;rsquo;s &lt;a href=&#34;#supported-types:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;built-in types&lt;/a&gt; should cover most use cases, but if not, it is
+possible to define new types.&lt;/p&gt;
+
+&lt;p&gt;A custom needs to define the following:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;em&gt;type&lt;/em&gt;: the name of the new type&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;base-type&lt;/em&gt;: the name of an existing type that the new type can be serialized to&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;to base-type function&lt;/em&gt;: a function to serialize to new type to the base type&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;from base-type function&lt;/em&gt;: a function to deserialize the base type into the new type&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Optionally, it is also possible to define a &lt;em&gt;coercion function&lt;/em&gt; to ensure that incoming values are indeed in
+the &lt;em&gt;base-type&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see how this works on a simple example. We are going to define a new &lt;code&gt;edn&lt;/code&gt; type that can contain
+arbitrary EDN data. This could be useful if parts of your data must accommodate a completely free-form
+datastructure.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.edn&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;edn&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;edn-type&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:type&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;edn&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:base-type&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;string&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:to-base-type-fn&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;pr-str&lt;/span&gt;
+               &lt;span class=&#34;ss&#34;&gt;:from-base-type-fn&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;edn/read-string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; A trivial schema with the new type&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:blob-id&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:blob&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;edn&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;custom-type-example.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Write two records to a file&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:custom-types&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;edn-type&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt;
+                             &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt;
+                             &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:blob-id&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:blob&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:foo&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}})&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:blob-id&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:blob&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:bar&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}]}))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Read them&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:custom-types&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;edn-type&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:blob-id 1, :blob {:foo 2}}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:blob-id 2, :blob [#{:bar}]})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note that we have to pass the &lt;code&gt;:custom-types&lt;/code&gt; option to both the reader and the writer. If the write does not
+have that option it will throw an exception. The reader, however, degrades gracefully by reading the &lt;code&gt;edn&lt;/code&gt;
+values in its base-type (&lt;code&gt;string&lt;/code&gt; in this example).&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doall &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= ({:blob-id 1, :blob &amp;quot;{:foo 2}&amp;quot;}&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;   {:blob-id 2, :blob &amp;quot;[#{:bar}]&amp;quot;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note how the &lt;code&gt;:blob&lt;/code&gt; values are read as strings if the &lt;code&gt;:custom-types&lt;/code&gt; option is not defined.&lt;/p&gt;
+
+&lt;h2 id=&#34;encoding-and-compression:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Encoding and compression&lt;/h2&gt;
+
+&lt;h3 id=&#34;available-encodings:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Available encodings&lt;/h3&gt;
+
+&lt;p&gt;Under the hood, dendrite implements, for each primitive value type, several types of encodings that try to
+accommodate very different types of data. The precise details of each encoding is explained in the
+&lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file format&lt;/a&gt;. In the clojure API, encoding are denoted by a symbol. The table
+below lists the available encodings for each primitive type.&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Type&lt;/th&gt;
+&lt;th&gt;Encodings&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;boolean&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;int&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;, &lt;code&gt;vlq&lt;/code&gt;, &lt;code&gt;zigzag&lt;/code&gt;, &lt;code&gt;packed-run-length&lt;/code&gt;, &lt;code&gt;delta&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;long&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;, &lt;code&gt;vlq&lt;/code&gt;, &lt;code&gt;zigzag&lt;/code&gt;, &lt;code&gt;delta&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;float&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;double&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;byte-array&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;, &lt;code&gt;delta-length&lt;/code&gt;, &lt;code&gt;incremental&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;fixed-length-byte-array&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plain&lt;/code&gt;, &lt;code&gt;dictionary&lt;/code&gt;, &lt;code&gt;frequency&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&#34;available-compression:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Available compression&lt;/h3&gt;
+
+&lt;p&gt;In many cases the encodings do a very good job of compressing the data. However, particularly for string
+columns, is it often worth applying compression on top of the encoded data. At the moment, dendrite only
+supports &lt;a href=&#34;https://en.wikipedia.org/wiki/DEFLATE
+&#34;&gt;deflate&lt;/a&gt; compression (denoted by the &lt;code&gt;deflate&lt;/code&gt; symbol in the clojure
+API). Earlier versions also supported &lt;a href=&#34;https://en.wikipedia.org/wiki/LZ4_%28compression_algorithm%29
+&#34;&gt;LZ4&lt;/a&gt; but it never seemed to improve much over just
+using the encodings without compression so it was dropped. However, it would be easy to re-introduce support
+in future versions.&lt;/p&gt;
+
+&lt;h3 id=&#34;manual-column-settings:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Manual column settings&lt;/h3&gt;
+
+&lt;p&gt;By default, dendrite uses a mix of straightforward heuristics (number of distinct values, max, min, etc.) and
+greedy optimizations to pick a good &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;encoding&lt;/a&gt; and &lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;compression&lt;/a&gt; for each column. This was a deliberate design decision to avoid forcing these decisions onto
+the end-user. Indeed, manually specifying such settings for each column quickly becomes tedious as the number
+of columns grows.&lt;/p&gt;
+
+&lt;p&gt;However, in some situations in can be advantageous to specify desired encodings up-front. For example, if
+write speed is a concern, you may want to optimize the choice of encodings and compressions just once and
+re-use those choices for all subsequent writes. Similarly, should the built-in heuristics produce a
+sub-optimal design, you may want to override them for a specific column. As we will see, dendrite supports all
+these use-cases.&lt;/p&gt;
+
+&lt;p&gt;Dendrite&amp;rsquo;s column encoding &amp;amp; compression optimizer has three modes:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;default&lt;/strong&gt;: all the columns that have &lt;code&gt;plain&lt;/code&gt; encoding and &lt;code&gt;none&lt;/code&gt; compression are optimized;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;all&lt;/strong&gt;: all columns are optimized;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;none&lt;/strong&gt;: no columns are optimized.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Furthermore, the &lt;code&gt;d/col&lt;/code&gt; function can annotate the write schema to request specific encodings and
+compressions. The &lt;code&gt;d/full-schema&lt;/code&gt; function can retrieve the &lt;em&gt;fully-annotated&lt;/em&gt; schema from an existing
+file. Let&amp;rsquo;s see how this works on a simple example.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;/path/to/tmp-file.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;get-full-schema&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/full-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Default behavior&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;100&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;get-full-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= #col [int delta]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Delta encoding with no compression&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Disable optimization&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:optimize-columns?&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:none&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                             &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;100&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;get-full-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= int&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Plain int encoding with no compression&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Manually pick VLQ encoding&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/col&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;vlq&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;deflate&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;100&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;get-full-schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= #col [int vlq deflate]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; VLQ encoding with deflate compression&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Manually pick VLQ encoding, but force optimization of all columns&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:optimize-columns?&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:all&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+                             &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/col&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;vlq&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;100&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= #col [int delta]&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; Delta encoding with no compression&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note that object returned by &lt;code&gt;d/col&lt;/code&gt; is printed using an EDN &lt;code&gt;#col&lt;/code&gt; tag. Indeed, there is nothing special
+about these &lt;em&gt;fully-annotated&lt;/em&gt; schemas as they can be manipulated and serialized just like the schemas
+described &lt;a href=&#34;#schema-serialization:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;earlier&lt;/a&gt; in this tutorial.&lt;/p&gt;
+
+&lt;h3 id=&#34;compression-thresholds:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Compression thresholds&lt;/h3&gt;
+
+&lt;p&gt;When determining whether or not to use compression for a given column, dendrite estimates a compression ratio
+for each of the available compression algorithms (only &lt;a href=&#34;https://en.wikipedia.org/wiki/DEFLATE
+&#34;&gt;deflate&lt;/a&gt; at the moment) by
+compressing one data page with each. If this compression ratio is greater than a certain threshold that
+compression algorithm is kept for further consideration. Finally dendrite selects from all passing algorithms
+the one that yielded the smallest page.&lt;/p&gt;
+
+&lt;p&gt;These thresholds are configurable through the &lt;code&gt;:compression-thresholds&lt;/code&gt; writer option and allow the user finer
+control over the file-size vs. read speed trade-off. Let&amp;rsquo;s see how this works on a simple example.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;/path/to/tmp-file.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;first-col-stats&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;select-keys &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;-&amp;gt; &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:columns&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;first&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+                 &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:compression&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:data-length&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Default: use deflate only if it achieves a 1.5 compression&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; ratio or higher&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;10000&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;first-col-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:compression deflate, :data-length 283}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Only pick deflate compression if it achieves a compression ratio&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; of 3 or higher&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:compression-thresholds&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;&amp;#39;deflate&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}}&lt;/span&gt;
+                             &lt;span class=&#34;ss&#34;&gt;&amp;#39;int&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.writeAll&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;range &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;10000&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;first-col-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;tmp-file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= {:compression none, :data-length 716}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The compressed length (283 bytes) is just 2.5 times smaller than the uncompressed length (716 bytes) so
+deflate compression is selected in the former example but not in the latter.&lt;/p&gt;
+
+&lt;h2 id=&#34;file-layout-customization:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;File layout customization&lt;/h2&gt;
+
+&lt;p&gt;Dendrite tries to provide sensible defaults for all low-level settings. When defaults don&amp;rsquo;t make sense, it
+resorts to write-time heuristics to optimize for a good compactness/read-speed trade-off. In some cases
+though, you may want to override the low-level settings. This sections discusses options to customize the
+&lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;file layout&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&#34;page-lengths:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Page lengths&lt;/h3&gt;
+
+&lt;p&gt;Pages are the basic unit of parallelism and compression. As explained in the &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;implementation notes&lt;/a&gt;, each page is lazily decoded (and possibly decompressed) in a separate thread. The
+default page size is 256 KB. Since the first page of each column must be decoded before record assembly can
+begin, excessively large pages increase the likelihood that a very large column will become a
+bottleneck. However larger pages also allow for more efficient encoding and compression. Page size also
+influences the heuristic for the maximum size of dictionary pages.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see how this plays out on an example. We re-use the same tutorial file that was downloaded at the
+beginning of the &lt;a href=&#34;#file-introspection:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;file introspection&lt;/a&gt; section.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; &amp;#39;file&amp;#39; points to the provided tutorial, &amp;#39;file2&amp;#39; to a tmp file&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;/path/to/tutorial.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;/path/to/tmp-file.den&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Fetch the schema from file&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;k&#34;&gt;def &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+              &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;; Copy file to file2 using a smaller page size&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+            &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:data-page-length&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1024&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;o&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;o&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note that &lt;code&gt;file2&lt;/code&gt; is considerably larger than &lt;code&gt;file&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.java.io&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.length&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;io/as-file&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 6421801&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.length&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;io/as-file&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;;= 19775457&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s have a closer look at page lengths and counts in both. We&amp;rsquo;ll first define a &lt;code&gt;print-page-stats&lt;/code&gt; function.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.pprint&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;pp&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;print-page-stats&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+         &lt;span class=&#34;ss&#34;&gt;:columns&lt;/span&gt;
+         &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;select-keys &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:length&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:encoding&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:compression&lt;/span&gt;
+                               &lt;span class=&#34;ss&#34;&gt;:num-pages&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]))&lt;/span&gt;
+         &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;sort-by &lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:length&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+         &lt;span class=&#34;nv&#34;&gt;pp/print-table&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s use this function to analyze both files.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;print-page-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | :length |         :encoding | :compression | :num-pages |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |---------+-------------------+--------------+------------|&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |    2137 |             delta |      deflate |          1 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   12537 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   25050 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   37550 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   37551 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   37552 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   75238 |        dictionary |         none |          3 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  106425 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  116722 |        dictionary |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  187987 |        dictionary |         none |          3 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  187988 |        dictionary |         none |          3 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  209329 |         frequency |         none |          2 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  212518 | packed-run-length |         none |          1 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  344648 |        dictionary |         none |          3 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  753994 |         frequency |      deflate |          3 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 1009330 |       incremental |      deflate |          5 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 3064652 |       incremental |      deflate |         13 |&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;print-page-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | :length |         :encoding | :compression | :num-pages |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |---------+-------------------+--------------+------------|&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |    4621 |             delta |      deflate |         79 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   13790 |        dictionary |         none |         94 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   26017 |        dictionary |         none |         77 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   38613 |        dictionary |         none |         80 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   38618 |        dictionary |         none |         80 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   38618 |        dictionary |         none |         80 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |   81482 |        dictionary |         none |        259 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  151937 | packed-run-length |         none |        149 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  194842 |        dictionary |         none |        276 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  194847 |        dictionary |         none |        276 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  215053 | packed-run-length |         none |        212 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |  442669 |      delta-length |      deflate |        415 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 1636137 |      delta-length |      deflate |       1636 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 1821422 |       incremental |      deflate |       1713 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 2309660 |       incremental |      deflate |       2193 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 5545539 |       incremental |      deflate |       5126 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | 6980630 |       incremental |      deflate |       6467 |&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Note how the smaller page size increased the number of pages and changed the result of the heuristics for
+encoding and compression. In this example, the very small 1KB pages reduced the number of dictionary encodings
+and made the compression less efficient.&lt;/p&gt;
+
+&lt;h3 id=&#34;record-group-length:94d9a081cd1256334373c8ca6fb6276c&#34;&gt;Record-group length&lt;/h3&gt;
+
+&lt;p&gt;Similarly to the page length, it is possible to tweak the record-group length. The record-group represents the
+maximum amount of data that will be held in memory at write-time, and the size of the memory-mapping at
+read-time. Due to JVM limitations, the maximum record-group length is 2 GB.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s quickly modify the record-group length of the tutorial file (reusing the &lt;code&gt;file&lt;/code&gt;, &lt;code&gt;file2&lt;/code&gt;, and &lt;code&gt;schema&lt;/code&gt;
+vars from the previous section.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;c1&#34;&gt;; Copy file to file2 using a smaller record-group-length&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+            &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:record-group-length&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;* &lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1024&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1024&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)}&lt;/span&gt;
+                             &lt;span class=&#34;nv&#34;&gt;schema&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;doseq &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;o&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/read&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;.write&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;w&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;o&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Then let&amp;rsquo;s inspect the file stats to see how this changed the file layout.&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;require&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;clojure.pprint&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:as&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;pp&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;])&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;defn &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;print-rg-stats&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;with-open &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/file-reader&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;-&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;d/stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+         &lt;span class=&#34;ss&#34;&gt;:record-groups&lt;/span&gt;
+         &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;map &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;#&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;select-keys &lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;%&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:num-records&lt;/span&gt; &lt;span class=&#34;ss&#34;&gt;:length&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]))&lt;/span&gt;
+         &lt;span class=&#34;nv&#34;&gt;pp/print-table&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)))&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;print-rg-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | :num-records | :length |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |--------------+---------|&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |       100000 | 6421208 |&lt;/span&gt;
+
+&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;print-rg-stats&lt;/span&gt; &lt;span class=&#34;nv&#34;&gt;file2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; | :num-records | :length |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |--------------+---------|&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        14757 |  994736 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        15436 | 1029789 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        15726 | 1048090 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        15684 | 1050273 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        15767 | 1049096 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |        15745 | 1049766 |&lt;/span&gt;
+&lt;span class=&#34;c1&#34;&gt;; |         6885 |  471042 |&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;In this example, lowering &lt;code&gt;:record-group-length&lt;/code&gt; to 1 MB (down from 128 MB by default), created a copy of the
+tutorial file with six record-groups instead of just one.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Benchmarks</title>
+      <link>http://dendrite.tech/benchmarks/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/benchmarks/</guid>
+      <description>
+
+&lt;h1 id=&#34;benchmarks:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Benchmarks&lt;/h1&gt;
+
+&lt;h2 id=&#34;overview:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Overview&lt;/h2&gt;
+
+&lt;p&gt;Performance is one of the main design goals of dendrite. From the very beginning, benchmarks have been a core
+part of its development workflow. The results below highlight how dendrite&amp;rsquo;s key performance metrics such as
+file read time or file size change with the characteristics of the underlying data (e.g. number of distinct
+values per column) and which subset of columns is queried.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, solid performance shouldn&amp;rsquo;t be limited to scenarios that play to a columnar format&amp;rsquo;s strengths.
+Full file reads, in which each record is fully deserialized, should be at least as fast as with a good
+row-major format. The benchmarks below show that dendrite&amp;rsquo;s &lt;em&gt;full-schema&lt;/em&gt; read speed compares favorably to
+other common formats on three datasets with very different characteristics.&lt;/p&gt;
+
+&lt;p&gt;The usual benchmark disclaimers apply. The datasets below may not be representative of your own and your
+mileage may vary.&lt;/p&gt;
+
+&lt;h3 id=&#34;methodology:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Methodology&lt;/h3&gt;
+
+&lt;p&gt;Fair benchmarks are notoriously difficult to set up. Nothing too sophisticated went it the results below, but
+in general, a few dummy runs were performed to warm the Hotspot JIT compiler and to ensure that the files were
+in the OS disk cache. Note that the latter removes disk I/O as a factor. This puts dendrite at a slight
+disadvantage since dendrite files are typically 30% smaller than gzipped row-based formats.&lt;/p&gt;
+
+&lt;p&gt;All results below were obtained on a &lt;a href=&#34;https://aws.amazon.com/ec2/instance-types/
+&#34;&gt;c3.2xlarge EC2&lt;/a&gt; instance running Ubuntu
+14.04LTS.&lt;/p&gt;
+
+&lt;h4 id=&#34;sub-schema-benchmark:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sub-schema benchmark&lt;/h4&gt;
+
+&lt;p&gt;The &lt;em&gt;sub-schema&lt;/em&gt; benchmarks measure the file scan time of dendrite queries with varying number of columns. If
+a dendrite file has 100 columns, then for each &lt;em&gt;i&lt;/em&gt; between 1 an 100, generate 100 random queries hitting &lt;em&gt;i&lt;/em&gt;
+columns and read the entire file with each query. This benchmark measure how file scan time is impacted by the
+number of columns read and their size on disk.&lt;/p&gt;
+
+&lt;h4 id=&#34;full-schema:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Full-schema benchmark&lt;/h4&gt;
+
+&lt;p&gt;The &lt;em&gt;full-schema&lt;/em&gt; benchmarks compare the full scan time of files using different serialization formats. Given
+that dendrite performs parallel record assembly, all file formats have a parallel variant (denoted by &lt;code&gt;-par&lt;/code&gt;
+suffix) that uses a &lt;a href=&#34;https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/utils.clj#L34-L41
+&#34;&gt;chunked pmap&lt;/a&gt; approach to deserialize batches of records in
+separate threads. Plaintext records (e.g. EDN, JSON) use newlines to separate records. Binary formats use a
+simple length-prefix encoding to write the serialized bytes of the records.&lt;/p&gt;
+
+&lt;p&gt;File size is always important for disk and/or network I/O considerations. Therefore all the row-based
+serialization formats in the benchmarks are compressed using either GZIP (denoted &lt;code&gt;-gz&lt;/code&gt;) or LZ4 (denoted
+&lt;code&gt;-lz4&lt;/code&gt;).&lt;/p&gt;
+
+&lt;h3 id=&#34;serialization-formats:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Serialization formats&lt;/h3&gt;
+
+&lt;p&gt;The table below lists the serialization formats that were considered for the &lt;em&gt;full-schema&lt;/em&gt; benchmarks. To make
+the list, the format has to have a clojure or java API, support nested data structures and not require a
+supporting service to read the file. Unfortunately, this last condition excludes &lt;a href=&#34;http://parquet.io/
+&#34;&gt;Parquet&lt;/a&gt;, the columnar file format most similar to dendrite, because Parquet files &lt;a href=&#34;https://github.com/Parquet/parquet-mr/issues/305
+&#34;&gt;cannot be read&lt;/a&gt; without a supporting Hadoop or Spark cluster.&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Format&lt;/th&gt;
+&lt;th&gt;Project&lt;/th&gt;
+&lt;th&gt;Full EDN&lt;/th&gt;
+&lt;th&gt;Columnar&lt;/th&gt;
+&lt;th&gt;Binary&lt;/th&gt;
+&lt;th&gt;Schema&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Dendrite&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/jwhitbeck/dendrite
+&#34;&gt;dendrite&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;Write only&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;EDN&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://clojure.github.io/clojure/clojure.edn-api.html
+&#34;&gt;clojure.edn&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;JSON&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/dakrone/cheshire
+&#34;&gt;cheshire&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;SMILE&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/dakrone/cheshire
+&#34;&gt;cheshire&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;Protocol buffers&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/ninjudd/clojure-protobuf
+&#34;&gt;clojure-protobuf&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;Read/write&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;Avro&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/damballa/abracad
+&#34;&gt;abracad&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;Write only&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;Fressian&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/clojure/data.fressian
+&#34;&gt;clojure/data.fressian&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;Nippy&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/ptaoussanis/nippy
+&#34;&gt;nippy&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;td&gt;Yes&lt;/td&gt;
+&lt;td&gt;No&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;While cheshire&amp;rsquo;s JSON and SMILE library defaults to decoding record keys as strings, it can also read them as
+keywords for more idiomatic clojure usage. Of course, that incurs the added cost of interning those strings so
+both variants are included in the benchmarks. The keywordized variants are identified by &lt;code&gt;-kw&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;A format is said to have a &lt;em&gt;write-only&lt;/em&gt; schema if that schema is stored within the serialized file
+itself. Therefore a reader does not require any knowledge of the schema prior to reading the file.&lt;/p&gt;
+
+&lt;h3 id=&#34;running-the-benchmarks:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Running the benchmarks&lt;/h3&gt;
+
+&lt;p&gt;The benchmark code, along with instructions on how to run it, is available in the project repository under the
+&lt;a href=&#34;https://github.com/jwhitbeck/dendrite/tree/master/benchmarks
+&#34;&gt;benchmarks&lt;/a&gt; directory.&lt;/p&gt;
+
+&lt;p&gt;If you would like to propose a code change to improve the benchmarks or to add a new format to the mix, please
+do so through a pull-request.&lt;/p&gt;
+
+&lt;h2 id=&#34;benchmark-1-tpc-h:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Benchmark 1: TPC-H&lt;/h2&gt;
+
+&lt;p&gt;The &lt;a href=&#34;
+&#34;&gt;TPC-H&lt;/a&gt; benchmark is widely used by database vendors. For our purposes, we re-use their
+random SQL table generator to build a benchmark dataset of about 600,000 fully-denormalized records. These
+records have moderate nesting and just under 50 leaf values. &lt;a href=&#34;https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/tpc_h.clj
+&#34;&gt;Code&lt;/a&gt; for converting
+TPC-H tables into JSON records is checked into the repo.&lt;/p&gt;
+
+&lt;p&gt;The TPC-H data plays to dendrite&amp;rsquo;s strong points. In particular, the absence of repeated elements in the
+schema means that record assembly can &lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;ignore repetition levels&lt;/a&gt;
+altogether. Furthermore, the low cardinality of many fields (e.g. region names) enables dendrite&amp;rsquo;s
+&lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;dictionary encodings&lt;/a&gt; on most string columns. Given how expensive UTF-8 string
+decoding is in Java, this results in significant speed gains. For example, let&amp;rsquo;s assume a &lt;em&gt;region&lt;/em&gt; column
+consists of a million &lt;code&gt;&amp;quot;EUROPE&amp;quot;&lt;/code&gt;, &lt;code&gt;&amp;quot;ASIA&amp;quot;&lt;/code&gt;, or &lt;code&gt;&amp;quot;AMERICA&amp;quot;&lt;/code&gt; strings. Row-major formats have to deserialize each
+one of those million strings, whereas in a columnar format using a dictionary encoding, those three strings
+are just encoded once into a dictionary array, and all values are encoded as indices into that array. This is
+not only much faster, but also yields a more compact on-disk representation and reduces the pressure on
+the garbage collector.&lt;/p&gt;
+
+&lt;p&gt;Note that some real-world datasets, in particular machine-learning training sets, contain mostly
+low-cardinality columns and dendrite&amp;rsquo;s performance on those will be comparable to its performance on the
+&lt;em&gt;TPC-H&lt;/em&gt; benchmark presented here.&lt;/p&gt;
+
+&lt;h3 id=&#34;sample-record:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sample record&lt;/h3&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:receipt-date&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;1996-03-22&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:return-flag&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;N&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:supplier&lt;/span&gt;
+ &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Supplier#000000785&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:address&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;W VkHBpQyD3qjQjWGpWicOpmILFehmEdWy67kUGY&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:nation&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;RUSSIA&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:region&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;EUROPE&amp;quot;&lt;/span&gt;,
+            &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;ly final courts cajole furiously final&lt;/span&gt;
+&lt;span class=&#34;s&#34;&gt;                      excuse&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot; requests against the platelets use never according&lt;/span&gt;
+&lt;span class=&#34;s&#34;&gt;             to the quickly regular pint&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:phone&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;32-297-653-2203&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:account-balance&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;5364.99&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot; packages boost carefully. express ideas along&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:ship-date&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;1996-03-13&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:ship-mode&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;TRUCK&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:part&lt;/span&gt;
+ &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;powder wheat midnight mint salmon&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:manufacturer&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Manufacturer#4&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:brand&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Brand#44&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:type&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;SMALL ANODIZED STEEL&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;42&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:container&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;JUMBO CASE&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:retail-price&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;1434.51&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;e carefully expre&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:ship-instruct&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;DELIVER IN PERSON&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:commit-date&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;1996-02-12&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:tax&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;0.02&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;egular courts above the&amp;quot;&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:extended-price&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;24386.67&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:order&lt;/span&gt;
+ &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:customer&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Customer#000003691&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:address&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;la3aZ2dd41O3lCSTPnbU&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:nation&lt;/span&gt;
+   &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;FRANCE&amp;quot;&lt;/span&gt;,
+    &lt;span class=&#34;ss&#34;&gt;:region&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:name&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;EUROPE&amp;quot;&lt;/span&gt;,
+     &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;uickly special accounts cajole carefully blithely&lt;/span&gt;
+&lt;span class=&#34;s&#34;&gt;               close requests. carefully final asymptotes haggle&lt;/span&gt;
+&lt;span class=&#34;s&#34;&gt;               furiousl&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+    &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;efully alongside of the slyly final dependencies. &amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:phone&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;20-758-985-1035&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:account-balance&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;7967.22&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:market-segment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;MACHINERY&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;ublate furiously alongside of the pinto bean&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:order-status&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;O&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:total-price&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;194029.55&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:order-date&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;1996-01-02&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:order-priority&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;5-LOW&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:clerk&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Clerk#000000951&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:ship-priority&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:comment&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;nstructions sleep furiously among &amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:quantity&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;17&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:discount&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;0.04&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:line-number&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:line-status&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;O&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schema:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sub-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/tpc_h_query_time_vs_max_column_length.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/tpc_h_query_time_vs_max_column_length.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The plot above is a scatterplot built from many different random queries against the dendrite serialization of
+the TPC-H records. Each point plots the total read time for a given query against the size (on-disk bytes)
+of the largest column in that query.&lt;/p&gt;
+
+&lt;p&gt;These results show that dendrite fulfills the promise of a columnar format by delivering order of magnitude
+speedups when requesting small subsets of the whole data.&lt;/p&gt;
+
+&lt;p&gt;Interestingly, the query read time can be accurately predicted using a simple linear model of two variables
+&lt;em&gt;number of columns&lt;/em&gt; and &lt;em&gt;max column size&lt;/em&gt;. The former is easy to understand, as the cost of record assembly
+scales with the number of columns. The latter is interesting since &lt;em&gt;max column size&lt;/em&gt; is a better predictor of
+read time than the total size of columns in the query. This is explained by dendrite&amp;rsquo;s
+&lt;a href=&#34;http://dendrite.tech/implementation/&#34;&gt;parallel column decoding&lt;/a&gt; implementation, in which the largest column can
+become the bottleneck. This effect is much more pronounced in the other two benchmarks as each have a
+mega-column.&lt;/p&gt;
+
+&lt;h3 id=&#34;full-schema-1:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Full-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/tpc_h_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/tpc_h_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;This plot summarizes how each the &lt;a href=&#34;#full-schema:e40908f34f34adb446212d2eca21c8dd&#34;&gt;parallel variants&lt;/a&gt; of the serialization
+formats perform on disk-usage vs full-schema read time on the 600k TPC-H records. The closer to the top, the
+smaller the file size, and the further to the right, the fastest. As this benchmark plays to dendrite&amp;rsquo;s
+strengths, it is in a class of its own here. The other benchmarks have closer results.&lt;/p&gt;
+
+&lt;p&gt;Both axis units are relative the performance of the gzipped EDN file (the slowest format in the benchmark).&lt;/p&gt;
+
+&lt;p&gt;The red vertical line indicates the time required for GZIP decompression alone (no record deserialization) of
+the JSON file. This line represents the upper bound on read time for &lt;em&gt;any&lt;/em&gt; deserialization code based on
+&lt;a href=&#34;https://docs.oracle.com/javase/7/docs/api/java/util/zip/GZIPInputStream.html
+&#34;&gt;java.util.zip.GZIPInputStream&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Each serialization family has at least two points, corresponding to GZIP and &lt;a href=&#34;https://github.com/jpountz/lz4-java
+&#34;&gt;LZ4&lt;/a&gt;
+compression. Slower formats (EDN, Avro, Fressian) can&amp;rsquo;t make use of a faster decompression algorithm since
+that is not the bottleneck, whereas faster formats (SMILE, Protobuf) can trade-off larger file sizes for
+faster read-times. In this example, dendrite doesn&amp;rsquo;t trade-off anything as it achieves both the smallest file
+size and the fastest read times.&lt;/p&gt;
+
+&lt;p&gt;The two plots detail the read-time and file-size results for all serialization formats and variants.&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/tpc_h_full_schema_avg_read_time.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/tpc_h_full_schema_avg_read_time.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/tpc_h_full_schema_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/tpc_h_full_schema_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;media-content:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Benchmark 2: Media content&lt;/h2&gt;
+
+&lt;p&gt;The &lt;em&gt;media-content&lt;/em&gt; benchmark re-uses the schema from the &lt;a href=&#34;https://github.com/eishay/jvm-serializers/wiki
+&#34;&gt;jvm-serializers&lt;/a&gt;
+benchmarks that measures the round-trip time of encoding/decoding data structures. The records have a shallow
+2-level nesting, one level of repetition, and a mix of integer and string fields (17 in total). Approximately
+400,000 records were generated using the excellent &lt;a href=&#34;http://www.mockaroo.com/
+&#34;&gt;mockaroo&lt;/a&gt; random data
+generator. Compared to the &lt;em&gt;TPC-H&lt;/em&gt; benchmark above, only the &amp;ldquo;enum&amp;rdquo; fields such as &lt;code&gt;:format&lt;/code&gt; or &lt;code&gt;:player&lt;/code&gt; are
+selected for dictionary encodings. &lt;a href=&#34;https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/media_content.clj
+&#34;&gt;Code&lt;/a&gt; for generating the &lt;em&gt;media-content&lt;/em&gt;
+records from &lt;a href=&#34;http://www.mockaroo.com/
+&#34;&gt;mockaroo&lt;/a&gt; is checked into the repo.&lt;/p&gt;
+
+&lt;h3 id=&#34;media-content-record:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sample record&lt;/h3&gt;
+
+&lt;p&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:id&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:media&lt;/span&gt;
+ &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:format&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;MKV&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:width&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;3840&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:copyright&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Feedspan&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:duration&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;158&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;19636&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:title&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Phasellus sit amet erat.&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:persons&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;quot;Joshua Barnes&amp;quot;&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Terry Sanders&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:bitrate&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;400&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:player&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;FLASH&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:uri&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;https://fotki.com/vitae/ipsum/aliquam.js&amp;quot;&lt;/span&gt;,
+  &lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1080&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;,
+ &lt;span class=&#34;ss&#34;&gt;:images&lt;/span&gt;
+ &lt;span class=&#34;p&#34;&gt;[{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;SMALL&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;400&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:width&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;240&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:title&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Etiam pretium iaculis justo.&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:uri&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;https://businessweek.com/amet/nulla/quisque/arcu/libero/&lt;/span&gt;
+&lt;span class=&#34;s&#34;&gt;         rutrum/ac.aspx&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+  &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;&lt;span class=&#34;ss&#34;&gt;:size&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;LARGE&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:height&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;60&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:width&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;250&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:title&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;Aliquam erat volutpat.&amp;quot;&lt;/span&gt;,
+   &lt;span class=&#34;ss&#34;&gt;:uri&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;http://salon.com/iaculis/justo.jsp&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}]}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schema-1:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sub-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/media_content_query_time_vs_max_column_length.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/media_content_query_time_vs_max_column_length.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Just like the equivalent plot in the TPC-H benchmark, the scatterplot above plots
+&lt;em&gt;read time&lt;/em&gt; vs &lt;em&gt;max column size&lt;/em&gt; for random queries for subsets of the &lt;em&gt;media-content&lt;/em&gt; schema.&lt;/p&gt;
+
+&lt;p&gt;As in the &lt;em&gt;TPC-H&lt;/em&gt; sub-schema benchmark, reading fewer columns enables order-of-magnitude speedups.&lt;/p&gt;
+
+&lt;p&gt;Unlike the &lt;em&gt;TPC-H&lt;/em&gt; data, the read-time is dominated by the presence of a mega-column: the &lt;code&gt;:url&lt;/code&gt; inside the
+repeated &lt;code&gt;:images&lt;/code&gt; data structure. If present in the query, the total read-time effectively doubles.&lt;/p&gt;
+
+&lt;h3 id=&#34;full-schema-2:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Full-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/media_content_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/media_content_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;full-schema&lt;/em&gt; results are similar to those of the &lt;em&gt;TPC-H&lt;/em&gt; benchmarks. While dendrite&amp;rsquo;s lead is less
+pronounced, it still offers the smallest file-size and fastest read speed.&lt;/p&gt;
+
+&lt;p&gt;The following two plots detail the read-time and file-size results for all serialization formats and variants.&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/media_content_full_schema_avg_read_time.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/media_content_full_schema_avg_read_time.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/media_content_full_schema_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/media_content_full_schema_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;h2 id=&#34;benchmark-3-user-events:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Benchmark 3: User events&lt;/h2&gt;
+
+&lt;p&gt;The &lt;em&gt;user-events&lt;/em&gt; benchmark was devised to stress dendrite&amp;rsquo;s least efficient encodings and code paths. It
+consists of about 30,000 large (&amp;gt;10KB) deeply nested records with multiply-nested repeated elements. Most of
+the leaf nodes are strings that are not suitable for dictionary encoding. As in the &lt;em&gt;media-content&lt;/em&gt; benchmark,
+these records were generated using the &lt;a href=&#34;http://www.mockaroo.com/
+&#34;&gt;mockaroo&lt;/a&gt; random data generator. The &lt;a href=&#34;https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/user_events.clj
+&#34;&gt;code&lt;/a&gt; for generating the &lt;em&gt;user-events&lt;/em&gt; records is checked into the repo.&lt;/p&gt;
+
+&lt;h3 id=&#34;sample-record-1:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sample record&lt;/h3&gt;
+
+&lt;p&gt;The user event records are quite large (&amp;gt;10KB in plaintext) so the &lt;a href=&#34;http://dendrite.tech/txt/sample_user_event.txt&#34;&gt;sample record&lt;/a&gt;
+is not printed on this page.&lt;/p&gt;
+
+&lt;h3 id=&#34;sub-schema-2:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Sub-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/user_events_query_time_vs_max_column_length.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/user_events_query_time_vs_max_column_length.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;Just like the equivalent plots in the previous benchmarks, the scatterplot above plots
+&lt;em&gt;read time&lt;/em&gt; vs &lt;em&gt;max column size&lt;/em&gt; for random queries for subsets of the &lt;em&gt;media-content&lt;/em&gt; schema.&lt;/p&gt;
+
+&lt;p&gt;Similarly to the previous benchmarks, reading fewer columns enables order-of-magnitude speedups.&lt;/p&gt;
+
+&lt;p&gt;Like the &lt;em&gt;media-content&lt;/em&gt; benchmark, the read-time is dominated by the presence of a mega-column: the &lt;code&gt;:at&lt;/code&gt;
+timestamp field for the repeated &lt;code&gt;:events&lt;/code&gt; structure (itself nested within two repeated structures). If
+present in the query, the total read-time effectively triples.&lt;/p&gt;
+
+&lt;h3 id=&#34;full-schema-3:e40908f34f34adb446212d2eca21c8dd&#34;&gt;Full-schema&lt;/h3&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/user_events_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/user_events_full_schema_read_time_vs_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;full-schema&lt;/em&gt; results are similar to those of the &lt;em&gt;media-content&lt;/em&gt; benchmarks. While dendrite&amp;rsquo;s lead is
+less pronounced, it still offers the smallest file-size and fastest read speed. Interestingly, the schema-less
+SMILE binary encoding does very well on this data and approaches the read performance of protocol buffers.&lt;/p&gt;
+
+&lt;p&gt;The following two plots detail the read-time and file-size results for all serialization formats and variants.&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/user_events_full_schema_avg_read_time.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/user_events_full_schema_avg_read_time.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;figure&gt;
+  &lt;a href=&#34;http://dendrite.tech/img/user_events_full_schema_file_size.svg&#34;&gt;&lt;img src=&#34;http://dendrite.tech/img/user_events_full_schema_file_size.svg&#34;&gt;&lt;/a&gt;
+&lt;/figure&gt;
+&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>File format</title>
+      <link>http://dendrite.tech/format/</link>
+      <pubDate>Sun, 23 Aug 2015 19:30:50 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/format/</guid>
+      <description>
+
+&lt;h1 id=&#34;file-format:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;File format&lt;/h1&gt;
+
+&lt;h2 id=&#34;overview:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Overview&lt;/h2&gt;
+
+&lt;p&gt;Dendrite&amp;rsquo;s file format is very similar to &lt;a href=&#34;http://parquet.io/
+&#34;&gt;Parquet&amp;rsquo;s&lt;/a&gt; file format.&lt;/p&gt;
+
+&lt;figure&gt;
+  &lt;img src=&#34;http://dendrite.tech/img/file-format.svg&#34;&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;TODO: add glossary and description. Discuss units of parallelization.&lt;/p&gt;
+
+&lt;h2 id=&#34;primitives:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Primitives&lt;/h2&gt;
+
+&lt;h3 id=&#34;varints:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Varints&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;length variants&lt;/li&gt;
+&lt;li&gt;zigzag (signed)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&#34;strings:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Strings&lt;/h3&gt;
+
+&lt;p&gt;UTF-8 byte arrays. VarSint + bytes&lt;/p&gt;
+
+&lt;h2 id=&#34;encodings:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Encodings&lt;/h2&gt;
+
+&lt;h2 id=&#34;metadata:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Metadata&lt;/h2&gt;
+
+&lt;h3 id=&#34;record-group:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record-group&lt;/h3&gt;
+
+&lt;h3 id=&#34;column-chunk:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column-chunk&lt;/h3&gt;
+
+&lt;h3 id=&#34;schema:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Schema&lt;/h3&gt;
+
+&lt;h4 id=&#34;column:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column&lt;/h4&gt;
+
+&lt;h4 id=&#34;collection:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Collection&lt;/h4&gt;
+
+&lt;h4 id=&#34;record:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record&lt;/h4&gt;
+
+&lt;p&gt;Field&lt;/p&gt;
+
+&lt;h3 id=&#34;custom-types:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Custom Types&lt;/h3&gt;
+
+&lt;h3 id=&#34;custom-metadata:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Custom metadata&lt;/h3&gt;
+
+&lt;h2 id=&#34;record-group-1:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Record Group&lt;/h2&gt;
+
+&lt;h2 id=&#34;column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Column Chunk&lt;/h2&gt;
+
+&lt;p&gt;Dictionary vs regular columns&lt;/p&gt;
+
+&lt;h2 id=&#34;page:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Page&lt;/h2&gt;
+
+&lt;h3 id=&#34;data:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Data&lt;/h3&gt;
+
+&lt;h3 id=&#34;dictionary:d3946b20e9d5883ac2fef36d3bd47169&#34;&gt;Dictionary&lt;/h3&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Record shredding</title>
+      <link>http://dendrite.tech/shredding/</link>
+      <pubDate>Sun, 18 Oct 2015 19:10:45 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/shredding/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Implementation notes</title>
+      <link>http://dendrite.tech/implementation/</link>
+      <pubDate>Sun, 23 Aug 2015 19:32:18 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/implementation/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

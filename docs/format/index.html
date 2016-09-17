@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.14" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title> File format &middot; Dendrite </title>
+
+  
+  <link rel="stylesheet" href="http://dendrite.tech/css/poole.css">
+  <link rel="stylesheet" href="http://dendrite.tech/css/syntax.css">
+  <link rel="stylesheet" href="http://dendrite.tech/css/hyde.css">
+  <link rel="stylesheet" href="http://dendrite.tech/css/custom.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+</head>
+
+<body class="theme-base-0d">
+  <div class="sidebar">
+  <div class="container">
+    <div class="sidebar-about">
+      <a href="http://dendrite.tech/"><h1>Dendrite</h1></a>
+      <p class="lead">
+        A columnar storage format for Clojure
+      </p>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li><a href="http://dendrite.tech/">Home</a> </li>
+      
+      <li><a href="https://github.com/jwhitbeck/dendrite"> Github project page </a></li>
+      
+      <li><a href="/tutorial/"> Tutorial </a></li>
+      
+      <li><a href="/api/"> API docs </a></li>
+      
+      <li><a href="/benchmarks/"> Benchmarks </a></li>
+      
+      <li><a href="/format/"> File format </a></li>
+      
+      <li><a href="/shredding/"> Record shredding </a></li>
+      
+      <li><a href="/implementation/"> Implementation notes </a></li>
+      
+    </ul>
+
+    <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015. All rights reserved.</span>
+  </div>
+</div>
+
+  <div id="menu">
+  <a href="#"></a>
+</div>
+
+
+  <div class="content container">
+    <div class="post">
+      
+
+<h1 id="file-format:d3946b20e9d5883ac2fef36d3bd47169">File format</h1>
+
+<h2 id="overview:d3946b20e9d5883ac2fef36d3bd47169">Overview</h2>
+
+<p>Dendrite&rsquo;s file format is very similar to <a href="http://parquet.io/
+">Parquet&rsquo;s</a> file format.</p>
+
+<figure>
+  <img src="/img/file-format.svg">
+</figure>
+
+<p>TODO: add glossary and description. Discuss units of parallelization.</p>
+
+<h2 id="primitives:d3946b20e9d5883ac2fef36d3bd47169">Primitives</h2>
+
+<h3 id="varints:d3946b20e9d5883ac2fef36d3bd47169">Varints</h3>
+
+<ul>
+<li>length variants</li>
+<li>zigzag (signed)</li>
+</ul>
+
+<h3 id="strings:d3946b20e9d5883ac2fef36d3bd47169">Strings</h3>
+
+<p>UTF-8 byte arrays. VarSint + bytes</p>
+
+<h2 id="encodings:d3946b20e9d5883ac2fef36d3bd47169">Encodings</h2>
+
+<h2 id="metadata:d3946b20e9d5883ac2fef36d3bd47169">Metadata</h2>
+
+<h3 id="record-group:d3946b20e9d5883ac2fef36d3bd47169">Record-group</h3>
+
+<h3 id="column-chunk:d3946b20e9d5883ac2fef36d3bd47169">Column-chunk</h3>
+
+<h3 id="schema:d3946b20e9d5883ac2fef36d3bd47169">Schema</h3>
+
+<h4 id="column:d3946b20e9d5883ac2fef36d3bd47169">Column</h4>
+
+<h4 id="collection:d3946b20e9d5883ac2fef36d3bd47169">Collection</h4>
+
+<h4 id="record:d3946b20e9d5883ac2fef36d3bd47169">Record</h4>
+
+<p>Field</p>
+
+<h3 id="custom-types:d3946b20e9d5883ac2fef36d3bd47169">Custom Types</h3>
+
+<h3 id="custom-metadata:d3946b20e9d5883ac2fef36d3bd47169">Custom metadata</h3>
+
+<h2 id="record-group-1:d3946b20e9d5883ac2fef36d3bd47169">Record Group</h2>
+
+<h2 id="column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169">Column Chunk</h2>
+
+<p>Dictionary vs regular columns</p>
+
+<h2 id="page:d3946b20e9d5883ac2fef36d3bd47169">Page</h2>
+
+<h3 id="data:d3946b20e9d5883ac2fef36d3bd47169">Data</h3>
+
+<h3 id="dictionary:d3946b20e9d5883ac2fef36d3bd47169">Dictionary</h3>
+
+    </div>
+  </div>
+
+  
+  <div class="toc">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#file-format:d3946b20e9d5883ac2fef36d3bd47169">File format</a>
+<ul>
+<li><a href="#overview:d3946b20e9d5883ac2fef36d3bd47169">Overview</a></li>
+<li><a href="#primitives:d3946b20e9d5883ac2fef36d3bd47169">Primitives</a>
+<ul>
+<li><a href="#varints:d3946b20e9d5883ac2fef36d3bd47169">Varints</a></li>
+<li><a href="#strings:d3946b20e9d5883ac2fef36d3bd47169">Strings</a></li>
+</ul></li>
+<li><a href="#encodings:d3946b20e9d5883ac2fef36d3bd47169">Encodings</a></li>
+<li><a href="#metadata:d3946b20e9d5883ac2fef36d3bd47169">Metadata</a>
+<ul>
+<li><a href="#record-group:d3946b20e9d5883ac2fef36d3bd47169">Record-group</a></li>
+<li><a href="#column-chunk:d3946b20e9d5883ac2fef36d3bd47169">Column-chunk</a></li>
+<li><a href="#schema:d3946b20e9d5883ac2fef36d3bd47169">Schema</a>
+<ul>
+<li><a href="#column:d3946b20e9d5883ac2fef36d3bd47169">Column</a></li>
+<li><a href="#collection:d3946b20e9d5883ac2fef36d3bd47169">Collection</a></li>
+<li><a href="#record:d3946b20e9d5883ac2fef36d3bd47169">Record</a></li>
+</ul></li>
+<li><a href="#custom-types:d3946b20e9d5883ac2fef36d3bd47169">Custom Types</a></li>
+<li><a href="#custom-metadata:d3946b20e9d5883ac2fef36d3bd47169">Custom metadata</a></li>
+</ul></li>
+<li><a href="#record-group-1:d3946b20e9d5883ac2fef36d3bd47169">Record Group</a></li>
+<li><a href="#column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169">Column Chunk</a></li>
+<li><a href="#page:d3946b20e9d5883ac2fef36d3bd47169">Page</a>
+<ul>
+<li><a href="#data:d3946b20e9d5883ac2fef36d3bd47169">Data</a></li>
+<li><a href="#dictionary:d3946b20e9d5883ac2fef36d3bd47169">Dictionary</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+  
+
+</body>
+<script src="/js/site.min.js"></script>
+</html>
+

@@ -9,4 +9,4 @@
         :url "https://github.com/jwhitbeck/dendrite"}
   :profiles {:dev {:java-opts ["-server"]
                    :plugins [[codox "0.8.13"]]
-                   :codox {:output-dir "../www/public/api"}}})
+                   :codox {:output-dir "../docs/api"}}})

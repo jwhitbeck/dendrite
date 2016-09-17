@@ -1,0 +1,75 @@
+/* Custom css */
+
+/*
+ * Table of contents
+ *
+ * Display a fixed table of contents on the right side of the content if the viewport is wide enough.
+ */
+
+.toc {
+  display: none;
+}
+
+@media (min-width: 100em) {
+  .toc {
+    display: block;
+    position: absolute;
+    width: 18rem;
+    top: 6rem;
+    /* sidebar is 20rem, main content is 38rem; */
+    left: 62rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border: #f9f9f9 3px solid;
+  }
+}
+
+.toc ul {
+  padding-left: 1rem;
+}
+
+.toc nav > ul > li {
+  list-style: none;
+}
+
+.toc li {
+  list-style: outside circle;
+}
+
+.toc nav ul {
+  margin-bottom: inherit
+}
+
+.toc nav > ul > li > ul > li {
+  margin-top: 0.5rem;
+}
+
+/*
+ * Hamburger menu on small screens. Show in top right corner on mobile. Hide otherwise.
+ */
+
+#menu {
+  display: block;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+}
+
+#menu a {
+  height: 32px;
+  width: 32px;
+  display: inline-block;
+  background-image: url("/img/menu_black.svg");
+  background-position: center;
+  background-size: cover;
+}
+
+#menu.clicked a {
+  background-image: url("/img/menu_white_reversed.svg");
+}
+
+@media (min-width: 48em) {
+  #menu {
+    display: none;
+  }
+}

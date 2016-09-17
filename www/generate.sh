@@ -5,7 +5,7 @@
 set -e
 
 # clear everything under public
-rm -rf public/*
+rm -rf ../docs/*
 
 # Renegerate static assets
 uglifyjs --compress --mangle -- res/site.js > static/js/site.min.js
@@ -17,4 +17,4 @@ lein doc
 popd
 
 # Regenerate static website
-hugo
+hugo --destination=../docs/
