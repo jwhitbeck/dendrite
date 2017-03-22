@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="generator" content="Hugo 0.14" />
+  <meta name="generator" content="Hugo 0.16" />
 
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -35,7 +35,7 @@
       
       <li><a href="/tutorial/"> Tutorial </a></li>
       
-      <li><a href="/api/"> API docs </a></li>
+      <li><a href="/api"> API docs </a></li>
       
       <li><a href="/benchmarks/"> Benchmarks </a></li>
       
@@ -47,7 +47,7 @@
       
     </ul>
 
-    <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015. All rights reserved.</span>
+    <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015-2017. All rights reserved.</span>
   </div>
 </div>
 
@@ -60,9 +60,9 @@
     <div class="post">
       
 
-<h1 id="file-format:d3946b20e9d5883ac2fef36d3bd47169">File format</h1>
+<h1 id="file-format">File format</h1>
 
-<h2 id="overview:d3946b20e9d5883ac2fef36d3bd47169">Overview</h2>
+<h2 id="overview">Overview</h2>
 
 <p>Dendrite&rsquo;s file format is very similar to <a href="http://parquet.io/
 ">Parquet&rsquo;s</a> file format.</p>
@@ -73,52 +73,52 @@
 
 <p>TODO: add glossary and description. Discuss units of parallelization.</p>
 
-<h2 id="primitives:d3946b20e9d5883ac2fef36d3bd47169">Primitives</h2>
+<h2 id="primitives">Primitives</h2>
 
-<h3 id="varints:d3946b20e9d5883ac2fef36d3bd47169">Varints</h3>
+<h3 id="varints">Varints</h3>
 
 <ul>
 <li>length variants</li>
 <li>zigzag (signed)</li>
 </ul>
 
-<h3 id="strings:d3946b20e9d5883ac2fef36d3bd47169">Strings</h3>
+<h3 id="strings">Strings</h3>
 
 <p>UTF-8 byte arrays. VarSint + bytes</p>
 
-<h2 id="encodings:d3946b20e9d5883ac2fef36d3bd47169">Encodings</h2>
+<h2 id="encodings">Encodings</h2>
 
-<h2 id="metadata:d3946b20e9d5883ac2fef36d3bd47169">Metadata</h2>
+<h2 id="metadata">Metadata</h2>
 
-<h3 id="record-group:d3946b20e9d5883ac2fef36d3bd47169">Record-group</h3>
+<h3 id="record-group">Record-group</h3>
 
-<h3 id="column-chunk:d3946b20e9d5883ac2fef36d3bd47169">Column-chunk</h3>
+<h3 id="column-chunk">Column-chunk</h3>
 
-<h3 id="schema:d3946b20e9d5883ac2fef36d3bd47169">Schema</h3>
+<h3 id="schema">Schema</h3>
 
-<h4 id="column:d3946b20e9d5883ac2fef36d3bd47169">Column</h4>
+<h4 id="column">Column</h4>
 
-<h4 id="collection:d3946b20e9d5883ac2fef36d3bd47169">Collection</h4>
+<h4 id="collection">Collection</h4>
 
-<h4 id="record:d3946b20e9d5883ac2fef36d3bd47169">Record</h4>
+<h4 id="record">Record</h4>
 
 <p>Field</p>
 
-<h3 id="custom-types:d3946b20e9d5883ac2fef36d3bd47169">Custom Types</h3>
+<h3 id="custom-types">Custom Types</h3>
 
-<h3 id="custom-metadata:d3946b20e9d5883ac2fef36d3bd47169">Custom metadata</h3>
+<h3 id="custom-metadata">Custom metadata</h3>
 
-<h2 id="record-group-1:d3946b20e9d5883ac2fef36d3bd47169">Record Group</h2>
+<h2 id="record-group-1">Record Group</h2>
 
-<h2 id="column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169">Column Chunk</h2>
+<h2 id="column-chunk-1">Column Chunk</h2>
 
 <p>Dictionary vs regular columns</p>
 
-<h2 id="page:d3946b20e9d5883ac2fef36d3bd47169">Page</h2>
+<h2 id="page">Page</h2>
 
-<h3 id="data:d3946b20e9d5883ac2fef36d3bd47169">Data</h3>
+<h3 id="data">Data</h3>
 
-<h3 id="dictionary:d3946b20e9d5883ac2fef36d3bd47169">Dictionary</h3>
+<h3 id="dictionary">Dictionary</h3>
 
     </div>
   </div>
@@ -127,34 +127,34 @@
   <div class="toc">
     <nav id="TableOfContents">
 <ul>
-<li><a href="#file-format:d3946b20e9d5883ac2fef36d3bd47169">File format</a>
+<li><a href="#file-format">File format</a>
 <ul>
-<li><a href="#overview:d3946b20e9d5883ac2fef36d3bd47169">Overview</a></li>
-<li><a href="#primitives:d3946b20e9d5883ac2fef36d3bd47169">Primitives</a>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#primitives">Primitives</a>
 <ul>
-<li><a href="#varints:d3946b20e9d5883ac2fef36d3bd47169">Varints</a></li>
-<li><a href="#strings:d3946b20e9d5883ac2fef36d3bd47169">Strings</a></li>
+<li><a href="#varints">Varints</a></li>
+<li><a href="#strings">Strings</a></li>
 </ul></li>
-<li><a href="#encodings:d3946b20e9d5883ac2fef36d3bd47169">Encodings</a></li>
-<li><a href="#metadata:d3946b20e9d5883ac2fef36d3bd47169">Metadata</a>
+<li><a href="#encodings">Encodings</a></li>
+<li><a href="#metadata">Metadata</a>
 <ul>
-<li><a href="#record-group:d3946b20e9d5883ac2fef36d3bd47169">Record-group</a></li>
-<li><a href="#column-chunk:d3946b20e9d5883ac2fef36d3bd47169">Column-chunk</a></li>
-<li><a href="#schema:d3946b20e9d5883ac2fef36d3bd47169">Schema</a>
+<li><a href="#record-group">Record-group</a></li>
+<li><a href="#column-chunk">Column-chunk</a></li>
+<li><a href="#schema">Schema</a>
 <ul>
-<li><a href="#column:d3946b20e9d5883ac2fef36d3bd47169">Column</a></li>
-<li><a href="#collection:d3946b20e9d5883ac2fef36d3bd47169">Collection</a></li>
-<li><a href="#record:d3946b20e9d5883ac2fef36d3bd47169">Record</a></li>
+<li><a href="#column">Column</a></li>
+<li><a href="#collection">Collection</a></li>
+<li><a href="#record">Record</a></li>
 </ul></li>
-<li><a href="#custom-types:d3946b20e9d5883ac2fef36d3bd47169">Custom Types</a></li>
-<li><a href="#custom-metadata:d3946b20e9d5883ac2fef36d3bd47169">Custom metadata</a></li>
+<li><a href="#custom-types">Custom Types</a></li>
+<li><a href="#custom-metadata">Custom metadata</a></li>
 </ul></li>
-<li><a href="#record-group-1:d3946b20e9d5883ac2fef36d3bd47169">Record Group</a></li>
-<li><a href="#column-chunk-1:d3946b20e9d5883ac2fef36d3bd47169">Column Chunk</a></li>
-<li><a href="#page:d3946b20e9d5883ac2fef36d3bd47169">Page</a>
+<li><a href="#record-group-1">Record Group</a></li>
+<li><a href="#column-chunk-1">Column Chunk</a></li>
+<li><a href="#page">Page</a>
 <ul>
-<li><a href="#data:d3946b20e9d5883ac2fef36d3bd47169">Data</a></li>
-<li><a href="#dictionary:d3946b20e9d5883ac2fef36d3bd47169">Dictionary</a></li>
+<li><a href="#data">Data</a></li>
+<li><a href="#dictionary">Dictionary</a></li>
 </ul></li>
 </ul></li>
 </ul>

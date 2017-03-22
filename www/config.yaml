@@ -6,7 +6,7 @@ pygmentsuseclasses: true
 params:
   description: A columnar storage format for Clojure
   githubUrl: https://github.com/jwhitbeck/dendrite
-  copyright: John Whitbeck 2015
+  copyright: John Whitbeck 2015-2017
   themeColor: theme-base-0d
 menu:
   main:

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="generator" content="Hugo 0.14" />
+  <meta name="generator" content="Hugo 0.16" />
 
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -35,7 +35,7 @@
       
       <li><a href="/tutorial/"> Tutorial </a></li>
       
-      <li><a href="/api/"> API docs </a></li>
+      <li><a href="/api"> API docs </a></li>
       
       <li><a href="/benchmarks/"> Benchmarks </a></li>
       
@@ -47,7 +47,7 @@
       
     </ul>
 
-    <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015. All rights reserved.</span>
+    <span class="copyright sidebar-sticky">&copy; John Whitbeck 2015-2017. All rights reserved.</span>
   </div>
 </div>
 
@@ -60,9 +60,9 @@
     <div class="post">
       
 
-<h1 id="benchmarks:e40908f34f34adb446212d2eca21c8dd">Benchmarks</h1>
+<h1 id="benchmarks">Benchmarks</h1>
 
-<h2 id="overview:e40908f34f34adb446212d2eca21c8dd">Overview</h2>
+<h2 id="overview">Overview</h2>
 
 <p>Performance is one of the main design goals of dendrite. From the very beginning, benchmarks have been a core
 part of its development workflow. The results below highlight how dendrite&rsquo;s key performance metrics such as
@@ -77,7 +77,7 @@ other common formats on three datasets with very different characteristics.</p>
 <p>The usual benchmark disclaimers apply. The datasets below may not be representative of your own and your
 mileage may vary.</p>
 
-<h3 id="methodology:e40908f34f34adb446212d2eca21c8dd">Methodology</h3>
+<h3 id="methodology">Methodology</h3>
 
 <p>Fair benchmarks are notoriously difficult to set up. Nothing too sophisticated went it the results below, but
 in general, a few dummy runs were performed to warm the Hotspot JIT compiler and to ensure that the files were
@@ -88,14 +88,14 @@ disadvantage since dendrite files are typically 30% smaller than gzipped row-bas
 ">c3.2xlarge EC2</a> instance running Ubuntu
 14.04LTS.</p>
 
-<h4 id="sub-schema-benchmark:e40908f34f34adb446212d2eca21c8dd">Sub-schema benchmark</h4>
+<h4 id="sub-schema-benchmark">Sub-schema benchmark</h4>
 
 <p>The <em>sub-schema</em> benchmarks measure the file scan time of dendrite queries with varying number of columns. If
 a dendrite file has 100 columns, then for each <em>i</em> between 1 an 100, generate 100 random queries hitting <em>i</em>
 columns and read the entire file with each query. This benchmark measure how file scan time is impacted by the
 number of columns read and their size on disk.</p>
 
-<h4 id="full-schema:e40908f34f34adb446212d2eca21c8dd">Full-schema benchmark</h4>
+<h4 id="full-schema">Full-schema benchmark</h4>
 
 <p>The <em>full-schema</em> benchmarks compare the full scan time of files using different serialization formats. Given
 that dendrite performs parallel record assembly, all file formats have a parallel variant (denoted by <code>-par</code>
@@ -108,7 +108,7 @@ simple length-prefix encoding to write the serialized bytes of the records.</p>
 serialization formats in the benchmarks are compressed using either GZIP (denoted <code>-gz</code>) or LZ4 (denoted
 <code>-lz4</code>).</p>
 
-<h3 id="serialization-formats:e40908f34f34adb446212d2eca21c8dd">Serialization formats</h3>
+<h3 id="serialization-formats">Serialization formats</h3>
 
 <p>The table below lists the serialization formats that were considered for the <em>full-schema</em> benchmarks. To make
 the list, the format has to have a clojure or java API, support nested data structures and not require a
@@ -218,7 +218,7 @@ both variants are included in the benchmarks. The keywordized variants are ident
 <p>A format is said to have a <em>write-only</em> schema if that schema is stored within the serialized file
 itself. Therefore a reader does not require any knowledge of the schema prior to reading the file.</p>
 
-<h3 id="running-the-benchmarks:e40908f34f34adb446212d2eca21c8dd">Running the benchmarks</h3>
+<h3 id="running-the-benchmarks">Running the benchmarks</h3>
 
 <p>The benchmark code, along with instructions on how to run it, is available in the project repository under the
 <a href="https://github.com/jwhitbeck/dendrite/tree/master/benchmarks
@@ -227,7 +227,7 @@ itself. Therefore a reader does not require any knowledge of the schema prior to
 <p>If you would like to propose a code change to improve the benchmarks or to add a new format to the mix, please
 do so through a pull-request.</p>
 
-<h2 id="benchmark-1-tpc-h:e40908f34f34adb446212d2eca21c8dd">Benchmark 1: TPC-H</h2>
+<h2 id="benchmark-1-tpc-h">Benchmark 1: TPC-H</h2>
 
 <p>The <a href="
 ">TPC-H</a> benchmark is widely used by database vendors. For our purposes, we re-use their
@@ -251,9 +251,9 @@ the garbage collector.</p>
 low-cardinality columns and dendrite&rsquo;s performance on those will be comparable to its performance on the
 <em>TPC-H</em> benchmark presented here.</p>
 
-<h3 id="sample-record:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+<h3 id="sample-record">Sample record</h3>
 
-<p><div class="highlight"><pre><span class="p">{</span><span class="ss">:receipt-date</span> <span class="s">&quot;1996-03-22&quot;</span>,
+<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">{</span><span class="ss">:receipt-date</span> <span class="s">&quot;1996-03-22&quot;</span>,
  <span class="ss">:return-flag</span> <span class="s">&quot;N&quot;</span>,
  <span class="ss">:supplier</span>
  <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;Supplier#000000785&quot;</span>,
@@ -311,15 +311,15 @@ low-cardinality columns and dendrite&rsquo;s performance on those will be compar
  <span class="ss">:discount</span> <span class="mf">0.04</span>,
  <span class="ss">:line-number</span> <span class="mi">1</span>,
  <span class="ss">:line-status</span> <span class="s">&quot;O&quot;</span><span class="p">}</span>
-</pre></div>
-</p>
+</code></pre></div>
 
-<h3 id="sub-schema:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
 
-<p><figure>
+<h3 id="sub-schema">Sub-schema</h3>
+
+<figure>
   <a href="/img/tpc_h_query_time_vs_max_column_length.svg"><img src="/img/tpc_h_query_time_vs_max_column_length.svg"></a>
 </figure>
-</p>
+
 
 <p>The plot above is a scatterplot built from many different random queries against the dendrite serialization of
 the TPC-H records. Each point plots the total read time for a given query against the size (on-disk bytes)
@@ -336,14 +336,14 @@ read time than the total size of columns in the query. This is explained by dend
 become the bottleneck. This effect is much more pronounced in the other two benchmarks as each have a
 mega-column.</p>
 
-<h3 id="full-schema-1:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+<h3 id="full-schema-1">Full-schema</h3>
 
-<p><figure>
+<figure>
   <a href="/img/tpc_h_full_schema_read_time_vs_file_size.svg"><img src="/img/tpc_h_full_schema_read_time_vs_file_size.svg"></a>
 </figure>
-</p>
 
-<p>This plot summarizes how each the <a href="#full-schema:e40908f34f34adb446212d2eca21c8dd">parallel variants</a> of the serialization
+
+<p>This plot summarizes how each the <a href="#full-schema">parallel variants</a> of the serialization
 formats perform on disk-usage vs full-schema read time on the 600k TPC-H records. The closer to the top, the
 smaller the file size, and the further to the right, the fastest. As this benchmark plays to dendrite&rsquo;s
 strengths, it is in a class of its own here. The other benchmarks have closer results.</p>
@@ -364,17 +364,17 @@ size and the fastest read times.</p>
 
 <p>The two plots detail the read-time and file-size results for all serialization formats and variants.</p>
 
-<p><figure>
+<figure>
   <a href="/img/tpc_h_full_schema_avg_read_time.svg"><img src="/img/tpc_h_full_schema_avg_read_time.svg"></a>
 </figure>
-</p>
 
-<p><figure>
+
+<figure>
   <a href="/img/tpc_h_full_schema_file_size.svg"><img src="/img/tpc_h_full_schema_file_size.svg"></a>
 </figure>
-</p>
 
-<h2 id="media-content:e40908f34f34adb446212d2eca21c8dd">Benchmark 2: Media content</h2>
+
+<h2 id="media-content">Benchmark 2: Media content</h2>
 
 <p>The <em>media-content</em> benchmark re-uses the schema from the <a href="https://github.com/eishay/jvm-serializers/wiki
 ">jvm-serializers</a>
@@ -388,9 +388,9 @@ selected for dictionary encodings. <a href="https://github.com/jwhitbeck/dendrit
 records from <a href="http://www.mockaroo.com/
 ">mockaroo</a> is checked into the repo.</p>
 
-<h3 id="media-content-record:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+<h3 id="media-content-record">Sample record</h3>
 
-<p><div class="highlight"><pre><span class="p">{</span><span class="ss">:id</span> <span class="mi">0</span>,
+<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">{</span><span class="ss">:id</span> <span class="mi">0</span>,
  <span class="ss">:media</span>
  <span class="p">{</span><span class="ss">:format</span> <span class="s">&quot;MKV&quot;</span>,
   <span class="ss">:width</span> <span class="mi">3840</span>,
@@ -415,15 +415,15 @@ records from <a href="http://www.mockaroo.com/
    <span class="ss">:width</span> <span class="mi">250</span>,
    <span class="ss">:title</span> <span class="s">&quot;Aliquam erat volutpat.&quot;</span>,
    <span class="ss">:uri</span> <span class="s">&quot;http://salon.com/iaculis/justo.jsp&quot;</span><span class="p">}]}</span>
-</pre></div>
-</p>
+</code></pre></div>
 
-<h3 id="sub-schema-1:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
 
-<p><figure>
+<h3 id="sub-schema-1">Sub-schema</h3>
+
+<figure>
   <a href="/img/media_content_query_time_vs_max_column_length.svg"><img src="/img/media_content_query_time_vs_max_column_length.svg"></a>
 </figure>
-</p>
+
 
 <p>Just like the equivalent plot in the TPC-H benchmark, the scatterplot above plots
 <em>read time</em> vs <em>max column size</em> for random queries for subsets of the <em>media-content</em> schema.</p>
@@ -433,29 +433,29 @@ records from <a href="http://www.mockaroo.com/
 <p>Unlike the <em>TPC-H</em> data, the read-time is dominated by the presence of a mega-column: the <code>:url</code> inside the
 repeated <code>:images</code> data structure. If present in the query, the total read-time effectively doubles.</p>
 
-<h3 id="full-schema-2:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+<h3 id="full-schema-2">Full-schema</h3>
 
-<p><figure>
+<figure>
   <a href="/img/media_content_full_schema_read_time_vs_file_size.svg"><img src="/img/media_content_full_schema_read_time_vs_file_size.svg"></a>
 </figure>
-</p>
+
 
 <p>The <em>full-schema</em> results are similar to those of the <em>TPC-H</em> benchmarks. While dendrite&rsquo;s lead is less
 pronounced, it still offers the smallest file-size and fastest read speed.</p>
 
 <p>The following two plots detail the read-time and file-size results for all serialization formats and variants.</p>
 
-<p><figure>
+<figure>
   <a href="/img/media_content_full_schema_avg_read_time.svg"><img src="/img/media_content_full_schema_avg_read_time.svg"></a>
 </figure>
-</p>
 
-<p><figure>
+
+<figure>
   <a href="/img/media_content_full_schema_file_size.svg"><img src="/img/media_content_full_schema_file_size.svg"></a>
 </figure>
-</p>
 
-<h2 id="benchmark-3-user-events:e40908f34f34adb446212d2eca21c8dd">Benchmark 3: User events</h2>
+
+<h2 id="benchmark-3-user-events">Benchmark 3: User events</h2>
 
 <p>The <em>user-events</em> benchmark was devised to stress dendrite&rsquo;s least efficient encodings and code paths. It
 consists of about 30,000 large (&gt;10KB) deeply nested records with multiply-nested repeated elements. Most of
@@ -464,17 +464,17 @@ these records were generated using the <a href="http://www.mockaroo.com/
 ">mockaroo</a> random data generator. The <a href="https://github.com/jwhitbeck/dendrite/blob/master/benchmarks/src/dendrite/benchmarks/user_events.clj
 ">code</a> for generating the <em>user-events</em> records is checked into the repo.</p>
 
-<h3 id="sample-record-1:e40908f34f34adb446212d2eca21c8dd">Sample record</h3>
+<h3 id="sample-record-1">Sample record</h3>
 
 <p>The user event records are quite large (&gt;10KB in plaintext) so the <a href="/txt/sample_user_event.txt">sample record</a>
 is not printed on this page.</p>
 
-<h3 id="sub-schema-2:e40908f34f34adb446212d2eca21c8dd">Sub-schema</h3>
+<h3 id="sub-schema-2">Sub-schema</h3>
 
-<p><figure>
+<figure>
   <a href="/img/user_events_query_time_vs_max_column_length.svg"><img src="/img/user_events_query_time_vs_max_column_length.svg"></a>
 </figure>
-</p>
+
 
 <p>Just like the equivalent plots in the previous benchmarks, the scatterplot above plots
 <em>read time</em> vs <em>max column size</em> for random queries for subsets of the <em>media-content</em> schema.</p>
@@ -485,12 +485,12 @@ is not printed on this page.</p>
 timestamp field for the repeated <code>:events</code> structure (itself nested within two repeated structures). If
 present in the query, the total read-time effectively triples.</p>
 
-<h3 id="full-schema-3:e40908f34f34adb446212d2eca21c8dd">Full-schema</h3>
+<h3 id="full-schema-3">Full-schema</h3>
 
-<p><figure>
+<figure>
   <a href="/img/user_events_full_schema_read_time_vs_file_size.svg"><img src="/img/user_events_full_schema_read_time_vs_file_size.svg"></a>
 </figure>
-</p>
+
 
 <p>The <em>full-schema</em> results are similar to those of the <em>media-content</em> benchmarks. While dendrite&rsquo;s lead is
 less pronounced, it still offers the smallest file-size and fastest read speed. Interestingly, the schema-less
@@ -498,15 +498,15 @@ SMILE binary encoding does very well on this data and approaches the read perfor
 
 <p>The following two plots detail the read-time and file-size results for all serialization formats and variants.</p>
 
-<p><figure>
+<figure>
   <a href="/img/user_events_full_schema_avg_read_time.svg"><img src="/img/user_events_full_schema_avg_read_time.svg"></a>
 </figure>
-</p>
 
-<p><figure>
+
+<figure>
   <a href="/img/user_events_full_schema_file_size.svg"><img src="/img/user_events_full_schema_file_size.svg"></a>
 </figure>
-</p>
+
 
     </div>
   </div>
@@ -515,35 +515,35 @@ SMILE binary encoding does very well on this data and approaches the read perfor
   <div class="toc">
     <nav id="TableOfContents">
 <ul>
-<li><a href="#benchmarks:e40908f34f34adb446212d2eca21c8dd">Benchmarks</a>
+<li><a href="#benchmarks">Benchmarks</a>
 <ul>
-<li><a href="#overview:e40908f34f34adb446212d2eca21c8dd">Overview</a>
+<li><a href="#overview">Overview</a>
 <ul>
-<li><a href="#methodology:e40908f34f34adb446212d2eca21c8dd">Methodology</a>
+<li><a href="#methodology">Methodology</a>
 <ul>
-<li><a href="#sub-schema-benchmark:e40908f34f34adb446212d2eca21c8dd">Sub-schema benchmark</a></li>
-<li><a href="#full-schema:e40908f34f34adb446212d2eca21c8dd">Full-schema benchmark</a></li>
+<li><a href="#sub-schema-benchmark">Sub-schema benchmark</a></li>
+<li><a href="#full-schema">Full-schema benchmark</a></li>
 </ul></li>
-<li><a href="#serialization-formats:e40908f34f34adb446212d2eca21c8dd">Serialization formats</a></li>
-<li><a href="#running-the-benchmarks:e40908f34f34adb446212d2eca21c8dd">Running the benchmarks</a></li>
+<li><a href="#serialization-formats">Serialization formats</a></li>
+<li><a href="#running-the-benchmarks">Running the benchmarks</a></li>
 </ul></li>
-<li><a href="#benchmark-1-tpc-h:e40908f34f34adb446212d2eca21c8dd">Benchmark 1: TPC-H</a>
+<li><a href="#benchmark-1-tpc-h">Benchmark 1: TPC-H</a>
 <ul>
-<li><a href="#sample-record:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
-<li><a href="#sub-schema:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
-<li><a href="#full-schema-1:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+<li><a href="#sample-record">Sample record</a></li>
+<li><a href="#sub-schema">Sub-schema</a></li>
+<li><a href="#full-schema-1">Full-schema</a></li>
 </ul></li>
-<li><a href="#media-content:e40908f34f34adb446212d2eca21c8dd">Benchmark 2: Media content</a>
+<li><a href="#media-content">Benchmark 2: Media content</a>
 <ul>
-<li><a href="#media-content-record:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
-<li><a href="#sub-schema-1:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
-<li><a href="#full-schema-2:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+<li><a href="#media-content-record">Sample record</a></li>
+<li><a href="#sub-schema-1">Sub-schema</a></li>
+<li><a href="#full-schema-2">Full-schema</a></li>
 </ul></li>
-<li><a href="#benchmark-3-user-events:e40908f34f34adb446212d2eca21c8dd">Benchmark 3: User events</a>
+<li><a href="#benchmark-3-user-events">Benchmark 3: User events</a>
 <ul>
-<li><a href="#sample-record-1:e40908f34f34adb446212d2eca21c8dd">Sample record</a></li>
-<li><a href="#sub-schema-2:e40908f34f34adb446212d2eca21c8dd">Sub-schema</a></li>
-<li><a href="#full-schema-3:e40908f34f34adb446212d2eca21c8dd">Full-schema</a></li>
+<li><a href="#sample-record-1">Sample record</a></li>
+<li><a href="#sub-schema-2">Sub-schema</a></li>
+<li><a href="#full-schema-3">Full-schema</a></li>
 </ul></li>
 </ul></li>
 </ul>
