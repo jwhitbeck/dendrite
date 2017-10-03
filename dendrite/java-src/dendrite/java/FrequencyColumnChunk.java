@@ -139,8 +139,10 @@ public final class FrequencyColumnChunk {
 
     private void updateDictionaryLengthEstimates() {
       IPageHeader h = dictPageWriter.getHeader();
-      bytesPerDictionaryValue
-        = (int)((double)h.getBodyLength() / (double)dictPageWriter.getNumValues());
+      double numValues = dictPageWriter.getNumValues();
+      bytesPerDictionaryValue = numValues > 0 ?
+          h.getBodyLength() / numValues :
+          4;
       dictionaryHeaderLength = h.getHeaderLength();
     }
 
