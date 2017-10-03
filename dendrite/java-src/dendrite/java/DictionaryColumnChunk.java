@@ -135,8 +135,12 @@ public final class DictionaryColumnChunk {
 
     private void updateDictionaryLengthEstimates() {
       IPageHeader h = dictPageWriter.getHeader();
-      bytesPerDictionaryValue
-        = (int)((double)h.getBodyLength() / (double)dictPageWriter.getNumValues());
+      int numValues = dictPageWriter.getNumValues();
+      if (numValues > 0) {
+        bytesPerDictionaryValue = (int)((double)h.getBodyLength() / (double)numValues);
+      } else {
+        bytesPerDictionaryValue = 4;
+      }
       dictionaryHeaderLength = h.getHeaderLength();
     }
 
