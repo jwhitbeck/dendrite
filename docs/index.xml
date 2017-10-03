@@ -2,29 +2,13 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Dendrite</title>
-    <link>http://dendrite.tech/</link>
+    <link>http://dendrite.tech/index.xml</link>
     <description>Recent content on Dendrite</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-US</language>
-    <lastBuildDate>Sun, 23 Aug 2015 17:56:28 -0700</lastBuildDate>
+    <copyright>John Whitbeck 2015-2017</copyright>
+    <lastBuildDate>Sun, 23 Aug 2015 19:31:12 -0700</lastBuildDate>
     <atom:link href="http://dendrite.tech/index.xml" rel="self" type="application/rss+xml" />
-    
-    <item>
-      <title>Introducing Dendrite</title>
-      <link>http://dendrite.tech/</link>
-      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
-      
-      <guid>http://dendrite.tech/</guid>
-      <description>&lt;p&gt;Website under construction. The following sections have content:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/tutorial/&#34;&gt;Tutorial&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/api&#34;&gt;API docs&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/benchmarks/&#34;&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;File format&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-</description>
-    </item>
     
     <item>
       <title>Tutorial</title>
@@ -41,7 +25,7 @@ advantage of the columnar format for your queries, and how to efficiently apply 
 
 &lt;p&gt;The examples below assume that you have started a REPL in a project that imports dendrite as&lt;/p&gt;
 
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;code class=&#34;language-clojure&#34; data-lang=&#34;clojure&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;0.5.5&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre&gt;&lt;code class=&#34;language-clojure&#34; data-lang=&#34;clojure&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nv&#34;&gt;dendrite&lt;/span&gt; &lt;span class=&#34;s&#34;&gt;&amp;quot;0.5.7&amp;quot;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 
@@ -1833,6 +1817,23 @@ SMILE binary encoding does very well on this data and approaches the read perfor
       
       <guid>http://dendrite.tech/implementation/</guid>
       <description></description>
+    </item>
+    
+    <item>
+      <title>Introducing Dendrite</title>
+      <link>http://dendrite.tech/</link>
+      <pubDate>Sun, 23 Aug 2015 17:56:28 -0700</pubDate>
+      
+      <guid>http://dendrite.tech/</guid>
+      <description>&lt;p&gt;Website under construction. The following sections have content:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/tutorial/&#34;&gt;Tutorial&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/api&#34;&gt;API docs&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/benchmarks/&#34;&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://dendrite.tech/format/&#34;&gt;File format&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
     </item>
     
   </channel>
