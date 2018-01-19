@@ -279,6 +279,21 @@
            IllegalArgumentException #"The following fields don't exist: \[:foo\]"
            (helpers/throw-cause (doall (d/read {:query {:foo '_} :missing-fields-as-nil? false} r))))))))
 
+(deftest empty-queries
+  (testing "degenerate queries should return nil elements."
+    (.close (dremel-paper-writer))
+    (with-open [r (d/file-reader tmp-filename)]
+      (are [q] (= [nil nil] (d/read {:query q} r))
+        {}
+        nil
+        {:docid nil}
+        {:foo nil}
+        {:name {}}
+        {:name nil}
+        {:name []}
+        {:name [{}]}
+        {:name [nil]}))))
+
 (deftest sub-schemas
   (let [records (take 100 (helpers/rand-test-records))]
     (with-open [w (d/file-writer (Schema/readString helpers/test-schema-str) tmp-filename)]

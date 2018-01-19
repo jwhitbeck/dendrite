@@ -585,6 +585,12 @@ public abstract class Schema implements IWriteable {
     return (o instanceof IPersistentMap) && (firstKey(o) instanceof Keyword);
   }
 
+  private static boolean isEmpty(Object o) {
+    return o == null
+        || ((o instanceof IPersistentCollection)
+            && (((IPersistentCollection)o).count() == 0));
+  }
+
   private static final class SchemaParseException extends RuntimeException {
     SchemaParseException(String msg, Throwable cause) {
       super(msg, cause);
@@ -861,6 +867,8 @@ public abstract class Schema implements IWriteable {
       } else {
         return applyQueryTagged(context, schema, query, parents);
       }
+    } else if (isEmpty(query)) {
+      return Record.missing(new Field[0]);
     } else if (isRecord(query)) {
       return applyQueryRecord(context, schema, (IPersistentMap)query, parents);
     } else if (query instanceof IPersistentMap) {
@@ -1059,12 +1067,17 @@ public abstract class Schema implements IWriteable {
   private static Schema applyQueryRepeated(QueryContext context, int repetition, Schema schema,
                                            IPersistentCollection query, PersistentVector parents) {
     Collection coll = (Collection)schema;
-    coll = coll.withRepetition(repetition)
-      .withRepeatedSchema(applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
-    if (context.hasLeaf()) {
-      return coll.withLeafColumnIndex(context.getLeafColumnIndex());
+    Object repeatedQuery = RT.first(query);
+    if (isEmpty(repeatedQuery)) {
+      return Record.missing(new Field[0]);
     } else {
-      return coll;
+      coll = coll.withRepetition(repetition)
+          .withRepeatedSchema(applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
+      if (context.hasLeaf()) {
+        return coll.withLeafColumnIndex(context.getLeafColumnIndex());
+      } else {
+        return coll;
+      }
     }
   }
 
