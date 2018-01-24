@@ -217,6 +217,9 @@ public final class Assemble {
 
   @SuppressWarnings("unchecked")
   private static int getNextDefinitionLevel(ListIterator[] iterators, int colIdx) {
+    if (colIdx == Schema.NO_LEAF) {
+      return 0;
+    }
     ListIterator<LeveledValue> i = iterators[colIdx];
     if (!i.hasNext()) {
       return 0;
