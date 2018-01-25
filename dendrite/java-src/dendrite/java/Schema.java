@@ -97,6 +97,8 @@ public abstract class Schema implements IWriteable {
   public final int definitionLevel;
   public final IFn fn;
 
+  static final int NO_LEAF = -1;
+
   Schema(int presence, int repetitionLevel, int definitionLevel, IFn fn) {
     this.presence = presence;
     this.repetitionLevel = repetitionLevel;
@@ -829,7 +831,11 @@ public abstract class Schema implements IWriteable {
     }
 
     int getLeafColumnIndex() {
-      return columns.getLast().queryColumnIndex;
+      if (columns.size() > 0) {
+        return columns.getLast().queryColumnIndex;
+      } else {
+        return NO_LEAF;
+      }
     }
 
     void appendColumn(Column col) {
@@ -838,10 +844,6 @@ public abstract class Schema implements IWriteable {
 
     int getNextQueryColumnIndex() {
       return columns.size();
-    }
-
-    boolean hasLeaf() {
-      return !columns.isEmpty();
     }
   }
 
@@ -953,6 +955,7 @@ public abstract class Schema implements IWriteable {
         Keyword name = (Keyword)(e.key());
         fieldsList.add(new Field(name, applyQuery(context, null, e.val(), parents.cons(name))));
       }
+      int oldLeafIndex = context.getLeafColumnIndex();
       for (ISeq s = RT.seq(record.fields); s != null; s = s.next()) {
         Field field = (Field)s.first();
         if (query.containsKey(field.name)) {
@@ -960,12 +963,9 @@ public abstract class Schema implements IWriteable {
                                                           parents.cons(field.name))));
         }
       }
+      int newLeafIndex = context.getLeafColumnIndex();
       record = record.withFields(fieldsList.toArray(new Field[]{}));
-      if (context.hasLeaf()) {
-        return record.withLeafColumnIndex(context.getLeafColumnIndex());
-      } else {
-        return record;
-      }
+      return record.withLeafColumnIndex((newLeafIndex > oldLeafIndex)? newLeafIndex : NO_LEAF);
     }
   }
 
@@ -989,15 +989,13 @@ public abstract class Schema implements IWriteable {
       }
       IMapEntry e = (IMapEntry)RT.first(query);
       Object keyValueQuery = new PersistentArrayMap(new Object[]{KEY, e.key(), VAL, e.val()});
+      int oldLeafIndex = context.getLeafColumnIndex();
       map = map.withRepeatedSchema(applyQuery(context,
                                               map.repeatedSchema,
                                               keyValueQuery,
                                               parents.cons(null)));
-      if (context.hasLeaf()) {
-        return map.withLeafColumnIndex(context.getLeafColumnIndex());
-      } else {
-        return map;
-      }
+      int newLeafIndex = context.getLeafColumnIndex();
+      return map.withLeafColumnIndex((newLeafIndex > oldLeafIndex)? newLeafIndex : NO_LEAF);
     }
   }
 
@@ -1071,13 +1069,11 @@ public abstract class Schema implements IWriteable {
     if (isEmpty(repeatedQuery)) {
       return Record.missing(new Field[0]);
     } else {
+      int oldLeafIndex = context.getLeafColumnIndex();
       coll = coll.withRepetition(repetition)
           .withRepeatedSchema(applyQuery(context, coll.repeatedSchema, RT.first(query), parents.cons(null)));
-      if (context.hasLeaf()) {
-        return coll.withLeafColumnIndex(context.getLeafColumnIndex());
-      } else {
-        return coll;
-      }
+      int newLeafIndex = context.getLeafColumnIndex();
+      return coll.withLeafColumnIndex((newLeafIndex > oldLeafIndex)? newLeafIndex : NO_LEAF);
     }
   }
 

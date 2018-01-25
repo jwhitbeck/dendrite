@@ -292,7 +292,10 @@
         {:name nil}
         {:name []}
         {:name [{}]}
-        {:name [nil]}))))
+        {:name [nil]}
+        {:name [{:foo '_}]})
+      (is (= [{:docid 10} {:docid 20}]
+             (d/read {:query {:docid '_ :name [{:foo '_}]}} r))))))
 
 (deftest sub-schemas
   (let [records (take 100 (helpers/rand-test-records))]
