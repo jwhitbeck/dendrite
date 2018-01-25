@@ -292,8 +292,6 @@ public abstract class Schema implements IWriteable {
     }
   }
 
-  static final int NO_LEAF = -1;
-
   public static final class Record extends Schema {
 
     public final int leafColumnIndex;
@@ -966,7 +964,7 @@ public abstract class Schema implements IWriteable {
       if (context.hasLeaf()) {
         return record.withLeafColumnIndex(context.getLeafColumnIndex());
       } else {
-        return record.withLeafColumnIndex(NO_LEAF);
+        return record;
       }
     }
   }
@@ -998,7 +996,7 @@ public abstract class Schema implements IWriteable {
       if (context.hasLeaf()) {
         return map.withLeafColumnIndex(context.getLeafColumnIndex());
       } else {
-        return map.withLeafColumnIndex(NO_LEAF);
+        return map;
       }
     }
   }
@@ -1078,7 +1076,7 @@ public abstract class Schema implements IWriteable {
       if (context.hasLeaf()) {
         return coll.withLeafColumnIndex(context.getLeafColumnIndex());
       } else {
-        return coll.withLeafColumnIndex(NO_LEAF);
+        return coll;
       }
     }
   }

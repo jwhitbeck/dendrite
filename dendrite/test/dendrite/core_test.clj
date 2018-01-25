@@ -292,8 +292,7 @@
         {:name nil}
         {:name []}
         {:name [{}]}
-        {:name [nil]}
-        {:name [{:foo '_}]}))))
+        {:name [nil]}))))
 
 (deftest sub-schemas
   (let [records (take 100 (helpers/rand-test-records))]
