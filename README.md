@@ -30,8 +30,8 @@ designed to be a small library with no external dependencies.
 [Dremel]: http://research.google.com/pubs/pub36632.html
 [Parquet]: http://parquet.io/
 
-__Status update__ (March 13, 2017): For personal reasons, I haven't been able to work on this project in the
-past year. However, I have been accumulating ideas for the next iteration and hope to resume progress
+__Status update__ (March 23, 2018): For personal reasons, I haven't been able to work on this project in the
+past two years. However, I have been accumulating ideas for the next iteration and hope to resume progress
 later this year.
 
 [![Build Status](https://travis-ci.org/jwhitbeck/dendrite.png)](https://travis-ci.org/jwhitbeck/dendrite.png)
