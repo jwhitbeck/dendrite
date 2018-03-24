@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
     <loc>http://dendrite.tech/tutorial/</loc>
@@ -32,8 +33,18 @@
   </url>
   
   <url>
+    <loc>http://dendrite.tech/categories/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
     <loc>http://dendrite.tech/</loc>
     <lastmod>2015-08-23T19:31:12-07:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>http://dendrite.tech/tags/</loc>
     <priority>0</priority>
   </url>
   
