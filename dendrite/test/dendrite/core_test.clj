@@ -186,11 +186,11 @@
 (deftest corrupt-data
   (testing "corrupt file"
     (spit tmp-filename "random junk")
-    (is (thrown-with-msg? IllegalStateException #"File is not a valid dendrite file."
+    (is (thrown-with-msg? IllegalStateException #"target/foo.den is not a valid dendrite file."
                           (with-open [f (d/file-reader tmp-filename)]))))
   (testing "interrupted write"
     (spit tmp-filename "den1")
-    (is (thrown-with-msg? IllegalStateException #"File is not a valid dendrite file."
+    (is (thrown-with-msg? IllegalStateException #"target/foo.den is not a valid dendrite file."
                           (with-open [f (d/file-reader tmp-filename)])))))
 
 (deftest record-group-lengths

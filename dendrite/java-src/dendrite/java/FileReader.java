@@ -84,7 +84,7 @@ public final class FileReader implements Closeable, IReader {
 
   public static FileReader create(Options.ReaderOptions options, File file) throws IOException {
     FileChannel fileChannel = Utils.getReadingFileChannel(file);
-    MetadataReadResult res = readMetadata(fileChannel);
+    MetadataReadResult res = readMetadata(file, fileChannel);
     Types types = Types.create(options.customTypeDefinitions, res.fileMetadata.customTypes);
     return new FileReader(types, file, fileChannel, res.fileMetadata, res.metadataLength);
   }
@@ -292,24 +292,24 @@ public final class FileReader implements Closeable, IReader {
     }
   }
 
-  private static MetadataReadResult readMetadata(FileChannel fileChannel) throws IOException {
+  private static MetadataReadResult readMetadata(File file, FileChannel fileChannel) throws IOException {
     long length = fileChannel.size();
     long lastMagicBytesPosition = length - Constants.magicBytes.length;
     ByteBuffer lastMagicBytesBuffer
       = Utils.mapFileChannel(fileChannel, lastMagicBytesPosition, Constants.magicBytes.length);
     if (!isValidMagicBytes(lastMagicBytesBuffer)) {
-      throw new IllegalStateException("File is not a valid dendrite file.");
+      throw new IllegalStateException(String.format("%s is not a valid dendrite file.", file.getPath()));
     }
     long metadataLengthPosition = lastMagicBytesPosition - fixedIntLength;
     if (metadataLengthPosition < Constants.magicBytes.length) {
-      throw new IllegalStateException("File is not a valid dendrite file.");
+      throw new IllegalStateException(String.format("%s is not a valid dendrite file.", file.getPath()));
     }
     ByteBuffer metadataLengthBuffer
       = Utils.mapFileChannel(fileChannel, metadataLengthPosition, fixedIntLength);
     metadataLengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
     long metadataLength = metadataLengthBuffer.getInt();
     if (metadataLength <= 0) {
-      throw new IllegalStateException("File is not a valid dendrite file.");
+      throw new IllegalStateException(String.format("%s is not a valid dendrite file.", file.getPath()));
     }
     ByteBuffer metadataBuffer
       = Utils.mapFileChannel(fileChannel, metadataLengthPosition - metadataLength, metadataLength);
