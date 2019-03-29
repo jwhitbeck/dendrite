@@ -2,6 +2,16 @@
 
 A command-line tool for interacting with dendrite files.
 
-Clojure is a particularly bad fit for CLI tools given its slow startup times. This code was only used for demo
-purposes in combination with [drip](https://github.com/ninjudd/drip), and will be replaced with a proper CLI
-tool in the future.
+The recommended way of using this CLI tool is to compile it to a native binary using [GraalVM][].
+
+    # First compile the uberjar
+    lein uberjar
+
+    # Then compile the uberjar into a native binary using GraalVM
+    # Assumes that GraalVM's /bin directory is on your $PATH
+    native-image --report-unsupported-elements-at-runtime \
+                 --jar target/dendrite.cli-0.1.0-SNAPSHOT-standalone.jar \
+                 den
+
+    # Run the dendrite cli
+    ./den --help
