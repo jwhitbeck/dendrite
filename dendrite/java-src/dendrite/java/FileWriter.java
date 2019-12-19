@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public final class FileWriter implements Closeable {
 
@@ -232,18 +233,16 @@ public final class FileWriter implements Closeable {
   }
 
   private void flushBatch() {
-    if (writeThread.isDone()) {
-      // If the writeThread finished while we are still writing, it likely means it threw an exception.
-      try {
-        writeThread.get();
-      } catch (Exception e) {
-        throw new IllegalStateException(e);
-      }
-    } else if (isClosed) {
+    if (isClosed) {
       throw new IllegalStateException("Cannot write to a closed writer.");
     } else {
       try {
-        batchQueue.put(batchBuffer);
+        while (! batchQueue.offer(batchBuffer, 10, TimeUnit.SECONDS)) {
+          if (writeThread.isDone()) {
+            // If the writeThread finished while we are still writing, it likely means it threw an exception.
+            writeThread.get();
+          }
+        }
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }
