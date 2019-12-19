@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="generator" content="Hugo 0.25.1" />
+  <meta name="generator" content="Hugo 0.30" />
 
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -67,40 +67,34 @@ advantage of the columnar format for your queries, and how to efficiently apply 
 
 <p>The examples below assume that you have started a REPL in a project that imports dendrite as</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">[</span><span class="nv">dendrite</span> <span class="s">&quot;0.5.11&quot;</span><span class="p">]</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">[</span><span class="nv">dendrite</span> <span class="s">&#34;0.5.12&#34;</span><span class="p">]</span></code></pre></div>
 
 <p>and required the <code>dendrite.core</code> namespace as</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">dendrite.core</span> <span class="ss">:as</span> <span class="nv">d</span><span class="p">])</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">dendrite.core</span> <span class="ss">:as</span> <span class="nv">d</span><span class="p">])</span></code></pre></div>
 
 <h2 id="read-and-write-files">Read and write files</h2>
 
 <p>Writing to dendrite files should feel very similar to writing other types of files in clojure.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">filename</span> <span class="s">&quot;contacts.den&quot;</span><span class="p">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">filename</span> <span class="s">&#34;contacts.den&#34;</span><span class="p">)</span>
 
 <span class="p">(</span><span class="k">def </span><span class="nv">schema</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;string</span>
                     <span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">}</span>
              <span class="ss">:emails</span> <span class="p">[</span><span class="ss">&#39;string</span><span class="p">]})</span>
 
 <span class="p">(</span><span class="k">def </span><span class="nv">contacts</span>
-  <span class="p">[{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Alice&quot;</span>
-           <span class="ss">:last</span> <span class="s">&quot;Jones&quot;</span><span class="p">}</span>
-    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;alice@jones.com&quot;</span> <span class="s">&quot;alice@acme.org&quot;</span><span class="p">]}</span>
+  <span class="p">[{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&#34;Alice&#34;</span>
+           <span class="ss">:last</span> <span class="s">&#34;Jones&#34;</span><span class="p">}</span>
+    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&#34;alice@jones.com&#34;</span> <span class="s">&#34;alice@acme.org&#34;</span><span class="p">]}</span>
 
-   <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Bob&quot;</span>
-           <span class="ss">:last</span> <span class="s">&quot;Smith&quot;</span><span class="p">}</span>
-    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;bob@smith.com&quot;</span><span class="p">]}])</span>
+   <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&#34;Bob&#34;</span>
+           <span class="ss">:last</span> <span class="s">&#34;Smith&#34;</span><span class="p">}</span>
+    <span class="ss">:emails</span> <span class="p">[</span><span class="s">&#34;bob@smith.com&#34;</span><span class="p">]}])</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
   <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))</span>
-</code></pre></div>
-
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))</span></code></pre></div>
 
 <p>A few things to note:</p>
 
@@ -119,14 +113,12 @@ primer on how this is done in practice, check out this
 
 <p>Reading is even simpler. Since the schema is stored within the file, it is not required for reading.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
-<span class="c1">;    :emails [&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]}</span>
-<span class="c1">;   {:name {:first &quot;Bob&quot; :last &quot;Smith&quot;}</span>
-<span class="c1">;    :emails [&quot;bob@smith.com&quot;]})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &#34;Alice&#34; :last &#34;Jones&#34;}</span>
+<span class="c1">;    :emails [&#34;alice@jones.com&#34; &#34;alice@acme.org&#34;]}</span>
+<span class="c1">;   {:name {:first &#34;Bob&#34; :last &#34;Smith&#34;}</span>
+<span class="c1">;    :emails [&#34;bob@smith.com&#34;]})</span></code></pre></div>
 
 <h2 id="supported-types">Supported types</h2>
 
@@ -240,29 +232,25 @@ that does its best to convert the input data into the desired type.</p>
 
 <p>For example, let&rsquo;s write to a simple file containing where records are just simple strings.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="ss">&#39;string</span> <span class="s">&quot;tmp.den&quot;</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="ss">&#39;string</span> <span class="s">&#34;tmp.den&#34;</span><span class="p">)]</span>
   <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">v</span> <span class="p">[</span><span class="mf">0.1</span>   <span class="c1">; double</span>
              <span class="mi">100</span>   <span class="c1">; long</span>
-             <span class="s">&quot;foo&quot;</span> <span class="c1">; string</span>
+             <span class="s">&#34;foo&#34;</span> <span class="c1">; string</span>
              <span class="ss">:bar</span>  <span class="c1">; keyword</span>
              <span class="ss">&#39;baz</span>  <span class="c1">; symbol</span>
             <span class="p">]]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">v</span><span class="p">)))</span>
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">v</span><span class="p">)))</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="s">&quot;tmp.den&quot;</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= (&quot;0.1&quot; &quot;100&quot; &quot;foo&quot; &quot;:bar&quot; &quot;baz&quot;)</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="s">&#34;tmp.den&#34;</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= (&#34;0.1&#34; &#34;100&#34; &#34;foo&#34; &#34;:bar&#34; &#34;baz&#34;)</span></code></pre></div>
 
 <p>Note that all the values were converted to strings before being written. Obviously, it isn&rsquo;t always possible
 to convert input values to the desired type.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="ss">&#39;int</span> <span class="s">&quot;tmp.den&quot;</span><span class="p">)]</span>
-   <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="s">&quot;foo&quot;</span><span class="p">))</span>
-<span class="c1">; IllegalArgumentException Could not coerce &#39;foo&#39; into a int.</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="ss">&#39;int</span> <span class="s">&#34;tmp.den&#34;</span><span class="p">)]</span>
+   <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="s">&#34;foo&#34;</span><span class="p">))</span>
+<span class="c1">; IllegalArgumentException Could not coerce &#39;foo&#39; into a int.</span></code></pre></div>
 
 <h2 id="read-subsets-of-the-data">Read subsets of the data</h2>
 
@@ -276,21 +264,19 @@ be deserialized: sub-schemas and queries. As we will see, they can be used separ
 equivalent of calling <code>get-in</code> on each record. The following examples use the second arity of
 <code>dendrite.core/read</code> that expects an options map as its first arg.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
-<span class="c1">;   {:first &quot;Bob&quot; :last &quot;Smith&quot;})</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:first &#34;Alice&#34; :last &#34;Jones&#34;}</span>
+<span class="c1">;   {:first &#34;Bob&#34; :last &#34;Smith&#34;})</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span> <span class="ss">:first</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= (&quot;Alice&quot; &quot;Bob&quot;)</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span> <span class="ss">:first</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= (&#34;Alice&#34; &#34;Bob&#34;)</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:emails</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ([&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]</span>
-<span class="c1">;   [&quot;bob@smith.com&quot;])</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:emails</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ([&#34;alice@jones.com&#34; &#34;alice@acme.org&#34;]</span>
+<span class="c1">;   [&#34;bob@smith.com&#34;])</span></code></pre></div>
 
 <p>Attempting to use the <code>:sub-schema-in</code> option to cross into a repeated field will throw an exception.</p>
 
@@ -298,42 +284,34 @@ equivalent of calling <code>get-in</code> on each record. The following examples
 
 <p>Queries specify a &lsquo;skeleton&rsquo; structure of the records that should be read from the file.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:name {:last &quot;Jones&quot;}}</span>
-<span class="c1">;   {:name {:last &quot;Smith&quot;}})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:last &#34;Jones&#34;}}</span>
+<span class="c1">;   {:name {:last &#34;Smith&#34;}})</span></code></pre></div>
 
 <p>For ease of use, underscore symbols in queries are a shorthand for <em>everything in the schema under this
 point</em>. For example, the following code snippet defines the same query as above.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;_</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:name {:last &quot;Jones&quot;}}</span>
-<span class="c1">;   {:name {:last &quot;Smith&quot;}})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:last</span> <span class="ss">&#39;_</span><span class="p">}}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:last &#34;Jones&#34;}}</span>
+<span class="c1">;   {:name {:last &#34;Smith&#34;}})</span></code></pre></div>
 
 <p>Underscore symbols can stand in for entire sub-schemas.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}}</span>
-<span class="c1">;   {:name {:first &quot;Bob&quot; :last &quot;Smith&quot;}})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &#34;Alice&#34; :last &#34;Jones&#34;}}</span>
+<span class="c1">;   {:name {:first &#34;Bob&#34; :last &#34;Smith&#34;}})</span></code></pre></div>
 
 <h3 id="sub-schema-queries">Sub-schema queries</h3>
 
 <p>It is of course possible to combine sub-schemas and queries. If both the <code>:sub-schema-in</code> and <code>:query</code> options
 are provided, the query is applied to the sub-schema.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]</span> <span class="ss">:query</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:first &quot;Alice&quot;} {:first &quot;Bob&quot;})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:name</span><span class="p">]</span> <span class="ss">:query</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:first &#34;Alice&#34;} {:first &#34;Bob&#34;})</span></code></pre></div>
 
 <h2 id="metadata">Metadata</h2>
 
@@ -342,20 +320,16 @@ keep track of the commit sha1 of the code that created the file or just add a de
 
 <p>Set the metadata with <code>set-metadata!</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
   <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
-  <span class="p">(</span><span class="nf">d/set-metadata!</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:description</span> <span class="s">&quot;Contacts&quot;</span> <span class="ss">:owner</span> <span class="s">&quot;carl&quot;</span><span class="p">})</span>
-</code></pre></div>
-
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
+  <span class="p">(</span><span class="nv">d/set-metadata!</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:description</span> <span class="s">&#34;Contacts&#34;</span> <span class="ss">:owner</span> <span class="s">&#34;carl&#34;</span><span class="p">})</span></code></pre></div>
 
 <p>Read the metadata with <code>metadata</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">d/metadata</span> <span class="nv">r</span><span class="p">))</span>
-<span class="c1">;= {:description &quot;Contacts&quot; :owner &quot;carl&quot;}</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">d/metadata</span> <span class="nv">r</span><span class="p">))</span>
+<span class="c1">;= {:description &#34;Contacts&#34; :owner &#34;carl&#34;}</span></code></pre></div>
 
 <h2 id="opt-into-strictness">Opt into strictness</h2>
 
@@ -365,27 +339,25 @@ keep track of the commit sha1 of the code that created the file or just add a de
 schema. Specifically, it considers that all fields are optional and silently drops fields that are not in the
 schema.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">contact-with-no-name</span>
-  <span class="p">{</span><span class="ss">:emails</span> <span class="p">[</span><span class="s">&quot;noname@none.com&quot;</span><span class="p">]})</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">contact-with-no-name</span>
+  <span class="p">{</span><span class="ss">:emails</span> <span class="p">[</span><span class="s">&#34;noname@none.com&#34;</span><span class="p">]})</span>
 
 <span class="p">(</span><span class="k">def </span><span class="nv">contact-with-extra-fields</span>
-  <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&quot;Alice&quot;</span> <span class="ss">:last</span> <span class="s">&quot;Jones&quot;</span><span class="p">}</span>
+  <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="s">&#34;Alice&#34;</span> <span class="ss">:last</span> <span class="s">&#34;Jones&#34;</span><span class="p">}</span>
    <span class="ss">:emails</span> <span class="p">[</span><span class="nv">nil</span><span class="p">]</span>
    <span class="ss">:age</span> <span class="mi">24</span><span class="p">})</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">)</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">)</span> <span class="c1">; Completely empty record</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">)</span> <span class="c1">; Completely empty record</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:emails [&quot;noname@none.com&quot;]}</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:emails [&#34;noname@none.com&#34;]}</span>
 <span class="c1">;   nil</span>
-<span class="c1">;   {:name {:first &quot;Alice&quot; :last &quot;Jones&quot;}</span>
-<span class="c1">;   :emails [nil]})</span>
-</code></pre></div>
-
+<span class="c1">;   {:name {:first &#34;Alice&#34; :last &#34;Jones&#34;}</span>
+<span class="c1">;   :emails [nil]})</span></code></pre></div>
 
 <p>Notice how Alice&rsquo;s age was not written to the file.</p>
 
@@ -395,32 +367,28 @@ schema.</p>
 are missing. Dendrite schemas can be annotated to mark certain elements as required (i.e., cannot be nil)
 using the &rsquo;d/req` function.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">strict-schema</span>
-  <span class="p">(</span><span class="nf">d/req</span> <span class="c1">; nil records not allowed</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">strict-schema</span>
+  <span class="p">(</span><span class="nv">d/req</span> <span class="c1">; nil records not allowed</span>
     <span class="c1">; :name must be present but :first and :last are still optional</span>
-    <span class="p">{</span><span class="ss">:name</span> <span class="p">(</span><span class="nf">d/req</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;string</span>
+    <span class="p">{</span><span class="ss">:name</span> <span class="p">(</span><span class="nv">d/req</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;string</span>
                    <span class="ss">:last</span> <span class="ss">&#39;string</span><span class="p">})</span>
      <span class="c1">; :emails is optional but, if defined, the</span>
      <span class="c1">;  email strings cannot be nil</span>
-     <span class="ss">:emails</span> <span class="p">[(</span><span class="nf">d/req</span> <span class="ss">&#39;string</span><span class="p">)]}))</span>
-</code></pre></div>
-
+     <span class="ss">:emails</span> <span class="p">[(</span><span class="nv">d/req</span> <span class="ss">&#39;string</span><span class="p">)]}))</span></code></pre></div>
 
 <p>Let&rsquo;s try writing the same records as in the previous example using this stricter schema.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
 <span class="c1">; Throws exception. Required field :name is missing</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">))</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">nil</span><span class="p">))</span>
 <span class="c1">; Throws exception. Required record is missing</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
-<span class="c1">; Throws exception. Required email is nil.</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+<span class="c1">; Throws exception. Required email is nil.</span></code></pre></div>
 
 <h3 id="alert-on-extra-fields">Alert on extra fields</h3>
 
@@ -429,12 +397,10 @@ the record to write contains fields that are not present in the schema. The <cod
 second arity that accepts an options map to customize the writer&rsquo;s behavior. In this case, we want to set
 <code>:ignore-extra-fields?</code> to <code>false</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:ignore-extra-fields?</span> <span class="nv">false</span><span class="p">}</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:ignore-extra-fields?</span> <span class="nv">false</span><span class="p">}</span>
                               <span class="nv">schema</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
-<span class="c1">; Throws exception. :age is not is schema.</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-extra-fields</span><span class="p">))</span>
+<span class="c1">; Throws exception. :age is not is schema.</span></code></pre></div>
 
 <h3 id="handle-invalid-records">Handle invalid records</h3>
 
@@ -443,29 +409,27 @@ writing process. Dendrite supports that use case through the <code>:invalid-inpu
 function of two arguments: the record and the exception. Let&rsquo;s use this to populate an atom of invalid
 records.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">invalid-records</span> <span class="p">(</span><span class="nf">atom</span> <span class="p">[]))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">invalid-records</span> <span class="p">(</span><span class="nv">atom</span> <span class="p">[]))</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">handler</span> <span class="p">[</span><span class="nv">rec</span> <span class="nv">e</span><span class="p">]</span>
-  <span class="p">(</span><span class="nf">swap!</span> <span class="nv">invalid-records</span> <span class="nb">conj </span><span class="nv">rec</span><span class="p">))</span>
+  <span class="p">(</span><span class="nv">swap!</span> <span class="nv">invalid-records</span> <span class="nb">conj </span><span class="nv">rec</span><span class="p">))</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:invalid-input-handler</span> <span class="nv">handler</span><span class="p">}</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:invalid-input-handler</span> <span class="nv">handler</span><span class="p">}</span>
                              <span class="nv">strict-schema</span> <span class="nv">filename</span><span class="p">)]</span>
   <span class="c1">; Write some valid contacts</span>
   <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="nv">contacts</span><span class="p">]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">))</span>
   <span class="c1">; Write an invalid contact</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">contact-with-no-name</span><span class="p">))</span>
 <span class="c1">;= nil</span>
 
 <span class="o">@</span><span class="nv">invalid-records</span>
-<span class="c1">;= [{:emails [&quot;noname@none.com&quot;]}]</span>
+<span class="c1">;= [{:emails [&#34;noname@none.com&#34;]}]</span>
 
 <span class="c1">; Verify that the valid records were successfully written</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">count </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= 2</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">count </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= 2</span></code></pre></div>
 
 <h3 id="read-missing-columns">Read missing columns</h3>
 
@@ -473,25 +437,21 @@ records.</p>
 on reads. In particular, if a query requests fields that are not present in the file&rsquo;s schema, those fields
 will simply be ignored.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
   <span class="c1">; The :age field does not exist in the schema</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:name {:first &quot;Alice&quot;}}</span>
-<span class="c1">;   {:name {:first &quot;Bob&quot;}})</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}}</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:name {:first &#34;Alice&#34;}}</span>
+<span class="c1">;   {:name {:first &#34;Bob&#34;}})</span></code></pre></div>
 
 <p>This makes it very easy to apply the same query to many files, of which some may not have the requested
 field. However, this tolerant behavior may not always be desirable and can be disabled by setting the
 <code>:missing-fields-as-nil?</code> read option to <code>false</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="p">{</span><span class="ss">:name</span> <span class="p">{</span><span class="ss">:first</span> <span class="ss">&#39;_</span><span class="p">}</span> <span class="ss">:age</span> <span class="ss">&#39;_</span><span class="p">}</span>
                   <span class="ss">:missing-fields-as-nil?</span> <span class="nv">false</span><span class="p">}</span>
                   <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= Throws exception. :age field does not exist.</span>
-</code></pre></div>
-
+<span class="c1">;= Throws exception. :age field does not exist.</span></code></pre></div>
 
 <h2 id="schema-manipulation">Schema manipulation</h2>
 
@@ -505,49 +465,41 @@ such as <code>assoc</code>, <code>dissoc</code>, or <code>merge</code> will work
 <p>Let&rsquo;s say we want to add an id to all our contacts. We could read-in all the existing contacts and use <code>range</code>
 to add a simple incrementing id to the existing contacts.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">filename</span><span class="p">)]</span>
   <span class="c1">;; Add the :id field with type long to the schema.</span>
-  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">schema-with-id</span> <span class="p">(</span><span class="nb">-&gt; </span><span class="p">(</span><span class="nf">d/schema</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nb">assoc </span><span class="ss">:id</span> <span class="ss">&#39;long</span><span class="p">))]</span>
-    <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="nv">schema-with-id</span> <span class="s">&quot;contacts2.den&quot;</span><span class="p">)]</span>
-      <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="p">(</span><span class="nb">map </span><span class="o">#</span><span class="p">(</span><span class="nb">assoc </span><span class="nv">%1</span> <span class="ss">:id</span> <span class="nv">%2</span><span class="p">)</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nf">range</span><span class="p">))]</span>
-        <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))))</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">schema-with-id</span> <span class="p">(</span><span class="nb">-&gt; </span><span class="p">(</span><span class="nv">d/schema</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nb">assoc </span><span class="ss">:id</span> <span class="ss">&#39;long</span><span class="p">))]</span>
+    <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="nv">schema-with-id</span> <span class="s">&#34;contacts2.den&#34;</span><span class="p">)]</span>
+      <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">c</span> <span class="p">(</span><span class="nb">map </span><span class="o">#</span><span class="p">(</span><span class="nb">assoc </span><span class="nv">%1</span> <span class="ss">:id</span> <span class="nv">%2</span><span class="p">)</span> <span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)</span> <span class="p">(</span><span class="nv">range</span><span class="p">))]</span>
+        <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">c</span><span class="p">)))))</span></code></pre></div>
 
 <p>Let&rsquo;s see if that worked.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="s">&quot;contacts2.den&quot;</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="s">&#34;contacts2.den&#34;</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
 <span class="c1">;= ({:id 0</span>
-<span class="c1">;    :name {:first &quot;Alice&quot;, :last &quot;Jones&quot;}</span>
-<span class="c1">;    :emails [&quot;alice@jones.com&quot; &quot;alice@acme.org&quot;]}</span>
+<span class="c1">;    :name {:first &#34;Alice&#34;, :last &#34;Jones&#34;}</span>
+<span class="c1">;    :emails [&#34;alice@jones.com&#34; &#34;alice@acme.org&#34;]}</span>
 <span class="c1">;   {:id 1</span>
-<span class="c1">;    :name {:first &quot;Bob&quot;, :last &quot;Smith&quot;}</span>
-<span class="c1">;    :emails [&quot;bob@smith.com&quot;]})</span>
-</code></pre></div>
-
+<span class="c1">;    :name {:first &#34;Bob&#34;, :last &#34;Smith&#34;}</span>
+<span class="c1">;    :emails [&#34;bob@smith.com&#34;]})</span></code></pre></div>
 
 <h3 id="schema-serialization">Serialization</h3>
 
 <p>So far in this tutorial, schemas have been defined directly in the clojure code. However it is often
 convenient to store them in separate files.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="c1">; The simple schema from the beginning of the tutorial</span>
-<span class="p">(</span><span class="nf">spit</span> <span class="s">&quot;schema.edn&quot;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">schema</span><span class="p">))</span>
-<span class="c1">; The somewhat stricter schema from the &quot;Opting into strictness&quot;</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="c1">; The simple schema from the beginning of the tutorial</span>
+<span class="p">(</span><span class="nv">spit</span> <span class="s">&#34;schema.edn&#34;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">schema</span><span class="p">))</span>
+<span class="c1">; The somewhat stricter schema from the &#34;Opting into strictness&#34;</span>
 <span class="c1">; section</span>
-<span class="p">(</span><span class="nf">spit</span> <span class="s">&quot;strict-schema.edn&quot;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">strict-schema</span><span class="p">))</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nv">spit</span> <span class="s">&#34;strict-schema.edn&#34;</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">strict-schema</span><span class="p">))</span></code></pre></div>
 
 <p>Let&rsquo;s see what those files look like.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">slurp </span><span class="s">&quot;schema.edn&quot;</span><span class="p">)</span>
-<span class="c1">;= &quot;{:name {:first string, :last string}, :emails [string]}&quot;</span>
-<span class="p">(</span><span class="nb">slurp </span><span class="s">&quot;strict-schema.edn&quot;</span><span class="p">)</span>
-<span class="c1">;= &quot;#req {:name #req {:first string, :last string}, :emails [#req string]}&quot;</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">slurp </span><span class="s">&#34;schema.edn&#34;</span><span class="p">)</span>
+<span class="c1">;= &#34;{:name {:first string, :last string}, :emails [string]}&#34;</span>
+<span class="p">(</span><span class="nb">slurp </span><span class="s">&#34;strict-schema.edn&#34;</span><span class="p">)</span>
+<span class="c1">;= &#34;#req {:name #req {:first string, :last string}, :emails [#req string]}&#34;</span></code></pre></div>
 
 <p>Note how the required parts of the schema are tagged with <code>#req</code> in the EDN string. Pretty-printing also works
 as expected and makes large schemas easier to inspect.</p>
@@ -556,11 +508,9 @@ as expected and makes large schemas easier to inspect.</p>
 <code>clojure.edn/read-string</code> with special reader functions for the <code>#req</code> and <code>#col</code> schema annotations (see the
 <a href="#manual-column-settings">manual column settings</a> section below for a description of <code>#col</code>).</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">-&gt; </span><span class="s">&quot;schema.edn&quot;</span> <span class="nb">slurp </span><span class="nv">d/read-schema-string</span><span class="p">))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">-&gt; </span><span class="s">&#34;schema.edn&#34;</span> <span class="nb">slurp </span><span class="nv">d/read-schema-string</span><span class="p">))</span>
 <span class="c1">;= {:name {:first &#39;string :last &#39;string}</span>
-<span class="c1">;          :emails [&#39;string]}</span>
-</code></pre></div>
-
+<span class="c1">;          :emails [&#39;string]}</span></code></pre></div>
 
 <h2 id="file-introspection">File introspection</h2>
 
@@ -573,9 +523,7 @@ rely on a test dataset consisting of 100,000 records from the <a href="/benchmar
 <p>Download the <a href="https://s3.amazonaws.com/files.dendrite.tech/tutorial.den
 ">tutorial file</a> (6MB) and reference it from your REPL.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&quot;/path/to/tutorial.den&quot;</span><span class="p">)</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&#34;/path/to/tutorial.den&#34;</span><span class="p">)</span></code></pre></div>
 
 <p>As a columnar format, the file layout is very structured and must store data about its own organization. The
 <code>d/stats</code> function retrieves low-level statistics from this internal file metadata.  These stats are useful
@@ -586,7 +534,7 @@ object with three keys <code>:global</code>, <code>:columns</code>, and <code>:r
 
 <p>Let&rsquo;s look at the global stats for the tutorial file.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
   <span class="p">(</span><span class="nb">-&gt; </span><span class="nv">r</span> <span class="nv">d/stats</span> <span class="ss">:global</span><span class="p">))</span>
 
 <span class="c1">;= {:num-records 100000</span>
@@ -599,9 +547,7 @@ object with three keys <code>:global</code>, <code>:columns</code>, and <code>:r
 <span class="c1">;   :data-length 5941004</span>
 <span class="c1">;   :dictionary-header-length 57</span>
 <span class="c1">;   :dictionary-length 266664</span>
-<span class="c1">;   :metadata-length 422}</span>
-</code></pre></div>
-
+<span class="c1">;   :metadata-length 422}</span></code></pre></div>
 
 <p>All the <code>-length</code> values are in bytes. In the global stats, these values are aggregated across all
 record-groups and column chunks in the file.</p>
@@ -613,7 +559,7 @@ record-groups.</p>
 
 <p>Let&rsquo;s look a the stats for the first column.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
   <span class="p">(</span><span class="nb">-&gt; </span><span class="nv">r</span> <span class="nv">d/stats</span> <span class="ss">:columns</span> <span class="nv">first</span><span class="p">))</span>
 
 <span class="c1">;= {:path [:id]</span>
@@ -633,9 +579,7 @@ record-groups.</p>
 <span class="c1">;   :num-dictionary-values 0</span>
 <span class="c1">;   :num-non-nil-values 100000</span>
 <span class="c1">;   :num-column-chunks 1</span>
-<span class="c1">;   :num-pages 1}</span>
-</code></pre></div>
-
+<span class="c1">;   :num-pages 1}</span></code></pre></div>
 
 <p>Here we can see this is the column for the top-level <code>:id</code> field in the <a href="/benchmarks/#media-content-record">media-content record</a>. It consists of 32 bit integers encoded using the
 <a href="/format/#int-delta">delta encoding</a> and compressed with <a href="/format/#deflate">deflate</a>. Since its <em>max-definition-level</em> and <em>max-repetition-level</em> are both zero, this
@@ -644,10 +588,10 @@ is very efficient and packs all 100,000 values into a single 2KB page (approx 0.
 
 <p>Now let&rsquo;s identify the largest columns in the file.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
 
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/stats</span> <span class="nv">r</span><span class="p">)</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/stats</span> <span class="nv">r</span><span class="p">)</span>
        <span class="ss">:columns</span>
        <span class="p">(</span><span class="nb">sort-by </span><span class="ss">:length</span><span class="p">)</span>
        <span class="nv">reverse</span>
@@ -666,9 +610,7 @@ is very efficient and packs all 100,000 values into a single 2KB page (approx 0.
 <span class="c1">;  | [:images nil :height] |    int |  187988 |</span>
 <span class="c1">;  |  [:images nil :width] |    int |  187987 |</span>
 <span class="c1">;  |   [:media :copyright] | string |  116722 |</span>
-<span class="c1">;  |       [:media :title] | string |  106425 |</span>
-</code></pre></div>
-
+<span class="c1">;  |       [:media :title] | string |  106425 |</span></code></pre></div>
 
 <p>Notice how some paths contain a <code>nil</code>. This just indicates that the path is traversing a repeated element in
 that position.</p>
@@ -681,29 +623,25 @@ that position.</p>
 <a href="http://clojure.org/reducers
 ">core.reducers</a> sense.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.core.reducers</span> <span class="ss">:as</span> <span class="nv">r</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.core.reducers</span> <span class="ss">:as</span> <span class="nv">r</span><span class="p">])</span>
 
 <span class="c1">; Compute the sum of all durations in the datasets that are greater than 1000</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span> <span class="ss">:duration</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)</span>
-       <span class="p">(</span><span class="nf">r/filter</span> <span class="o">#</span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">%</span> <span class="mi">1000</span><span class="p">))</span>
-       <span class="p">(</span><span class="nf">r/reduce</span> <span class="nv">+</span><span class="p">)))</span>
-<span class="c1">;= 165920499</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span> <span class="ss">:duration</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)</span>
+       <span class="p">(</span><span class="nv">r/filter</span> <span class="o">#</span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">%</span> <span class="mi">1000</span><span class="p">))</span>
+       <span class="p">(</span><span class="nv">r/reduce</span> <span class="nv">+</span><span class="p">)))</span>
+<span class="c1">;= 165920499</span></code></pre></div>
 
 <p>Following the <a href="http://clojure.org/reducers
 ">core.reducers</a> contract, the code above doesn&rsquo;t build up any
 intermediate lazy sequence. However, the real gains come from folding.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="c1">; Same as above but faster</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span> <span class="ss">:duration</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)</span>
-       <span class="p">(</span><span class="nf">r/filter</span> <span class="o">#</span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">%</span> <span class="mi">1000</span><span class="p">))</span>
-       <span class="p">(</span><span class="nf">r/fold</span> <span class="nv">+</span><span class="p">)))</span>
-<span class="c1">;= 165920499</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="c1">; Same as above but faster</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span> <span class="ss">:duration</span><span class="p">]}</span> <span class="nv">r</span><span class="p">)</span>
+       <span class="p">(</span><span class="nv">r/filter</span> <span class="o">#</span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">%</span> <span class="mi">1000</span><span class="p">))</span>
+       <span class="p">(</span><span class="nv">r/fold</span> <span class="nv">+</span><span class="p">)))</span>
+<span class="c1">;= 165920499</span></code></pre></div>
 
 <p>In the example above, <code>r/fold</code> will apply the filter and compute a partial sum <em>within each parallel assembly
 thread</em> (see <a href="/implementation/">implementation notes</a> for details).</p>
@@ -723,15 +661,13 @@ transducer is applied in the parallel record chunk assembly threads.</p>
 each record can define several images, we need to concatenate all the image information together before
 passing it to <code>frequencies</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="nv">r</span>
-      <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:images</span><span class="p">]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="nv">r</span>
+      <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:images</span><span class="p">]</span>
                <span class="ss">:query</span> <span class="p">[{</span><span class="ss">:size</span> <span class="ss">&#39;_</span><span class="p">}]})</span>
-      <span class="p">(</span><span class="nf">d/eduction</span> <span class="nv">cat</span> <span class="p">(</span><span class="nb">map </span><span class="ss">:size</span><span class="p">))</span>
+      <span class="p">(</span><span class="nv">d/eduction</span> <span class="nv">cat</span> <span class="p">(</span><span class="nb">map </span><span class="ss">:size</span><span class="p">))</span>
       <span class="nv">frequencies</span><span class="p">))</span>
-<span class="c1">;= {&quot;SMALL&quot; 150603, &quot;LARGE&quot; 149987}</span>
-</code></pre></div>
-
+<span class="c1">;= {&#34;SMALL&#34; 150603, &#34;LARGE&#34; 149987}</span></code></pre></div>
 
 <p>It is of course possible to combine these transducers with a fold operation. In this case, the transducers are
 applied to the fold&rsquo;s reduce function (instead of the default chunk assembly reduce function in the example
@@ -739,15 +675,13 @@ above). This efficiently produces the expected result.</p>
 
 <p>For example, the somewhat contrived example below quickly computes the sum of all the heights of all images.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="nv">r</span>
-      <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:images</span><span class="p">]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="nv">r</span>
+      <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:images</span><span class="p">]</span>
                <span class="ss">:query</span> <span class="p">[{</span><span class="ss">:height</span> <span class="ss">&#39;_</span><span class="p">}]})</span>
-      <span class="p">(</span><span class="nf">d/eduction</span> <span class="nv">cat</span> <span class="p">(</span><span class="nb">map </span><span class="ss">:height</span><span class="p">))</span>
-      <span class="p">(</span><span class="nf">r/fold</span> <span class="nv">+</span><span class="p">)))</span>
-<span class="c1">;= 59661367</span>
-</code></pre></div>
-
+      <span class="p">(</span><span class="nv">d/eduction</span> <span class="nv">cat</span> <span class="p">(</span><span class="nb">map </span><span class="ss">:height</span><span class="p">))</span>
+      <span class="p">(</span><span class="nv">r/fold</span> <span class="nv">+</span><span class="p">)))</span>
+<span class="c1">;= 59661367</span></code></pre></div>
 
 <h3 id="fast-sampling">Fast sampling</h3>
 
@@ -757,13 +691,11 @@ values must still be decoded before being skipped.</p>
 
 <p>The example below uses <code>d/sample</code> to read one of ten records.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)</span>
-       <span class="p">(</span><span class="nf">d/sample</span> <span class="o">#</span><span class="p">(</span><span class="nb">zero? </span><span class="p">(</span><span class="nf">mod</span> <span class="nv">%</span> <span class="mi">10</span><span class="p">)))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)</span>
+       <span class="p">(</span><span class="nv">d/sample</span> <span class="o">#</span><span class="p">(</span><span class="nb">zero? </span><span class="p">(</span><span class="nv">mod</span> <span class="nv">%</span> <span class="mi">10</span><span class="p">)))</span>
        <span class="nv">count</span><span class="p">))</span>
-<span class="c1">;= 10000</span>
-</code></pre></div>
-
+<span class="c1">;= 10000</span></code></pre></div>
 
 <h3 id="indexing">Indexing</h3>
 
@@ -775,13 +707,11 @@ sampling.</p>
 
 <p>Let&rsquo;s see how this works.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)</span>
-       <span class="p">(</span><span class="nf">d/index-by</span> <span class="o">#</span><span class="p">(</span><span class="nb">assoc </span><span class="nv">%2</span> <span class="ss">:index</span> <span class="nv">%1</span><span class="p">))</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)</span>
+       <span class="p">(</span><span class="nv">d/index-by</span> <span class="o">#</span><span class="p">(</span><span class="nb">assoc </span><span class="nv">%2</span> <span class="ss">:index</span> <span class="nv">%1</span><span class="p">))</span>
        <span class="nv">first</span><span class="p">))</span>
-<span class="c1">;= {:index 0, :media {..}, :images [..]}</span>
-</code></pre></div>
-
+<span class="c1">;= {:index 0, :media {..}, :images [..]}</span></code></pre></div>
 
 <h3 id="reader-tags">Reader tags</h3>
 
@@ -796,37 +726,31 @@ key performance optimizations.</p>
 
 <p>Let&rsquo;s begin by defining clojure records for our main types.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="kd">defrecord </span><span class="nv">MediaContent</span> <span class="p">[</span><span class="nv">id</span> <span class="nv">media</span> <span class="nv">images</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="kd">defrecord </span><span class="nv">MediaContent</span> <span class="p">[</span><span class="nv">id</span> <span class="nv">media</span> <span class="nv">images</span><span class="p">])</span>
 <span class="p">(</span><span class="kd">defrecord </span><span class="nv">Media</span> <span class="p">[</span><span class="nv">format</span> <span class="nv">height</span> <span class="nv">width</span> <span class="nv">copyright</span> <span class="nv">duration</span> <span class="nv">size</span>
                   <span class="nv">title</span> <span class="nv">persons</span> <span class="nv">bitrate</span> <span class="nv">player</span> <span class="nv">uri</span><span class="p">])</span>
-<span class="p">(</span><span class="kd">defrecord </span><span class="nv">Image</span> <span class="p">[</span><span class="nv">title</span> <span class="nv">uri</span> <span class="nv">height</span> <span class="nv">width</span> <span class="nv">size</span><span class="p">])</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="kd">defrecord </span><span class="nv">Image</span> <span class="p">[</span><span class="nv">title</span> <span class="nv">uri</span> <span class="nv">height</span> <span class="nv">width</span> <span class="nv">size</span><span class="p">])</span></code></pre></div>
 
 <p>Then, let&rsquo;s add tags to our dendrite query.
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">query</span> <span class="p">(</span><span class="nf">d/tag</span> <span class="ss">&#39;media-content</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">query</span> <span class="p">(</span><span class="nv">d/tag</span> <span class="ss">&#39;media-content</span>
             <span class="p">{</span><span class="ss">:id</span> <span class="ss">&#39;_</span>
-             <span class="ss">:media</span> <span class="p">(</span><span class="nf">d/tag</span> <span class="ss">&#39;media</span> <span class="ss">&#39;_</span><span class="p">)</span>
-             <span class="ss">:images</span> <span class="p">[(</span><span class="nf">d/tag</span> <span class="ss">&#39;image</span> <span class="ss">&#39;_</span><span class="p">)]}))</span>
-</code></pre></div>
-</p>
+             <span class="ss">:media</span> <span class="p">(</span><span class="nv">d/tag</span> <span class="ss">&#39;media</span> <span class="ss">&#39;_</span><span class="p">)</span>
+             <span class="ss">:images</span> <span class="p">[(</span><span class="nv">d/tag</span> <span class="ss">&#39;image</span> <span class="ss">&#39;_</span><span class="p">)]}))</span></code></pre></div></p>
 
 <p>Note that this query can be serialized to EDN.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">query-str</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">query</span><span class="p">))</span>
-<span class="c1">;= &quot;#media-content {:id _, :media #media _, :images [#image _]}&quot;</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">query-str</span> <span class="p">(</span><span class="nb">pr-str </span><span class="nv">query</span><span class="p">))</span>
+<span class="c1">;= &#34;#media-content {:id _, :media #media _, :images [#image _]}&#34;</span>
 
-<span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.edn</span> <span class="ss">:as</span> <span class="nv">edn</span><span class="p">])</span>
-<span class="p">(</span><span class="nb">= </span><span class="nv">query</span> <span class="p">(</span><span class="nf">edn/read-string</span> <span class="p">{</span><span class="ss">:default</span> <span class="nv">d/tag</span><span class="p">}</span> <span class="nv">query-str</span><span class="p">))</span>
-<span class="c1">; true</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.edn</span> <span class="ss">:as</span> <span class="nv">edn</span><span class="p">])</span>
+<span class="p">(</span><span class="nb">= </span><span class="nv">query</span> <span class="p">(</span><span class="nv">edn/read-string</span> <span class="p">{</span><span class="ss">:default</span> <span class="nv">d/tag</span><span class="p">}</span> <span class="nv">query-str</span><span class="p">))</span>
+<span class="c1">; true</span></code></pre></div>
 
 <p>Finally, lets use our tagged query to build these nested clojure records.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="nv">r</span>
-      <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="nv">query</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="nv">r</span>
+      <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:query</span> <span class="nv">query</span>
                <span class="ss">:readers</span> <span class="p">{</span><span class="ss">&#39;media-content</span> <span class="nv">map-&gt;MediaContent</span>
                          <span class="ss">&#39;media</span> <span class="nv">map-&gt;Media</span>
                          <span class="ss">&#39;image</span> <span class="nv">map-&gt;Image</span><span class="p">}})</span>
@@ -834,27 +758,25 @@ key performance optimizations.</p>
 <span class="c1">;= #user.MediaContent{</span>
 <span class="c1">;    :id 99999,</span>
 <span class="c1">;    :media #user.Media{</span>
-<span class="c1">;             :format &quot;MOV&quot;,</span>
+<span class="c1">;             :format &#34;MOV&#34;,</span>
 <span class="c1">;             :height 480,</span>
 <span class="c1">;             :width 480,</span>
-<span class="c1">;             :copyright &quot;Mybuzz&quot;,</span>
+<span class="c1">;             :copyright &#34;Mybuzz&#34;,</span>
 <span class="c1">;             :duration 1747,</span>
 <span class="c1">;             :size 31973,</span>
-<span class="c1">;             :title &quot;Pellentesque viverra peed ac diam.&quot;,</span>
-<span class="c1">;             :persons [&quot;Antonio Harris&quot;</span>
-<span class="c1">;                       &quot;Harold Price&quot;</span>
-<span class="c1">;                       &quot;Janice Shaw&quot;],</span>
+<span class="c1">;             :title &#34;Pellentesque viverra peed ac diam.&#34;,</span>
+<span class="c1">;             :persons [&#34;Antonio Harris&#34;</span>
+<span class="c1">;                       &#34;Harold Price&#34;</span>
+<span class="c1">;                       &#34;Janice Shaw&#34;],</span>
 <span class="c1">;             :bitrate 4000,</span>
-<span class="c1">;             :player &quot;FLASH&quot;,</span>
-<span class="c1">;             :uri &quot;http://merriam-webster.com/.../turpis.js&quot;},</span>
+<span class="c1">;             :player &#34;FLASH&#34;,</span>
+<span class="c1">;             :uri &#34;http://merriam-webster.com/.../turpis.js&#34;},</span>
 <span class="c1">;             :images [#user.Image{</span>
-<span class="c1">;                        :title &quot;Fusce posuere felis sed lacus.&quot;,</span>
-<span class="c1">;                        :uri &quot;https://army.mil/.../auctor.html&quot;,</span>
+<span class="c1">;                        :title &#34;Fusce posuere felis sed lacus.&#34;,</span>
+<span class="c1">;                        :uri &#34;https://army.mil/.../auctor.html&#34;,</span>
 <span class="c1">;                        :height 240,</span>
 <span class="c1">;                        :width 160,</span>
-<span class="c1">;                        :size &quot;LARGE&quot;}]}</span>
-</code></pre></div>
-
+<span class="c1">;                        :size &#34;LARGE&#34;}]}</span></code></pre></div>
 
 <p>Reader tags on leaf values trigger an important optimization when those leaf values are dictionary-encoded. In
 that case, the reader function gets applied to the dictionary itself in the column decoding thread, rather
@@ -870,18 +792,16 @@ millions of hashes is very expensive, but computing just a few thousand distinct
 clojure&rsquo;s built-in implementation of <a href="https://en.wikipedia.org/wiki/MurmurHash
 ">murmur hash</a>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="kd">defn </span><span class="nv">murmur-hash</span> <span class="p">[</span><span class="nv">x</span><span class="p">]</span>
-  <span class="p">(</span><span class="nf">clojure.lang.Murmur3/hashUnencodedChars</span> <span class="p">(</span><span class="nb">str </span><span class="nv">x</span><span class="p">)))</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="kd">defn </span><span class="nv">murmur-hash</span> <span class="p">[</span><span class="nv">x</span><span class="p">]</span>
+  <span class="p">(</span><span class="nv">clojure.lang.Murmur3/hashUnencodedChars</span> <span class="p">(</span><span class="nb">str </span><span class="nv">x</span><span class="p">)))</span></code></pre></div>
 
 <p>Then we define two queries for the dictionary columns of the media object, one tagged, the other not.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">dict-ks</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">dict-ks</span>
   <span class="p">[</span><span class="ss">:format</span>, <span class="ss">:width</span>, <span class="ss">:copyright</span>, <span class="ss">:bitrate</span>, <span class="ss">:player</span>, <span class="ss">:height</span><span class="p">])</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">map-vals</span> <span class="p">[</span><span class="nv">f</span> <span class="nv">m</span><span class="p">]</span>
-  <span class="p">(</span><span class="nf">reduce-kv</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">m</span> <span class="nv">k</span> <span class="nv">v</span><span class="p">]</span> <span class="p">(</span><span class="nb">assoc </span><span class="nv">m</span> <span class="nv">k</span> <span class="p">(</span><span class="nf">f</span> <span class="nv">v</span><span class="p">)))</span> <span class="p">{}</span> <span class="nv">m</span><span class="p">))</span>
+  <span class="p">(</span><span class="nv">reduce-kv</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">m</span> <span class="nv">k</span> <span class="nv">v</span><span class="p">]</span> <span class="p">(</span><span class="nb">assoc </span><span class="nv">m</span> <span class="nv">k</span> <span class="p">(</span><span class="nv">f</span> <span class="nv">v</span><span class="p">)))</span> <span class="p">{}</span> <span class="nv">m</span><span class="p">))</span>
 
 <span class="c1">; Regular query for the fields in `dict-ks`</span>
 <span class="p">(</span><span class="k">def </span><span class="nv">query</span>
@@ -889,34 +809,30 @@ clojure&rsquo;s built-in implementation of <a href="https://en.wikipedia.org/wik
 
 <span class="c1">; Query in with each field in `dict-ks` is tagged with &#39;hash</span>
 <span class="p">(</span><span class="k">def </span><span class="nv">tagged-query</span>
-  <span class="p">(</span><span class="nf">map-vals</span> <span class="o">#</span><span class="p">(</span><span class="nf">d/tag</span> <span class="ss">&#39;hash</span> <span class="nv">%</span><span class="p">)</span> <span class="nv">query</span><span class="p">))</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="nv">map-vals</span> <span class="o">#</span><span class="p">(</span><span class="nv">d/tag</span> <span class="ss">&#39;hash</span> <span class="nv">%</span><span class="p">)</span> <span class="nv">query</span><span class="p">))</span></code></pre></div>
 
 <p>Now let&rsquo;s compare the performance of hashing all the values for the fields in <code>dict-ks</code>, using a transducer on
 the one hand, and reader tags on the other.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="c1">; Hash all values with a transducer</span>
-<span class="p">(</span><span class="nb">time </span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-        <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="nv">r</span>
-             <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span><span class="p">]</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="c1">; Hash all values with a transducer</span>
+<span class="p">(</span><span class="nb">time </span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+        <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="nv">r</span>
+             <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span><span class="p">]</span>
                       <span class="ss">:query</span> <span class="nv">query</span><span class="p">})</span>
-             <span class="p">(</span><span class="nf">d/eduction</span> <span class="p">(</span><span class="nb">map </span><span class="p">(</span><span class="nb">partial </span><span class="nv">map-vals</span> <span class="nv">murmur-hash</span><span class="p">)))</span>
+             <span class="p">(</span><span class="nv">d/eduction</span> <span class="p">(</span><span class="nb">map </span><span class="p">(</span><span class="nb">partial </span><span class="nv">map-vals</span> <span class="nv">murmur-hash</span><span class="p">)))</span>
              <span class="nv">last</span><span class="p">)))</span>
-<span class="c1">;= &quot;Elapsed time: 97.027783 msecs&quot;</span>
+<span class="c1">;= &#34;Elapsed time: 97.027783 msecs&#34;</span>
 <span class="c1">;  {:format -992991939, :width 2996761, ... }</span>
 
 <span class="c1">; Hash all distinct values in dictionaries</span>
-<span class="p">(</span><span class="nb">time </span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-        <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="nv">r</span>
-             <span class="p">(</span><span class="nf">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span><span class="p">]</span>
+<span class="p">(</span><span class="nb">time </span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+        <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="nv">r</span>
+             <span class="p">(</span><span class="nv">d/read</span> <span class="p">{</span><span class="ss">:sub-schema-in</span> <span class="p">[</span><span class="ss">:media</span><span class="p">]</span>
                       <span class="ss">:query</span> <span class="nv">tagged-query</span>
                       <span class="ss">:readers</span> <span class="p">{</span><span class="ss">&#39;hash</span> <span class="nv">murmur-hash</span><span class="p">}})</span>
              <span class="nv">last</span><span class="p">)))</span>
-<span class="c1">;= &quot;Elapsed time: 34.897017 msecs&quot;</span>
-<span class="c1">;  {:format -992991939, :width 2996761, ... }</span>
-</code></pre></div>
-
+<span class="c1">;= &#34;Elapsed time: 34.897017 msecs&#34;</span>
+<span class="c1">;  {:format -992991939, :width 2996761, ... }</span></code></pre></div>
 
 <p>In this example, reader tags on dictionary columns yield a 3x speed improvement.</p>
 
@@ -941,7 +857,7 @@ the <em>base-type</em>.</p>
 arbitrary EDN data. This could be useful if parts of your data must accommodate a completely free-form
 datastructure.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.edn</span> <span class="ss">:as</span> <span class="nv">edn</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.edn</span> <span class="ss">:as</span> <span class="nv">edn</span><span class="p">])</span>
 
 <span class="p">(</span><span class="k">def </span><span class="nv">edn-type</span> <span class="p">{</span><span class="ss">:type</span> <span class="ss">&#39;edn</span>
                <span class="ss">:base-type</span> <span class="ss">&#39;string</span>
@@ -951,33 +867,29 @@ datastructure.</p>
 <span class="c1">; A trivial schema with the new type</span>
 <span class="p">(</span><span class="k">def </span><span class="nv">schema</span> <span class="p">{</span><span class="ss">:blob-id</span> <span class="ss">&#39;int</span> <span class="ss">:blob</span> <span class="ss">&#39;edn</span><span class="p">})</span>
 
-<span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&quot;custom-type-example.den&quot;</span><span class="p">)</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&#34;custom-type-example.den&#34;</span><span class="p">)</span>
 
 <span class="c1">; Write two records to a file</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:custom-types</span> <span class="p">[</span><span class="nv">edn-type</span><span class="p">]}</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:custom-types</span> <span class="p">[</span><span class="nv">edn-type</span><span class="p">]}</span>
                              <span class="nv">schema</span>
                              <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:blob-id</span> <span class="mi">1</span> <span class="ss">:blob</span> <span class="p">{</span><span class="ss">:foo</span> <span class="mi">2</span><span class="p">}})</span>
-  <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:blob-id</span> <span class="mi">2</span> <span class="ss">:blob</span> <span class="p">[</span><span class="o">#</span><span class="p">{</span><span class="ss">:bar</span><span class="p">}]}))</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:blob-id</span> <span class="mi">1</span> <span class="ss">:blob</span> <span class="p">{</span><span class="ss">:foo</span> <span class="mi">2</span><span class="p">}})</span>
+  <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="p">{</span><span class="ss">:blob-id</span> <span class="mi">2</span> <span class="ss">:blob</span> <span class="p">[</span><span class="o">#</span><span class="p">{</span><span class="ss">:bar</span><span class="p">}]}))</span>
 
 <span class="c1">; Read them</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="p">{</span><span class="ss">:custom-types</span> <span class="p">[</span><span class="nv">edn-type</span><span class="p">]}</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="p">{</span><span class="ss">:custom-types</span> <span class="p">[</span><span class="nv">edn-type</span><span class="p">]}</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
 <span class="c1">;= ({:blob-id 1, :blob {:foo 2}}</span>
-<span class="c1">;   {:blob-id 2, :blob [#{:bar}]})</span>
-</code></pre></div>
-
+<span class="c1">;   {:blob-id 2, :blob [#{:bar}]})</span></code></pre></div>
 
 <p>Note that we have to pass the <code>:custom-types</code> option to both the reader and the writer. If the write does not
 have that option it will throw an exception. The reader, however, degrades gracefully by reading the <code>edn</code>
 values in its base-type (<code>string</code> in this example).</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)))</span>
-<span class="c1">;= ({:blob-id 1, :blob &quot;{:foo 2}&quot;}</span>
-<span class="c1">;   {:blob-id 2, :blob &quot;[#{:bar}]&quot;})</span>
-</code></pre></div>
-
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doall </span><span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="c1">;= ({:blob-id 1, :blob &#34;{:foo 2}&#34;}</span>
+<span class="c1">;   {:blob-id 2, :blob &#34;[#{:bar}]&#34;})</span></code></pre></div>
 
 <p>Note how the <code>:blob</code> values are read as strings if the <code>:custom-types</code> option is not defined.</p>
 
@@ -1072,42 +984,40 @@ these use-cases.</p>
 compressions. The <code>d/full-schema</code> function can retrieve the <em>fully-annotated</em> schema from an existing
 file. Let&rsquo;s see how this works on a simple example.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">tmp-file</span> <span class="s">&quot;/path/to/tmp-file.den&quot;</span><span class="p">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">tmp-file</span> <span class="s">&#34;/path/to/tmp-file.den&#34;</span><span class="p">)</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">get-full-schema</span> <span class="p">[</span><span class="nv">file</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-    <span class="p">(</span><span class="nf">d/full-schema</span> <span class="nv">r</span><span class="p">)))</span>
+  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+    <span class="p">(</span><span class="nv">d/full-schema</span> <span class="nv">r</span><span class="p">)))</span>
 
 <span class="c1">; Default behavior</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
-<span class="p">(</span><span class="nf">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
+<span class="p">(</span><span class="nv">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
 <span class="c1">;= #col [int delta]</span>
 <span class="c1">; Delta encoding with no compression</span>
 
 <span class="c1">; Disable optimization</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:optimize-columns?</span> <span class="ss">:none</span><span class="p">}</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:optimize-columns?</span> <span class="ss">:none</span><span class="p">}</span>
                              <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
-<span class="p">(</span><span class="nf">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
+<span class="p">(</span><span class="nv">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
 <span class="c1">;= int</span>
 <span class="c1">; Plain int encoding with no compression</span>
 
 <span class="c1">; Manually pick VLQ encoding</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">(</span><span class="nf">d/col</span> <span class="ss">&#39;int</span> <span class="ss">&#39;vlq</span> <span class="ss">&#39;deflate</span><span class="p">)</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
-<span class="p">(</span><span class="nf">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">(</span><span class="nv">d/col</span> <span class="ss">&#39;int</span> <span class="ss">&#39;vlq</span> <span class="ss">&#39;deflate</span><span class="p">)</span> <span class="nv">tmp-file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
+<span class="p">(</span><span class="nv">get-full-schema</span> <span class="nv">tmp-file</span><span class="p">)</span>
 <span class="c1">;= #col [int vlq deflate]</span>
 <span class="c1">; VLQ encoding with deflate compression</span>
 
 <span class="c1">; Manually pick VLQ encoding, but force optimization of all columns</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:optimize-columns?</span> <span class="ss">:all</span><span class="p">}</span>
-                             <span class="p">(</span><span class="nf">d/col</span> <span class="ss">&#39;int</span> <span class="ss">&#39;vlq</span><span class="p">)</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:optimize-columns?</span> <span class="ss">:all</span><span class="p">}</span>
+                             <span class="p">(</span><span class="nv">d/col</span> <span class="ss">&#39;int</span> <span class="ss">&#39;vlq</span><span class="p">)</span> <span class="nv">tmp-file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">100</span><span class="p">)))</span>
 <span class="c1">;= #col [int delta]</span>
-<span class="c1">; Delta encoding with no compression</span>
-</code></pre></div>
-
+<span class="c1">; Delta encoding with no compression</span></code></pre></div>
 
 <p>Note that object returned by <code>d/col</code> is printed using an EDN <code>#col</code> tag. Indeed, there is nothing special
 about these <em>fully-annotated</em> schemas as they can be manipulated and serialized just like the schemas
@@ -1125,29 +1035,27 @@ the one that yielded the smallest page.</p>
 <p>These thresholds are configurable through the <code>:compression-thresholds</code> writer option and allow the user finer
 control over the file-size vs. read speed trade-off. Let&rsquo;s see how this works on a simple example.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="k">def </span><span class="nv">tmp-file</span> <span class="s">&quot;/path/to/tmp-file.den&quot;</span><span class="p">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="k">def </span><span class="nv">tmp-file</span> <span class="s">&#34;/path/to/tmp-file.den&#34;</span><span class="p">)</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">first-col-stats</span> <span class="p">[</span><span class="nv">file</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
     <span class="p">(</span><span class="nb">select-keys </span><span class="p">(</span><span class="nb">-&gt; </span><span class="nv">r</span> <span class="nv">d/stats</span> <span class="ss">:columns</span> <span class="nv">first</span><span class="p">)</span>
                  <span class="p">[</span><span class="ss">:compression</span> <span class="ss">:data-length</span><span class="p">])))</span>
 
 <span class="c1">; Default: use deflate only if it achieves a 1.5 compression</span>
 <span class="c1">; ratio or higher</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">10000</span><span class="p">)))</span>
-<span class="p">(</span><span class="nf">first-col-stats</span> <span class="nv">tmp-file</span><span class="p">)</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">10000</span><span class="p">)))</span>
+<span class="p">(</span><span class="nv">first-col-stats</span> <span class="nv">tmp-file</span><span class="p">)</span>
 <span class="c1">;= {:compression deflate, :data-length 283}</span>
 
 <span class="c1">; Only pick deflate compression if it achieves a compression ratio</span>
 <span class="c1">; of 3 or higher</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:compression-thresholds</span> <span class="p">{</span><span class="ss">&#39;deflate</span> <span class="mi">3</span><span class="p">}}</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:compression-thresholds</span> <span class="p">{</span><span class="ss">&#39;deflate</span> <span class="mi">3</span><span class="p">}}</span>
                              <span class="ss">&#39;int</span> <span class="nv">tmp-file</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nf">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">10000</span><span class="p">)))</span>
-<span class="p">(</span><span class="nf">first-col-stats</span> <span class="nv">tmp-file</span><span class="p">)</span>
-<span class="c1">;= {:compression none, :data-length 716}</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="nv">.writeAll</span> <span class="nv">w</span> <span class="p">(</span><span class="nb">range </span><span class="mi">10000</span><span class="p">)))</span>
+<span class="p">(</span><span class="nv">first-col-stats</span> <span class="nv">tmp-file</span><span class="p">)</span>
+<span class="c1">;= {:compression none, :data-length 716}</span></code></pre></div>
 
 <p>The compressed length (283 bytes) is just 2.5 times smaller than the uncompressed length (716 bytes) so
 deflate compression is selected in the former example but not in the latter.</p>
@@ -1170,52 +1078,46 @@ influences the heuristic for the maximum size of dictionary pages.</p>
 <p>Let&rsquo;s see how this plays out on an example. We re-use the same tutorial file that was downloaded at the
 beginning of the <a href="#file-introspection">file introspection</a> section.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="c1">; &#39;file&#39; points to the provided tutorial, &#39;file2&#39; to a tmp file</span>
-<span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&quot;/path/to/tutorial.den&quot;</span><span class="p">)</span>
-<span class="p">(</span><span class="k">def </span><span class="nv">file2</span> <span class="s">&quot;/path/to/tmp-file.den&quot;</span><span class="p">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="c1">; &#39;file&#39; points to the provided tutorial, &#39;file2&#39; to a tmp file</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">file</span> <span class="s">&#34;/path/to/tutorial.den&#34;</span><span class="p">)</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">file2</span> <span class="s">&#34;/path/to/tmp-file.den&#34;</span><span class="p">)</span>
 
 <span class="c1">; Fetch the schema from file</span>
-<span class="p">(</span><span class="k">def </span><span class="nv">schema</span> <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-              <span class="p">(</span><span class="nf">d/schema</span> <span class="nv">r</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">def </span><span class="nv">schema</span> <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+              <span class="p">(</span><span class="nv">d/schema</span> <span class="nv">r</span><span class="p">)))</span>
 
 <span class="c1">; Copy file to file2 using a smaller page size</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)</span>
-            <span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:data-page-length</span> <span class="mi">1024</span><span class="p">}</span> <span class="nv">schema</span> <span class="nv">file2</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">o</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">o</span><span class="p">)))</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)</span>
+            <span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:data-page-length</span> <span class="mi">1024</span><span class="p">}</span> <span class="nv">schema</span> <span class="nv">file2</span><span class="p">)]</span>
+  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">o</span> <span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)]</span>
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">o</span><span class="p">)))</span></code></pre></div>
 
 <p>Note that <code>file2</code> is considerably larger than <code>file</code>.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.java.io</span> <span class="ss">:as</span> <span class="nv">io</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.java.io</span> <span class="ss">:as</span> <span class="nv">io</span><span class="p">])</span>
 
-<span class="p">(</span><span class="nf">.length</span> <span class="p">(</span><span class="nf">io/as-file</span> <span class="nv">file</span><span class="p">))</span>
+<span class="p">(</span><span class="nv">.length</span> <span class="p">(</span><span class="nv">io/as-file</span> <span class="nv">file</span><span class="p">))</span>
 <span class="c1">;= 6421801</span>
 
-<span class="p">(</span><span class="nf">.length</span> <span class="p">(</span><span class="nf">io/as-file</span> <span class="nv">file2</span><span class="p">))</span>
-<span class="c1">;= 19775457</span>
-</code></pre></div>
-
+<span class="p">(</span><span class="nv">.length</span> <span class="p">(</span><span class="nv">io/as-file</span> <span class="nv">file2</span><span class="p">))</span>
+<span class="c1">;= 19775457</span></code></pre></div>
 
 <p>Let&rsquo;s have a closer look at page lengths and counts in both. We&rsquo;ll first define a <code>print-page-stats</code> function.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">print-page-stats</span> <span class="p">[</span><span class="nv">file</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-    <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/stats</span> <span class="nv">r</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+    <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/stats</span> <span class="nv">r</span><span class="p">)</span>
          <span class="ss">:columns</span>
          <span class="p">(</span><span class="nb">map </span><span class="o">#</span><span class="p">(</span><span class="nb">select-keys </span><span class="nv">%</span> <span class="p">[</span><span class="ss">:length</span> <span class="ss">:encoding</span> <span class="ss">:compression</span>
                                <span class="ss">:num-pages</span><span class="p">]))</span>
          <span class="p">(</span><span class="nb">sort-by </span><span class="ss">:length</span><span class="p">)</span>
-         <span class="nv">pp/print-table</span><span class="p">)))</span>
-</code></pre></div>
-
+         <span class="nv">pp/print-table</span><span class="p">)))</span></code></pre></div>
 
 <p>Let&rsquo;s use this function to analyze both files.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">print-page-stats</span> <span class="nv">file</span><span class="p">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">print-page-stats</span> <span class="nv">file</span><span class="p">)</span>
 <span class="c1">; | :length |         :encoding | :compression | :num-pages |</span>
 <span class="c1">; |---------+-------------------+--------------+------------|</span>
 <span class="c1">; |    2137 |             delta |      deflate |          1 |</span>
@@ -1236,7 +1138,7 @@ beginning of the <a href="#file-introspection">file introspection</a> section.</
 <span class="c1">; | 1009330 |       incremental |      deflate |          5 |</span>
 <span class="c1">; | 3064652 |       incremental |      deflate |         13 |</span>
 
-<span class="p">(</span><span class="nf">print-page-stats</span> <span class="nv">file2</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">print-page-stats</span> <span class="nv">file2</span><span class="p">)</span>
 <span class="c1">; | :length |         :encoding | :compression | :num-pages |</span>
 <span class="c1">; |---------+-------------------+--------------+------------|</span>
 <span class="c1">; |    4621 |             delta |      deflate |         79 |</span>
@@ -1255,9 +1157,7 @@ beginning of the <a href="#file-introspection">file introspection</a> section.</
 <span class="c1">; | 1821422 |       incremental |      deflate |       1713 |</span>
 <span class="c1">; | 2309660 |       incremental |      deflate |       2193 |</span>
 <span class="c1">; | 5545539 |       incremental |      deflate |       5126 |</span>
-<span class="c1">; | 6980630 |       incremental |      deflate |       6467 |</span>
-</code></pre></div>
-
+<span class="c1">; | 6980630 |       incremental |      deflate |       6467 |</span></code></pre></div>
 
 <p>Note how the smaller page size increased the number of pages and changed the result of the heuristics for
 encoding and compression. In this example, the very small 1KB pages reduced the number of dictionary encodings
@@ -1272,32 +1172,30 @@ read-time. Due to JVM limitations, the maximum record-group length is 2 GB.</p>
 <p>Let&rsquo;s quickly modify the record-group length of the tutorial file (reusing the <code>file</code>, <code>file2</code>, and <code>schema</code>
 vars from the previous section.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="c1">; Copy file to file2 using a smaller record-group-length</span>
-<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)</span>
-            <span class="nv">w</span> <span class="p">(</span><span class="nf">d/file-writer</span> <span class="p">{</span><span class="ss">:record-group-length</span> <span class="p">(</span><span class="nb">* </span><span class="mi">1024</span> <span class="mi">1024</span><span class="p">)}</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="c1">; Copy file to file2 using a smaller record-group-length</span>
+<span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)</span>
+            <span class="nv">w</span> <span class="p">(</span><span class="nv">d/file-writer</span> <span class="p">{</span><span class="ss">:record-group-length</span> <span class="p">(</span><span class="nb">* </span><span class="mi">1024</span> <span class="mi">1024</span><span class="p">)}</span>
                              <span class="nv">schema</span> <span class="nv">file2</span><span class="p">)]</span>
-  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">o</span> <span class="p">(</span><span class="nf">d/read</span> <span class="nv">r</span><span class="p">)]</span>
-    <span class="p">(</span><span class="nf">.write</span> <span class="nv">w</span> <span class="nv">o</span><span class="p">)))</span>
-</code></pre></div>
-
+  <span class="p">(</span><span class="nb">doseq </span><span class="p">[</span><span class="nv">o</span> <span class="p">(</span><span class="nv">d/read</span> <span class="nv">r</span><span class="p">)]</span>
+    <span class="p">(</span><span class="nv">.write</span> <span class="nv">w</span> <span class="nv">o</span><span class="p">)))</span></code></pre></div>
 
 <p>Then let&rsquo;s inspect the file stats to see how this changed the file layout.</p>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">(</span><span class="nf">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">(</span><span class="nv">require</span> <span class="o">&#39;</span><span class="p">[</span><span class="nv">clojure.pprint</span> <span class="ss">:as</span> <span class="nv">pp</span><span class="p">])</span>
 
 <span class="p">(</span><span class="kd">defn </span><span class="nv">print-rg-stats</span> <span class="p">[</span><span class="nv">file</span><span class="p">]</span>
-  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nf">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
-    <span class="p">(</span><span class="nf">-&gt;&gt;</span> <span class="p">(</span><span class="nf">d/stats</span> <span class="nv">r</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">with-open </span><span class="p">[</span><span class="nv">r</span> <span class="p">(</span><span class="nv">d/file-reader</span> <span class="nv">file</span><span class="p">)]</span>
+    <span class="p">(</span><span class="nv">-&gt;&gt;</span> <span class="p">(</span><span class="nv">d/stats</span> <span class="nv">r</span><span class="p">)</span>
          <span class="ss">:record-groups</span>
          <span class="p">(</span><span class="nb">map </span><span class="o">#</span><span class="p">(</span><span class="nb">select-keys </span><span class="nv">%</span> <span class="p">[</span><span class="ss">:num-records</span> <span class="ss">:length</span><span class="p">]))</span>
          <span class="nv">pp/print-table</span><span class="p">)))</span>
 
-<span class="p">(</span><span class="nf">print-rg-stats</span> <span class="nv">file</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">print-rg-stats</span> <span class="nv">file</span><span class="p">)</span>
 <span class="c1">; | :num-records | :length |</span>
 <span class="c1">; |--------------+---------|</span>
 <span class="c1">; |       100000 | 6421208 |</span>
 
-<span class="p">(</span><span class="nf">print-rg-stats</span> <span class="nv">file2</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">print-rg-stats</span> <span class="nv">file2</span><span class="p">)</span>
 <span class="c1">; | :num-records | :length |</span>
 <span class="c1">; |--------------+---------|</span>
 <span class="c1">; |        14757 |  994736 |</span>
@@ -1306,9 +1204,7 @@ vars from the previous section.</p>
 <span class="c1">; |        15684 | 1050273 |</span>
 <span class="c1">; |        15767 | 1049096 |</span>
 <span class="c1">; |        15745 | 1049766 |</span>
-<span class="c1">; |         6885 |  471042 |</span>
-</code></pre></div>
-
+<span class="c1">; |         6885 |  471042 |</span></code></pre></div>
 
 <p>In this example, lowering <code>:record-group-length</code> to 1 MB (down from 128 MB by default), created a copy of the
 tutorial file with six record-groups instead of just one.</p>

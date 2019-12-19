@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="generator" content="Hugo 0.25.1" />
+  <meta name="generator" content="Hugo 0.30" />
 
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -253,66 +253,64 @@ low-cardinality columns and dendrite&rsquo;s performance on those will be compar
 
 <h3 id="sample-record">Sample record</h3>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">{</span><span class="ss">:receipt-date</span> <span class="s">&quot;1996-03-22&quot;</span>,
- <span class="ss">:return-flag</span> <span class="s">&quot;N&quot;</span>,
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">{</span><span class="ss">:receipt-date</span> <span class="s">&#34;1996-03-22&#34;</span>,
+ <span class="ss">:return-flag</span> <span class="s">&#34;N&#34;</span>,
  <span class="ss">:supplier</span>
- <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;Supplier#000000785&quot;</span>,
-  <span class="ss">:address</span> <span class="s">&quot;W VkHBpQyD3qjQjWGpWicOpmILFehmEdWy67kUGY&quot;</span>,
+ <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;Supplier#000000785&#34;</span>,
+  <span class="ss">:address</span> <span class="s">&#34;W VkHBpQyD3qjQjWGpWicOpmILFehmEdWy67kUGY&#34;</span>,
   <span class="ss">:nation</span>
-  <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;RUSSIA&quot;</span>,
-   <span class="ss">:region</span> <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;EUROPE&quot;</span>,
-            <span class="ss">:comment</span> <span class="s">&quot;ly final courts cajole furiously final</span>
-<span class="s">                      excuse&quot;</span><span class="p">}</span>,
-   <span class="ss">:comment</span> <span class="s">&quot; requests against the platelets use never according</span>
-<span class="s">             to the quickly regular pint&quot;</span><span class="p">}</span>,
-  <span class="ss">:phone</span> <span class="s">&quot;32-297-653-2203&quot;</span>,
+  <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;RUSSIA&#34;</span>,
+   <span class="ss">:region</span> <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;EUROPE&#34;</span>,
+            <span class="ss">:comment</span> <span class="s">&#34;ly final courts cajole furiously final
+</span><span class="s">                      excuse&#34;</span><span class="p">}</span>,
+   <span class="ss">:comment</span> <span class="s">&#34; requests against the platelets use never according
+</span><span class="s">             to the quickly regular pint&#34;</span><span class="p">}</span>,
+  <span class="ss">:phone</span> <span class="s">&#34;32-297-653-2203&#34;</span>,
   <span class="ss">:account-balance</span> <span class="mf">5364.99</span>,
-  <span class="ss">:comment</span> <span class="s">&quot; packages boost carefully. express ideas along&quot;</span><span class="p">}</span>,
- <span class="ss">:ship-date</span> <span class="s">&quot;1996-03-13&quot;</span>,
- <span class="ss">:ship-mode</span> <span class="s">&quot;TRUCK&quot;</span>,
+  <span class="ss">:comment</span> <span class="s">&#34; packages boost carefully. express ideas along&#34;</span><span class="p">}</span>,
+ <span class="ss">:ship-date</span> <span class="s">&#34;1996-03-13&#34;</span>,
+ <span class="ss">:ship-mode</span> <span class="s">&#34;TRUCK&#34;</span>,
  <span class="ss">:part</span>
- <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;powder wheat midnight mint salmon&quot;</span>,
-  <span class="ss">:manufacturer</span> <span class="s">&quot;Manufacturer#4&quot;</span>,
-  <span class="ss">:brand</span> <span class="s">&quot;Brand#44&quot;</span>,
-  <span class="ss">:type</span> <span class="s">&quot;SMALL ANODIZED STEEL&quot;</span>,
+ <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;powder wheat midnight mint salmon&#34;</span>,
+  <span class="ss">:manufacturer</span> <span class="s">&#34;Manufacturer#4&#34;</span>,
+  <span class="ss">:brand</span> <span class="s">&#34;Brand#44&#34;</span>,
+  <span class="ss">:type</span> <span class="s">&#34;SMALL ANODIZED STEEL&#34;</span>,
   <span class="ss">:size</span> <span class="mi">42</span>,
-  <span class="ss">:container</span> <span class="s">&quot;JUMBO CASE&quot;</span>,
+  <span class="ss">:container</span> <span class="s">&#34;JUMBO CASE&#34;</span>,
   <span class="ss">:retail-price</span> <span class="mf">1434.51</span>,
-  <span class="ss">:comment</span> <span class="s">&quot;e carefully expre&quot;</span><span class="p">}</span>,
- <span class="ss">:ship-instruct</span> <span class="s">&quot;DELIVER IN PERSON&quot;</span>,
- <span class="ss">:commit-date</span> <span class="s">&quot;1996-02-12&quot;</span>,
+  <span class="ss">:comment</span> <span class="s">&#34;e carefully expre&#34;</span><span class="p">}</span>,
+ <span class="ss">:ship-instruct</span> <span class="s">&#34;DELIVER IN PERSON&#34;</span>,
+ <span class="ss">:commit-date</span> <span class="s">&#34;1996-02-12&#34;</span>,
  <span class="ss">:tax</span> <span class="mf">0.02</span>,
- <span class="ss">:comment</span> <span class="s">&quot;egular courts above the&quot;</span>,
+ <span class="ss">:comment</span> <span class="s">&#34;egular courts above the&#34;</span>,
  <span class="ss">:extended-price</span> <span class="mf">24386.67</span>,
  <span class="ss">:order</span>
  <span class="p">{</span><span class="ss">:customer</span>
-  <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;Customer#000003691&quot;</span>,
-   <span class="ss">:address</span> <span class="s">&quot;la3aZ2dd41O3lCSTPnbU&quot;</span>,
+  <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;Customer#000003691&#34;</span>,
+   <span class="ss">:address</span> <span class="s">&#34;la3aZ2dd41O3lCSTPnbU&#34;</span>,
    <span class="ss">:nation</span>
-   <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;FRANCE&quot;</span>,
+   <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;FRANCE&#34;</span>,
     <span class="ss">:region</span>
-    <span class="p">{</span><span class="ss">:name</span> <span class="s">&quot;EUROPE&quot;</span>,
-     <span class="ss">:comment</span> <span class="s">&quot;uickly special accounts cajole carefully blithely</span>
-<span class="s">               close requests. carefully final asymptotes haggle</span>
-<span class="s">               furiousl&quot;</span><span class="p">}</span>,
-    <span class="ss">:comment</span> <span class="s">&quot;efully alongside of the slyly final dependencies. &quot;</span><span class="p">}</span>,
-   <span class="ss">:phone</span> <span class="s">&quot;20-758-985-1035&quot;</span>,
+    <span class="p">{</span><span class="ss">:name</span> <span class="s">&#34;EUROPE&#34;</span>,
+     <span class="ss">:comment</span> <span class="s">&#34;uickly special accounts cajole carefully blithely
+</span><span class="s">               close requests. carefully final asymptotes haggle
+</span><span class="s">               furiousl&#34;</span><span class="p">}</span>,
+    <span class="ss">:comment</span> <span class="s">&#34;efully alongside of the slyly final dependencies. &#34;</span><span class="p">}</span>,
+   <span class="ss">:phone</span> <span class="s">&#34;20-758-985-1035&#34;</span>,
    <span class="ss">:account-balance</span> <span class="mf">7967.22</span>,
-   <span class="ss">:market-segment</span> <span class="s">&quot;MACHINERY&quot;</span>,
-   <span class="ss">:comment</span> <span class="s">&quot;ublate furiously alongside of the pinto bean&quot;</span><span class="p">}</span>,
-  <span class="ss">:order-status</span> <span class="s">&quot;O&quot;</span>,
+   <span class="ss">:market-segment</span> <span class="s">&#34;MACHINERY&#34;</span>,
+   <span class="ss">:comment</span> <span class="s">&#34;ublate furiously alongside of the pinto bean&#34;</span><span class="p">}</span>,
+  <span class="ss">:order-status</span> <span class="s">&#34;O&#34;</span>,
   <span class="ss">:total-price</span> <span class="mf">194029.55</span>,
-  <span class="ss">:order-date</span> <span class="s">&quot;1996-01-02&quot;</span>,
-  <span class="ss">:order-priority</span> <span class="s">&quot;5-LOW&quot;</span>,
-  <span class="ss">:clerk</span> <span class="s">&quot;Clerk#000000951&quot;</span>,
+  <span class="ss">:order-date</span> <span class="s">&#34;1996-01-02&#34;</span>,
+  <span class="ss">:order-priority</span> <span class="s">&#34;5-LOW&#34;</span>,
+  <span class="ss">:clerk</span> <span class="s">&#34;Clerk#000000951&#34;</span>,
   <span class="ss">:ship-priority</span> <span class="mi">0</span>,
-  <span class="ss">:comment</span> <span class="s">&quot;nstructions sleep furiously among &quot;</span><span class="p">}</span>,
+  <span class="ss">:comment</span> <span class="s">&#34;nstructions sleep furiously among &#34;</span><span class="p">}</span>,
  <span class="ss">:quantity</span> <span class="mi">17</span>,
  <span class="ss">:discount</span> <span class="mf">0.04</span>,
  <span class="ss">:line-number</span> <span class="mi">1</span>,
- <span class="ss">:line-status</span> <span class="s">&quot;O&quot;</span><span class="p">}</span>
-</code></pre></div>
-
+ <span class="ss">:line-status</span> <span class="s">&#34;O&#34;</span><span class="p">}</span></code></pre></div>
 
 <h3 id="sub-schema">Sub-schema</h3>
 
@@ -390,33 +388,31 @@ records from <a href="http://www.mockaroo.com/
 
 <h3 id="media-content-record">Sample record</h3>
 
-<div class="highlight"><pre><code class="language-clojure" data-lang="clojure"><span></span><span class="p">{</span><span class="ss">:id</span> <span class="mi">0</span>,
+<div class="highlight"><pre class="chroma"><code class="language-clojure" data-lang="clojure"><span class="p">{</span><span class="ss">:id</span> <span class="mi">0</span>,
  <span class="ss">:media</span>
- <span class="p">{</span><span class="ss">:format</span> <span class="s">&quot;MKV&quot;</span>,
+ <span class="p">{</span><span class="ss">:format</span> <span class="s">&#34;MKV&#34;</span>,
   <span class="ss">:width</span> <span class="mi">3840</span>,
-  <span class="ss">:copyright</span> <span class="s">&quot;Feedspan&quot;</span>,
+  <span class="ss">:copyright</span> <span class="s">&#34;Feedspan&#34;</span>,
   <span class="ss">:duration</span> <span class="mi">158</span>,
   <span class="ss">:size</span> <span class="mi">19636</span>,
-  <span class="ss">:title</span> <span class="s">&quot;Phasellus sit amet erat.&quot;</span>,
-  <span class="ss">:persons</span> <span class="p">[</span><span class="s">&quot;Joshua Barnes&quot;</span> <span class="s">&quot;Terry Sanders&quot;</span><span class="p">]</span>,
+  <span class="ss">:title</span> <span class="s">&#34;Phasellus sit amet erat.&#34;</span>,
+  <span class="ss">:persons</span> <span class="p">[</span><span class="s">&#34;Joshua Barnes&#34;</span> <span class="s">&#34;Terry Sanders&#34;</span><span class="p">]</span>,
   <span class="ss">:bitrate</span> <span class="mi">400</span>,
-  <span class="ss">:player</span> <span class="s">&quot;FLASH&quot;</span>,
-  <span class="ss">:uri</span> <span class="s">&quot;https://fotki.com/vitae/ipsum/aliquam.js&quot;</span>,
+  <span class="ss">:player</span> <span class="s">&#34;FLASH&#34;</span>,
+  <span class="ss">:uri</span> <span class="s">&#34;https://fotki.com/vitae/ipsum/aliquam.js&#34;</span>,
   <span class="ss">:height</span> <span class="mi">1080</span><span class="p">}</span>,
  <span class="ss">:images</span>
- <span class="p">[{</span><span class="ss">:size</span> <span class="s">&quot;SMALL&quot;</span>,
+ <span class="p">[{</span><span class="ss">:size</span> <span class="s">&#34;SMALL&#34;</span>,
    <span class="ss">:height</span> <span class="mi">400</span>,
    <span class="ss">:width</span> <span class="mi">240</span>,
-   <span class="ss">:title</span> <span class="s">&quot;Etiam pretium iaculis justo.&quot;</span>,
-   <span class="ss">:uri</span> <span class="s">&quot;https://businessweek.com/amet/nulla/quisque/arcu/libero/</span>
-<span class="s">         rutrum/ac.aspx&quot;</span><span class="p">}</span>
-  <span class="p">{</span><span class="ss">:size</span> <span class="s">&quot;LARGE&quot;</span>,
+   <span class="ss">:title</span> <span class="s">&#34;Etiam pretium iaculis justo.&#34;</span>,
+   <span class="ss">:uri</span> <span class="s">&#34;https://businessweek.com/amet/nulla/quisque/arcu/libero/
+</span><span class="s">         rutrum/ac.aspx&#34;</span><span class="p">}</span>
+  <span class="p">{</span><span class="ss">:size</span> <span class="s">&#34;LARGE&#34;</span>,
    <span class="ss">:height</span> <span class="mi">60</span>,
    <span class="ss">:width</span> <span class="mi">250</span>,
-   <span class="ss">:title</span> <span class="s">&quot;Aliquam erat volutpat.&quot;</span>,
-   <span class="ss">:uri</span> <span class="s">&quot;http://salon.com/iaculis/justo.jsp&quot;</span><span class="p">}]}</span>
-</code></pre></div>
-
+   <span class="ss">:title</span> <span class="s">&#34;Aliquam erat volutpat.&#34;</span>,
+   <span class="ss">:uri</span> <span class="s">&#34;http://salon.com/iaculis/justo.jsp&#34;</span><span class="p">}]}</span></code></pre></div>
 
 <h3 id="sub-schema-1">Sub-schema</h3>
 
