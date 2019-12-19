@@ -14,7 +14,7 @@ advantage of the columnar format for your queries, and how to efficiently apply 
 The examples below assume that you have started a REPL in a project that imports dendrite as
 
 {{< highlight clojure >}}
-[dendrite "0.5.11"]
+[dendrite "0.5.12"]
 {{</ highlight >}}
 
 and required the `dendrite.core` namespace as
