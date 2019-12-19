@@ -2,6 +2,5 @@ language: clojure
 before_install: cd dendrite
 script: lein test
 jdk:
-  - openjdk7
   - openjdk8
   - openjdk9
