@@ -7,4 +7,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [dendrite "0.5.12"]
                  [org.clojure/tools.cli "0.3.1"]]
-  :profiles {:uberjar {:aot :all}})
+  :profiles
+  {:uberjar {:aot :all
+             :jvm-opts ["-Dclojure.compiler.direct-linking=true"
+                        "-Dclojure.compiler.elide-meta='[:file :added]'"]}})

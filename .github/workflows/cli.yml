@@ -1,0 +1,107 @@
+name: build den CLI tool
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup GraalVM environment
+        uses: DeLaGuardo/setup-graalvm@2.0
+        with:
+          graalvm-version: 20.2.0.java8
+
+      - name: Install native-image
+        run: gu install native-image
+
+      - name: Setup Clojure environment
+        uses: DeLaGuardo/setup-clojure@2.0
+        with:
+          lein: 2.9.4
+
+      - name: Compile den
+        run: |
+          ./compile.sh
+          mv den ../den-linux
+        working-directory: cli
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: den
+          path: den-linux
+
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup GraalVM environment
+        uses: DeLaGuardo/setup-graalvm@2.0
+        with:
+          graalvm-version: 20.2.0.java8
+
+      - name: Install native-image
+        run: gu install native-image
+
+      - name: Setup Clojure environment
+        uses: DeLaGuardo/setup-clojure@2.0
+        with:
+          lein: 2.9.4
+
+      - name: Compile den
+        run: |
+          ./compile.sh
+          mv den ../den-macos
+        working-directory: cli
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: den
+          path: den-macos
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-linux
+      - build-macos
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+
+      - name: Download binaries
+        uses: actions/download-artifact@v2
+        with:
+          name: den
+
+      - name: Release Linux binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: den-linux
+          asset_name: den-linux
+          asset_content_type: application/octet-stream
+
+      - name: Release MacOS binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: den-macos
+          asset_name: den-macos
+          asset_content_type: application/octet-stream
