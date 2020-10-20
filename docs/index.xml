@@ -20,7 +20,7 @@
       <guid>http://dendrite.tech/tutorial/</guid>
       <description>Tutorial Let&amp;rsquo;s get started with dendrite. This tutorial will take you through the basics of file I/O, show you how take advantage of the columnar format for your queries, and how to efficiently apply transformations on reads.
 The examples below assume that you have started a REPL in a project that imports dendrite as
-[dendrite &amp;#34;0.5.12&amp;#34;] and required the dendrite.core namespace as
+[dendrite &amp;#34;0.5.13&amp;#34;] and required the dendrite.core namespace as
 (require &amp;#39;[dendrite.core :as d]) Read and write files Writing to dendrite files should feel very similar to writing other types of files in clojure.</description>
     </item>
     
