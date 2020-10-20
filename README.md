@@ -31,8 +31,7 @@ designed to be a small library with no external dependencies.
 [Parquet]: http://parquet.io/
 
 __Status update__ (March 23, 2018): For personal reasons, I haven't been able to work on this project in the
-past two years. However, I have been accumulating ideas for the next iteration and hope to resume progress
-later this year.
+past two years. However, I have been accumulating ideas for the next iteration.
 
 [![Build Status](https://travis-ci.org/jwhitbeck/dendrite.png)](https://travis-ci.org/jwhitbeck/dendrite.png)
 
