@@ -2,7 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.pprint :as pprint]
             [clojure.tools.cli :as cli]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [dendrite.core :as d])
   (:import [java.io BufferedReader]
            [dendrite.java Options])
@@ -10,119 +10,171 @@
 
 (set! *warn-on-reflection* true)
 
-(def help-cli-option ["-h" "--help" "Print this help."])
+(def help-cli-option ["-h" "--help" "Print this help." :id :help?])
+
+(defn- exit-err! [msg]
+  (binding [*out* *err*]
+    (println msg)
+    (System/exit 1)))
+
+(defn- ex-usage [msg]
+  (ex-info msg {::usage? true}))
 
 (defn- run-cmd [cli-options cmd-name cmd args]
-  (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)]
-    (if (or errors (not= (count arguments) 1) (:help options))
-      (println (string/join "\n\n" (concat errors [(str "Usage: " cmd-name " [OPTIONS] <path>") summary])))
-      (cmd options (first arguments)))))
+  (let [{:keys [options
+                arguments
+                summary
+                errors]} (cli/parse-opts args cli-options)]
+    (when (:help? options)
+      (println "Usage:" cmd-name "[OPTIONS] <path>")
+      (println)
+      (println summary)
+      (System/exit 0))
+    (when (seq errors)
+      (exit-err! (str/join "\n" errors)))
+    (try
+      (cmd options (first arguments))
+      (System/exit 0)
+      (catch Exception e
+        (if (-> e ex-data ::usage?)
+          (exit-err! (.getMessage e))
+          (throw e))))))
 
 (def schema-cli-options
-  [[nil "--compact" "Don't pretty-print the schema."]
-   [nil "--full" "Show all encoding and compression annotations on columns."]
+  [[nil "--compact" "Don't pretty-print the schema."
+    :id :compact?]
+   [nil "--full" "Show all encoding and compression annotations on columns."
+    :id :full?]
    help-cli-option])
 
 (defn schema [options filename]
   (with-open [r (d/file-reader filename)]
-    (let [schema (if (:full options)
+    (let [schema (if (:full? options)
                    (d/full-schema r)
                    (d/schema r))]
-      (if (:compact options)
+      (if (:compact? options)
         (prn schema)
         (pprint/pprint schema)))))
 
 (def metadata-cli-options
-  [[nil "--compact" "Don't pretty-print the metadata"]
+  [[nil "--compact" "Don't pretty-print the metadata."
+    :id :compact?]
    help-cli-option])
 
 (defn metadata [options filename]
   (with-open [r (d/file-reader filename)]
     (let [metadata (d/metadata r)]
-      (if (:compact options)
+      (if (:compact? options)
         (prn metadata)
         (pprint/pprint metadata)))))
 
 (def read-cli-options
-  [[nil "--pretty" "Pretty-print the records"]
-   [nil "--head N" "Only print the first N records." :parse-fn #(Long/parseLong %)]
-   [nil "--tail N" "Only print the last N records." :parse-fn #(Long/parseLong %)]
+  [[nil "--pretty" "Pretty-print the records"
+    :id :pretty?]
+   [nil "--head N" "Only print the first N records."
+    :parse-fn #(Long/parseLong %)]
+   [nil "--tail N" "Only print the last N records."
+    :parse-fn #(Long/parseLong %)]
    [nil "--query QUERY" "Apply this query to the file. Expects a valid EDN string."
     :parse-fn edn/read-string]
-   [nil "--query-file FILE" "Read the query from this file." :parse-fn (comp edn/read-string slurp)]
-   [nil "--sub-schema-in PATH" "Path to begining of sub-schema. Should be a valid EDN vector."
+   [nil "--query-file FILE" "Read the query from this file."]
+   [nil "--sub-schema-in PATH" "Path to begining of sub-schema. Expects a valid EDN vector."
     :parse-fn edn/read-string]
-   [nil "--map-fn FN" (str "Map this function over all records before writing them to stdout. Any expression "
-                           "evaluating to a function using only clojure.core functions will work.")
-    :default nil :parse-fn (comp eval read-string)]
    help-cli-option])
 
 (defn read-file [cli-options filename]
-  (with-open [r (d/file-reader filename)]
-    (let [opts (cond-> {}
-                 (:query cli-options) (assoc :query (:query cli-options))
-                 (:query-file cli-options) (assoc :query (:query-file cli-options))
-                 (:sub-schema-in cli-options) (assoc :sub-schema-in (:sub-schema-in cli-options)))
-          str-fn (if (:pretty cli-options)
-                   #(with-out-str (pprint/pprint %))
-                   str)
-          map-fn (if-let [f (:map-fn cli-options)]
-                   (comp str-fn f)
-                   str-fn)
-          view (->> (cond->> (d/read opts r)
-                      (:head cli-options) (d/sample #(< % (:head cli-options)))
-                      (:tail cli-options) (d/sample #(>= % (- (d/num-records r) (:tail cli-options)))))
-                    (d/eduction (map map-fn)))
-          print-fn (if (:pretty cli-options) print println)
-          record-strs (cond
-                        (:head cli-options) (take (:head cli-options) view)
-                        (:tail cli-options) (take-last (:tail cli-options) view)
-                        :else (seq view))]
-      (doseq [s record-strs]
-        (when (.checkError System/out)
-          (System/exit 1))
-        (print-fn s))
-      (flush))))
+  (let [{:keys [pretty?
+                head
+                tail
+                query
+                query-file
+                sub-schema-in]} cli-options]
+    (with-open [r (d/file-reader filename)]
+      (let [opts (cond-> {}
+                   query (assoc :query query)
+                   query-file (assoc :query (-> query-file slurp edn/read-string))
+                   sub-schema-in (assoc :sub-schema-in sub-schema-in))
+            str-fn (if pretty?
+                     #(with-out-str (pprint/pprint %))
+                     str)
+            view (->> (cond->> (d/read opts r)
+                        head (d/sample #(< % head))
+                        tail (d/sample #(>= % (- (d/num-records r) tail))))
+                      (d/eduction (map str-fn)))
+            print-fn (if pretty? print println)
+            record-strs (cond
+                          head (take head view)
+                          tail (take-last tail view)
+                          :else (seq view))]
+        (doseq [s record-strs]
+          (when (.checkError System/out)
+            (System/exit 1))
+          (print-fn s))
+        (flush)))))
 
 (def write-cli-options
   [[nil "--schema SCHEMA" "Write with this schema. Expects a valid EDN string."
     :parse-fn d/read-schema-string]
-   [nil "--schema-file FILE" "Write with the schema from this file."
-    :parse-fn (comp d/read-schema-string slurp)]
+   [nil "--schema-file FILE" "Write with the schema from this file."]
    [nil "--metadata METADATA" "Set the file's metadata to METADATA. Expects a valid EDN string."
     :parse-fn edn/read-string]
-   [nil "--metadata-file FILE" "Set the file's metadata to the contents of this file."
-    :parse-fn (comp edn/read-string slurp)]
-   [nil "--data-page-length N" "The length in bytes of the data pages." :parse-fn #(Long/parseLong %)
-    :default Options/DEFAULT_DATA_PAGE_LENGTH]
-   [nil "--record-group-length N" "The length in bytes of each record group." :parse-fn #(Long/parseLong %)
-    :default Options/DEFAULT_RECORD_GROUP_LENGTH]
+   [nil "--metadata-file FILE" "Set the file's metadata to the contents of this file."]
+   [nil "--data-page-length N" "The length in bytes of the data pages."
+    :parse-fn #(Long/parseLong %)]
+   [nil "--record-group-length N" "The length in bytes of each record group."
+    :parse-fn #(Long/parseLong %)]
    [nil "--compression-thresholds MAP" "A map of compression method to the minimum compression threshold."
-    :parse-fn edn/read-string :default Options/DEFAULT_COMPRESSION_THRESHOLDS]
-   [nil "--optimize-columns? true/false/nil"
-    (str "If true, will optimize all columns, if false, will never optimize, and if nil will only optimize "
-         "if all columns have the default encoding & compression.")
-    :default nil :parse-fn (comp eval edn/read-string)]
+    :parse-fn edn/read-string]
+   [nil "--optimize-columns all/default/none"  "Optimize encoding and compression for these columns."
+    :default :default
+    :parse-fn keyword
+    :id :optimize-columns?]
    help-cli-option])
 
 (defn write-file [cli-options filename]
-  (let [schema (or (:schema cli-options) (:schema-file cli-options))]
+  (let [schema (or (:schema cli-options)
+                   (some-> (:schema-file cli-options) slurp edn/read-string))]
     (when-not schema
-      (throw (IllegalStateException. "must specify at least one of --schema or --schema-file.")))
-    (let [opts (select-keys cli-options [:data-page-length :record-group-length
-                                         :compression-thresholds :optimize-columns?])]
+      (throw (ex-usage "Must specify at least one of --schema or --schema-file.")))
+    (let [opts (select-keys cli-options [:data-page-length
+                                         :record-group-length
+                                         :compression-thresholds
+                                         :optimize-columns?])]
       (with-open [w (d/file-writer opts schema filename)]
         (.writeAll w (pmap edn/read-string (line-seq (BufferedReader. *in*))))
-        (when-let [metadata (or (:metadata cli-options) (:metadata-file cli-options))]
+        (when-let [metadata (or (:metadata cli-options)
+                                (some-> (:metadata-file cli-options)
+                                        slurp
+                                        edn/read-string))]
           (d/set-metadata! w metadata))))))
 
 (def stats-column-order
-  ["column" "record-group" "type" "encoding" "compression" "length" "num-column-chunks" "num-pages"
-   "num-records" "num-columns" "num-values" "num-dictionary-values" "header-length" "dictionary-header-length"
-   "data-length" "dictionary-length" "definition-levels-length" "repetition-levels-length"
-   "max-definition-level" "max-repetition-level"])
+  ["column"
+   "record-group"
+   "type"
+   "encoding"
+   "compression"
+   "length"
+   "num-column-chunks"
+   "num-pages"
+   "num-records"
+   "num-columns"
+   "num-values"
+   "num-dictionary-values"
+   "header-length"
+   "dictionary-header-length"
+   "data-length"
+   "dictionary-length"
+   "definition-levels-length"
+   "repetition-levels-length"
+   "max-definition-level"
+   "max-repetition-level"])
 
-(def col-name->index (reduce-kv (fn [m i col-name] (assoc m col-name i)) {} stats-column-order))
+(def col-name->index
+  (reduce-kv (fn [m i col-name]
+               (assoc m col-name i))
+             {}
+             stats-column-order))
 
 (def stats-cli-options
   [[nil "--sort-by COL" "Sort results by this column"]
@@ -144,7 +196,11 @@
 (defn- format-column-stats [column-stats sort-col]
   (->> column-stats
        (map (fn [col-stats]
-              (let [column (->> col-stats :path (remove nil?) (map name) (string/join "."))]
+              (let [column (->> col-stats
+                                :path
+                                (remove nil?)
+                                (map name)
+                                (str/join "."))]
                 (str-keys (-> col-stats
                               (dissoc :path)
                               (assoc :column column))))))
@@ -161,14 +217,18 @@
   (with-open [r (d/file-reader filename)]
     (let [sort-col (:sort-by options)
           rows (cond->> (cond (:columns options)
-                              (format-column-stats (:columns (d/stats r)) sort-col)
+                              (format-column-stats (:columns (d/stats r))
+                                                   sort-col)
                               (:record-groups options)
-                              (format-record-group-stats (:record-groups (d/stats r)) sort-col)
+                              (format-record-group-stats (:record-groups (d/stats r))
+                                                         sort-col)
                               :else
-                              (format-global-stats (:global (d/stats r)) (:sort-by options)))
+                              (format-global-stats (:global (d/stats r))
+                                                   (:sort-by options)))
                  (:desc options) reverse)]
       (if (or (:columns options) (:record-groups options))
-        (pprint/print-table (filter (-> rows first keys set) stats-column-order) rows)
+        (pprint/print-table (filter (-> rows first keys set) stats-column-order)
+                            rows)
         (pprint/print-table rows)))))
 
 (def custom-types-cli-options
@@ -186,18 +246,20 @@
                "write" [write-file write-cli-options]})
 
 (def main-help-str
-  (string/join "\n" (concat ["Usage: CMD [OPTIONS] [ARGS]"
-                             ""
-                             "where CMD is one of:"]
-                            (for [cmd-name (keys commands)]
-                              (str " - " cmd-name))
-                            [""
-                             "To get help on any command, use CMD --help."])))
+  (->> ["Usage: CMD [OPTIONS] [ARGS]
+
+where CMD is one of:
+
+" (str/join "\n" (map #(str " - " %) (keys commands))) "
+
+To get help on any command, use CMD --help."]
+       flatten
+       (apply str)))
 
 (defn -main [& args]
   (let [[cmd-name & cmd-args] args
         [cmd cli-options] (get commands cmd-name)]
-    (if-not (and cmd cli-options)
+    (when-not (and cmd cli-options)
       (println main-help-str)
-      (run-cmd cli-options cmd-name cmd cmd-args)))
-  (shutdown-agents))
+      (System/exit 0))
+    (run-cmd cli-options cmd-name cmd cmd-args)))
