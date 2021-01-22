@@ -252,5 +252,5 @@
   results for stateful transducers such as `partition-all` or `distinct`. However, for stateless transducers
   such as `map` or `filter` the results will be identical to calling `clojure.core/eduction` on the view, but
   faster because applied in parallel."
-  {:arglists '([xform* view])} ^dendrite.java.View [& xforms]
-  (.withTransduceFn ^View (last xforms) (apply comp (butlast xforms))))
+  {:arglists '([xform* view] [& args])} ^dendrite.java.View [& args]
+  (.withTransduceFn ^View (last args) (apply comp (butlast args))))
