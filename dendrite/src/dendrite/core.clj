@@ -13,9 +13,18 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
-  (:import [dendrite.java Col LeveledValue Options IReader FileReader FilesReader PersistentRecord Schema
-            Types View FileWriter]
-           [java.nio ByteBuffer])
+  (:import (dendrite.java Col
+                          FileReader
+                          FileWriter
+                          FilesReader
+                          IReader
+                          LeveledValue
+                          Options
+                          PersistentRecord
+                          Schema
+                          Types
+                          View)
+           (java.nio ByteBuffer))
   (:refer-clojure :exclude [read eduction]))
 
 (set! *warn-on-reflection* true)
@@ -137,7 +146,7 @@
   :custom-types  - a list of custom-type specifications. Default: nil. See docs for full explanation."
   (^dendrite.java.FileReader [file] (file-reader nil file))
   (^dendrite.java.FileReader [opts file]
-                             (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
+   (FileReader/create (Options/getReaderOptions opts) (io/as-file file))))
 
 (defn- byte-buffer->edn [^ByteBuffer byte-buffer edn-opts]
   (->> byte-buffer
@@ -187,7 +196,7 @@
   closed to guarantee that all resources are properly released. Accepts all the same options as file-reader."
   (^dendrite.java.FilesReader [files] (files-reader nil files))
   (^dendrite.java.FilesReader [opts files]
-    (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
+   (FilesReader. (Options/getReaderOptions opts) (map io/as-file files))))
 
 (extend-type View
   clojure.core.protocols/CollReduce
